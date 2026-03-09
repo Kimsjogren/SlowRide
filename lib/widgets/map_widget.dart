@@ -107,10 +107,14 @@ class _MapWidgetState extends State<MapWidget> {
             },
           ),
           children: [
-            // CartoDB Voyager @2x — Google Maps-style, colourful, highly detailed.
+            // Mapbox Navigation Night — dark Waze-style map perfect for driving.
             TileLayer(
               urlTemplate:
-                  'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+                  'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+              additionalOptions: const {
+                'mapbox_token':
+                    'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+              },
               userAgentPackageName: 'com.kimtechtool.slowride',
               tileDimension: 512,
               zoomOffset: -1,

@@ -58,7 +58,10 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
-    _startLocationTracking();
+    // Delay until after first frame so AppLocalizations/context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startLocationTracking();
+    });
     NavigationRequestService.instance.pendingDestination.addListener(
       _onExternalNavigationRequest,
     );

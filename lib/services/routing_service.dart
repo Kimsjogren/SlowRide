@@ -30,6 +30,7 @@ class RoutingService {
   static const String _providerOsrmPublic = 'osrm_public';
   static const String _providerOsrmSelfHosted = 'osrm_self_hosted';
   static const String _providerOpenRouteService = 'openrouteservice';
+  static const String _providerGraphHopper = 'graphhopper';
 
   Future<RouteResult> getRoute({
     required LatLng origin,
@@ -39,7 +40,14 @@ class RoutingService {
     final provider = BackendConfig.routingProvider;
     late final RouteResult route;
 
-    if (provider == _providerOpenRouteService) {
+    if (provider == _providerGraphHopper) {
+      route = await _getRouteFromGraphHopper(
+        origin: origin,
+        destination: destination,
+        vehicleType: vehicleType,
+      );
+      // GraphHopper returns real travel times — recalculate for slow vehicles.
+    } else if (provider == _providerOpenRouteService) {
       route = await _getRouteFromOpenRouteService(
         origin: origin,
         destination: destination,
@@ -61,6 +69,78 @@ class RoutingService {
     }
 
     return route;
+  }
+
+  Future<RouteResult> _getRouteFromGraphHopper({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+  }) async {
+    final apiKey = BackendConfig.graphhopperApiKey;
+    if (apiKey.isEmpty) {
+      throw const RoutingException(RoutingErrorCode.missingApiKey);
+    }
+
+    final uri = Uri.parse('${BackendConfig.graphhopperBaseUrl}/route').replace(
+      queryParameters: {
+        'point': [
+          '${origin.latitude},${origin.longitude}',
+          '${destination.latitude},${destination.longitude}',
+        ],
+        'profile': 'car',
+        'key': apiKey,
+        'points_encoded': 'false',
+        'type': 'json',
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: const {'Accept': 'application/json'},
+    );
+
+    if (response.statusCode != 200) {
+      throw const RoutingException(RoutingErrorCode.providerUnavailable);
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final paths = body['paths'] as List<dynamic>?;
+    if (paths == null || paths.isEmpty) {
+      throw const RoutingException(RoutingErrorCode.noRouteFound);
+    }
+
+    final firstPath = paths.first as Map<String, dynamic>;
+    final pointsObj = firstPath['points'] as Map<String, dynamic>?;
+    final coordinates = pointsObj?['coordinates'] as List<dynamic>?;
+
+    if (coordinates == null || coordinates.isEmpty) {
+      throw const RoutingException(RoutingErrorCode.invalidGeometry);
+    }
+
+    final points = coordinates
+        .whereType<List<dynamic>>()
+        .where((pair) => pair.length >= 2)
+        .map(
+          (pair) =>
+              LatLng((pair[1] as num).toDouble(), (pair[0] as num).toDouble()),
+        )
+        .toList(growable: false);
+
+    final distanceMeters = (firstPath['distance'] as num?)?.toDouble() ?? 0;
+
+    // GraphHopper returns car travel time in milliseconds — recalculate
+    // using the vehicle's legal max speed (A-tractor 30 km/h etc.).
+    final vehicleMaxSpeedKmh = _maxAllowedAverageSpeedKmhFor(vehicleType);
+    final avgSpeedMs = (vehicleMaxSpeedKmh * 0.85) / 3.6;
+    final calculatedDurationSeconds = avgSpeedMs > 0
+        ? distanceMeters / avgSpeedMs
+        : 0.0;
+
+    return RouteResult(
+      points: points,
+      distanceMeters: distanceMeters,
+      durationSeconds: calculatedDurationSeconds,
+    );
   }
 
   Future<RouteResult> _getRouteFromOsrm({
