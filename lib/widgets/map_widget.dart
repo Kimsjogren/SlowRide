@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -60,14 +59,14 @@ class _MapWidgetState extends State<MapWidget>
 
   void _onTick(Duration _) {
     if (!widget.followUser || !_navInitialized) return;
-    // Lerp factor: at 60 fps this smooths over ~200 ms, removing GPS jitter.
     const k = 0.18;
     _curLat += (_tgtLat - _curLat) * k;
     _curLng += (_tgtLng - _curLng) * k;
-    // Circular lerp for heading to avoid 0↔360 wrapping artefact.
     final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
     _curHdg = (_curHdg + diff * k + 360) % 360;
-    _mapController.moveAndRotate(LatLng(_curLat, _curLng), 18.5, -_curHdg);
+    // 3D = zoom 18.5 (close-up street level), 2D = zoom 16 (wider view).
+    final zoom = widget.use3D ? 18.5 : 16.0;
+    _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
   }
 
   @override
@@ -84,16 +83,16 @@ class _MapWidgetState extends State<MapWidget>
     if (widget.followUser &&
         !oldWidget.followUser &&
         widget.currentLocation != null) {
-      // Snap current animated position to avoid lerping from a stale location.
       _curLat = _tgtLat = widget.currentLocation!.latitude;
       _curLng = _tgtLng = widget.currentLocation!.longitude;
       _curHdg = _tgtHdg = widget.heading;
       _navInitialized = true;
+      final zoom = widget.use3D ? 18.5 : 16.0;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _mapController.moveAndRotate(
           widget.currentLocation!,
-          18.5,
+          zoom,
           -widget.heading,
         );
       });
@@ -117,8 +116,15 @@ class _MapWidgetState extends State<MapWidget>
       return;
     }
 
-    // During active navigation: update animation TARGET — the ticker lerps
-    // smoothly toward it every frame instead of snapping instantly.
+    // 3D↔2D toggle during nav: snap zoom immediately.
+    if (widget.followUser &&
+        widget.use3D != oldWidget.use3D &&
+        _navInitialized) {
+      final zoom = widget.use3D ? 18.5 : 16.0;
+      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+    }
+
+    // During active navigation: update animation TARGET.
     if (widget.followUser &&
         widget.currentLocation != null &&
         (widget.currentLocation != oldWidget.currentLocation ||
@@ -142,14 +148,19 @@ class _MapWidgetState extends State<MapWidget>
 
   @override
   Widget build(BuildContext context) {
-    // The core map — built once and optionally perspectivised below.
-    final mapCore = Container(
-      color: Theme.of(context).colorScheme.surface,
+    // Single stable widget tree — never changes structure so Flutter never
+    // destroys/recreates FlutterMap (which would cause a white flash).
+    final borderRadius = widget.followUser
+        ? BorderRadius.zero
+        : BorderRadius.circular(12);
+
+    return ClipRRect(
+      borderRadius: borderRadius,
       child: FlutterMap(
         mapController: _mapController,
         options: MapOptions(
           initialCenter: widget.currentLocation ?? MapWidget._defaultCenter,
-          initialZoom: widget.followUser ? 18.5 : 12.0,
+          initialZoom: widget.followUser ? (widget.use3D ? 18.5 : 16.0) : 12.0,
           onTap: (_, point) => widget.onTap?.call(point),
           onPositionChanged: (camera, hasGesture) {
             if (hasGesture && widget.followUser) {
@@ -158,7 +169,6 @@ class _MapWidgetState extends State<MapWidget>
           },
         ),
         children: [
-          // Mapbox Navigation Night — dark Waze-style map perfect for driving.
           TileLayer(
             urlTemplate:
                 'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
@@ -220,77 +230,7 @@ class _MapWidgetState extends State<MapWidget>
         ],
       ),
     );
-
-    if (!widget.followUser) {
-      // Normal flat map when browsing / route-planning.
-      return ClipRRect(borderRadius: BorderRadius.circular(12), child: mapCore);
-    }
-
-    // ── 3-D Waze-style perspective tilt during active navigation ─────────
-    // Strategy: render the map in a 2x-tall Positioned box so there are
-    // enough tiles above the horizon, then apply a perspective Matrix4
-    // anchored at the bottom-centre so the near part (bottom) stays full
-    // size and the far part (top) recedes to the horizon.
-    const tiltRadians = 0.52; // ≈ 30 ° forward tilt
-    const perspective = 0.0008;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final h = constraints.maxHeight;
-          final w = constraints.maxWidth;
-          return SizedBox(
-            width: w,
-            height: h,
-            child: Stack(
-              clipBehavior: Clip.hardEdge,
-              children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  // Render extra height above so tiles fill the tilted view.
-                  height: h * 2.2,
-                  child: Transform(
-                    alignment: Alignment.bottomCenter,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, perspective)
-                      ..rotateX(tiltRadians),
-                    child: mapCore,
-                  ),
-                ),
-                // Gradient fade at the top edge to soften the horizon line.
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: h * 0.15,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            const Color(0xFF0A1628).withValues(alpha: 0.95),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
   }
-
-  // ignore: unused_element
-  static double _deg2rad(double deg) => deg * math.pi / 180.0;
 }
 
 // ─── Premium marker widgets ──────────────────────────────────────────────────
