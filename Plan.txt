@@ -1,0 +1,377 @@
+SlowRide – FINAL Master Blueprint (Copilot Ready)
+Navigation for Slow Vehicles
+Publisher: KimTechTool
+Purpose: Complete specification so GitHub Copilot can generate the application without further redesign.
+
+1. Copilot System Instruction
+You are building a production-ready Flutter navigation application called SlowRide.
+
+SlowRide is a navigation platform designed specifically for slow vehicles such as:
+
+• A-tractors
+• Moped cars
+• Tractors
+• Vehicles limited to 20–45 km/h
+
+Generate modular, clean Flutter code using best practices and follow the architecture defined in this document.
+2. Product Vision
+SlowRide is a navigation app optimized for slow vehicles.
+
+Traditional navigation apps assume speeds of 60–120 km/h.
+SlowRide calculates routes, ETA, and driving experience based on slower vehicles.
+
+Goals:
+• Accurate ETA for slow vehicles
+• Safer road choices
+• Community-driven navigation
+• Social driving features
+3. Target Users
+Primary users:
+• A‑tractor drivers in Sweden
+• Moped car drivers
+
+Secondary users:
+• Tractors
+• Golf carts
+• Campus vehicles
+• Slow delivery vehicles
+4. Core Features (MVP)
+Navigation
+• Map-based navigation
+• Turn-by-turn directions
+• Slow vehicle optimized routing
+
+Driving Data
+• Live GPS speedometer
+• km/h and mph support
+• Custom vehicle max speed
+• Automatic speed calibration
+
+Community
+• Community alerts
+• Convoy driving
+• Live map of nearby SlowRiders
+• User login required for Convoy mode
+5. Viral Community Features
+Live SlowRiders Map
+Displays other SlowRide users nearby.
+
+Displayed icons:
+🚜 A‑tractor
+🚗 Moped car
+
+Example UI:
+“5 SlowRiders nearby”
+
+Convoy Mode
+Drivers can create convoy groups and drive together.
+
+Features:
+• Shared destination
+• Live convoy member locations
+• Group navigation
+
+Meetup Spots
+The system identifies popular gathering spots automatically.
+
+Examples:
+• McDonald's
+• Max Burgers
+• Biltema parking
+
+Gamification
+User profile tracks:
+
+• Distance driven
+• Convoys joined
+• Alerts reported
+6. SlowRoad Learning Engine (Unique Advantage)
+SlowRide learns which roads slow vehicles actually drive.
+
+The system records anonymized route data from users and identifies frequently used slow‑vehicle roads.
+
+Algorithm concept:
+
+1. Collect GPS route traces.
+2. Detect frequently used segments.
+3. Increase routing preference for those roads.
+4. Avoid roads rarely used by slow vehicles.
+
+This creates a continuously improving routing system optimized for slow vehicles.
+7. System Architecture
+Mobile App (Flutter)
+        |
+        v
+API Gateway
+        |
+-----------------------------
+|                           |
+Firebase Backend        Routing Server
+Auth / Firestore        OpenRouteService / Self-hosted OSRM
+        |
+        v
+Map Provider (OpenStreetMap via flutter_map)
+
+Routing data source:
+OpenStreetMap
+8. Technology Stack
+Frontend:
+Flutter
+
+Map SDK:
+flutter_map (OpenStreetMap)
+
+Routing Engine:
+OpenRouteService / Self-hosted OSRM
+
+Recommended free routing priority:
+1) Self-hosted OSRM (best zero-cost at scale)
+2) OpenRouteService free tier (easy hosted start)
+3) OSRM public demo for prototyping only
+
+Configuration policy:
+Routing provider and API keys are backend/dev configured.
+No technical provider selection is exposed in frontend UI.
+Frontend settings are reserved for user-level preferences.
+
+Backend:
+Firebase
+
+Database:
+Firestore
+
+Location Services:
+Flutter Geolocator
+9. Flutter Project Architecture
+lib/
+  main.dart
+
+  core/
+    constants/
+    theme/
+    utils/
+
+  features/
+    map/
+      map_screen.dart
+      map_controller.dart
+
+    navigation/
+      navigation_screen.dart
+      navigation_engine.dart
+
+    alerts/
+      alerts_screen.dart
+      alerts_controller.dart
+
+    convoy/
+      convoy_screen.dart
+      convoy_controller.dart
+
+    profile/
+      profile_screen.dart
+
+    settings/
+      settings_screen.dart
+
+  models/
+    user_model.dart
+    alert_model.dart
+    convoy_model.dart
+
+  services/
+    location_service.dart
+    routing_service.dart
+    firebase_service.dart
+    nearby_users_service.dart
+    slowroad_learning_service.dart
+
+  widgets/
+    speedometer_widget.dart
+    map_widget.dart
+    alert_marker.dart
+    convoy_marker.dart
+10. Map System
+The application must use a zero-cost map stack in MVP:
+flutter_map with OpenStreetMap tiles.
+
+Map screen includes:
+
+• User GPS location
+• Route rendering
+• Nearby SlowRiders
+• Alert markers
+• Convoy member markers
+
+Requirements:
+
+• Dark map style
+• Real-time location updates
+• Route drawing
+11. GPS Speedometer
+Speed obtained from GPS.
+
+GPS unit: meters per second
+
+Conversions:
+
+km/h = meters_per_second × 3.6
+mph = meters_per_second × 2.23694
+
+Display:
+
+• Current speed
+• Unit
+• Overspeed warning
+
+If current_speed > user_max_speed
+display warning: Slow down.
+12. User Max Speed
+Users configure max vehicle speed.
+
+Examples:
+28 km/h
+30 km/h
+33 km/h
+35 km/h
+40 km/h
+45 km/h
+
+Custom values must also be allowed.
+13. Automatic Speed Calibration
+SlowRide learns actual driving speed.
+
+Trip data:
+
+distance
+travel_time
+gps_speed_samples
+
+Average speed:
+
+average_speed = distance / travel_time
+
+Calibration formula:
+
+new_speed = (previous_speed × 0.7) + (trip_speed × 0.3)
+14. Routing Rules
+Blocked roads:
+
+motorway
+motorway_link
+trunk
+
+Preferred roads:
+
+secondary
+tertiary
+residential
+unclassified
+15. ETA Calculation
+ETA must consider:
+
+• user_max_speed
+• learned_average_speed
+• real_time_speed
+
+Formula:
+
+ETA = remaining_distance / average_speed
+16. Firestore Database Schema
+Users
+id
+username
+vehicle_type
+max_speed
+learned_speed
+speed_unit
+created_at
+last_location
+
+Alerts
+id
+type
+latitude
+longitude
+timestamp
+user_id
+
+Convoys
+id
+leader_id
+route
+created_at
+
+ConvoyMembers
+convoy_id
+user_id
+joined_at
+17. Real-Time Location System
+Devices send GPS updates every 5–10 seconds.
+
+Used for:
+
+• convoy tracking
+• live SlowRiders map
+18. Copilot Build Steps
+Step 1
+Generate Flutter project structure.
+
+Step 2
+Generate OpenStreetMap map screen with GPS location.
+
+Step 3
+Generate GPS speedometer widget.
+
+Step 4
+Generate navigation engine and route drawing.
+
+Routing default for MVP prototype:
+Use OSRM public demo first, then move to self-hosted OSRM before production.
+
+Step 5
+Generate alerts system connected to Firebase.
+
+Step 6
+Generate convoy system.
+
+Step 7
+Generate nearby SlowRiders map.
+
+Step 8
+Generate SlowRoad learning engine.
+19. Development Roadmap
+Phase 1
+Map integration
+GPS tracking
+Basic UI
+
+Phase 2
+Destination search
+Routing engine
+Navigation screen
+
+Phase 3
+Speedometer
+Speed calibration
+ETA engine
+
+Phase 4
+Alerts system
+Convoy system
+
+Phase 5
+SlowRoad learning engine
+
+Phase 6
+Testing and App Store launch
+20. Launch Strategy
+Initial launch market:
+Sweden – A‑tractor community.
+
+Marketing channels:
+
+• TikTok
+• Instagram
+• Snapchat
+• A‑tractor Facebook groups

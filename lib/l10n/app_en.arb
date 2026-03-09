@@ -1,0 +1,153 @@
+{
+  "@@locale": "en",
+  "appTitle": "SlowRide",
+  "navMap": "Map",
+  "navAlerts": "Alerts",
+  "navConvoy": "Convoy",
+  "navProfile": "Profile",
+  "navSettings": "Settings",
+  "splashPreparingStartup": "Preparing startup...",
+  "splashLoadingCoreModules": "Loading core modules...",
+  "splashInitializingAccountSession": "Initializing account session...",
+  "splashLoadingPreferences": "Loading preferences...",
+  "splashFinalizingStartup": "Finalizing startup...",
+  "splashReady": "Ready",
+  "splashVersionLine": "v1.0.0 | SlowRide by KimTechTool",
+  "alertsTitle": "Community Alerts",
+  "alertsSubtitle": "Report and view road hazards, checks, and road conditions.",
+  "convoyRequiresSignInTitle": "Convoy requires sign in",
+  "convoyRequiresSignInSubtitle": "Sign in or create an account here to create convoy groups and see live locations.",
+  "signIn": "Sign in",
+  "signUp": "Create account",
+  "signOut": "Sign out",
+  "signInEmailDialogTitle": "Sign in with email OTP",
+  "signUpEmailDialogTitle": "Create account with email OTP",
+  "signInEmailFieldLabel": "Email",
+  "signInEmailHint": "name@example.com",
+  "signInSendOtp": "Send code",
+  "signUpSendOtp": "Send account code",
+  "signInOtpFieldLabel": "OTP code",
+  "signInOtpHint": "6-digit code",
+  "signInVerifyOtp": "Verify code",
+  "signInOtpSent": "OTP code sent to your email.",
+  "signUpOtpSent": "Account creation code sent to your email.",
+  "signInOtpInvalid": "Could not verify OTP. Check your code and try again.",
+  "signUpNoAccountAction": "No account? Create one",
+  "signUpHaveAccountAction": "Already have an account? Sign in",
+  "convoyRealtimeBackendMissing": "Realtime convoy is not configured yet. Add backend config to share live positions between users.",
+  "convoyModeTitle": "Convoy Mode",
+  "convoyModeSubtitle": "Create group driving with a shared destination and live locations.",
+  "convoyCreateButton": "Create convoy",
+  "convoyJoinButton": "Join",
+  "convoyLeaveButton": "Leave",
+  "convoyJoinFirstHint": "Join the convoy first, then tap it to open chat and map.",
+  "convoyTabMap": "Map",
+  "convoyTabChat": "Chat",
+  "convoyMapHint": "Tap map to place a shared pin.",
+  "convoyRecenterTooltip": "Recenter and follow my position",
+  "convoyPinDialogTitle": "Add map pin",
+  "convoyPinLabel": "Pin label",
+  "convoyPinHint": "e.g. Meet here",
+  "convoyPinAdd": "Add pin",
+  "convoyHazardPolice": "Police",
+  "convoyHazardRoadwork": "Roadwork",
+  "convoyHazardAccident": "Accident",
+  "convoyHazardTrafficJam": "Traffic jam",
+  "convoyHazardSpeedCamera": "Speed camera",
+  "convoyHazardCustom": "Custom pin",
+  "convoyChatEmpty": "No messages yet.",
+  "convoyChatPlaceholder": "Write a message...",
+  "convoyChatSend": "Send",
+  "convoyNameDialogTitle": "Create convoy",
+  "convoyNameFieldLabel": "Convoy name",
+  "convoyNameHint": "e.g. Friday Night Ride",
+  "convoyCreateConfirm": "Create",
+  "convoyCreateCancel": "Cancel",
+  "convoyListEmpty": "No convoys yet. Create the first one.",
+  "convoyListEmptyMine": "You have not joined any convoys yet.",
+  "convoyFilterAll": "All",
+  "convoyFilterMine": "Mine",
+  "convoyMembers": "{count} members",
+  "@convoyMembers": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "convoyCreatedBy": "Created by {leader}",
+  "@convoyCreatedBy": {
+    "placeholders": {
+      "leader": {}
+    }
+  },
+  "profileTitle": "Profile & Stats",
+  "profileNotSignedIn": "You are not signed in.",
+  "profileSignInInConvoyHint": "Sign in is available in the Convoy tab.",
+  "profileSignedInAs": "Signed in as: {name}",
+  "@profileSignedInAs": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settingsTitle": "Settings",
+  "settingsLanguageLabel": "Language",
+  "settingsLanguageSystem": "System default",
+  "settingsLanguageEnglish": "English",
+  "settingsLanguageSwedish": "Swedish",
+  "settingsLanguageCurrentlyUsing": "Currently using: {mode}",
+  "@settingsLanguageCurrentlyUsing": {
+    "placeholders": {
+      "mode": {}
+    }
+  },
+  "settingsVehicleTypeLabel": "Vehicle type",
+  "settingsVehicleAtractor": "A-tractor",
+  "settingsVehicleMopedCar": "Moped car",
+  "settingsVehicleTractor": "Tractor",
+  "settingsSpeedUnitKmh": "km/h",
+  "settingsSpeedUnitMph": "mph",
+  "settingsMaxSpeedWithUnit": "Max speed: {value} {unit}",
+  "@settingsMaxSpeedWithUnit": {
+    "placeholders": {
+      "value": {},
+      "unit": {}
+    }
+  },
+  "navigationTitle": "Turn-by-Turn Navigation",
+  "navigationSubtitle": "Directions, next turn, and ETA optimized for slow vehicles.",
+  "mapStartingGps": "Starting GPS...",
+  "mapTapToSelectDestination": "Tap the map to select a destination",
+  "mapAddressFieldHint": "Search address (e.g. Main St 10, Stockholm)",
+  "mapSearchingAddress": "Searching address...",
+  "mapAddressNotFound": "No address found. Try again.",
+  "mapAddressLookupFailed": "Could not search address right now",
+  "mapLocationServicesDisabled": "Location services are disabled",
+  "mapLocationPermissionMissing": "Location permission is missing",
+  "mapGpsActive": "GPS active",
+  "mapGpsUnavailable": "GPS is unavailable in this environment",
+  "mapWaitingForGps": "Waiting for GPS position before route calculation",
+  "mapCalculatingRoute": "Calculating route...",
+  "mapRouteReady": "Route ready: {distance} km • {minutes} min",
+  "@mapRouteReady": {
+    "placeholders": {
+      "distance": {},
+      "minutes": {}
+    }
+  },
+  "mapRouteFailed": "Could not create route right now",
+  "mapRouteNoRouteFound": "No route found between selected points",
+  "mapRouteProviderUnavailable": "Routing service is unavailable right now",
+  "mapRouteMissingApiKey": "Routing is not configured on backend (missing API key)",
+  "mapRouteInvalidGeometry": "Route data from server is invalid",
+  "mapRouteUnknownProvider": "Routing provider is not configured correctly",
+  "mapRouteTooFastForVehicle": "Route rejected: estimated average speed is too high for this vehicle type.",
+  "mapRouteNotAllowedForVehicle": "No legally compliant route found for this vehicle type.",
+  "speedometerLiveSpeed": "Live speed",
+  "speedometerMaxSpeedWithUnit": "Max speed: {value} {unit}",
+  "@speedometerMaxSpeedWithUnit": {
+    "placeholders": {
+      "value": {},
+      "unit": {}
+    }
+  },
+  "speedometerSlowDown": "Slow down."
+}

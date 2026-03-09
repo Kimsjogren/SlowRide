@@ -1,0 +1,153 @@
+{
+  "@@locale": "sv",
+  "appTitle": "SlowRide",
+  "navMap": "Karta",
+  "navAlerts": "Varningar",
+  "navConvoy": "Konvoj",
+  "navProfile": "Profil",
+  "navSettings": "Inställningar",
+  "splashPreparingStartup": "Förbereder uppstart...",
+  "splashLoadingCoreModules": "Laddar kärnmoduler...",
+  "splashInitializingAccountSession": "Initierar kontosession...",
+  "splashLoadingPreferences": "Laddar inställningar...",
+  "splashFinalizingStartup": "Slutför uppstart...",
+  "splashReady": "Klar",
+  "splashVersionLine": "v1.0.0 | SlowRide by KimTechTool",
+  "alertsTitle": "Community-varningar",
+  "alertsSubtitle": "Rapportera och visa vägfaror, kontroller och vägstatus.",
+  "convoyRequiresSignInTitle": "Konvoj kräver inloggning",
+  "convoyRequiresSignInSubtitle": "Logga in eller skapa konto här för att skapa konvojgrupper och se livepositioner.",
+  "signIn": "Logga in",
+  "signUp": "Skapa konto",
+  "signOut": "Logga ut",
+  "signInEmailDialogTitle": "Logga in med e-post OTP",
+  "signUpEmailDialogTitle": "Skapa konto med e-post OTP",
+  "signInEmailFieldLabel": "E-post",
+  "signInEmailHint": "namn@exempel.se",
+  "signInSendOtp": "Skicka kod",
+  "signUpSendOtp": "Skicka kod för konto",
+  "signInOtpFieldLabel": "OTP-kod",
+  "signInOtpHint": "6-siffrig kod",
+  "signInVerifyOtp": "Verifiera kod",
+  "signInOtpSent": "OTP-kod skickad till din e-post.",
+  "signUpOtpSent": "Kod för kontoskapande skickad till din e-post.",
+  "signInOtpInvalid": "Kunde inte verifiera OTP. Kontrollera koden och försök igen.",
+  "signUpNoAccountAction": "Har du inget konto? Skapa ett",
+  "signUpHaveAccountAction": "Har du redan konto? Logga in",
+  "convoyRealtimeBackendMissing": "Realtime-konvoj är inte konfigurerad ännu. Lägg till backend-konfiguration för att dela liveposition mellan användare.",
+  "convoyModeTitle": "Konvojläge",
+  "convoyModeSubtitle": "Skapa gruppkörning med delad destination och livepositioner.",
+  "convoyCreateButton": "Skapa konvoj",
+  "convoyJoinButton": "Gå med",
+  "convoyLeaveButton": "Lämna",
+  "convoyJoinFirstHint": "Gå med i konvojen först och tryck sedan för att öppna chat och karta.",
+  "convoyTabMap": "Karta",
+  "convoyTabChat": "Chat",
+  "convoyMapHint": "Tryck på kartan för att lägga en delad pin.",
+  "convoyRecenterTooltip": "Centrera och följ min position",
+  "convoyPinDialogTitle": "Lägg till pin på kartan",
+  "convoyPinLabel": "Pin-namn",
+  "convoyPinHint": "t.ex. Möt oss här",
+  "convoyPinAdd": "Lägg till pin",
+  "convoyHazardPolice": "Polis",
+  "convoyHazardRoadwork": "Vägarbete",
+  "convoyHazardAccident": "Olycka",
+  "convoyHazardTrafficJam": "Kö",
+  "convoyHazardSpeedCamera": "Fartkamera",
+  "convoyHazardCustom": "Egen markering",
+  "convoyChatEmpty": "Inga meddelanden ännu.",
+  "convoyChatPlaceholder": "Skriv ett meddelande...",
+  "convoyChatSend": "Skicka",
+  "convoyNameDialogTitle": "Skapa konvoj",
+  "convoyNameFieldLabel": "Konvojnamn",
+  "convoyNameHint": "t.ex. Fredagskörning",
+  "convoyCreateConfirm": "Skapa",
+  "convoyCreateCancel": "Avbryt",
+  "convoyListEmpty": "Inga konvojer ännu. Skapa den första.",
+  "convoyListEmptyMine": "Du har inte gått med i några konvojer ännu.",
+  "convoyFilterAll": "Alla",
+  "convoyFilterMine": "Mina",
+  "convoyMembers": "{count} medlemmar",
+  "@convoyMembers": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "convoyCreatedBy": "Skapad av {leader}",
+  "@convoyCreatedBy": {
+    "placeholders": {
+      "leader": {}
+    }
+  },
+  "profileTitle": "Profil & Statistik",
+  "profileNotSignedIn": "Du är inte inloggad.",
+  "profileSignInInConvoyHint": "Inloggning sker under fliken Konvoj.",
+  "profileSignedInAs": "Inloggad som: {name}",
+  "@profileSignedInAs": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "settingsTitle": "Inställningar",
+  "settingsLanguageLabel": "Språk",
+  "settingsLanguageSystem": "Systemstandard",
+  "settingsLanguageEnglish": "Engelska",
+  "settingsLanguageSwedish": "Svenska",
+  "settingsLanguageCurrentlyUsing": "Använder nu: {mode}",
+  "@settingsLanguageCurrentlyUsing": {
+    "placeholders": {
+      "mode": {}
+    }
+  },
+  "settingsVehicleTypeLabel": "Fordonstyp",
+  "settingsVehicleAtractor": "A-traktor",
+  "settingsVehicleMopedCar": "Mopedbil",
+  "settingsVehicleTractor": "Traktor",
+  "settingsSpeedUnitKmh": "km/h",
+  "settingsSpeedUnitMph": "mph",
+  "settingsMaxSpeedWithUnit": "Maxhastighet: {value} {unit}",
+  "@settingsMaxSpeedWithUnit": {
+    "placeholders": {
+      "value": {},
+      "unit": {}
+    }
+  },
+  "navigationTitle": "Sväng-för-sväng-navigering",
+  "navigationSubtitle": "Anvisningar, nästa sväng och ETA optimerat för långsamma fordon.",
+  "mapStartingGps": "Startar GPS...",
+  "mapTapToSelectDestination": "Tryck på kartan för att välja destination",
+  "mapAddressFieldHint": "Sök adress (t.ex. Sveavägen 1, Stockholm)",
+  "mapSearchingAddress": "Söker adress...",
+  "mapAddressNotFound": "Ingen adress hittades. Försök igen.",
+  "mapAddressLookupFailed": "Kunde inte söka adress just nu",
+  "mapLocationServicesDisabled": "Platstjänster är avstängda",
+  "mapLocationPermissionMissing": "Platstillstånd saknas",
+  "mapGpsActive": "GPS aktiv",
+  "mapGpsUnavailable": "GPS är inte tillgänglig i den här miljön",
+  "mapWaitingForGps": "Väntar på GPS-position innan ruttberäkning",
+  "mapCalculatingRoute": "Beräknar rutt...",
+  "mapRouteReady": "Rutt klar: {distance} km • {minutes} min",
+  "@mapRouteReady": {
+    "placeholders": {
+      "distance": {},
+      "minutes": {}
+    }
+  },
+  "mapRouteFailed": "Kunde inte skapa rutt just nu",
+  "mapRouteNoRouteFound": "Ingen rutt hittades mellan valda punkter",
+  "mapRouteProviderUnavailable": "Rutttjänsten är inte tillgänglig just nu",
+  "mapRouteMissingApiKey": "Routing är inte konfigurerat i backend (saknad API-nyckel)",
+  "mapRouteInvalidGeometry": "Ruttdata från servern är ogiltig",
+  "mapRouteUnknownProvider": "Routing-provider är inte korrekt konfigurerad",
+  "mapRouteTooFastForVehicle": "Rutt stoppad: beräknad medelhastighet är för hög för vald fordonstyp.",
+  "mapRouteNotAllowedForVehicle": "Ingen lagligt godkänd rutt hittades för vald fordonstyp.",
+  "speedometerLiveSpeed": "Aktuell hastighet",
+  "speedometerMaxSpeedWithUnit": "Maxhastighet: {value} {unit}",
+  "@speedometerMaxSpeedWithUnit": {
+    "placeholders": {
+      "value": {},
+      "unit": {}
+    }
+  },
+  "speedometerSlowDown": "Sakta ner."
+}
