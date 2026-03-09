@@ -50,7 +50,7 @@ class _MapWidgetState extends State<MapWidget> {
         if (!mounted) return;
         _mapController.moveAndRotate(
           widget.currentLocation!,
-          15.5,
+          17.0,
           -widget.heading,
         );
       });
@@ -81,7 +81,7 @@ class _MapWidgetState extends State<MapWidget> {
             widget.heading != oldWidget.heading)) {
       _mapController.moveAndRotate(
         widget.currentLocation!,
-        15.5,
+        17.0,
         -widget.heading,
       );
     }
@@ -97,7 +97,7 @@ class _MapWidgetState extends State<MapWidget> {
           mapController: _mapController,
           options: MapOptions(
             initialCenter: widget.currentLocation ?? MapWidget._defaultCenter,
-            initialZoom: widget.followUser ? 15.5 : 11.5,
+            initialZoom: widget.followUser ? 17.0 : 12.0,
             onTap: (_, point) => widget.onTap?.call(point),
             onPositionChanged: (camera, hasGesture) {
               // If user drags the map during navigation, notify parent.
@@ -107,10 +107,10 @@ class _MapWidgetState extends State<MapWidget> {
             },
           ),
           children: [
-            // CartoDB Dark Matter @2x — retina quality, premium Mapbox-like look.
+            // CartoDB Voyager @2x — Google Maps-style, colourful, highly detailed.
             TileLayer(
               urlTemplate:
-                  'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+                  'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
               userAgentPackageName: 'com.kimtechtool.slowride',
               tileDimension: 512,
               zoomOffset: -1,
