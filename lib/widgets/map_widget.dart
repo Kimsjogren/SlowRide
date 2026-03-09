@@ -148,86 +148,145 @@ class _MapWidgetState extends State<MapWidget>
 
   @override
   Widget build(BuildContext context) {
-    // Single stable widget tree — never changes structure so Flutter never
-    // destroys/recreates FlutterMap (which would cause a white flash).
-    final borderRadius = widget.followUser
-        ? BorderRadius.zero
-        : BorderRadius.circular(12);
+    // CRITICAL: the widget tree structure must NEVER change between builds.
+    // If the structure changes (e.g. adding/removing a Transform wrapper),
+    // Flutter destroys and recreates FlutterMap → all tiles reload → white flash.
+    //
+    // Solution: Transform is ALWAYS present. In 2D mode its matrix = identity
+    // (no visual effect). In 3D nav mode it becomes a perspective tilt.
+    // Only the matrix VALUES change, not the tree shape.
+    final is3D = widget.followUser && widget.use3D;
+
+    // 3-D perspective matrix: anchored at bottom-centre so near (bottom) stays
+    // in place while far (top) recedes toward the horizon — Waze style.
+    final matrix = is3D
+        ? (Matrix4.identity()
+            ..setEntry(3, 2, 0.0007) // perspective strength
+            ..rotateX(0.42)) // ≈ 24° forward tilt
+        : Matrix4.identity();
 
     return ClipRRect(
-      borderRadius: borderRadius,
-      child: FlutterMap(
-        mapController: _mapController,
-        options: MapOptions(
-          initialCenter: widget.currentLocation ?? MapWidget._defaultCenter,
-          initialZoom: widget.followUser ? (widget.use3D ? 18.5 : 16.0) : 12.0,
-          onTap: (_, point) => widget.onTap?.call(point),
-          onPositionChanged: (camera, hasGesture) {
-            if (hasGesture && widget.followUser) {
-              widget.onUserPanned?.call();
-            }
-          },
-        ),
-        children: [
-          TileLayer(
-            urlTemplate:
-                'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-            additionalOptions: const {
-              'mapbox_token':
-                  'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
-            },
-            userAgentPackageName: 'com.kimtechtool.slowride',
-            tileDimension: 512,
-            zoomOffset: -1,
-          ),
-          if (widget.routePoints.isNotEmpty) ...[
-            // Outer glow (Waze-style).
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: widget.routePoints,
-                  strokeWidth: 11,
-                  color: const Color(0xFF1E90FF).withValues(alpha: 0.25),
-                  strokeCap: StrokeCap.round,
-                  strokeJoin: StrokeJoin.round,
+      borderRadius: widget.followUser
+          ? BorderRadius.zero
+          : BorderRadius.circular(12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final h = constraints.maxHeight;
+          final w = constraints.maxWidth;
+          return Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              // ── Map (always same widget identity) ──────────────────────
+              Transform(
+                alignment: Alignment.bottomCenter,
+                transform: matrix,
+                child: SizedBox(
+                  width: w,
+                  height: h,
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter:
+                          widget.currentLocation ?? MapWidget._defaultCenter,
+                      initialZoom: widget.followUser
+                          ? (is3D ? 18.5 : 16.0)
+                          : 12.0,
+                      onTap: (_, point) => widget.onTap?.call(point),
+                      onPositionChanged: (camera, hasGesture) {
+                        if (hasGesture && widget.followUser) {
+                          widget.onUserPanned?.call();
+                        }
+                      },
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                        additionalOptions: const {
+                          'mapbox_token':
+                              'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                        },
+                        userAgentPackageName: 'com.kimtechtool.slowride',
+                        tileDimension: 512,
+                        zoomOffset: -1,
+                      ),
+                      if (widget.routePoints.isNotEmpty) ...[
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: widget.routePoints,
+                              strokeWidth: 11,
+                              color: const Color(
+                                0xFF1E90FF,
+                              ).withValues(alpha: 0.25),
+                              strokeCap: StrokeCap.round,
+                              strokeJoin: StrokeJoin.round,
+                            ),
+                          ],
+                        ),
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: widget.routePoints,
+                              strokeWidth: 6,
+                              color: const Color(0xFF1E90FF),
+                              strokeCap: StrokeCap.round,
+                              strokeJoin: StrokeJoin.round,
+                            ),
+                          ],
+                        ),
+                      ],
+                      MarkerLayer(
+                        markers: [
+                          if (widget.destination != null)
+                            Marker(
+                              point: widget.destination!,
+                              width: 44,
+                              height: 54,
+                              alignment: const Alignment(0, -1),
+                              child: const _DestinationPin(),
+                            ),
+                          if (widget.currentLocation != null)
+                            Marker(
+                              point: widget.currentLocation!,
+                              width: 48,
+                              height: 48,
+                              child: _LocationDot(heading: widget.heading),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            // Inner route line.
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: widget.routePoints,
-                  strokeWidth: 6,
-                  color: const Color(0xFF1E90FF),
-                  strokeCap: StrokeCap.round,
-                  strokeJoin: StrokeJoin.round,
+              ),
+              // ── Horizon fade — always in tree, opacity animates ─────────
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: h * 0.18,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: is3D ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            const Color(0xFF0A1628).withValues(alpha: 0.95),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-          ],
-          MarkerLayer(
-            markers: [
-              // Destination pin.
-              if (widget.destination != null)
-                Marker(
-                  point: widget.destination!,
-                  width: 44,
-                  height: 54,
-                  alignment: const Alignment(0, -1),
-                  child: const _DestinationPin(),
-                ),
-              // Current location — glowing arrow rotated to heading.
-              if (widget.currentLocation != null)
-                Marker(
-                  point: widget.currentLocation!,
-                  width: 48,
-                  height: 48,
-                  child: _LocationDot(heading: widget.heading),
-                ),
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
