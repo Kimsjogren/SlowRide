@@ -23,12 +23,12 @@ class BackendConfig {
 
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://bgdtzxmcnydvracgqaht.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: '',
+    defaultValue: 'sb_publishable_8Fh1-rylojT88X9hpD2iFA_8CwxJXXG',
   );
 
   static const bool strictSlowVehicleRouting = true;

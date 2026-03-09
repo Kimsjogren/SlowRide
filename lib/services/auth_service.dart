@@ -142,8 +142,7 @@ class AuthService {
     if (account == null || account['pw'] != password) {
       throw AuthException('Fel e-post eller lösenord.');
     }
-    userName.value =
-        account['name'] as String? ?? _nameFromEmail(normalizedEmail);
+    userName.value = account['name'] ?? _nameFromEmail(normalizedEmail);
     userEmail.value = normalizedEmail;
     userId.value = null;
     isLoggedIn.value = true;
@@ -254,5 +253,3 @@ class AuthException implements Exception {
   @override
   String toString() => message;
 }
-
-
