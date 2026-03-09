@@ -479,15 +479,40 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (convoy.isJoined)
-                                    IconButton(
-                                      onPressed: () => _shareConvoy(convoy),
-                                      icon: const Icon(
-                                        Icons.ios_share,
-                                        size: 18,
-                                        color: Colors.white60,
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _shareConvoy(convoy),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: const Color(
+                                            0xFF3AA8FF,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xFF3AA8FF),
+                                            width: 1,
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 0,
+                                          ),
+                                          minimumSize: const Size(0, 32),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.person_add_alt_1,
+                                          size: 14,
+                                        ),
+                                        label: const Text(
+                                          'Bjud in',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
                                       ),
-                                      tooltip: 'Bjud in',
-                                      visualDensity: VisualDensity.compact,
                                     ),
                                   const SizedBox(width: 4),
                                   SizedBox(

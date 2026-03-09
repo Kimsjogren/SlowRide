@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
-import 'package:slowride/features/alerts/alerts_screen.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
 import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
@@ -257,7 +256,6 @@ class _AppShellState extends State<AppShell> {
 
     const pages = [
       MapScreen(),
-      AlertsScreen(),
       ConvoyScreen(),
       ProfileScreen(),
       SettingsScreen(),
@@ -267,10 +265,6 @@ class _AppShellState extends State<AppShell> {
       NavigationDestination(
         icon: const Icon(Icons.map_outlined),
         label: l10n.navMap,
-      ),
-      NavigationDestination(
-        icon: const Icon(Icons.warning_amber_outlined),
-        label: l10n.navAlerts,
       ),
       NavigationDestination(
         icon: const Icon(Icons.groups_outlined),

@@ -300,7 +300,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       _routeDestination = destination;
       _routePoints = const [];
       _routingStatus = 'Beräknar rutt...';
-      _isFollowingMyPosition = true;
+      _isFollowingMyPosition = false;
+    });
+    // Zoom in on my vehicle while the route is being calculated.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _mapController.move(_myLocation!, 16.5);
     });
 
     try {
@@ -320,12 +324,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       // Zoom to fit the full route so the driver sees start→destination.
       if (route.points.length >= 2) {
         final bounds = LatLngBounds.fromPoints(route.points);
-        _mapController.fitCamera(
-          CameraFit.bounds(
-            bounds: bounds,
-            padding: const EdgeInsets.fromLTRB(40, 80, 40, 120),
-          ),
-        );
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _mapController.fitCamera(
+            CameraFit.bounds(
+              bounds: bounds,
+              padding: const EdgeInsets.fromLTRB(40, 80, 40, 120),
+            ),
+          );
+        });
       }
     } on RoutingException catch (e) {
       if (!mounted) return;
