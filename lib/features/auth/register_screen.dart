@@ -54,27 +54,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBackground(
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               children: [
-                // Logo + rubrik
-                Image.asset(
-                  'assets/logga_nobg.png',
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 const Text(
                   'Skapa konto',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.none,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -83,6 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 14,
+                    decoration: TextDecoration.none,
                   ),
                 ),
                 const SizedBox(height: 32),
