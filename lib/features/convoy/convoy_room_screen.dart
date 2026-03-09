@@ -296,9 +296,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: const Color(0xFF0A1628),
         appBar: AppBar(
-          title: Text(widget.convoy.name),
+          backgroundColor: const Color(0xFF0D1B2E),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          title: Text(
+            widget.convoy.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           bottom: TabBar(
+            labelColor: const Color(0xFF3AA8FF),
+            unselectedLabelColor: Colors.white54,
+            indicatorColor: const Color(0xFF1E6BFF),
+            indicatorSize: TabBarIndicatorSize.tab,
             tabs: [
               Tab(text: l10n.convoyTabMap),
               Tab(text: l10n.convoyTabChat),
@@ -500,18 +514,52 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                     builder: (context, snapshot) {
                       final messages = snapshot.data ?? const [];
                       if (messages.isEmpty) {
-                        return Center(child: Text(l10n.convoyChatEmpty));
+                        return Center(
+                          child: Text(
+                            l10n.convoyChatEmpty,
+                            style: const TextStyle(color: Colors.white54),
+                          ),
+                        );
                       }
 
                       return ListView.builder(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           final message = messages[index];
-                          return Card(
-                            child: ListTile(
-                              title: Text(message.userLabel),
-                              subtitle: Text(message.text),
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.07),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message.userLabel,
+                                  style: const TextStyle(
+                                    color: Color(0xFF3AA8FF),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  message.text,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         },
@@ -519,25 +567,66 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                     },
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          decoration: InputDecoration(
-                            hintText: l10n.convoyChatPlaceholder,
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _messageController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: l10n.convoyChatPlaceholder,
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.4),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.08),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFF1E6BFF),
+                                ),
+                              ),
+                            ),
+                            onSubmitted: (_) => _sendMessage(),
                           ),
-                          onSubmitted: (_) => _sendMessage(),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _sendMessage,
-                        child: Text(l10n.convoyChatSend),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E6BFF),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
+                          ),
+                          onPressed: _sendMessage,
+                          child: Text(l10n.convoyChatSend),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

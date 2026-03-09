@@ -36,35 +36,120 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
   Future<void> _showCreateDialog(AppLocalizations l10n) async {
     _nameController.text = '';
 
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(l10n.convoyNameDialogTitle),
-          content: TextField(
-            controller: _nameController,
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: l10n.convoyNameFieldLabel,
-              hintText: l10n.convoyNameHint,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1B2E),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.groups,
+                      color: Color(0xFF3AA8FF),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      l10n.convoyNameDialogTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _nameController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: l10n.convoyNameHint,
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF1E6BFF)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text(
+                        l10n.convoyCreateCancel,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E6BFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: () async {
+                        final name = _nameController.text.trim();
+                        if (name.isEmpty) return;
+                        Navigator.of(ctx).pop();
+                        await _controller.createConvoy(name: name);
+                        if (mounted) setState(() => _streamKey++);
+                      },
+                      child: Text(l10n.convoyCreateConfirm),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l10n.convoyCreateCancel),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = _nameController.text.trim();
-                if (name.isEmpty) return;
-                Navigator.of(context).pop();
-                await _controller.createConvoy(name: name);
-                if (mounted) setState(() => _streamKey++);
-              },
-              child: Text(l10n.convoyCreateConfirm),
-            ),
-          ],
         );
       },
     );
@@ -285,10 +370,6 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final convoy = convoys[index];
-                        final shortId = convoy.id
-                            .split('-')
-                            .first
-                            .toUpperCase();
                         final isLeader =
                             convoy.leaderId ==
                             AuthService.instance.userId.value;
