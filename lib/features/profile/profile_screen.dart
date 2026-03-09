@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:slowride/features/auth/login_screen.dart';
+import 'package:slowride/features/auth/register_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/widgets/app_background.dart';
@@ -110,6 +112,64 @@ class ProfileScreen extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 24),
+
+                    // Logga in / Skapa konto (ej inloggad)
+                    if (!isLoggedIn) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.login),
+                          label: const Text('Logga in'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E6BFF),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.person_add_alt_1,
+                            color: Colors.white70,
+                          ),
+                          label: const Text(
+                            'Skapa konto',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Logga ut-knapp
                     if (isLoggedIn)

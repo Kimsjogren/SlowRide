@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
+import 'package:slowride/features/auth/login_screen.dart';
+import 'package:slowride/features/auth/register_screen.dart';
 import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/features/convoy/convoy_room_screen.dart';
 import 'package:slowride/models/convoy_model.dart';
@@ -250,13 +252,26 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                         runSpacing: 10,
                         children: [
                           FilledButton.icon(
-                            onPressed: () => _showSignInDialog(l10n),
+                            onPressed: () async {
+                              await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
+                              );
+                            },
                             icon: const Icon(Icons.login),
                             label: Text(l10n.signIn),
                           ),
                           OutlinedButton.icon(
-                            onPressed: () =>
-                                _showSignInDialog(l10n, createAccount: true),
+                            onPressed: () async {
+                              await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen(),
+                                ),
+                              );
+                            },
                             icon: const Icon(Icons.person_add_alt_1),
                             label: Text(l10n.signUp),
                             style: OutlinedButton.styleFrom(
