@@ -147,7 +147,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
 
             if (_isFollowingMyPosition) {
               _mapController.move(point, _followZoom);
-              _mapController.rotate(-heading);
             }
           }
 
@@ -316,7 +315,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       setState(() {
         _routePoints = route.points;
         _routingStatus = '${km.toStringAsFixed(1)} km · $minutes min';
+        _isFollowingMyPosition = false;
       });
+      // Zoom to fit the full route so the driver sees start→destination.
+      if (route.points.length >= 2) {
+        final bounds = LatLngBounds.fromPoints(route.points);
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: bounds,
+            padding: const EdgeInsets.fromLTRB(40, 80, 40, 120),
+          ),
+        );
+      }
     } on RoutingException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -652,7 +662,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                 options: MapOptions(
                                   initialCenter: center,
                                   initialZoom: _followZoom,
-                                  initialRotation: -_myHeading,
+                                  initialRotation: 0,
                                   onTap: (_, point) =>
                                       _showQuickHazardPicker(point, l10n),
                                   onPositionChanged: (_, hasGesture) {
@@ -881,7 +891,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                       () => _isFollowingMyPosition = true,
                                     );
                                     _mapController.move(me, _followZoom);
-                                    _mapController.rotate(-_myHeading);
+                                    _mapController.rotate(0);
                                   },
                                   child: Icon(
                                     _isFollowingMyPosition
