@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
+import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/speedometer_widget.dart';
@@ -125,6 +126,7 @@ class _MapScreenState extends State<MapScreen> {
                 : position.speed;
 
             final hadLocation = _currentLocation != null;
+            final currentPos = LatLng(position.latitude, position.longitude);
             setState(() {
               _speedKmh = speedMetersPerSecond * 3.6;
               // heading is 0–360 degrees, 0 = north. Only update when
@@ -132,9 +134,13 @@ class _MapScreenState extends State<MapScreen> {
               if (position.speed > 0.5 && position.heading >= 0) {
                 _headingDegrees = position.heading;
               }
-              _currentLocation = LatLng(position.latitude, position.longitude);
+              _currentLocation = currentPos;
               _locationStatus = l10n.mapGpsActive;
             });
+            // Record GPS trace while navigating (SlowRoad Learning Engine).
+            if (_isNavigating) {
+              SlowRoadService.instance.addPoint(currentPos, _speedKmh);
+            }
             // If this is the first GPS fix and a destination was already set
             // (e.g. from a convoy pin tap before GPS was ready), start routing.
             if (!hadLocation &&
@@ -370,6 +376,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _clearRoute() {
+    // End or cancel the SlowRoad learning session.
+    if (_isNavigating) {
+      SlowRoadService.instance.endSession();
+    } else {
+      SlowRoadService.instance.cancelSession();
+    }
     setState(() {
       _routePoints = const [];
       _destination = null;
@@ -773,6 +785,13 @@ class _MapScreenState extends State<MapScreen> {
                                 )
                               : FilledButton.icon(
                                   onPressed: () {
+                                    final vehicleType = UserPreferencesService
+                                        .instance
+                                        .vehicleType
+                                        .value;
+                                    SlowRoadService.instance.startSession(
+                                      vehicleType,
+                                    );
                                     setState(() {
                                       _isNavigating = true;
                                       _isFollowing = true;

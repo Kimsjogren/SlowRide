@@ -247,10 +247,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   }
 
   void _fitAllMembers(List<ConvoyMemberLocation> locations) {
-    final points = [
-      ...locations.map((m) => m.position),
-      if (_myLocation != null) _myLocation!,
-    ];
+    final points = [...locations.map((m) => m.position), ?_myLocation];
     if (points.isEmpty) return;
     if (points.length == 1) {
       _mapController.move(points.first, _followZoom);

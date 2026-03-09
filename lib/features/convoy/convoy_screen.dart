@@ -367,7 +367,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                     return ListView.separated(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       itemCount: convoys.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final convoy = convoys[index];
                         final isLeader =
@@ -527,8 +527,9 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                               await _controller.joinConvoy(
                                                 convoy: convoy,
                                               );
-                                              if (mounted)
+                                              if (mounted) {
                                                 setState(() => _streamKey++);
+                                              }
                                             },
                                             style: OutlinedButton.styleFrom(
                                               foregroundColor: Colors.white,
