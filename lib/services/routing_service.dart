@@ -46,7 +46,6 @@ class RoutingService {
         destination: destination,
         vehicleType: vehicleType,
       );
-      // GraphHopper returns real travel times — recalculate for slow vehicles.
     } else if (provider == _providerOpenRouteService) {
       route = await _getRouteFromOpenRouteService(
         origin: origin,
@@ -83,42 +82,28 @@ class RoutingService {
 
     final vehicleMaxSpeedKmh = _maxAllowedAverageSpeedKmhFor(vehicleType);
 
-    // Build road-type priorities for slow vehicles.
-    // Higher multiply_by = more preferred. 0 = blocked entirely.
-    // Motorway and trunk are illegal for A-tractors/moped cars — block them.
-    // Residential and tertiary roads are ideal for slow vehicles.
-    final roadPriorities = _slowVehicleRoadPriorities(vehicleType);
+    // GraphHopper free-tier GET API.
+    // The `avoid` parameter IS supported on free plans (unlike custom_model
+    // which requires the paid Platinum tier).
+    // Slow vehicles must avoid motorways and ferries by law.
+    final avoidFeatures = _graphHopperAvoidFor(vehicleType);
 
-    // Custom model caps every road's speed at the vehicle's legal max.
-    // ch.disable=true is required to enable flexible/custom model routing.
-    final requestBody = jsonEncode({
-      'points': [
-        [origin.longitude, origin.latitude],
-        [destination.longitude, destination.latitude],
-      ],
-      'profile': 'car',
-      'ch.disable': true,
-      'points_encoded': false,
-      'custom_model': {
-        'speed': [
-          // Cap all roads to vehicle's legal top speed.
-          {'if': 'true', 'limit_to': vehicleMaxSpeedKmh.toInt()},
-        ],
-        'priority': roadPriorities,
-      },
-    });
-
-    final uri = Uri.parse(
-      '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey',
+    // Build URI manually to handle repeated `point=` params correctly.
+    final buffer = StringBuffer(
+      '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey'
+      '&profile=car&points_encoded=false',
     );
+    buffer.write(
+      '&point=${origin.latitude},${origin.longitude}'
+      '&point=${destination.latitude},${destination.longitude}',
+    );
+    if (avoidFeatures.isNotEmpty) {
+      buffer.write('&avoid=${avoidFeatures.join(',')}');
+    }
 
-    final response = await http.post(
-      uri,
-      headers: const {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: requestBody,
+    final response = await http.get(
+      Uri.parse(buffer.toString()),
+      headers: const {'Accept': 'application/json'},
     );
 
     if (response.statusCode != 200) {
@@ -325,58 +310,16 @@ _RoutingConstraints _routingConstraintsFor(String vehicleType) {
   }
 }
 
-/// Returns a GraphHopper Custom Model `priority` list for slow vehicles.
-///
-/// Road type weights (higher multiply_by = more preferred):
-///   motorway / trunk  → 0      (blocked — illegal for A-tractors/mopeds)
-///   primary           → 0.3    (very high penalty)
-///   secondary         → 1.0    (neutral baseline — preferred)
-///   tertiary          → 1.2    (preferred)
-///   residential       → 1.5    (most preferred — typical slow-vehicle road)
-///   unclassified      → 1.3    (preferred)
-///
-/// Tractors are allowed on primary roads, so they get a lighter penalty.
-List<Map<String, Object>> _slowVehicleRoadPriorities(String vehicleType) {
-  final blockMotorway = {'if': 'road_class == MOTORWAY', 'multiply_by': '0'};
-  final blockTrunk = {'if': 'road_class == TRUNK', 'multiply_by': '0'};
-
-  final preferResidential = {
-    'if': 'road_class == RESIDENTIAL',
-    'multiply_by': '1.5',
-  };
-  final preferTertiary = {'if': 'road_class == TERTIARY', 'multiply_by': '1.2'};
-  final preferSecondary = {
-    'if': 'road_class == SECONDARY',
-    'multiply_by': '1.0',
-  };
-  final preferUnclassified = {
-    'if': 'road_class == UNCLASSIFIED',
-    'multiply_by': '1.3',
-  };
-
+/// Returns the `avoid` features to pass to GraphHopper's free-tier GET API.
+/// Supported values: motorway, ferry, tunnel, ford, track, toll.
+List<String> _graphHopperAvoidFor(String vehicleType) {
   switch (vehicleType) {
     case 'Tractor':
-      // Tractors are allowed on primary roads — softer penalty.
-      return [
-        blockMotorway,
-        blockTrunk,
-        {'if': 'road_class == PRIMARY', 'multiply_by': '0.5'},
-        preferSecondary,
-        preferTertiary,
-        preferUnclassified,
-        preferResidential,
-      ];
+      // Tractors can use some primary roads but not motorways or ferries.
+      return ['motorway', 'ferry'];
     default:
-      // A-tractor, Moped car — hard block on high-speed roads.
-      return [
-        blockMotorway,
-        blockTrunk,
-        {'if': 'road_class == PRIMARY', 'multiply_by': '0.3'},
-        preferSecondary,
-        preferTertiary,
-        preferUnclassified,
-        preferResidential,
-      ];
+      // A-tractor, Moped car — motorway, ferry and toll are illegal/unusable.
+      return ['motorway', 'ferry', 'toll'];
   }
 }
 

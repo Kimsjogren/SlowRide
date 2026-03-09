@@ -6,13 +6,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
-import 'package:slowride/services/navigation_request_service.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -25,6 +26,7 @@ class ConvoyRoomScreen extends StatefulWidget {
 
 class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   final ConvoyController _controller = ConvoyController();
+  final RoutingService _routingService = RoutingService();
   final TextEditingController _messageController = TextEditingController();
   final MapController _mapController = MapController();
 
@@ -36,6 +38,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   double _myHeading = 0;
   bool _isFollowingMyPosition = true;
   String? _myUserId;
+
+  // ── Inline routing state ────────────────────────────────────────────────
+  List<LatLng> _routePoints = const [];
+  LatLng? _routeDestination;
+  LatLng? _pendingDestination; // set before GPS is ready
+  bool _isRouting = false;
+  String _routingStatus = '';
 
   static const List<Color> _avatarPalette = [
     Color(0xFF1E6BFF),
@@ -118,12 +127,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
         ).listen((position) async {
           final point = LatLng(position.latitude, position.longitude);
           final heading = position.heading >= 0 ? position.heading : _myHeading;
+          final hadLocation = _myLocation != null;
 
           if (mounted) {
             setState(() {
               _myLocation = point;
               _myHeading = heading;
             });
+
+            // Auto-retry pending route on first GPS fix.
+            if (!hadLocation &&
+                _pendingDestination != null &&
+                _routePoints.isEmpty &&
+                !_isRouting) {
+              final dest = _pendingDestination!;
+              _pendingDestination = null;
+              _routeToDestination(dest);
+            }
 
             if (_isFollowingMyPosition) {
               _mapController.move(point, _followZoom);
@@ -260,11 +280,72 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
     setState(() => _isFollowingMyPosition = false);
   }
 
-  void _navigateToPin(ConvoyPin pin) {
-    // Request navigation via the app's own routing engine,
-    // then pop back to AppShell which will switch to the map tab.
-    NavigationRequestService.instance.requestNavigation(pin.position);
-    Navigator.of(context).popUntil((route) => route.isFirst);
+  void _routeToPin(ConvoyPin pin) {
+    Navigator.of(context).pop(); // close bottom sheet
+    _routeToDestination(pin.position);
+  }
+
+  Future<void> _routeToDestination(LatLng destination) async {
+    if (_myLocation == null) {
+      // GPS not ready yet — save destination, auto-retry on first fix.
+      setState(() {
+        _pendingDestination = destination;
+        _routeDestination = destination;
+        _routingStatus = 'Startar GPS...';
+      });
+      return;
+    }
+
+    setState(() {
+      _isRouting = true;
+      _routeDestination = destination;
+      _routePoints = const [];
+      _routingStatus = 'Beräknar rutt...';
+      _isFollowingMyPosition = true;
+    });
+
+    try {
+      final route = await _routingService.getRoute(
+        origin: _myLocation!,
+        destination: destination,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+      );
+      if (!mounted) return;
+      final km = route.distanceMeters / 1000;
+      final minutes = (route.durationSeconds / 60).round();
+      setState(() {
+        _routePoints = route.points;
+        _routingStatus = '${km.toStringAsFixed(1)} km · $minutes min';
+      });
+    } on RoutingException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _routePoints = const [];
+        _routingStatus = switch (e.code) {
+          RoutingErrorCode.noRouteFound => 'Ingen rutt hittades',
+          RoutingErrorCode.providerUnavailable =>
+            'Rutttjänsten är inte tillgänglig',
+          _ => 'Kunde inte beräkna rutt',
+        };
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _routePoints = const [];
+        _routingStatus = 'Kunde inte beräkna rutt';
+      });
+    } finally {
+      if (mounted) setState(() => _isRouting = false);
+    }
+  }
+
+  void _clearConvoyRoute() {
+    setState(() {
+      _routePoints = const [];
+      _routeDestination = null;
+      _pendingDestination = null;
+      _routingStatus = '';
+    });
   }
 
   void _showPinOptions(ConvoyPin pin) {
@@ -330,10 +411,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                       'Navigera hit',
                       style: TextStyle(fontSize: 16),
                     ),
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _navigateToPin(pin);
-                    },
+                    onPressed: () => _routeToPin(pin),
                   ),
                 ),
               ],
@@ -660,6 +738,19 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                       ),
                                     ],
                                   ),
+                                  // Route polyline
+                                  if (_routePoints.isNotEmpty)
+                                    PolylineLayer(
+                                      polylines: [
+                                        Polyline(
+                                          points: _routePoints,
+                                          color: const Color(0xFF3AA8FF),
+                                          strokeWidth: 5,
+                                          borderColor: const Color(0xFF0A3D6E),
+                                          borderStrokeWidth: 2,
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                             ),
@@ -691,10 +782,77 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                               ),
                             ),
                           ),
+                          // Route status bar
+                          if (_routeDestination != null || _isRouting)
+                            Positioned(
+                              left: 16,
+                              right: 16,
+                              bottom: 24,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xEE0D1B2E),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0x553AA8FF),
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black45,
+                                      blurRadius: 12,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    if (_isRouting)
+                                      const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF3AA8FF),
+                                        ),
+                                      )
+                                    else
+                                      const Icon(
+                                        Icons.alt_route,
+                                        color: Color(0xFF3AA8FF),
+                                        size: 18,
+                                      ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _routingStatus,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: _clearConvoyRoute,
+                                      child: const Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.white38,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           // Buttons overlay
                           Positioned(
                             right: 24,
-                            bottom: 24,
+                            bottom: _routeDestination != null || _isRouting
+                                ? 90
+                                : 24,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,

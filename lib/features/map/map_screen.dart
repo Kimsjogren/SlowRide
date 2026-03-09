@@ -775,16 +775,17 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         Expanded(
                           child: _isNavigating
-                              ? FilledButton.icon(
-                                  onPressed: _clearRoute,
-                                  icon: const Icon(Icons.stop),
-                                  label: const Text('Avsluta'),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.red.shade700,
-                                  ),
+                              ? _NavButton(
+                                  icon: Icons.stop_circle_outlined,
+                                  label: 'Avsluta navigation',
+                                  color: const Color(0xFFD32F2F),
+                                  onTap: _clearRoute,
                                 )
-                              : FilledButton.icon(
-                                  onPressed: () {
+                              : _NavButton(
+                                  icon: Icons.navigation_rounded,
+                                  label: 'Starta navigation',
+                                  color: const Color(0xFF0A7E3F),
+                                  onTap: () {
                                     final vehicleType = UserPreferencesService
                                         .instance
                                         .vehicleType
@@ -797,23 +798,13 @@ class _MapScreenState extends State<MapScreen> {
                                       _isFollowing = true;
                                     });
                                   },
-                                  icon: const Icon(Icons.navigation),
-                                  label: const Text('Starta'),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.green.shade700,
-                                  ),
                                 ),
                         ),
                         if (!_isNavigating) ...[
-                          const SizedBox(width: 10),
-                          OutlinedButton.icon(
-                            onPressed: _clearRoute,
-                            icon: const Icon(Icons.clear, size: 16),
-                            label: const Text('Rensa'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white60,
-                              side: const BorderSide(color: Colors.white24),
-                            ),
+                          const SizedBox(width: 8),
+                          _IconNavButton(
+                            icon: Icons.close_rounded,
+                            onTap: _clearRoute,
                           ),
                         ],
                       ],
@@ -824,6 +815,86 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+// ── Reusable nav button widgets ───────────────────────────────────────────────
+
+class _NavButton extends StatelessWidget {
+  const _NavButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, color.withValues(alpha: 0.7)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.45),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IconNavButton extends StatelessWidget {
+  const _IconNavButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: Icon(icon, color: Colors.white60, size: 20),
       ),
     );
   }
