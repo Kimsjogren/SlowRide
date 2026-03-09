@@ -10,6 +10,7 @@ import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
+import 'package:slowride/services/navigation_request_service.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -116,6 +117,90 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       return;
     }
     _messageController.clear();
+  }
+
+  void _navigateToPin(ConvoyPin pin) {
+    // Request navigation via the app's own routing engine,
+    // then pop back to AppShell which will switch to the map tab.
+    NavigationRequestService.instance.requestNavigation(pin.position);
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  void _showPinOptions(ConvoyPin pin) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1B2E),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _pinIcon(pin.type),
+                      color: _pinColor(pin.type),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        pin.label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (pin.userLabel.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Markerad av ${pin.userLabel}',
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E6BFF),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.alt_route),
+                    label: const Text(
+                      'Navigera hit',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _navigateToPin(pin);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showPinDialog(LatLng point, AppLocalizations l10n) async {
@@ -426,36 +511,46 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                           point: pin.position,
                                           width: 90,
                                           height: 42,
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
+                                          child: GestureDetector(
+                                            onTap: () => _showPinOptions(pin),
+                                            child: Column(
+                                              children: [
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.surface,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: _pinColor(
+                                                        pin.type,
+                                                      ).withValues(alpha: 0.6),
                                                     ),
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.surface,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
+                                                  ),
+                                                  child: Text(
+                                                    pin.label,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.labelSmall,
+                                                  ),
                                                 ),
-                                                child: Text(
-                                                  pin.label,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.labelSmall,
+                                                Icon(
+                                                  _pinIcon(pin.type),
+                                                  color: _pinColor(pin.type),
+                                                  size: 18,
                                                 ),
-                                              ),
-                                              Icon(
-                                                _pinIcon(pin.type),
-                                                color: _pinColor(pin.type),
-                                                size: 18,
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                     ],

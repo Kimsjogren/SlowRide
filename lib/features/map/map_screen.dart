@@ -6,6 +6,7 @@ import 'package:slowride/l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
@@ -58,6 +59,17 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _startLocationTracking();
+    NavigationRequestService.instance.pendingDestination.addListener(
+      _onExternalNavigationRequest,
+    );
+  }
+
+  void _onExternalNavigationRequest() {
+    final dest = NavigationRequestService.instance.pendingDestination.value;
+    if (dest != null) {
+      NavigationRequestService.instance.consume();
+      _handleMapTap(dest);
+    }
   }
 
   Future<void> _startLocationTracking() async {
@@ -132,6 +144,9 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   void dispose() {
+    NavigationRequestService.instance.pendingDestination.removeListener(
+      _onExternalNavigationRequest,
+    );
     _addressController.dispose();
     _searchFocus.dispose();
     _debounce?.cancel();

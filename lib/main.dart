@@ -8,6 +8,7 @@ import 'package:slowride/features/profile/profile_screen.dart';
 import 'package:slowride/features/settings/settings_screen.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/firebase_service.dart';
+import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
@@ -226,6 +227,29 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    NavigationRequestService.instance.pendingDestination.addListener(
+      _onNavigationRequest,
+    );
+  }
+
+  @override
+  void dispose() {
+    NavigationRequestService.instance.pendingDestination.removeListener(
+      _onNavigationRequest,
+    );
+    super.dispose();
+  }
+
+  void _onNavigationRequest() {
+    final dest = NavigationRequestService.instance.pendingDestination.value;
+    if (dest != null && mounted) {
+      setState(() => _index = 0);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
