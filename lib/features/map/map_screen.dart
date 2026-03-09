@@ -124,6 +124,7 @@ class _MapScreenState extends State<MapScreen> {
                 ? 0
                 : position.speed;
 
+            final hadLocation = _currentLocation != null;
             setState(() {
               _speedKmh = speedMetersPerSecond * 3.6;
               // heading is 0–360 degrees, 0 = north. Only update when
@@ -134,6 +135,14 @@ class _MapScreenState extends State<MapScreen> {
               _currentLocation = LatLng(position.latitude, position.longitude);
               _locationStatus = l10n.mapGpsActive;
             });
+            // If this is the first GPS fix and a destination was already set
+            // (e.g. from a convoy pin tap before GPS was ready), start routing.
+            if (!hadLocation &&
+                _destination != null &&
+                _routePoints.isEmpty &&
+                !_isRouting) {
+              _handleMapTap(_destination!);
+            }
           });
     } catch (_) {
       if (!mounted) {
@@ -287,7 +296,9 @@ class _MapScreenState extends State<MapScreen> {
     final preferences = UserPreferencesService.instance;
 
     if (_currentLocation == null) {
+      // Save destination so auto-retry fires when first GPS fix arrives.
       setState(() {
+        _destination = destination;
         _routingStatus = l10n.mapWaitingForGps;
       });
       return;
