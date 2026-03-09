@@ -35,6 +35,8 @@ class _MapScreenState extends State<MapScreen> {
   double _headingDegrees = 0;
   LatLng? _currentLocation;
   String _locationStatus = '';
+  // Tracks progress along route so nearest-point scan is O(1) not O(n).
+  int _lastNearestIdx = 0;
   String _routingStatus = '';
   bool _isRouting = false;
   bool _isNavigating = false;
@@ -136,21 +138,62 @@ class _MapScreenState extends State<MapScreen> {
 
             final hadLocation = _currentLocation != null;
             final currentPos = LatLng(position.latitude, position.longitude);
+            final newSpeed = speedMetersPerSecond * 3.6;
+
+            // Record GPS trace while navigating (SlowRoad Learning Engine).
+            // Do this BEFORE setState so we don't trigger an extra rebuild.
+            if (_isNavigating) {
+              SlowRoadService.instance.addPoint(currentPos, newSpeed);
+            }
+
+            // Compute new instruction state synchronously (no setState inside).
+            int? newSign;
+            String? newText;
+            double? newDist;
+            if (_isNavigating &&
+                _instructions.isNotEmpty &&
+                _routePoints.isNotEmpty) {
+              final nearestIdx = _nearestRoutePointIndex(currentPos);
+              int instrIdx = 0;
+              for (int i = 0; i < _instructions.length - 1; i++) {
+                if (_instructions[i + 1].pointIndex > nearestIdx) {
+                  instrIdx = i;
+                  break;
+                }
+                instrIdx = i + 1;
+              }
+              final nextIdx = instrIdx + 1;
+              if (nextIdx < _instructions.length) {
+                final next = _instructions[nextIdx];
+                double dist = 0;
+                for (
+                  int i = nearestIdx;
+                  i < next.pointIndex && i < _routePoints.length - 1;
+                  i++
+                ) {
+                  dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+                }
+                newSign = next.sign;
+                newText = next.text;
+                newDist = dist;
+              } else {
+                newText = '';
+              }
+            }
+
+            // Single setState — one rebuild per GPS tick.
             setState(() {
-              _speedKmh = speedMetersPerSecond * 3.6;
-              // heading is 0–360 degrees, 0 = north. Only update when
-              // moving (speed > 0.5 m/s) to avoid jitter when standing still.
+              _speedKmh = newSpeed;
+              // Only update heading when moving to avoid jitter when still.
               if (position.speed > 0.5 && position.heading >= 0) {
                 _headingDegrees = position.heading;
               }
               _currentLocation = currentPos;
               _locationStatus = l10n.mapGpsActive;
+              if (newSign != null) _nextManeuverSign = newSign;
+              if (newText != null) _nextManeuverText = newText;
+              if (newDist != null) _distToNextManeuver = newDist;
             });
-            // Record GPS trace while navigating (SlowRoad Learning Engine).
-            if (_isNavigating) {
-              SlowRoadService.instance.addPoint(currentPos, _speedKmh);
-              _updateInstruction(currentPos);
-            }
             // If this is the first GPS fix and a destination was already set
             // (e.g. from a convoy pin tap before GPS was ready), start routing.
             if (!hadLocation &&
@@ -307,50 +350,16 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _updateInstruction(LatLng pos) {
-    if (_instructions.isEmpty || _routePoints.isEmpty) return;
-    final nearestIdx = _nearestRoutePointIndex(pos);
-
-    // Find which instruction segment we are currently in.
-    int instrIdx = 0;
-    for (int i = 0; i < _instructions.length - 1; i++) {
-      if (_instructions[i + 1].pointIndex > nearestIdx) {
-        instrIdx = i;
-        break;
-      }
-      instrIdx = i + 1;
-    }
-
-    // The upcoming maneuver is the next instruction.
-    final nextIdx = instrIdx + 1;
-    if (nextIdx >= _instructions.length) {
-      setState(() => _nextManeuverText = '');
-      return;
-    }
-
-    final next = _instructions[nextIdx];
-
-    // Distance = sum of segments from nearest point to start of next instruction.
-    double dist = 0;
-    for (
-      int i = nearestIdx;
-      i < next.pointIndex && i < _routePoints.length - 1;
-      i++
-    ) {
-      dist += _segDist(_routePoints[i], _routePoints[i + 1]);
-    }
-
-    setState(() {
-      _nextManeuverSign = next.sign;
-      _nextManeuverText = next.text;
-      _distToNextManeuver = dist;
-    });
-  }
-
+  // Scans a small window forward from last known index — O(window) not O(n).
+  // Saves hundreds of iterations per GPS tick on long routes.
   int _nearestRoutePointIndex(LatLng pos) {
+    if (_routePoints.isEmpty) return 0;
+    // Allow a few points backward (GPS jitter) but scan mostly forward.
+    final start = (_lastNearestIdx - 3).clamp(0, _routePoints.length - 1);
+    final end = (_lastNearestIdx + 60).clamp(0, _routePoints.length - 1);
     double best = double.infinity;
-    int idx = 0;
-    for (int i = 0; i < _routePoints.length; i++) {
+    int idx = _lastNearestIdx;
+    for (int i = start; i <= end; i++) {
       final p = _routePoints[i];
       final dx = p.latitude - pos.latitude;
       final dy = p.longitude - pos.longitude;
@@ -360,6 +369,7 @@ class _MapScreenState extends State<MapScreen> {
         idx = i;
       }
     }
+    _lastNearestIdx = idx;
     return idx;
   }
 
@@ -422,6 +432,7 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _routePoints = route.points;
         _instructions = route.instructions;
+        _lastNearestIdx = 0; // reset forward-scan index for new route
         _nextManeuverText = '';
         _nextManeuverSign = 0;
         _distToNextManeuver = 0;
