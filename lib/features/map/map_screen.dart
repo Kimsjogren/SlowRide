@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
@@ -39,8 +40,15 @@ class _MapScreenState extends State<MapScreen> {
   bool _isNavigating = false;
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
+  bool _use3DMap = true;
   LatLng? _destination;
   List<LatLng> _routePoints = const [];
+
+  // ── Turn-by-turn instructions ─────────────────────────────────────
+  List<RouteInstruction> _instructions = const [];
+  int _nextManeuverSign = 0;
+  String _nextManeuverText = '';
+  double _distToNextManeuver = 0;
   bool _localizedDefaultsSet = false;
   @override
   void didChangeDependencies() {
@@ -66,6 +74,7 @@ class _MapScreenState extends State<MapScreen> {
     NavigationRequestService.instance.pendingDestination.addListener(
       _onExternalNavigationRequest,
     );
+    _use3DMap = UserPreferencesService.instance.use3DMap.value;
   }
 
   void _onExternalNavigationRequest() {
@@ -140,6 +149,7 @@ class _MapScreenState extends State<MapScreen> {
             // Record GPS trace while navigating (SlowRoad Learning Engine).
             if (_isNavigating) {
               SlowRoadService.instance.addPoint(currentPos, _speedKmh);
+              _updateInstruction(currentPos);
             }
             // If this is the first GPS fix and a destination was already set
             // (e.g. from a convoy pin tap before GPS was ready), start routing.
@@ -297,6 +307,85 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _updateInstruction(LatLng pos) {
+    if (_instructions.isEmpty || _routePoints.isEmpty) return;
+    final nearestIdx = _nearestRoutePointIndex(pos);
+
+    // Find which instruction segment we are currently in.
+    int instrIdx = 0;
+    for (int i = 0; i < _instructions.length - 1; i++) {
+      if (_instructions[i + 1].pointIndex > nearestIdx) {
+        instrIdx = i;
+        break;
+      }
+      instrIdx = i + 1;
+    }
+
+    // The upcoming maneuver is the next instruction.
+    final nextIdx = instrIdx + 1;
+    if (nextIdx >= _instructions.length) {
+      setState(() => _nextManeuverText = '');
+      return;
+    }
+
+    final next = _instructions[nextIdx];
+
+    // Distance = sum of segments from nearest point to start of next instruction.
+    double dist = 0;
+    for (
+      int i = nearestIdx;
+      i < next.pointIndex && i < _routePoints.length - 1;
+      i++
+    ) {
+      dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+    }
+
+    setState(() {
+      _nextManeuverSign = next.sign;
+      _nextManeuverText = next.text;
+      _distToNextManeuver = dist;
+    });
+  }
+
+  int _nearestRoutePointIndex(LatLng pos) {
+    double best = double.infinity;
+    int idx = 0;
+    for (int i = 0; i < _routePoints.length; i++) {
+      final p = _routePoints[i];
+      final dx = p.latitude - pos.latitude;
+      final dy = p.longitude - pos.longitude;
+      final d = dx * dx + dy * dy;
+      if (d < best) {
+        best = d;
+        idx = i;
+      }
+    }
+    return idx;
+  }
+
+  double _segDist(LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+    final dx = (b.latitude - a.latitude) * lat2m;
+    final dy = (b.longitude - a.longitude) * lng2m;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  IconData _turnIcon(int sign) {
+    return switch (sign) {
+      -3 => Icons.turn_sharp_left,
+      -2 => Icons.turn_left,
+      -1 => Icons.turn_slight_left,
+      0 => Icons.straight,
+      1 => Icons.turn_slight_right,
+      2 => Icons.turn_right,
+      3 => Icons.turn_sharp_right,
+      4 => Icons.flag_rounded,
+      -6 || 6 => Icons.rotate_right,
+      _ => Icons.straight,
+    };
+  }
+
   Future<void> _handleMapTap(LatLng destination) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
@@ -332,6 +421,10 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         _routePoints = route.points;
+        _instructions = route.instructions;
+        _nextManeuverText = '';
+        _nextManeuverSign = 0;
+        _distToNextManeuver = 0;
         _routingStatus = l10n.mapRouteReady(
           km.toStringAsFixed(1),
           minutes.toStringAsFixed(0),
@@ -387,6 +480,10 @@ class _MapScreenState extends State<MapScreen> {
       _destination = null;
       _isNavigating = false;
       _isFollowing = false;
+      _instructions = const [];
+      _nextManeuverText = '';
+      _nextManeuverSign = 0;
+      _distToNextManeuver = 0;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
   }
@@ -421,6 +518,7 @@ class _MapScreenState extends State<MapScreen> {
                   onTap: _isNavigating ? null : _handleMapTap,
                   followUser: _isNavigating && _isFollowing,
                   heading: _headingDegrees,
+                  use3D: _use3DMap,
                   onUserPanned: _isNavigating
                       ? () => setState(() => _isFollowing = false)
                       : null,
@@ -627,11 +725,77 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ),
-          // ── Navigation HUD (fullscreen mode) ──────────────────────────────
+
           if (_isNavigating) ...[
-            // Speed badge — top-left corner (Waze-style).
+            // ── Turn instruction banner ─ Waze-style top panel ─────────────
+            if (_nextManeuverText.isNotEmpty)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xF2101E38),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0x443AA8FF), width: 1),
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 50, 16, 14),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 62,
+                        height: 62,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A5DCC),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x661E6BFF),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _turnIcon(_nextManeuverSign),
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          _nextManeuverText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            height: 1.3,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        _distToNextManeuver >= 1000
+                            ? '${(_distToNextManeuver / 1000).toStringAsFixed(1)} km'
+                            : '${_distToNextManeuver.round()} m',
+                        style: const TextStyle(
+                          color: Color(0xFF3AA8FF),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Speed badge — bottom-left during navigation.
             Positioned(
-              top: 52,
+              bottom: 130,
               left: 16,
               child: ValueListenableBuilder<SpeedUnit>(
                 valueListenable: preferences.speedUnit,
@@ -695,11 +859,57 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ],
 
+          // 3D / 2D toggle — bottom-right during navigation.
+          if (_isNavigating)
+            Positioned(
+              bottom: 130,
+              right: 16,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _use3DMap = !_use3DMap);
+                  UserPreferencesService.instance.use3DMap.value = _use3DMap;
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEE0A1F63),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _use3DMap
+                          ? const Color(0xFF3AA8FF)
+                          : Colors.white30,
+                      width: 1.5,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black45,
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    _use3DMap ? '3D' : '2D',
+                    style: TextStyle(
+                      color: _use3DMap
+                          ? const Color(0xFF3AA8FF)
+                          : Colors.white60,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // Re-center button — appears when user pans away during navigation.
           if (_isNavigating && !_isFollowing)
             Positioned(
               right: 20,
-              bottom: 140,
+              bottom: 205,
               child: GestureDetector(
                 onTap: () {
                   setState(() => _isFollowing = true);

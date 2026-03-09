@@ -14,16 +14,38 @@ enum RoutingErrorCode {
   routeNotAllowedForVehicle,
 }
 
+/// A single turn-by-turn instruction returned from the routing provider.
+/// [sign] uses GraphHopper sign conventions:
+///  -3=sharp left, -2=left, -1=slight left, 0=straight,
+///   1=slight right, 2=right, 3=sharp right, 4=finish, 6=roundabout.
+class RouteInstruction {
+  const RouteInstruction({
+    required this.sign,
+    required this.text,
+    required this.distanceMeters,
+    required this.pointIndex,
+  });
+
+  final int sign;
+  final String text;
+  final double distanceMeters;
+
+  /// Index into [RouteResult.points] where this instruction begins.
+  final int pointIndex;
+}
+
 class RouteResult {
   const RouteResult({
     required this.points,
     required this.distanceMeters,
     required this.durationSeconds,
+    this.instructions = const [],
   });
 
   final List<LatLng> points;
   final double distanceMeters;
   final double durationSeconds;
+  final List<RouteInstruction> instructions;
 }
 
 class RoutingService {
@@ -91,7 +113,7 @@ class RoutingService {
     // Build URI manually to handle repeated `point=` params correctly.
     final buffer = StringBuffer(
       '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey'
-      '&profile=car&points_encoded=false',
+      '&profile=car&points_encoded=false&instructions=true&locale=sv',
     );
     buffer.write(
       '&point=${origin.latitude},${origin.longitude}'
@@ -142,10 +164,28 @@ class RoutingService {
         ? distanceMeters / avgSpeedMs
         : 0.0;
 
+    // Parse turn-by-turn instructions.
+    final rawInstructions =
+        firstPath['instructions'] as List<dynamic>? ?? const [];
+    final instructions = rawInstructions
+        .whereType<Map<String, dynamic>>()
+        .map((inst) {
+          final interval = inst['interval'] as List<dynamic>?;
+          final startIdx = (interval?.first as num?)?.toInt() ?? 0;
+          return RouteInstruction(
+            sign: (inst['sign'] as num?)?.toInt() ?? 0,
+            text: (inst['text'] as String?) ?? '',
+            distanceMeters: (inst['distance'] as num?)?.toDouble() ?? 0,
+            pointIndex: startIdx,
+          );
+        })
+        .toList(growable: false);
+
     return RouteResult(
       points: points,
       distanceMeters: distanceMeters,
       durationSeconds: calculatedDurationSeconds,
+      instructions: instructions,
     );
   }
 

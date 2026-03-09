@@ -14,11 +14,13 @@ class UserPreferencesService {
   );
   final ValueNotifier<double> maxSpeedKmh = ValueNotifier<double>(30);
   final ValueNotifier<String?> languageCode = ValueNotifier<String?>(null);
+  final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(true);
 
   static const String _vehicleTypeKey = 'user_vehicle_type';
   static const String _speedUnitKey = 'user_speed_unit';
   static const String _maxSpeedKmhKey = 'user_max_speed_kmh';
   static const String _languageCodeKey = 'user_language_code';
+  static const String _use3DMapKey = 'user_use_3d_map';
 
   SharedPreferences? _prefs;
   bool _listenersAttached = false;
@@ -35,6 +37,7 @@ class UserPreferencesService {
 
     maxSpeedKmh.value = _prefs!.getDouble(_maxSpeedKmhKey) ?? 30;
     languageCode.value = _prefs!.getString(_languageCodeKey);
+    use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? true;
 
     if (!_listenersAttached) {
       vehicleType.addListener(_onVehicleTypeChanged);
@@ -42,6 +45,7 @@ class UserPreferencesService {
       speedUnit.addListener(_persistSpeedUnit);
       maxSpeedKmh.addListener(_persistMaxSpeedKmh);
       languageCode.addListener(_persistLanguageCode);
+      use3DMap.addListener(_persist3DMap);
       _listenersAttached = true;
     }
   }
@@ -70,6 +74,10 @@ class UserPreferencesService {
 
   Future<void> _persistMaxSpeedKmh() async {
     await _prefs?.setDouble(_maxSpeedKmhKey, maxSpeedKmh.value);
+  }
+
+  Future<void> _persist3DMap() async {
+    await _prefs?.setBool(_use3DMapKey, use3DMap.value);
   }
 
   Future<void> _persistLanguageCode() async {
