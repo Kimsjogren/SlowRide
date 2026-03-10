@@ -118,9 +118,15 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      const settings = LocationSettings(
-        accuracy: LocationAccuracy.best,
-        distanceFilter: 3,
+      // distanceFilter:0 fires on every OS GPS sample (~1Hz).
+      // bestForNavigation squeezes extra accuracy from the GPS chip.
+      // automotiveNavigation tells iOS to keep GPS hot and never pause.
+      final settings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        activityType: ActivityType.automotiveNavigation,
+        pauseLocationUpdatesAutomatically: false,
+        showBackgroundLocationIndicator: true,
       );
 
       _positionSubscription?.cancel();

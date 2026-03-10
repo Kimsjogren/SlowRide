@@ -59,12 +59,14 @@ class _MapWidgetState extends State<MapWidget>
 
   void _onTick(Duration _) {
     if (!widget.followUser || !_navInitialized) return;
-    const k = 0.18;
-    _curLat += (_tgtLat - _curLat) * k;
-    _curLng += (_tgtLng - _curLng) * k;
+    // kPos: position catches up in ~180ms at 60fps (was 0.18 = ~280ms).
+    // kHdg: heading responds faster so turns feel immediate.
+    const kPos = 0.25;
+    const kHdg = 0.32;
+    _curLat += (_tgtLat - _curLat) * kPos;
+    _curLng += (_tgtLng - _curLng) * kPos;
     final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
-    _curHdg = (_curHdg + diff * k + 360) % 360;
-    // 3D = zoom 18.5 (close-up street level), 2D = zoom 16 (wider view).
+    _curHdg = (_curHdg + diff * kHdg + 360) % 360;
     final zoom = widget.use3D ? 18.5 : 16.0;
     _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
   }
@@ -148,21 +150,16 @@ class _MapWidgetState extends State<MapWidget>
 
   @override
   Widget build(BuildContext context) {
-    // CRITICAL: the widget tree structure must NEVER change between builds.
-    // If the structure changes (e.g. adding/removing a Transform wrapper),
-    // Flutter destroys and recreates FlutterMap → all tiles reload → white flash.
-    //
-    // Solution: Transform is ALWAYS present. In 2D mode its matrix = identity
-    // (no visual effect). In 3D nav mode it becomes a perspective tilt.
-    // Only the matrix VALUES change, not the tree shape.
+    // CRITICAL: the widget tree RUNTIMETYPES must never change.
+    // Changing Positioned height or Transform matrix is fine — Flutter just
+    // relayouts/repaints. Only a type change would destroy FlutterMap.
     final is3D = widget.followUser && widget.use3D;
 
-    // 3-D perspective matrix: anchored at bottom-centre so near (bottom) stays
-    // in place while far (top) recedes toward the horizon — Waze style.
+    // Strong Waze-style perspective: ~37° tilt anchored at bottom-centre.
     final matrix = is3D
         ? (Matrix4.identity()
-            ..setEntry(3, 2, 0.0007) // perspective strength
-            ..rotateX(0.42)) // ≈ 24° forward tilt
+            ..setEntry(3, 2, 0.001) // perspective depth
+            ..rotateX(0.65)) // ≈ 37° forward tilt
         : Matrix4.identity();
 
     return ClipRRect(
@@ -173,109 +170,118 @@ class _MapWidgetState extends State<MapWidget>
         builder: (context, constraints) {
           final h = constraints.maxHeight;
           final w = constraints.maxWidth;
+
+          // In 3D: map box is 2.2× screen height so tiles fill the far horizon
+          // after the perspective tilt. Anchored at bottom so near edges stay.
+          // In 2D: map fills entire visible area normally.
+          final mapHeight = is3D ? h * 2.2 : h;
+
+          final mapWidget = FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: widget.currentLocation ?? MapWidget._defaultCenter,
+              initialZoom: widget.followUser ? (is3D ? 18.5 : 16.0) : 12.0,
+              onTap: (_, point) => widget.onTap?.call(point),
+              onPositionChanged: (camera, hasGesture) {
+                if (hasGesture && widget.followUser) {
+                  widget.onUserPanned?.call();
+                }
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                additionalOptions: const {
+                  'mapbox_token':
+                      'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                },
+                userAgentPackageName: 'com.kimtechtool.slowride',
+                tileDimension: 512,
+                zoomOffset: -1,
+              ),
+              if (widget.routePoints.isNotEmpty) ...[
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: widget.routePoints,
+                      strokeWidth: 11,
+                      color: const Color(0xFF1E90FF).withValues(alpha: 0.25),
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                  ],
+                ),
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: widget.routePoints,
+                      strokeWidth: 6,
+                      color: const Color(0xFF1E90FF),
+                      strokeCap: StrokeCap.round,
+                      strokeJoin: StrokeJoin.round,
+                    ),
+                  ],
+                ),
+              ],
+              MarkerLayer(
+                markers: [
+                  if (widget.destination != null)
+                    Marker(
+                      point: widget.destination!,
+                      width: 44,
+                      height: 54,
+                      alignment: const Alignment(0, -1),
+                      child: const _DestinationPin(),
+                    ),
+                  if (widget.currentLocation != null)
+                    Marker(
+                      point: widget.currentLocation!,
+                      width: 48,
+                      height: 48,
+                      child: _LocationDot(heading: widget.heading),
+                    ),
+                ],
+              ),
+            ],
+          );
+
           return Stack(
             clipBehavior: Clip.hardEdge,
             children: [
-              // ── Map (always same widget identity) ──────────────────────
-              Transform(
-                alignment: Alignment.bottomCenter,
-                transform: matrix,
-                child: SizedBox(
-                  width: w,
-                  height: h,
-                  child: FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter:
-                          widget.currentLocation ?? MapWidget._defaultCenter,
-                      initialZoom: widget.followUser
-                          ? (is3D ? 18.5 : 16.0)
-                          : 12.0,
-                      onTap: (_, point) => widget.onTap?.call(point),
-                      onPositionChanged: (camera, hasGesture) {
-                        if (hasGesture && widget.followUser) {
-                          widget.onUserPanned?.call();
-                        }
-                      },
-                    ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                        additionalOptions: const {
-                          'mapbox_token':
-                              'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
-                        },
-                        userAgentPackageName: 'com.kimtechtool.slowride',
-                        tileDimension: 512,
-                        zoomOffset: -1,
-                      ),
-                      if (widget.routePoints.isNotEmpty) ...[
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: widget.routePoints,
-                              strokeWidth: 11,
-                              color: const Color(
-                                0xFF1E90FF,
-                              ).withValues(alpha: 0.25),
-                              strokeCap: StrokeCap.round,
-                              strokeJoin: StrokeJoin.round,
-                            ),
-                          ],
-                        ),
-                        PolylineLayer(
-                          polylines: [
-                            Polyline(
-                              points: widget.routePoints,
-                              strokeWidth: 6,
-                              color: const Color(0xFF1E90FF),
-                              strokeCap: StrokeCap.round,
-                              strokeJoin: StrokeJoin.round,
-                            ),
-                          ],
-                        ),
-                      ],
-                      MarkerLayer(
-                        markers: [
-                          if (widget.destination != null)
-                            Marker(
-                              point: widget.destination!,
-                              width: 44,
-                              height: 54,
-                              alignment: const Alignment(0, -1),
-                              child: const _DestinationPin(),
-                            ),
-                          if (widget.currentLocation != null)
-                            Marker(
-                              point: widget.currentLocation!,
-                              width: 48,
-                              height: 48,
-                              child: _LocationDot(heading: widget.heading),
-                            ),
-                        ],
-                      ),
-                    ],
+              // ── Map — Positioned height changes, but type never changes ──
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: mapHeight,
+                child: Transform(
+                  alignment: Alignment.bottomCenter,
+                  transform: matrix,
+                  child: SizedBox(
+                    width: w,
+                    height: mapHeight,
+                    child: mapWidget,
                   ),
                 ),
               ),
-              // ── Horizon fade — always in tree, opacity animates ─────────
+              // ── Horizon fade — always present, fades in for 3D ──────────
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                height: h * 0.18,
+                height: h * 0.2,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: is3D ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 300),
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            const Color(0xFF0A1628).withValues(alpha: 0.95),
+                            const Color(0xFF0A1628).withValues(alpha: 0.98),
                             Colors.transparent,
                           ],
                         ),
