@@ -290,7 +290,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       setState(() {
         _pendingDestination = destination;
         _routeDestination = destination;
-        _routingStatus = 'Startar GPS...';
+        _routingStatus = AppLocalizations.of(context)!.mapStartingGps;
       });
       return;
     }
@@ -299,7 +299,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       _isRouting = true;
       _routeDestination = destination;
       _routePoints = const [];
-      _routingStatus = 'Beräknar rutt...';
+      _routingStatus = AppLocalizations.of(context)!.mapCalculatingRoute;
       _isFollowingMyPosition = false;
     });
     // Zoom in on my vehicle while the route is being calculated.
@@ -883,7 +883,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                               children: [
                                 FloatingActionButton.small(
                                   heroTag: 'fit_all',
-                                  tooltip: 'Visa alla',
+                                  tooltip: AppLocalizations.of(
+                                    context,
+                                  )!.convoyShowAll,
                                   backgroundColor: const Color(0xFF1E3A5F),
                                   onPressed: () => _fitAllMembers(locations),
                                   child: const Icon(

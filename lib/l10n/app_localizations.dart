@@ -910,6 +910,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Alert reported! Thank you 🙏'**
   String get alertReportedSuccess;
+
+  /// No description provided for @mapStartNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Start navigation'**
+  String get mapStartNavigation;
+
+  /// No description provided for @mapEndNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'End navigation'**
+  String get mapEndNavigation;
+
+  /// No description provided for @convoyShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get convoyShowAll;
+
+  /// No description provided for @convoyYouBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get convoyYouBadge;
+
+  /// No description provided for @convoyShareCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied! Share: \"{name}\" code: {code}'**
+  String convoyShareCopied(Object name, Object code);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

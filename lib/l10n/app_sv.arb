@@ -184,5 +184,14 @@
   "alertsEmptySubtitle": "Ser du n\u00e5got p\u00e5 v\u00e4gen? Rapportera det!",
   "alertReportQuestion": "Vad ser du p\u00e5 v\u00e4gen?",
   "alertReportDescHint2": "Valfri beskrivning\u2026 (t.ex. \"stor gren\")",
-  "alertReportedSuccess": "Larm rapporterat! Tack \ud83d\ude4f"
+  "alertReportedSuccess": "Larm rapporterat! Tack \ud83d\ude4f",
+
+  "mapStartNavigation": "Starta navigation",
+  "mapEndNavigation": "Avsluta navigation",
+  "convoyShowAll": "Visa alla",
+  "convoyYouBadge": "Din",
+  "convoyShareCopied": "Kopierat! Dela: \"{name}\" kod: {code}",
+  "@convoyShareCopied": {
+    "placeholders": { "name": {}, "code": {} }
+  }
 }

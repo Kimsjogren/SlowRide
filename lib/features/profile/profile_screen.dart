@@ -127,7 +127,7 @@ class ProfileScreen extends StatelessWidget {
                             );
                           },
                           icon: const Icon(Icons.login),
-                          label: const Text('Logga in'),
+                          label: Text(AppLocalizations.of(context)!.signIn),
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF1E6BFF),
                             padding: const EdgeInsets.symmetric(vertical: 14),

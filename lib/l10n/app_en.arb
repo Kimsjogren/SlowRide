@@ -184,5 +184,14 @@
   "alertsEmptySubtitle": "See something on the road? Report it!",
   "alertReportQuestion": "What do you see on the road?",
   "alertReportDescHint2": "Optional description\u2026 (e.g. \"large branch\")",
-  "alertReportedSuccess": "Alert reported! Thank you \ud83d\ude4f"
+  "alertReportedSuccess": "Alert reported! Thank you \ud83d\ude4f",
+
+  "mapStartNavigation": "Start navigation",
+  "mapEndNavigation": "End navigation",
+  "convoyShowAll": "Show all",
+  "convoyYouBadge": "You",
+  "convoyShareCopied": "Copied! Share: \"{name}\" code: {code}",
+  "@convoyShareCopied": {
+    "placeholders": { "name": {}, "code": {} }
+  }
 }

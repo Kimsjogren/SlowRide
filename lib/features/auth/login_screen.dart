@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:slowride/features/auth/register_screen.dart';
+import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
@@ -48,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
@@ -57,9 +59,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 12),
-                const Text(
-                  'Logga in',
-                  style: TextStyle(
+                Text(
+                  l10n.signIn,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -194,9 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text(
-                                    'Logga in',
-                                    style: TextStyle(
+                                : Text(
+                                    l10n.signIn,
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),

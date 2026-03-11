@@ -156,13 +156,14 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
   }
 
   void _shareConvoy(ConvoyModel convoy) {
+    final l10n = AppLocalizations.of(context)!;
     final code = convoy.id.split('-').first.toUpperCase();
     Clipboard.setData(
       ClipboardData(text: 'SlowRide konvoj: "${convoy.name}" (kod: $code)'),
     );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Kopierat! Dela: "${convoy.name}" kod: $code'),
+        content: Text(l10n.convoyShareCopied(convoy.name, code)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
@@ -459,9 +460,9 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(4),
                                             ),
-                                            child: const Text(
-                                              'Din',
-                                              style: TextStyle(
+                                            child: Text(
+                                              l10n.convoyYouBadge,
+                                              style: const TextStyle(
                                                 color: Color(0xFF3AA8FF),
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w600,

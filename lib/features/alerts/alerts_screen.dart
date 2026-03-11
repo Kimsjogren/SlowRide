@@ -112,7 +112,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Community-larm',
+                  AppLocalizations.of(context)!.alertsTitle,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -132,18 +132,17 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     ),
                   ),
                   icon: const Icon(Icons.add_alert_rounded, size: 18),
-                  label: const Text('Rapportera'),
+                  label: Text(AppLocalizations.of(context)!.alertReportButton),
                   onPressed: _showReportSheet,
                 ),
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              'Larm från andra SlowRiders inom ~50 km. '
-              'Klistra dig på tumsymboler för att bekräfta ett larm.',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              AppLocalizations.of(context)!.alertsScreenSubtitle,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ),
           const SizedBox(height: 8),
@@ -375,14 +374,7 @@ class _ReportSheet extends StatefulWidget {
 
 class _ReportSheetState extends State<_ReportSheet> {
   AlertType? _selected;
-  final TextEditingController _desc = TextEditingController();
   bool _submitting = false;
-
-  @override
-  void dispose() {
-    _desc.dispose();
-    super.dispose();
-  }
 
   Future<void> _submit() async {
     if (_selected == null) return;
@@ -391,7 +383,7 @@ class _ReportSheetState extends State<_ReportSheet> {
       await widget.controller.submit(
         type: _selected!,
         position: widget.position,
-        description: _desc.text.trim(),
+        description: '',
       );
       if (!mounted) return;
       widget.onSubmitted();
@@ -502,27 +494,6 @@ class _ReportSheetState extends State<_ReportSheet> {
                       ),
                     );
                   }).toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            Builder(
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                return TextField(
-                  controller: _desc,
-                  maxLines: 2,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: l10n.alertReportDescHint2,
-                    hintStyle: const TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
                 );
               },
             ),

@@ -435,4 +435,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get alertReportedSuccess => 'Larm rapporterat! Tack 🙏';
+
+  @override
+  String get mapStartNavigation => 'Starta navigation';
+
+  @override
+  String get mapEndNavigation => 'Avsluta navigation';
+
+  @override
+  String get convoyShowAll => 'Visa alla';
+
+  @override
+  String get convoyYouBadge => 'Din';
+
+  @override
+  String convoyShareCopied(Object name, Object code) {
+    return 'Kopierat! Dela: \"$name\" kod: $code';
+  }
 }

@@ -960,20 +960,25 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Builder(builder: (ctx) {
-                            final l10n = AppLocalizations.of(ctx)!;
-                            return Text(
-                            l10n.reportAlertNearby(
-                              _nearbyAlert!.type.localizedLabel(l10n),
-                              _nearbyAlert!.distanceTo(_currentLocation!).round().toString(),
-                            ),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          );
-                          }),
+                          child: Builder(
+                            builder: (ctx) {
+                              final l10n = AppLocalizations.of(ctx)!;
+                              return Text(
+                                l10n.reportAlertNearby(
+                                  _nearbyAlert!.type.localizedLabel(l10n),
+                                  _nearbyAlert!
+                                      .distanceTo(_currentLocation!)
+                                      .round()
+                                      .toString(),
+                                ),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                         GestureDetector(
                           onTap: () => setState(() => _nearbyAlert = null),
@@ -1246,13 +1251,13 @@ class _MapScreenState extends State<MapScreen> {
                           child: _isNavigating
                               ? _NavButton(
                                   icon: Icons.stop_circle_outlined,
-                                  label: 'Avsluta navigation',
+                                  label: l10n.mapEndNavigation,
                                   color: const Color(0xFFD32F2F),
                                   onTap: _clearRoute,
                                 )
                               : _NavButton(
                                   icon: Icons.navigation_rounded,
-                                  label: 'Starta navigation',
+                                  label: l10n.mapStartNavigation,
                                   color: const Color(0xFF0A7E3F),
                                   onTap: () {
                                     final vehicleType = UserPreferencesService
@@ -1391,14 +1396,7 @@ class _InlineReportSheet extends StatefulWidget {
 
 class _InlineReportSheetState extends State<_InlineReportSheet> {
   AlertType? _selected;
-  final _descController = TextEditingController();
   bool _submitting = false;
-
-  @override
-  void dispose() {
-    _descController.dispose();
-    super.dispose();
-  }
 
   Future<void> _submit() async {
     if (_selected == null) return;
@@ -1406,7 +1404,7 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
     await widget.controller.submit(
       type: _selected!,
       position: widget.position,
-      description: _descController.text.trim(),
+      description: '',
     );
     widget.onSubmitted();
     if (mounted) Navigator.of(context).pop();
@@ -1441,103 +1439,95 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
               ),
             ),
           ),
-          Builder(builder: (ctx) {
-            final l10n = AppLocalizations.of(ctx)!;
-            return Text(
-              l10n.reportAlertTitle,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
-            );
-          }),
-          const SizedBox(height: 14),
-          Builder(builder: (ctx) {
-            final l10n = AppLocalizations.of(ctx)!;
-            return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: AlertType.values.map((t) {
-              final sel = _selected == t;
-              return GestureDetector(
-                onTap: () => setState(() => _selected = t),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sel
-                        ? const Color(0xFF1E6BFF)
-                        : const Color(0xFF0A1A46),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: sel ? const Color(0xFF3AA8FF) : Colors.white24,
-                    ),
-                  ),
-                  child: Text(
-                    '${t.emoji}  ${t.localizedLabel(l10n)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                  ),
+          Builder(
+            builder: (ctx) {
+              final l10n = AppLocalizations.of(ctx)!;
+              return Text(
+                l10n.reportAlertTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
                 ),
               );
-            }).toList(),
-          );}),
+            },
+          ),
           const SizedBox(height: 14),
-          Builder(builder: (ctx) {
-            final l10n = AppLocalizations.of(ctx)!;
-            return TextField(
-            controller: _descController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: l10n.reportAlertDescHint,
-              hintStyle: const TextStyle(color: Colors.white38),
-              filled: true,
-              fillColor: const Color(0xFF0A1A46),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.white24),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.white24),
-              ),
-            ),
-          );}),
-          const SizedBox(height: 14),
-          Builder(builder: (ctx) {
-            final l10n = AppLocalizations.of(ctx)!;
-            return SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: (_selected == null || _submitting) ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E6BFF),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _submitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+          Builder(
+            builder: (ctx) {
+              final l10n = AppLocalizations.of(ctx)!;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AlertType.values.map((t) {
+                  final sel = _selected == t;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selected = t),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
                       ),
-                    )
-                  : Text(
-                      l10n.reportAlertSubmit,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                      decoration: BoxDecoration(
+                        color: sel
+                            ? const Color(0xFF1E6BFF)
+                            : const Color(0xFF0A1A46),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: sel ? const Color(0xFF3AA8FF) : Colors.white24,
+                        ),
+                      ),
+                      child: Text(
+                        '${t.emoji}  ${t.localizedLabel(l10n)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-            ),
-          );}),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          Builder(
+            builder: (ctx) {
+              final l10n = AppLocalizations.of(ctx)!;
+              return SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: (_selected == null || _submitting)
+                      ? null
+                      : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E6BFF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _submitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          l10n.reportAlertSubmit,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
