@@ -567,8 +567,7 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         Image.asset(
                           'assets/logga_nobg.png',
-                          width: 30,
-                          height: 30,
+                          height: 72,
                           fit: BoxFit.contain,
                         ),
                         const SizedBox(width: 8),
