@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -68,7 +69,20 @@ class _MapWidgetState extends State<MapWidget>
     final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
     _curHdg = (_curHdg + diff * kHdg + 360) % 360;
     final zoom = widget.use3D ? 18.5 : 16.0;
-    _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+
+    if (widget.use3D) {
+      // In 3D mode shift the camera centre toward the heading so the user
+      // dot sits in the lower third of the screen rather than the middle.
+      // At zoom 18.5 one degree latitude ≈ 10 000 map units; we shift by
+      // a fraction of a degree "behind" the heading direction.
+      const offsetDeg = 0.00045; // ~50 m in lat/lng degrees
+      final rad = _curHdg * 3.141592653589793 / 180.0;
+      final cLat = _curLat + offsetDeg * math.cos(rad);
+      final cLng = _curLng + offsetDeg * math.sin(rad);
+      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
+    } else {
+      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+    }
   }
 
   @override
@@ -171,10 +185,9 @@ class _MapWidgetState extends State<MapWidget>
           final h = constraints.maxHeight;
           final w = constraints.maxWidth;
 
-          // In 3D: map box is 2.2× screen height so tiles fill the far horizon
-          // after the perspective tilt. Anchored at bottom so near edges stay.
-          // In 2D: map fills entire visible area normally.
-          final mapHeight = is3D ? h * 2.2 : h;
+          // Normal height always — camera offset handles the 3D perspective
+          // positioning. No oversized box that would push tiles off-screen.
+          final mapHeight = h;
 
           final mapWidget = FlutterMap(
             mapController: _mapController,
@@ -265,12 +278,12 @@ class _MapWidgetState extends State<MapWidget>
                   ),
                 ),
               ),
-              // ── Horizon fade — always present, fades in for 3D ──────────
+              // ── Horizon fade — covers top ~40% in 3D to hide tilted sky ──
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                height: h * 0.2,
+                height: h * 0.45,
                 child: IgnorePointer(
                   child: AnimatedOpacity(
                     opacity: is3D ? 1.0 : 0.0,
