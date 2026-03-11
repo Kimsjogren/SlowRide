@@ -766,6 +766,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Slow down.'**
   String get speedometerSlowDown;
+
+  /// No description provided for @reportAlertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Report alert'**
+  String get reportAlertTitle;
+
+  /// No description provided for @reportAlertDescHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get reportAlertDescHint;
+
+  /// No description provided for @reportAlertSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit alert'**
+  String get reportAlertSubmit;
+
+  /// No description provided for @reportAlertNearby.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} · {distance} m ahead'**
+  String reportAlertNearby(Object type, Object distance);
+
+  /// No description provided for @alertTypePolice.
+  ///
+  /// In en, this message translates to:
+  /// **'Police'**
+  String get alertTypePolice;
+
+  /// No description provided for @alertTypeRoadwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Roadwork'**
+  String get alertTypeRoadwork;
+
+  /// No description provided for @alertTypeAccident.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get alertTypeAccident;
+
+  /// No description provided for @alertTypeTrafficJam.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic jam'**
+  String get alertTypeTrafficJam;
+
+  /// No description provided for @alertTypeSpeedCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed camera'**
+  String get alertTypeSpeedCamera;
+
+  /// No description provided for @alertTypeHazard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hazard'**
+  String get alertTypeHazard;
+
+  /// No description provided for @alertTypeNarrowRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow road'**
+  String get alertTypeNarrowRoad;
+
+  /// No description provided for @alertTypeSteepHill.
+  ///
+  /// In en, this message translates to:
+  /// **'Steep hill'**
+  String get alertTypeSteepHill;
+
+  /// No description provided for @alertGpsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS not available yet'**
+  String get alertGpsUnavailable;
+
+  /// No description provided for @alertMustBeLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'You must be signed in to report'**
+  String get alertMustBeLoggedIn;
+
+  /// No description provided for @alertsScreenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.'**
+  String get alertsScreenSubtitle;
+
+  /// No description provided for @alertReportButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get alertReportButton;
+
+  /// No description provided for @alertTimeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get alertTimeJustNow;
+
+  /// No description provided for @alertTimeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min ago'**
+  String alertTimeMinutes(Object n);
+
+  /// No description provided for @alertTimeHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} h ago'**
+  String alertTimeHours(Object n);
+
+  /// No description provided for @alertsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No active alerts nearby'**
+  String get alertsEmptyTitle;
+
+  /// No description provided for @alertsEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See something on the road? Report it!'**
+  String get alertsEmptySubtitle;
+
+  /// No description provided for @alertReportQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you see on the road?'**
+  String get alertReportQuestion;
+
+  /// No description provided for @alertReportDescHint2.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional description… (e.g. \"large branch\")'**
+  String get alertReportDescHint2;
+
+  /// No description provided for @alertReportedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert reported! Thank you 🙏'**
+  String get alertReportedSuccess;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

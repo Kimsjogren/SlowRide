@@ -357,4 +357,82 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get speedometerSlowDown => 'Sakta ner.';
+
+  @override
+  String get reportAlertTitle => 'Rapportera larm';
+
+  @override
+  String get reportAlertDescHint => 'Beskrivning (valfritt)';
+
+  @override
+  String get reportAlertSubmit => 'Skicka larm';
+
+  @override
+  String reportAlertNearby(Object type, Object distance) {
+    return '$type · $distance m bort';
+  }
+
+  @override
+  String get alertTypePolice => 'Polis';
+
+  @override
+  String get alertTypeRoadwork => 'Vägarbete';
+
+  @override
+  String get alertTypeAccident => 'Olycka';
+
+  @override
+  String get alertTypeTrafficJam => 'Trafikstockning';
+
+  @override
+  String get alertTypeSpeedCamera => 'Fartkamera';
+
+  @override
+  String get alertTypeHazard => 'Fara på vägen';
+
+  @override
+  String get alertTypeNarrowRoad => 'Smal väg';
+
+  @override
+  String get alertTypeSteepHill => 'Brant backe';
+
+  @override
+  String get alertGpsUnavailable => 'GPS inte tillgängligt ännu';
+
+  @override
+  String get alertMustBeLoggedIn => 'Du måste vara inloggad för att rapportera';
+
+  @override
+  String get alertsScreenSubtitle => 'Larm från andra SlowRiders inom ~50 km. Klistra dig på tumsymboler för att bekräfta ett larm.';
+
+  @override
+  String get alertReportButton => 'Rapportera';
+
+  @override
+  String get alertTimeJustNow => 'Just nu';
+
+  @override
+  String alertTimeMinutes(Object n) {
+    return '$n min sedan';
+  }
+
+  @override
+  String alertTimeHours(Object n) {
+    return '$n h sedan';
+  }
+
+  @override
+  String get alertsEmptyTitle => 'Inga aktiva larm i närheten';
+
+  @override
+  String get alertsEmptySubtitle => 'Ser du något på vägen? Rapportera det!';
+
+  @override
+  String get alertReportQuestion => 'Vad ser du på vägen?';
+
+  @override
+  String get alertReportDescHint2 => 'Valfri beskrivning… (t.ex. \"stor gren\")';
+
+  @override
+  String get alertReportedSuccess => 'Larm rapporterat! Tack 🙏';
 }

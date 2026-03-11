@@ -357,4 +357,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get speedometerSlowDown => 'Slow down.';
+
+  @override
+  String get reportAlertTitle => 'Report alert';
+
+  @override
+  String get reportAlertDescHint => 'Description (optional)';
+
+  @override
+  String get reportAlertSubmit => 'Submit alert';
+
+  @override
+  String reportAlertNearby(Object type, Object distance) {
+    return '$type · $distance m ahead';
+  }
+
+  @override
+  String get alertTypePolice => 'Police';
+
+  @override
+  String get alertTypeRoadwork => 'Roadwork';
+
+  @override
+  String get alertTypeAccident => 'Accident';
+
+  @override
+  String get alertTypeTrafficJam => 'Traffic jam';
+
+  @override
+  String get alertTypeSpeedCamera => 'Speed camera';
+
+  @override
+  String get alertTypeHazard => 'Hazard';
+
+  @override
+  String get alertTypeNarrowRoad => 'Narrow road';
+
+  @override
+  String get alertTypeSteepHill => 'Steep hill';
+
+  @override
+  String get alertGpsUnavailable => 'GPS not available yet';
+
+  @override
+  String get alertMustBeLoggedIn => 'You must be signed in to report';
+
+  @override
+  String get alertsScreenSubtitle => 'Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.';
+
+  @override
+  String get alertReportButton => 'Report';
+
+  @override
+  String get alertTimeJustNow => 'Just now';
+
+  @override
+  String alertTimeMinutes(Object n) {
+    return '$n min ago';
+  }
+
+  @override
+  String alertTimeHours(Object n) {
+    return '$n h ago';
+  }
+
+  @override
+  String get alertsEmptyTitle => 'No active alerts nearby';
+
+  @override
+  String get alertsEmptySubtitle => 'See something on the road? Report it!';
+
+  @override
+  String get alertReportQuestion => 'What do you see on the road?';
+
+  @override
+  String get alertReportDescHint2 => 'Optional description… (e.g. \"large branch\")';
+
+  @override
+  String get alertReportedSuccess => 'Alert reported! Thank you 🙏';
 }

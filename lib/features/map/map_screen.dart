@@ -949,7 +949,9 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
                         Text(
@@ -958,20 +960,28 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: Text(
-                            '${_nearbyAlert!.type.label} · '
-                            '${_nearbyAlert!.distanceTo(_currentLocation!).round()} m bort',
+                          child: Builder(builder: (ctx) {
+                            final l10n = AppLocalizations.of(ctx)!;
+                            return Text(
+                            l10n.reportAlertNearby(
+                              _nearbyAlert!.type.localizedLabel(l10n),
+                              _nearbyAlert!.distanceTo(_currentLocation!).round().toString(),
+                            ),
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
-                          ),
+                          );
+                          }),
                         ),
                         GestureDetector(
                           onTap: () => setState(() => _nearbyAlert = null),
-                          child: const Icon(Icons.close,
-                              color: Colors.white70, size: 18),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white70,
+                            size: 18,
+                          ),
                         ),
                       ],
                     ),
@@ -1408,12 +1418,14 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
       decoration: const BoxDecoration(
         color: Color(0xFF071739),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        border: Border(
-          top: BorderSide(color: Color(0x443AA8FF), width: 1),
-        ),
+        border: Border(top: BorderSide(color: Color(0x443AA8FF), width: 1)),
       ),
       padding: EdgeInsets.fromLTRB(
-          16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+        16,
+        16,
+        16,
+        MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1429,16 +1441,21 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
               ),
             ),
           ),
-          const Text(
-            'Rapportera larm',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          Builder(builder: (ctx) {
+            final l10n = AppLocalizations.of(ctx)!;
+            return Text(
+              l10n.reportAlertTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          }),
           const SizedBox(height: 14),
-          Wrap(
+          Builder(builder: (ctx) {
+            final l10n = AppLocalizations.of(ctx)!;
+            return Wrap(
             spacing: 8,
             runSpacing: 8,
             children: AlertType.values.map((t) {
@@ -1447,33 +1464,34 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
                 onTap: () => setState(() => _selected = t),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 7),
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: sel
                         ? const Color(0xFF1E6BFF)
                         : const Color(0xFF0A1A46),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: sel
-                          ? const Color(0xFF3AA8FF)
-                          : Colors.white24,
+                      color: sel ? const Color(0xFF3AA8FF) : Colors.white24,
                     ),
                   ),
                   child: Text(
-                    '${t.emoji}  ${t.label}',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 13),
+                    '${t.emoji}  ${t.localizedLabel(l10n)}',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
               );
             }).toList(),
-          ),
+          );}),
           const SizedBox(height: 14),
-          TextField(
+          Builder(builder: (ctx) {
+            final l10n = AppLocalizations.of(ctx)!;
+            return TextField(
             controller: _descController,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Beskrivning (valfritt)',
+              hintText: l10n.reportAlertDescHint,
               hintStyle: const TextStyle(color: Colors.white38),
               filled: true,
               fillColor: const Color(0xFF0A1A46),
@@ -1486,9 +1504,11 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
                 borderSide: const BorderSide(color: Colors.white24),
               ),
             ),
-          ),
+          );}),
           const SizedBox(height: 14),
-          SizedBox(
+          Builder(builder: (ctx) {
+            final l10n = AppLocalizations.of(ctx)!;
+            return SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: (_selected == null || _submitting) ? null : _submit,
@@ -1508,15 +1528,16 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text(
-                      'Skicka larm',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15),
+                  : Text(
+                      l10n.reportAlertSubmit,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
             ),
-          ),
+          );}),
         ],
       ),
     );

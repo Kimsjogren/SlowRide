@@ -149,5 +149,40 @@
       "unit": {}
     }
   },
-  "speedometerSlowDown": "Sakta ner."
+  "speedometerSlowDown": "Sakta ner.",
+
+  "reportAlertTitle": "Rapportera larm",
+  "reportAlertDescHint": "Beskrivning (valfritt)",
+  "reportAlertSubmit": "Skicka larm",
+  "reportAlertNearby": "{type} · {distance} m bort",
+  "@reportAlertNearby": {
+    "placeholders": {
+      "type": {},
+      "distance": {}
+    }
+  },
+
+  "alertTypePolice": "Polis",
+  "alertTypeRoadwork": "Vägarbete",
+  "alertTypeAccident": "Olycka",
+  "alertTypeTrafficJam": "Trafikstockning",
+  "alertTypeSpeedCamera": "Fartkamera",
+  "alertTypeHazard": "Fara på vägen",
+  "alertTypeNarrowRoad": "Smal väg",
+  "alertTypeSteepHill": "Brant backe",
+
+  "alertGpsUnavailable": "GPS inte tillg\u00e4ngligt \u00e4nnu",
+  "alertMustBeLoggedIn": "Du m\u00e5ste vara inloggad f\u00f6r att rapportera",
+  "alertsScreenSubtitle": "Larm fr\u00e5n andra SlowRiders inom ~50 km. Klistra dig p\u00e5 tumsymboler f\u00f6r att bekr\u00e4fta ett larm.",
+  "alertReportButton": "Rapportera",
+  "alertTimeJustNow": "Just nu",
+  "alertTimeMinutes": "{n} min sedan",
+  "@alertTimeMinutes": { "placeholders": { "n": {} } },
+  "alertTimeHours": "{n} h sedan",
+  "@alertTimeHours": { "placeholders": { "n": {} } },
+  "alertsEmptyTitle": "Inga aktiva larm i n\u00e4rheten",
+  "alertsEmptySubtitle": "Ser du n\u00e5got p\u00e5 v\u00e4gen? Rapportera det!",
+  "alertReportQuestion": "Vad ser du p\u00e5 v\u00e4gen?",
+  "alertReportDescHint2": "Valfri beskrivning\u2026 (t.ex. \"stor gren\")",
+  "alertReportedSuccess": "Larm rapporterat! Tack \ud83d\ude4f"
 }

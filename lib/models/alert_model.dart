@@ -1,5 +1,6 @@
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
+import 'package:slowride/l10n/app_localizations.dart';
 
 enum AlertType {
   police,
@@ -33,6 +34,17 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => 'Fara på vägen',
     AlertType.narrowRoad => 'Smal väg',
     AlertType.steepHill => 'Brant backe',
+  };
+
+  String localizedLabel(AppLocalizations l10n) => switch (this) {
+    AlertType.police => l10n.alertTypePolice,
+    AlertType.roadwork => l10n.alertTypeRoadwork,
+    AlertType.accident => l10n.alertTypeAccident,
+    AlertType.trafficJam => l10n.alertTypeTrafficJam,
+    AlertType.speedCamera => l10n.alertTypeSpeedCamera,
+    AlertType.hazard => l10n.alertTypeHazard,
+    AlertType.narrowRoad => l10n.alertTypeNarrowRoad,
+    AlertType.steepHill => l10n.alertTypeSteepHill,
   };
 
   String get emoji => switch (this) {

@@ -149,5 +149,40 @@
       "unit": {}
     }
   },
-  "speedometerSlowDown": "Slow down."
+  "speedometerSlowDown": "Slow down.",
+
+  "reportAlertTitle": "Report alert",
+  "reportAlertDescHint": "Description (optional)",
+  "reportAlertSubmit": "Submit alert",
+  "reportAlertNearby": "{type} · {distance} m ahead",
+  "@reportAlertNearby": {
+    "placeholders": {
+      "type": {},
+      "distance": {}
+    }
+  },
+
+  "alertTypePolice": "Police",
+  "alertTypeRoadwork": "Roadwork",
+  "alertTypeAccident": "Accident",
+  "alertTypeTrafficJam": "Traffic jam",
+  "alertTypeSpeedCamera": "Speed camera",
+  "alertTypeHazard": "Hazard",
+  "alertTypeNarrowRoad": "Narrow road",
+  "alertTypeSteepHill": "Steep hill",
+
+  "alertGpsUnavailable": "GPS not available yet",
+  "alertMustBeLoggedIn": "You must be signed in to report",
+  "alertsScreenSubtitle": "Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.",
+  "alertReportButton": "Report",
+  "alertTimeJustNow": "Just now",
+  "alertTimeMinutes": "{n} min ago",
+  "@alertTimeMinutes": { "placeholders": { "n": {} } },
+  "alertTimeHours": "{n} h ago",
+  "@alertTimeHours": { "placeholders": { "n": {} } },
+  "alertsEmptyTitle": "No active alerts nearby",
+  "alertsEmptySubtitle": "See something on the road? Report it!",
+  "alertReportQuestion": "What do you see on the road?",
+  "alertReportDescHint2": "Optional description\u2026 (e.g. \"large branch\")",
+  "alertReportedSuccess": "Alert reported! Thank you \ud83d\ude4f"
 }

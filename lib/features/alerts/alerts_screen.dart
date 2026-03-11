@@ -66,9 +66,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       return;
     }
     if (_myPosition == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('GPS inte tillgängligt ännu')),
-      );
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.alertGpsUnavailable)));
       return;
     }
     await showModalBottomSheet<void>(
@@ -84,10 +86,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   void _showMustLoginSnack() {
+    final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Du måste vara inloggad för att rapportera'),
-        backgroundColor: Color(0xFF1E6BFF),
+      SnackBar(
+        content: Text(l10n.alertMustBeLoggedIn),
+        backgroundColor: const Color(0xFF1E6BFF),
       ),
     );
   }
@@ -200,15 +203,17 @@ class _AlertTile extends StatelessWidget {
     _ => const Color(0xFF4A148C),
   };
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(DateTime dt, AppLocalizations l10n) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just nu';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min sedan';
-    return '${diff.inHours} h sedan';
+    if (diff.inMinutes < 1) return l10n.alertTimeJustNow;
+    if (diff.inMinutes < 60)
+      return l10n.alertTimeMinutes(diff.inMinutes.toString());
+    return l10n.alertTimeHours(diff.inHours.toString());
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final dist = myPosition != null ? alert.distanceTo(myPosition!) : null;
     final distStr = dist == null
         ? ''
@@ -240,7 +245,7 @@ class _AlertTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          alert.type.label,
+          alert.type.localizedLabel(l10n),
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -262,7 +267,7 @@ class _AlertTile extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  _timeAgo(alert.createdAt),
+                  _timeAgo(alert.createdAt, l10n),
                   style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
                 if (distStr.isNotEmpty) ...[
@@ -313,6 +318,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -323,14 +329,14 @@ class _EmptyState extends StatelessWidget {
             size: 56,
           ),
           const SizedBox(height: 14),
-          const Text(
-            'Inga aktiva larm i närheten',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+          Text(
+            l10n.alertsEmptyTitle,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Ser du något på vägen? Rapportera det!',
-            style: TextStyle(color: Colors.white38, fontSize: 13),
+          Text(
+            l10n.alertsEmptySubtitle,
+            style: const TextStyle(color: Colors.white38, fontSize: 13),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
@@ -341,7 +347,7 @@ class _EmptyState extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.add_alert_rounded),
-            label: const Text('Rapportera larm'),
+            label: Text(l10n.reportAlertTitle),
             onPressed: onReport,
           ),
         ],
@@ -396,9 +402,9 @@ class _ReportSheetState extends State<_ReportSheet> {
             children: [
               Text(_selected!.emoji),
               const SizedBox(width: 8),
-              const Text(
-                'Larm rapporterat! Tack 🙏',
-                style: TextStyle(color: Colors.white),
+              Text(
+                AppLocalizations.of(context)!.alertReportedSuccess,
+                style: const TextStyle(color: Colors.white),
               ),
             ],
           ),
@@ -438,102 +444,126 @@ class _ReportSheetState extends State<_ReportSheet> {
                 ),
               ),
             ),
-            const Text(
-              'Vad ser du på vägen?',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return Text(
+                  l10n.alertReportQuestion,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: AlertType.values.map((t) {
-                final sel = _selected == t;
-                return GestureDetector(
-                  onTap: () => setState(() => _selected = t),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: sel
-                          ? const Color(0xFF1E6BFF)
-                          : Colors.white.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: sel ? const Color(0xFF1E6BFF) : Colors.white24,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(t.emoji, style: const TextStyle(fontSize: 18)),
-                        const SizedBox(width: 6),
-                        Text(
-                          t.label,
-                          style: TextStyle(
-                            color: sel ? Colors.white : Colors.white70,
-                            fontSize: 13,
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AlertType.values.map((t) {
+                    final sel = _selected == t;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selected = t),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? const Color(0xFF1E6BFF)
+                              : Colors.white.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: sel
+                                ? const Color(0xFF1E6BFF)
+                                : Colors.white24,
                           ),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(t.emoji, style: const TextStyle(fontSize: 18)),
+                            const SizedBox(width: 6),
+                            Text(
+                              t.localizedLabel(l10n),
+                              style: TextStyle(
+                                color: sel ? Colors.white : Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return TextField(
+                  controller: _desc,
+                  maxLines: 2,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: l10n.alertReportDescHint2,
+                    hintStyle: const TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 );
-              }).toList(),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: _desc,
-              maxLines: 2,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Valfri beskrivning… (t.ex. "stor gren")',
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+              },
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: _selected != null
-                      ? const Color(0xFF1E6BFF)
-                      : Colors.white24,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                onPressed: _selected == null || _submitting ? null : _submit,
-                child: _submitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Skicka larm',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _selected != null
+                          ? const Color(0xFF1E6BFF)
+                          : Colors.white24,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
-              ),
+                    ),
+                    onPressed: _selected == null || _submitting
+                        ? null
+                        : _submit,
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            l10n.reportAlertSubmit,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                );
+              },
             ),
           ],
         ),
