@@ -22,7 +22,7 @@ class AppBackground extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(left: 16, top: 12, bottom: 4),
-              child: Image.asset('assets/logga_nobg.png', height: 72),
+              child: Image.asset('assets/logga_nobg.png', height: 76),
             ),
             Expanded(child: child),
           ],

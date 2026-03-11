@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
+import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/speedometer_widget.dart';
@@ -51,6 +52,17 @@ class _MapScreenState extends State<MapScreen> {
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
   double _distToNextManeuver = 0;
+
+  // ── Speed calibration + live ETA ──────────────────────────────────
+  // Cumulative distance from route start to each point (metres).
+  List<double> _cumulativeDist = const [];
+  double _totalRouteDistM = 0;
+  double _remainingDistM = 0;
+  // Per-trip tracking: accumulated while _isNavigating is true.
+  DateTime? _tripStartTime;
+  LatLng? _lastNavPos;
+  double _tripDistanceM = 0;
+
   bool _localizedDefaultsSet = false;
   @override
   void didChangeDependencies() {
@@ -77,6 +89,8 @@ class _MapScreenState extends State<MapScreen> {
       _onExternalNavigationRequest,
     );
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    // Lazy-load prefs for speed calibration (fire-and-forget).
+    SpeedCalibrationService.instance.initialize();
   }
 
   void _onExternalNavigationRequest() {
@@ -152,38 +166,50 @@ class _MapScreenState extends State<MapScreen> {
               SlowRoadService.instance.addPoint(currentPos, newSpeed);
             }
 
-            // Compute new instruction state synchronously (no setState inside).
+            // ── Trip-distance accumulation (speed calibration) ─────────────
+            double newTripDist = _tripDistanceM;
+            if (_isNavigating && _lastNavPos != null) {
+              newTripDist += _segDist(_lastNavPos!, currentPos);
+            }
+
+            // Compute new instruction state + remaining distance synchronously.
             int? newSign;
             String? newText;
             double? newDist;
-            if (_isNavigating &&
-                _instructions.isNotEmpty &&
-                _routePoints.isNotEmpty) {
+            double? newRemaining;
+            if (_isNavigating && _routePoints.isNotEmpty) {
               final nearestIdx = _nearestRoutePointIndex(currentPos);
-              int instrIdx = 0;
-              for (int i = 0; i < _instructions.length - 1; i++) {
-                if (_instructions[i + 1].pointIndex > nearestIdx) {
-                  instrIdx = i;
-                  break;
-                }
-                instrIdx = i + 1;
+              // Remaining distance via O(1) cumulative-dist lookup.
+              if (_cumulativeDist.length == _routePoints.length) {
+                newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx])
+                    .clamp(0.0, _totalRouteDistM);
               }
-              final nextIdx = instrIdx + 1;
-              if (nextIdx < _instructions.length) {
-                final next = _instructions[nextIdx];
-                double dist = 0;
-                for (
-                  int i = nearestIdx;
-                  i < next.pointIndex && i < _routePoints.length - 1;
-                  i++
-                ) {
-                  dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+              if (_instructions.isNotEmpty) {
+                int instrIdx = 0;
+                for (int i = 0; i < _instructions.length - 1; i++) {
+                  if (_instructions[i + 1].pointIndex > nearestIdx) {
+                    instrIdx = i;
+                    break;
+                  }
+                  instrIdx = i + 1;
                 }
-                newSign = next.sign;
-                newText = next.text;
-                newDist = dist;
-              } else {
-                newText = '';
+                final nextIdx = instrIdx + 1;
+                if (nextIdx < _instructions.length) {
+                  final next = _instructions[nextIdx];
+                  double dist = 0;
+                  for (
+                    int i = nearestIdx;
+                    i < next.pointIndex && i < _routePoints.length - 1;
+                    i++
+                  ) {
+                    dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+                  }
+                  newSign = next.sign;
+                  newText = next.text;
+                  newDist = dist;
+                } else {
+                  newText = '';
+                }
               }
             }
 
@@ -196,9 +222,14 @@ class _MapScreenState extends State<MapScreen> {
               }
               _currentLocation = currentPos;
               _locationStatus = l10n.mapGpsActive;
+              if (_isNavigating) {
+                _tripDistanceM = newTripDist;
+                _lastNavPos = currentPos;
+              }
               if (newSign != null) _nextManeuverSign = newSign;
               if (newText != null) _nextManeuverText = newText;
               if (newDist != null) _distToNextManeuver = newDist;
+              if (newRemaining != null) _remainingDistM = newRemaining;
             });
             // If this is the first GPS fix and a destination was already set
             // (e.g. from a convoy pin tap before GPS was ready), start routing.
@@ -387,6 +418,37 @@ class _MapScreenState extends State<MapScreen> {
     return math.sqrt(dx * dx + dy * dy);
   }
 
+  /// Precompute cumulative distances so remaining-dist lookups are O(1).
+  List<double> _buildCumulativeDist(List<LatLng> pts) {
+    if (pts.isEmpty) return const [];
+    final result = List<double>.filled(pts.length, 0);
+    for (int i = 1; i < pts.length; i++) {
+      result[i] = result[i - 1] + _segDist(pts[i - 1], pts[i]);
+    }
+    return result;
+  }
+
+  /// Formatted ETA string using the learned (or fallback) speed.
+  /// Returns empty string when not navigating or remaining < 50 m.
+  String _formatEta() {
+    if (!_isNavigating || _remainingDistM <= 50) return '';
+    final vehicleType = UserPreferencesService.instance.vehicleType.value;
+    final effectiveSpeed = SpeedCalibrationService.instance.effectiveSpeedKmh(
+      vehicleType,
+    );
+    if (effectiveSpeed <= 0) return '';
+    final remainingSec = _remainingDistM / (effectiveSpeed / 3.6);
+    final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
+    final h = arrival.hour.toString().padLeft(2, '0');
+    final m = arrival.minute.toString().padLeft(2, '0');
+    final minLeft = (remainingSec / 60).ceil();
+    if (minLeft < 1) return 'Framme!';
+    if (minLeft < 60) return '$minLeft min · $h:$m';
+    final hours = minLeft ~/ 60;
+    final mins = minLeft % 60;
+    return '${hours}h ${mins}min · $h:$m';
+  }
+
   IconData _turnIcon(int sign) {
     return switch (sign) {
       -3 => Icons.turn_sharp_left,
@@ -434,9 +496,14 @@ class _MapScreenState extends State<MapScreen> {
 
       final km = route.distanceMeters / 1000;
       final minutes = route.durationSeconds / 60;
+      final cumDist = _buildCumulativeDist(route.points);
+      final totalDist = cumDist.isNotEmpty ? cumDist.last : 0.0;
 
       setState(() {
         _routePoints = route.points;
+        _cumulativeDist = cumDist;
+        _totalRouteDistM = totalDist;
+        _remainingDistM = totalDist;
         _instructions = route.instructions;
         _lastNearestIdx = 0; // reset forward-scan index for new route
         _nextManeuverText = '';
@@ -486,8 +553,20 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _clearRoute() {
-    // End or cancel the SlowRoad learning session.
+    // Calibrate speed with this trip's data, then end the SlowRoad session.
     if (_isNavigating) {
+      final start = _tripStartTime;
+      if (start != null) {
+        final durationSec = DateTime.now()
+            .difference(start)
+            .inSeconds
+            .toDouble();
+        SpeedCalibrationService.instance.recordTrip(
+          vehicleType: UserPreferencesService.instance.vehicleType.value,
+          distanceM: _tripDistanceM,
+          durationSec: durationSec,
+        );
+      }
       SlowRoadService.instance.endSession();
     } else {
       SlowRoadService.instance.cancelSession();
@@ -501,6 +580,12 @@ class _MapScreenState extends State<MapScreen> {
       _nextManeuverText = '';
       _nextManeuverSign = 0;
       _distToNextManeuver = 0;
+      _cumulativeDist = const [];
+      _totalRouteDistM = 0;
+      _remainingDistM = 0;
+      _tripStartTime = null;
+      _tripDistanceM = 0;
+      _lastNavPos = null;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
   }
@@ -567,24 +652,8 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         Image.asset(
                           'assets/logga_nobg.png',
-                          height: 72,
+                          height: 76,
                           fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.appTitle,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                shadows: const [
-                                  Shadow(
-                                    color: Colors.black87,
-                                    blurRadius: 6,
-                                    offset: Offset(0, 1),
-                                  ),
-                                ],
-                              ),
                         ),
                       ],
                     ),
@@ -995,6 +1064,35 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                     ],
                   ),
+                  // Live ETA row — visible during active navigation.
+                  if (_isNavigating)
+                    Builder(
+                      builder: (_) {
+                        final eta = _formatEta();
+                        if (eta.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.access_time_rounded,
+                                size: 14,
+                                color: Color(0xFF3AA8FF),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                eta,
+                                style: const TextStyle(
+                                  color: Color(0xFF3AA8FF),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   if (_routePoints.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Row(
@@ -1022,6 +1120,9 @@ class _MapScreenState extends State<MapScreen> {
                                     setState(() {
                                       _isNavigating = true;
                                       _isFollowing = true;
+                                      _tripStartTime = DateTime.now();
+                                      _tripDistanceM = 0;
+                                      _lastNavPos = _currentLocation;
                                     });
                                   },
                                 ),
