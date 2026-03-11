@@ -37,6 +37,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   LatLng? _myLocation;
   double _myHeading = 0;
   bool _isFollowingMyPosition = true;
+  bool _use3DMap = true;
   String? _myUserId;
 
   // ── Inline routing state ────────────────────────────────────────────────
@@ -64,6 +65,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   void initState() {
     super.initState();
     _myUserId = AuthService.instance.userId.value;
+    _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Delay GPS request until after first frame (avoids InheritedWidget issue)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startLocationSync();
@@ -146,7 +148,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
             }
 
             if (_isFollowingMyPosition) {
-              _mapController.move(point, _followZoom);
+              final zoom = _use3DMap ? 18.5 : _followZoom;
+              _mapController.moveAndRotate(
+                point,
+                zoom,
+                _use3DMap ? -heading : 0,
+              );
             }
           }
 
@@ -190,7 +197,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
     return DateTime.now().difference(m.updatedAt) > const Duration(minutes: 5);
   }
 
-  Widget _buildMemberMarker(ConvoyMemberLocation member) {
+  Widget _buildMemberMarker(
+    ConvoyMemberLocation member,
+    AppLocalizations l10n,
+  ) {
     final isMe = member.userId == _myUserId;
     final stale = _isMemberStale(member);
     final color = isMe ? const Color(0xFF1E6BFF) : _memberColor(member.userId);
@@ -216,7 +226,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
               ],
             ),
             child: Text(
-              isMe ? 'Jag' : member.userLabel,
+              isMe ? l10n.convoyMemberMe : member.userLabel,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
@@ -339,17 +349,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       setState(() {
         _routePoints = const [];
         _routingStatus = switch (e.code) {
-          RoutingErrorCode.noRouteFound => 'Ingen rutt hittades',
-          RoutingErrorCode.providerUnavailable =>
-            'Rutttjänsten är inte tillgänglig',
-          _ => 'Kunde inte beräkna rutt',
+          RoutingErrorCode.noRouteFound => AppLocalizations.of(
+            context,
+          )!.mapRouteNoRouteFound,
+          RoutingErrorCode.providerUnavailable => AppLocalizations.of(
+            context,
+          )!.mapRouteProviderUnavailable,
+          _ => AppLocalizations.of(context)!.mapRouteFailed,
         };
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _routePoints = const [];
-        _routingStatus = 'Kunde inte beräkna rutt';
+        _routingStatus = AppLocalizations.of(context)!.mapRouteFailed;
       });
     } finally {
       if (mounted) setState(() => _isRouting = false);
@@ -665,117 +678,144 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                             padding: const EdgeInsets.all(16),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: FlutterMap(
-                                options: MapOptions(
-                                  initialCenter: center,
-                                  initialZoom: _followZoom,
-                                  initialRotation: 0,
-                                  onTap: (_, point) =>
-                                      _showQuickHazardPicker(point, l10n),
-                                  onPositionChanged: (_, hasGesture) {
-                                    if (!hasGesture ||
-                                        !_isFollowingMyPosition) {
-                                      return;
-                                    }
-                                    setState(() {
-                                      _isFollowingMyPosition = false;
-                                    });
-                                  },
-                                ),
-                                mapController: _mapController,
-                                children: [
-                                  TileLayer(
-                                    urlTemplate:
-                                        'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                                    additionalOptions: const {
-                                      'mapbox_token':
-                                          'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
-                                    },
-                                    userAgentPackageName:
-                                        'com.kimtechtool.slowride',
-                                    tileDimension: 512,
-                                    zoomOffset: -1,
-                                  ),
-                                  MarkerLayer(
-                                    markers: [
-                                      for (final member in locations)
-                                        Marker(
-                                          point: member.position,
-                                          width: 100,
-                                          height: 72,
-                                          child: _buildMemberMarker(member),
-                                        ),
-                                      for (final pin in pins)
-                                        Marker(
-                                          point: pin.position,
-                                          width: 90,
-                                          height: 42,
-                                          child: GestureDetector(
-                                            onTap: () => _showPinOptions(pin),
-                                            child: Column(
-                                              children: [
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(
-                                                      context,
-                                                    ).colorScheme.surface,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: _pinColor(
-                                                        pin.type,
-                                                      ).withValues(alpha: 0.6),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    pin.label,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: Theme.of(
-                                                      context,
-                                                    ).textTheme.labelSmall,
-                                                  ),
-                                                ),
-                                                Icon(
-                                                  _pinIcon(pin.type),
-                                                  color: _pinColor(pin.type),
-                                                  size: 18,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  RichAttributionWidget(
-                                    attributions: [
-                                      TextSourceAttribution('© Mapbox'),
-                                      TextSourceAttribution(
-                                        '© OpenStreetMap contributors',
+                              child: LayoutBuilder(
+                                builder: (context, __) {
+                                  final is3D =
+                                      _isFollowingMyPosition && _use3DMap;
+                                  final matrix = is3D
+                                      ? (Matrix4.identity()
+                                          ..setEntry(3, 2, 0.001)
+                                          ..rotateX(0.65))
+                                      : Matrix4.identity();
+                                  return Transform(
+                                    alignment: Alignment.center,
+                                    transform: matrix,
+                                    child: FlutterMap(
+                                      options: MapOptions(
+                                        initialCenter: center,
+                                        initialZoom: _followZoom,
+                                        initialRotation: 0,
+                                        onTap: (_, point) =>
+                                            _showQuickHazardPicker(point, l10n),
+                                        onPositionChanged: (_, hasGesture) {
+                                          if (!hasGesture ||
+                                              !_isFollowingMyPosition) {
+                                            return;
+                                          }
+                                          setState(() {
+                                            _isFollowingMyPosition = false;
+                                          });
+                                        },
                                       ),
-                                    ],
-                                  ),
-                                  // Route polyline
-                                  if (_routePoints.isNotEmpty)
-                                    PolylineLayer(
-                                      polylines: [
-                                        Polyline(
-                                          points: _routePoints,
-                                          color: const Color(0xFF3AA8FF),
-                                          strokeWidth: 5,
-                                          borderColor: const Color(0xFF0A3D6E),
-                                          borderStrokeWidth: 2,
+                                      mapController: _mapController,
+                                      children: [
+                                        TileLayer(
+                                          urlTemplate:
+                                              'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                                          additionalOptions: const {
+                                            'mapbox_token':
+                                                'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                          },
+                                          userAgentPackageName:
+                                              'com.kimtechtool.slowride',
+                                          tileDimension: 512,
+                                          zoomOffset: -1,
                                         ),
+                                        MarkerLayer(
+                                          markers: [
+                                            for (final member in locations)
+                                              Marker(
+                                                point: member.position,
+                                                width: 100,
+                                                height: 72,
+                                                child: _buildMemberMarker(
+                                                  member,
+                                                  l10n,
+                                                ),
+                                              ),
+                                            for (final pin in pins)
+                                              Marker(
+                                                point: pin.position,
+                                                width: 90,
+                                                height: 42,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _showPinOptions(pin),
+                                                  child: Column(
+                                                    children: [
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                              vertical: 2,
+                                                            ),
+                                                        decoration: BoxDecoration(
+                                                          color: Theme.of(
+                                                            context,
+                                                          ).colorScheme.surface,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                          border: Border.all(
+                                                            color:
+                                                                _pinColor(
+                                                                  pin.type,
+                                                                ).withValues(
+                                                                  alpha: 0.6,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          pin.label,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .labelSmall,
+                                                        ),
+                                                      ),
+                                                      Icon(
+                                                        _pinIcon(pin.type),
+                                                        color: _pinColor(
+                                                          pin.type,
+                                                        ),
+                                                        size: 18,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        RichAttributionWidget(
+                                          attributions: [
+                                            TextSourceAttribution('© Mapbox'),
+                                            TextSourceAttribution(
+                                              '© OpenStreetMap contributors',
+                                            ),
+                                          ],
+                                        ),
+                                        // Route polyline
+                                        if (_routePoints.isNotEmpty)
+                                          PolylineLayer(
+                                            polylines: [
+                                              Polyline(
+                                                points: _routePoints,
+                                                color: const Color(0xFF3AA8FF),
+                                                strokeWidth: 5,
+                                                borderColor: const Color(
+                                                  0xFF0A3D6E,
+                                                ),
+                                                borderStrokeWidth: 2,
+                                              ),
+                                            ],
+                                          ),
                                       ],
                                     ),
-                                ],
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -881,6 +921,50 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _use3DMap = !_use3DMap);
+                                    UserPreferencesService
+                                            .instance
+                                            .use3DMap
+                                            .value =
+                                        _use3DMap;
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xEE0A1F63),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: _use3DMap
+                                            ? const Color(0xFF3AA8FF)
+                                            : Colors.white30,
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black45,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _use3DMap ? '3D' : '2D',
+                                      style: TextStyle(
+                                        color: _use3DMap
+                                            ? const Color(0xFF3AA8FF)
+                                            : Colors.white60,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
                                 FloatingActionButton.small(
                                   heroTag: 'fit_all',
                                   tooltip: AppLocalizations.of(
@@ -906,8 +990,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                     setState(
                                       () => _isFollowingMyPosition = true,
                                     );
-                                    _mapController.move(me, _followZoom);
-                                    _mapController.rotate(0);
+                                    final zoom = _use3DMap ? 18.5 : _followZoom;
+                                    _mapController.moveAndRotate(
+                                      me,
+                                      zoom,
+                                      _use3DMap ? -_myHeading : 0,
+                                    );
                                   },
                                   child: Icon(
                                     _isFollowingMyPosition
@@ -1004,9 +1092,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                     const SizedBox(height: 3),
                                     Text(
                                       stale
-                                          ? '${minsAgo}m sedan'
+                                          ? l10n.convoyMemberStaleTime(minsAgo)
                                           : (isMe
-                                                ? 'Jag'
+                                                ? l10n.convoyMemberMe
                                                 : m.userLabel.split(' ').first),
                                       style: TextStyle(
                                         color: stale

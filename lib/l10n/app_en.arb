@@ -73,6 +73,13 @@
       "count": {}
     }
   },
+  "convoyMemberMe": "Me",
+  "convoyMemberStaleTime": "{mins}m ago",
+  "@convoyMemberStaleTime": {
+    "placeholders": {
+      "mins": {}
+    }
+  },
   "convoyCreatedBy": "Created by {leader}",
   "@convoyCreatedBy": {
     "placeholders": {

@@ -215,6 +215,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get convoyMemberMe => 'Me';
+
+  @override
+  String convoyMemberStaleTime(Object mins) {
+    return '${mins}m ago';
+  }
+
+  @override
   String convoyCreatedBy(Object leader) {
     return 'Created by $leader';
   }

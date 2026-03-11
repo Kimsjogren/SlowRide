@@ -73,6 +73,13 @@
       "count": {}
     }
   },
+  "convoyMemberMe": "Jag",
+  "convoyMemberStaleTime": "{mins}m sedan",
+  "@convoyMemberStaleTime": {
+    "placeholders": {
+      "mins": {}
+    }
+  },
   "convoyCreatedBy": "Skapad av {leader}",
   "@convoyCreatedBy": {
     "placeholders": {

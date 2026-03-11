@@ -503,6 +503,18 @@ abstract class AppLocalizations {
   /// **'{count} members'**
   String convoyMembers(Object count);
 
+  /// No description provided for @convoyMemberMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Me'**
+  String get convoyMemberMe;
+
+  /// No description provided for @convoyMemberStaleTime.
+  ///
+  /// In en, this message translates to:
+  /// **'{mins}m ago'**
+  String convoyMemberStaleTime(Object mins);
+
   /// No description provided for @convoyCreatedBy.
   ///
   /// In en, this message translates to:

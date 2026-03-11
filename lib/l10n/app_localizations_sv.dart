@@ -215,6 +215,14 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String get convoyMemberMe => 'Jag';
+
+  @override
+  String convoyMemberStaleTime(Object mins) {
+    return '${mins}m sedan';
+  }
+
+  @override
   String convoyCreatedBy(Object leader) {
     return 'Skapad av $leader';
   }
