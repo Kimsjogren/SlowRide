@@ -87,7 +87,7 @@ class AlertsController {
       'lng': position.longitude,
       'description': description,
       'upvotes': 0,
-      if (userId != null) 'user_id': userId,
+      'user_id': ?userId,
     };
 
     if (SupabaseService.instance.isEnabled) {

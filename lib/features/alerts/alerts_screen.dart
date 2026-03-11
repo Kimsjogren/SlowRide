@@ -205,8 +205,9 @@ class _AlertTile extends StatelessWidget {
   String _timeAgo(DateTime dt, AppLocalizations l10n) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return l10n.alertTimeJustNow;
-    if (diff.inMinutes < 60)
+    if (diff.inMinutes < 60) {
       return l10n.alertTimeMinutes(diff.inMinutes.toString());
+    }
     return l10n.alertTimeHours(diff.inHours.toString());
   }
 

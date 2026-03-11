@@ -67,9 +67,17 @@ class _MapWidgetState extends State<MapWidget>
     // kHdg: heading responds faster so turns feel immediate.
     const kPos = 0.25;
     const kHdg = 0.32;
-    _curLat += (_tgtLat - _curLat) * kPos;
-    _curLng += (_tgtLng - _curLng) * kPos;
+    final dLat = _tgtLat - _curLat;
+    final dLng = _tgtLng - _curLng;
     final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
+
+    // Deadband: skip moveAndRotate (= zero GPU work) when already at target.
+    // 1e-7° ≈ 1 cm; 0.05° heading is imperceptible. This eliminates constant
+    // 60fps repaints while the user is stationary.
+    if (dLat.abs() < 1e-7 && dLng.abs() < 1e-7 && diff.abs() < 0.05) return;
+
+    _curLat += dLat * kPos;
+    _curLng += dLng * kPos;
     _curHdg = (_curHdg + diff * kHdg + 360) % 360;
     final zoom = widget.use3D ? 18.5 : 16.0;
 
@@ -215,6 +223,10 @@ class _MapWidgetState extends State<MapWidget>
                 userAgentPackageName: 'com.kimtechtool.slowride',
                 tileDimension: 512,
                 zoomOffset: -1,
+                // Pre-cache tiles outside the viewport to avoid
+                // blank tile flashes when panning or rotating.
+                keepBuffer: 4,
+                panBuffer: 1,
               ),
               if (widget.routePoints.isNotEmpty) ...[
                 PolylineLayer(

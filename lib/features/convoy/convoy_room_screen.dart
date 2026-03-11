@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -27,12 +29,19 @@ class ConvoyRoomScreen extends StatefulWidget {
   State<ConvoyRoomScreen> createState() => _ConvoyRoomScreenState();
 }
 
-class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
+class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
+    with SingleTickerProviderStateMixin {
   final ConvoyController _controller = ConvoyController();
   final RoutingService _routingService = RoutingService();
   final AlertsController _alertsController = AlertsController();
   final TextEditingController _messageController = TextEditingController();
   final MapController _mapController = MapController();
+
+  // ── Smooth camera animation (same as MapWidget) ────────────────────────
+  late final Ticker _camTicker;
+  double _curLat = 0, _curLng = 0, _curHdg = 0;
+  double _tgtLat = 0, _tgtLng = 0, _tgtHdg = 0;
+  bool _camInitialized = false;
 
   StreamSubscription<Position>? _positionSubscription;
   Timer? _pinRefreshTimer;
@@ -71,6 +80,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
   @override
   void initState() {
     super.initState();
+    _camTicker = createTicker(_onCamTick)..start();
     _myUserId = AuthService.instance.userId.value;
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Delay GPS request until after first frame (avoids InheritedWidget issue)
@@ -133,9 +143,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
     _positionSubscription?.cancel();
     _positionSubscription =
         Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.best,
-            distanceFilter: 5,
+          locationSettings: AppleSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            distanceFilter: 0,
+            activityType: ActivityType.automotiveNavigation,
+            pauseLocationUpdatesAutomatically: false,
+            showBackgroundLocationIndicator: true,
           ),
         ).listen((position) async {
           final point = LatLng(position.latitude, position.longitude);
@@ -159,6 +172,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                   );
             });
 
+            // Feed the camera ticker with the latest target.
+            // The ticker interpolates smoothly at 60 fps — no direct
+            // moveAndRotate call here (that was causing jank).
+            if (_isFollowingMyPosition) {
+              if (!_camInitialized) {
+                _curLat = _tgtLat = point.latitude;
+                _curLng = _tgtLng = point.longitude;
+                _curHdg = _tgtHdg = heading;
+                _camInitialized = true;
+                final zoom = _use3DMap ? 18.5 : _followZoom;
+                _mapController.moveAndRotate(
+                  point,
+                  zoom,
+                  _use3DMap ? -heading : 0,
+                );
+              } else {
+                _tgtLat = point.latitude;
+                _tgtLng = point.longitude;
+                _tgtHdg = heading;
+              }
+            }
+
             // Auto-retry pending route on first GPS fix.
             if (!hadLocation &&
                 _pendingDestination != null &&
@@ -167,15 +202,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
               final dest = _pendingDestination!;
               _pendingDestination = null;
               _routeToDestination(dest);
-            }
-
-            if (_isFollowingMyPosition) {
-              final zoom = _use3DMap ? 18.5 : _followZoom;
-              _mapController.moveAndRotate(
-                point,
-                zoom,
-                _use3DMap ? -heading : 0,
-              );
             }
           }
 
@@ -192,6 +218,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
+    _camTicker.dispose();
     _messageController.dispose();
     _controller.dispose();
     super.dispose();
@@ -208,6 +235,30 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
       return;
     }
     _messageController.clear();
+  }
+
+  void _onCamTick(Duration _) {
+    if (!_isFollowingMyPosition || !_camInitialized) return;
+    const kPos = 0.25;
+    const kHdg = 0.32;
+    final dLat = _tgtLat - _curLat;
+    final dLng = _tgtLng - _curLng;
+    final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
+    // Deadband: skip GPU work when already at target.
+    if (dLat.abs() < 1e-7 && dLng.abs() < 1e-7 && diff.abs() < 0.05) return;
+    _curLat += dLat * kPos;
+    _curLng += dLng * kPos;
+    _curHdg = (_curHdg + diff * kHdg + 360) % 360;
+    final zoom = _use3DMap ? 18.5 : _followZoom;
+    if (_use3DMap) {
+      const offsetDeg = 0.00045;
+      final rad = _curHdg * math.pi / 180.0;
+      final cLat = _curLat + offsetDeg * math.cos(rad);
+      final cLng = _curLng + offsetDeg * math.sin(rad);
+      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
+    } else {
+      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+    }
   }
 
   Color _memberColor(String userId) {
@@ -725,6 +776,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(16),
+                            child: RepaintBoundary(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: LayoutBuilder(
@@ -760,161 +812,166 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                             width: w,
                                             height: h,
                                             child: FlutterMap(
-                                            options: MapOptions(
-                                              initialCenter: center,
-                                              initialZoom: _followZoom,
-                                              initialRotation: 0,
-                                              onTap: (_, point) =>
-                                                  _showQuickHazardPicker(
-                                                    point,
-                                                    l10n,
-                                                  ),
-                                              onPositionChanged: (_, hasGesture) {
-                                                if (!hasGesture ||
-                                                    !_isFollowingMyPosition) {
-                                                  return;
-                                                }
-                                                setState(() {
-                                                  _isFollowingMyPosition =
-                                                      false;
-                                                });
-                                              },
-                                            ),
-                                            mapController: _mapController,
-                                            children: [
-                                              TileLayer(
-                                                urlTemplate:
-                                                    'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                                                additionalOptions: const {
-                                                  'mapbox_token':
-                                                      'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                              options: MapOptions(
+                                                initialCenter: center,
+                                                initialZoom: _followZoom,
+                                                initialRotation: 0,
+                                                onTap: (_, point) =>
+                                                    _showQuickHazardPicker(
+                                                      point,
+                                                      l10n,
+                                                    ),
+                                                onPositionChanged: (_, hasGesture) {
+                                                  if (!hasGesture ||
+                                                      !_isFollowingMyPosition) {
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _isFollowingMyPosition =
+                                                        false;
+                                                  });
                                                 },
-                                                userAgentPackageName:
-                                                    'com.kimtechtool.slowride',
-                                                tileDimension: 512,
-                                                zoomOffset: -1,
                                               ),
-                                              MarkerLayer(
-                                                markers: [
-                                                  // Alert markers
-                                                  for (final alert in _alerts)
-                                                    Marker(
-                                                      point: alert.position,
-                                                      width: 44,
-                                                      height: 52,
-                                                      alignment:
-                                                          const Alignment(
-                                                            0,
-                                                            -1,
-                                                          ),
-                                                      child: _ConvoyAlertMarker(
-                                                        alert: alert,
-                                                      ),
-                                                    ),
-                                                  for (final member
-                                                      in locations)
-                                                    Marker(
-                                                      point: member.position,
-                                                      width: 100,
-                                                      height: 72,
-                                                      child: _buildMemberMarker(
-                                                        member,
-                                                        l10n,
-                                                      ),
-                                                    ),
-                                                  for (final pin in pins)
-                                                    Marker(
-                                                      point: pin.position,
-                                                      width: 90,
-                                                      height: 42,
-                                                      child: GestureDetector(
-                                                        onTap: () =>
-                                                            _showPinOptions(
-                                                              pin,
+                                              mapController: _mapController,
+                                              children: [
+                                                TileLayer(
+                                                  urlTemplate:
+                                                      'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                                                  additionalOptions: const {
+                                                    'mapbox_token':
+                                                        'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                                  },
+                                                  userAgentPackageName:
+                                                      'com.kimtechtool.slowride',
+                                                  tileDimension: 512,
+                                                  zoomOffset: -1,
+                                                ),
+                                                MarkerLayer(
+                                                  markers: [
+                                                    // Alert markers
+                                                    for (final alert in _alerts)
+                                                      Marker(
+                                                        point: alert.position,
+                                                        width: 44,
+                                                        height: 52,
+                                                        alignment:
+                                                            const Alignment(
+                                                              0,
+                                                              -1,
                                                             ),
-                                                        child: Column(
-                                                          children: [
-                                                            Container(
-                                                              padding:
-                                                                  const EdgeInsets.symmetric(
-                                                                    horizontal:
-                                                                        6,
-                                                                    vertical: 2,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color: Theme.of(
-                                                                  context,
-                                                                ).colorScheme.surface,
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      8,
+                                                        child:
+                                                            _ConvoyAlertMarker(
+                                                              alert: alert,
+                                                            ),
+                                                      ),
+                                                    for (final member
+                                                        in locations)
+                                                      Marker(
+                                                        point: member.position,
+                                                        width: 100,
+                                                        height: 72,
+                                                        child:
+                                                            _buildMemberMarker(
+                                                              member,
+                                                              l10n,
+                                                            ),
+                                                      ),
+                                                    for (final pin in pins)
+                                                      Marker(
+                                                        point: pin.position,
+                                                        width: 90,
+                                                        height: 42,
+                                                        child: GestureDetector(
+                                                          onTap: () =>
+                                                              _showPinOptions(
+                                                                pin,
+                                                              ),
+                                                          child: Column(
+                                                            children: [
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          6,
+                                                                      vertical:
+                                                                          2,
                                                                     ),
-                                                                border: Border.all(
-                                                                  color:
-                                                                      _pinColor(
-                                                                        pin.type,
-                                                                      ).withValues(
-                                                                        alpha:
-                                                                            0.6,
+                                                                decoration: BoxDecoration(
+                                                                  color: Theme.of(
+                                                                    context,
+                                                                  ).colorScheme.surface,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
                                                                       ),
+                                                                  border: Border.all(
+                                                                    color:
+                                                                        _pinColor(
+                                                                          pin.type,
+                                                                        ).withValues(
+                                                                          alpha:
+                                                                              0.6,
+                                                                        ),
+                                                                  ),
+                                                                ),
+                                                                child: Text(
+                                                                  pin.label,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: Theme.of(
+                                                                    context,
+                                                                  ).textTheme.labelSmall,
                                                                 ),
                                                               ),
-                                                              child: Text(
-                                                                pin.label,
-                                                                overflow:
-                                                                    TextOverflow
-                                                                        .ellipsis,
-                                                                style: Theme.of(
-                                                                  context,
-                                                                ).textTheme.labelSmall,
+                                                              Icon(
+                                                                _pinIcon(
+                                                                  pin.type,
+                                                                ),
+                                                                color:
+                                                                    _pinColor(
+                                                                      pin.type,
+                                                                    ),
+                                                                size: 18,
                                                               ),
-                                                            ),
-                                                            Icon(
-                                                              _pinIcon(
-                                                                pin.type,
-                                                              ),
-                                                              color: _pinColor(
-                                                                pin.type,
-                                                              ),
-                                                              size: 18,
-                                                            ),
-                                                          ],
+                                                            ],
+                                                          ),
                                                         ),
                                                       ),
+                                                  ],
+                                                ),
+                                                RichAttributionWidget(
+                                                  attributions: [
+                                                    TextSourceAttribution(
+                                                      '© Mapbox',
                                                     ),
-                                                ],
-                                              ),
-                                              RichAttributionWidget(
-                                                attributions: [
-                                                  TextSourceAttribution(
-                                                    '© Mapbox',
-                                                  ),
-                                                  TextSourceAttribution(
-                                                    '© OpenStreetMap contributors',
-                                                  ),
-                                                ],
-                                              ),
-                                              // Route polyline
-                                              if (_routePoints.isNotEmpty)
-                                                PolylineLayer(
-                                                  polylines: [
-                                                    Polyline(
-                                                      points: _routePoints,
-                                                      color: const Color(
-                                                        0xFF3AA8FF,
-                                                      ),
-                                                      strokeWidth: 5,
-                                                      borderColor: const Color(
-                                                        0xFF0A3D6E,
-                                                      ),
-                                                      borderStrokeWidth: 2,
+                                                    TextSourceAttribution(
+                                                      '© OpenStreetMap contributors',
                                                     ),
                                                   ],
                                                 ),
-                                            ],
+                                                // Route polyline
+                                                if (_routePoints.isNotEmpty)
+                                                  PolylineLayer(
+                                                    polylines: [
+                                                      Polyline(
+                                                        points: _routePoints,
+                                                        color: const Color(
+                                                          0xFF3AA8FF,
+                                                        ),
+                                                        strokeWidth: 5,
+                                                        borderColor:
+                                                            const Color(
+                                                              0xFF0A3D6E,
+                                                            ),
+                                                        borderStrokeWidth: 2,
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ),
                                       ),
                                       // Horizon fade — covers top ~45%
                                       Positioned(
@@ -949,6 +1006,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                   );
                                 },
                               ),
+                            ),
                             ),
                           ),
                           // Hint overlay
@@ -1218,6 +1276,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                   onPressed: () {
                                     final me = _myLocation;
                                     if (me == null) return;
+                                    // Snap ticker to current position so
+                                    // the transition starts from here.
+                                    _curLat = _tgtLat = me.latitude;
+                                    _curLng = _tgtLng = me.longitude;
+                                    _curHdg = _tgtHdg = _myHeading;
+                                    _camInitialized = true;
                                     setState(
                                       () => _isFollowingMyPosition = true,
                                     );
@@ -1602,107 +1666,109 @@ class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return Text(
-                l10n.reportAlertTitle,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: AlertType.values.map((t) {
-                  final sel = _selected == t;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selected = t),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: sel
-                            ? const Color(0xFF1E6BFF)
-                            : const Color(0xFF0A1A46),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: sel ? const Color(0xFF3AA8FF) : Colors.white24,
-                        ),
-                      ),
-                      child: Text(
-                        '${t.emoji}  ${t.localizedLabel(l10n)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
+              ),
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return Text(
+                    l10n.reportAlertTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
                     ),
                   );
-                }).toList(),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_selected == null || _submitting)
-                      ? null
-                      : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E6BFF),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                },
+              ),
+              const SizedBox(height: 14),
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AlertType.values.map((t) {
+                      final sel = _selected == t;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selected = t),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
                           ),
-                        )
-                      : Text(
-                          l10n.reportAlertSubmit,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          decoration: BoxDecoration(
+                            color: sel
+                                ? const Color(0xFF1E6BFF)
+                                : const Color(0xFF0A1A46),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: sel
+                                  ? const Color(0xFF3AA8FF)
+                                  : Colors.white24,
+                            ),
+                          ),
+                          child: Text(
+                            '${t.emoji}  ${t.localizedLabel(l10n)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
-                ),
-              );
-            },
-          ),
-        ],
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: (_selected == null || _submitting)
+                          ? null
+                          : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E6BFF),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              l10n.reportAlertSubmit,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),

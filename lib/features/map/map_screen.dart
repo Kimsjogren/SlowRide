@@ -667,18 +667,20 @@ class _MapScreenState extends State<MapScreen> {
               padding: mapPadding,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(mapRadius),
-                child: MapWidget(
-                  currentLocation: _currentLocation,
-                  destination: _destination,
-                  routePoints: _routePoints,
-                  alerts: _alerts,
-                  onTap: _isNavigating ? null : _handleMapTap,
-                  followUser: _isNavigating && _isFollowing,
-                  heading: _headingDegrees,
-                  use3D: _use3DMap,
-                  onUserPanned: _isNavigating
-                      ? () => setState(() => _isFollowing = false)
-                      : null,
+                child: RepaintBoundary(
+                  child: MapWidget(
+                    currentLocation: _currentLocation,
+                    destination: _destination,
+                    routePoints: _routePoints,
+                    alerts: _alerts,
+                    onTap: _isNavigating ? null : _handleMapTap,
+                    followUser: _isNavigating && _isFollowing,
+                    heading: _headingDegrees,
+                    use3D: _use3DMap,
+                    onUserPanned: _isNavigating
+                        ? () => setState(() => _isFollowing = false)
+                        : null,
+                  ),
                 ),
               ),
             ),
