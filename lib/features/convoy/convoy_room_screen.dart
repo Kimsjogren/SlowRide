@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -35,7 +37,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   final RoutingService _routingService = RoutingService();
   final AlertsController _alertsController = AlertsController();
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _addressSearchController =
+      TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   final MapController _mapController = MapController();
+  Timer? _searchDebounce;
+  List<Map<String, dynamic>> _suggestions = [];
+  bool _showSuggestions = false;
 
   // ── Smooth camera animation (same as MapWidget) ────────────────────────
   late final Ticker _camTicker;
@@ -81,6 +89,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   void initState() {
     super.initState();
     _camTicker = createTicker(_onCamTick)..start();
+    _addressSearchController.addListener(() => setState(() {}));
     _myUserId = AuthService.instance.userId.value;
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Delay GPS request until after first frame (avoids InheritedWidget issue)
@@ -218,8 +227,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
+    _searchDebounce?.cancel();
     _camTicker.dispose();
     _messageController.dispose();
+    _addressSearchController.dispose();
+    _searchFocus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -259,6 +271,99 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     } else {
       _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    if (query.trim().length < 2) {
+      setState(() {
+        _suggestions = [];
+        _showSuggestions = false;
+      });
+      return;
+    }
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _fetchSuggestions(query.trim());
+    });
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'format': 'jsonv2',
+        'limit': '6',
+        'countrycodes': 'se',
+      });
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode != 200 || !mounted) return;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List) return;
+      setState(() {
+        _suggestions = decoded.whereType<Map<String, dynamic>>().toList();
+        _showSuggestions = _suggestions.isNotEmpty;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _searchAddress(String rawQuery) async {
+    final l10n = AppLocalizations.of(context)!;
+    final query = rawQuery.trim();
+    if (query.isEmpty) return;
+    setState(() => _showSuggestions = false);
+    try {
+      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+        'q': query,
+        'format': 'jsonv2',
+        'limit': '1',
+      });
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode != 200) throw StateError('lookup_failed');
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.isEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _routingStatus = l10n.mapAddressNotFound;
+        });
+        return;
+      }
+      final first = decoded.first;
+      if (first is! Map<String, dynamic>) throw StateError('lookup_failed');
+      final lat = double.tryParse(first['lat']?.toString() ?? '');
+      final lon = double.tryParse(first['lon']?.toString() ?? '');
+      if (lat == null || lon == null) throw StateError('lookup_failed');
+      if (!mounted) return;
+      _routeToDestination(LatLng(lat, lon));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _routingStatus = l10n.mapAddressLookupFailed);
+    }
+  }
+
+  void _selectSuggestion(Map<String, dynamic> s) {
+    final lat = double.tryParse(s['lat']?.toString() ?? '');
+    final lon = double.tryParse(s['lon']?.toString() ?? '');
+    final name = s['display_name']?.toString() ?? '';
+    if (lat == null || lon == null) return;
+    _addressSearchController.text = name.split(',').first.trim();
+    _searchFocus.unfocus();
+    setState(() {
+      _suggestions = [];
+      _showSuggestions = false;
+    });
+    _routeToDestination(LatLng(lat, lon));
   }
 
   Color _memberColor(String userId) {
@@ -777,263 +882,423 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           Padding(
                             padding: const EdgeInsets.all(16),
                             child: RepaintBoundary(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final h = constraints.maxHeight;
-                                  final w = constraints.maxWidth;
-                                  final is3D =
-                                      _isFollowingMyPosition && _use3DMap;
-                                  final matrix = is3D
-                                      ? (Matrix4.identity()
-                                          ..setEntry(3, 2, 0.001)
-                                          ..rotateX(0.65))
-                                      : Matrix4.identity();
-                                  return Stack(
-                                    clipBehavior: Clip.hardEdge,
-                                    children: [
-                                      // Dark fill — prevent white bleed
-                                      // behind the 3D-tilted map.
-                                      const Positioned.fill(
-                                        child: ColoredBox(
-                                          color: Color(0xFF0A1628),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final h = constraints.maxHeight;
+                                    final w = constraints.maxWidth;
+                                    final is3D =
+                                        _isFollowingMyPosition && _use3DMap;
+                                    final matrix = is3D
+                                        ? (Matrix4.identity()
+                                            ..setEntry(3, 2, 0.001)
+                                            ..rotateX(0.65))
+                                        : Matrix4.identity();
+                                    return Stack(
+                                      clipBehavior: Clip.hardEdge,
+                                      children: [
+                                        // Dark fill — prevent white bleed
+                                        // behind the 3D-tilted map.
+                                        const Positioned.fill(
+                                          child: ColoredBox(
+                                            color: Color(0xFF0A1628),
+                                          ),
                                         ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: h,
-                                        child: Transform(
-                                          alignment: Alignment.bottomCenter,
-                                          transform: matrix,
-                                          child: SizedBox(
-                                            width: w,
-                                            height: h,
-                                            child: FlutterMap(
-                                              options: MapOptions(
-                                                initialCenter: center,
-                                                initialZoom: _followZoom,
-                                                initialRotation: 0,
-                                                onTap: (_, point) =>
-                                                    _showQuickHazardPicker(
-                                                      point,
-                                                      l10n,
-                                                    ),
-                                                onPositionChanged: (_, hasGesture) {
-                                                  if (!hasGesture ||
-                                                      !_isFollowingMyPosition) {
-                                                    return;
-                                                  }
-                                                  setState(() {
-                                                    _isFollowingMyPosition =
-                                                        false;
-                                                  });
-                                                },
-                                              ),
-                                              mapController: _mapController,
-                                              children: [
-                                                TileLayer(
-                                                  urlTemplate:
-                                                      'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                                                  additionalOptions: const {
-                                                    'mapbox_token':
-                                                        'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          height: h,
+                                          child: Transform(
+                                            alignment: Alignment.bottomCenter,
+                                            transform: matrix,
+                                            child: SizedBox(
+                                              width: w,
+                                              height: h,
+                                              child: FlutterMap(
+                                                options: MapOptions(
+                                                  initialCenter: center,
+                                                  initialZoom: _followZoom,
+                                                  initialRotation: 0,
+                                                  onTap: (_, point) =>
+                                                      _showQuickHazardPicker(
+                                                        point,
+                                                        l10n,
+                                                      ),
+                                                  onPositionChanged: (_, hasGesture) {
+                                                    if (!hasGesture ||
+                                                        !_isFollowingMyPosition) {
+                                                      return;
+                                                    }
+                                                    setState(() {
+                                                      _isFollowingMyPosition =
+                                                          false;
+                                                    });
                                                   },
-                                                  userAgentPackageName:
-                                                      'com.kimtechtool.slowride',
-                                                  tileDimension: 512,
-                                                  zoomOffset: -1,
                                                 ),
-                                                MarkerLayer(
-                                                  markers: [
-                                                    // Alert markers
-                                                    for (final alert in _alerts)
-                                                      Marker(
-                                                        point: alert.position,
-                                                        width: 44,
-                                                        height: 52,
-                                                        alignment:
-                                                            const Alignment(
-                                                              0,
-                                                              -1,
-                                                            ),
-                                                        child:
-                                                            _ConvoyAlertMarker(
-                                                              alert: alert,
-                                                            ),
-                                                      ),
-                                                    for (final member
-                                                        in locations)
-                                                      Marker(
-                                                        point: member.position,
-                                                        width: 100,
-                                                        height: 72,
-                                                        child:
-                                                            _buildMemberMarker(
-                                                              member,
-                                                              l10n,
-                                                            ),
-                                                      ),
-                                                    for (final pin in pins)
-                                                      Marker(
-                                                        point: pin.position,
-                                                        width: 90,
-                                                        height: 42,
-                                                        child: GestureDetector(
-                                                          onTap: () =>
-                                                              _showPinOptions(
-                                                                pin,
+                                                mapController: _mapController,
+                                                children: [
+                                                  TileLayer(
+                                                    urlTemplate:
+                                                        'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                                                    additionalOptions: const {
+                                                      'mapbox_token':
+                                                          'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                                    },
+                                                    userAgentPackageName:
+                                                        'com.kimtechtool.slowride',
+                                                    tileDimension: 512,
+                                                    zoomOffset: -1,
+                                                  ),
+                                                  MarkerLayer(
+                                                    markers: [
+                                                      // Alert markers
+                                                      for (final alert
+                                                          in _alerts)
+                                                        Marker(
+                                                          point: alert.position,
+                                                          width: 44,
+                                                          height: 52,
+                                                          alignment:
+                                                              const Alignment(
+                                                                0,
+                                                                -1,
                                                               ),
-                                                          child: Column(
-                                                            children: [
-                                                              Container(
-                                                                padding:
-                                                                    const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          6,
-                                                                      vertical:
-                                                                          2,
-                                                                    ),
-                                                                decoration: BoxDecoration(
-                                                                  color: Theme.of(
-                                                                    context,
-                                                                  ).colorScheme.surface,
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        8,
+                                                          child:
+                                                              _ConvoyAlertMarker(
+                                                                alert: alert,
+                                                              ),
+                                                        ),
+                                                      for (final member
+                                                          in locations)
+                                                        Marker(
+                                                          point:
+                                                              member.position,
+                                                          width: 100,
+                                                          height: 72,
+                                                          child:
+                                                              _buildMemberMarker(
+                                                                member,
+                                                                l10n,
+                                                              ),
+                                                        ),
+                                                      for (final pin in pins)
+                                                        Marker(
+                                                          point: pin.position,
+                                                          width: 90,
+                                                          height: 42,
+                                                          child: GestureDetector(
+                                                            onTap: () =>
+                                                                _showPinOptions(
+                                                                  pin,
+                                                                ),
+                                                            child: Column(
+                                                              children: [
+                                                                Container(
+                                                                  padding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            6,
+                                                                        vertical:
+                                                                            2,
                                                                       ),
-                                                                  border: Border.all(
-                                                                    color:
-                                                                        _pinColor(
-                                                                          pin.type,
-                                                                        ).withValues(
-                                                                          alpha:
-                                                                              0.6,
+                                                                  decoration: BoxDecoration(
+                                                                    color: Theme.of(
+                                                                      context,
+                                                                    ).colorScheme.surface,
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                          8,
                                                                         ),
+                                                                    border: Border.all(
+                                                                      color:
+                                                                          _pinColor(
+                                                                            pin.type,
+                                                                          ).withValues(
+                                                                            alpha:
+                                                                                0.6,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  child: Text(
+                                                                    pin.label,
+                                                                    overflow:
+                                                                        TextOverflow
+                                                                            .ellipsis,
+                                                                    style: Theme.of(
+                                                                      context,
+                                                                    ).textTheme.labelSmall,
                                                                   ),
                                                                 ),
-                                                                child: Text(
-                                                                  pin.label,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                  style: Theme.of(
-                                                                    context,
-                                                                  ).textTheme.labelSmall,
+                                                                Icon(
+                                                                  _pinIcon(
+                                                                    pin.type,
+                                                                  ),
+                                                                  color:
+                                                                      _pinColor(
+                                                                        pin.type,
+                                                                      ),
+                                                                  size: 18,
                                                                 ),
-                                                              ),
-                                                              Icon(
-                                                                _pinIcon(
-                                                                  pin.type,
-                                                                ),
-                                                                color:
-                                                                    _pinColor(
-                                                                      pin.type,
-                                                                    ),
-                                                                size: 18,
-                                                              ),
-                                                            ],
+                                                              ],
+                                                            ),
                                                           ),
                                                         ),
+                                                    ],
+                                                  ),
+                                                  RichAttributionWidget(
+                                                    attributions: [
+                                                      TextSourceAttribution(
+                                                        '© Mapbox',
                                                       ),
-                                                  ],
-                                                ),
-                                                RichAttributionWidget(
-                                                  attributions: [
-                                                    TextSourceAttribution(
-                                                      '© Mapbox',
-                                                    ),
-                                                    TextSourceAttribution(
-                                                      '© OpenStreetMap contributors',
-                                                    ),
-                                                  ],
-                                                ),
-                                                // Route polyline
-                                                if (_routePoints.isNotEmpty)
-                                                  PolylineLayer(
-                                                    polylines: [
-                                                      Polyline(
-                                                        points: _routePoints,
-                                                        color: const Color(
-                                                          0xFF3AA8FF,
-                                                        ),
-                                                        strokeWidth: 5,
-                                                        borderColor:
-                                                            const Color(
-                                                              0xFF0A3D6E,
-                                                            ),
-                                                        borderStrokeWidth: 2,
+                                                      TextSourceAttribution(
+                                                        '© OpenStreetMap contributors',
                                                       ),
                                                     ],
                                                   ),
-                                              ],
+                                                  // Route polyline
+                                                  if (_routePoints.isNotEmpty)
+                                                    PolylineLayer(
+                                                      polylines: [
+                                                        Polyline(
+                                                          points: _routePoints,
+                                                          color: const Color(
+                                                            0xFF3AA8FF,
+                                                          ),
+                                                          strokeWidth: 5,
+                                                          borderColor:
+                                                              const Color(
+                                                                0xFF0A3D6E,
+                                                              ),
+                                                          borderStrokeWidth: 2,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      // Horizon fade — covers top ~45%
-                                      Positioned(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: h * 0.45,
-                                        child: IgnorePointer(
-                                          child: AnimatedOpacity(
-                                            opacity: is3D ? 1.0 : 0.0,
-                                            duration: const Duration(
-                                              milliseconds: 300,
-                                            ),
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                  colors: [
-                                                    const Color(
-                                                      0xFF0A1628,
-                                                    ).withValues(alpha: 0.98),
-                                                    Colors.transparent,
-                                                  ],
+                                        // Horizon fade — covers top ~45%
+                                        Positioned(
+                                          top: 0,
+                                          left: 0,
+                                          right: 0,
+                                          height: h * 0.45,
+                                          child: IgnorePointer(
+                                            child: AnimatedOpacity(
+                                              opacity: is3D ? 1.0 : 0.0,
+                                              duration: const Duration(
+                                                milliseconds: 300,
+                                              ),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: [
+                                                      const Color(
+                                                        0xFF0A1628,
+                                                      ).withValues(alpha: 0.98),
+                                                      Colors.transparent,
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  );
-                                },
+                                      ],
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
                             ),
                           ),
-                          // Hint overlay
+                          // Address search bar (replaces hint overlay)
                           Positioned(
-                            left: 24,
-                            top: 24,
-                            right: 80,
-                            child: IgnorePointer(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF0A1628,
-                                  ).withValues(alpha: 0.72),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  l10n.convoyMapHint,
-                                  style: const TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 11,
+                            left: 16,
+                            top: 16,
+                            right: 72,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  height: 44,
+                                  child: TextField(
+                                    controller: _addressSearchController,
+                                    focusNode: _searchFocus,
+                                    textInputAction: TextInputAction.search,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                    onChanged: _onSearchChanged,
+                                    onSubmitted: (q) {
+                                      setState(
+                                        () => _showSuggestions = false,
+                                      );
+                                      _searchAddress(q);
+                                    },
+                                    decoration: InputDecoration(
+                                      hintText: l10n.mapAddressFieldHint,
+                                      hintStyle: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 13,
+                                      ),
+                                      filled: true,
+                                      fillColor: const Color(0xDD071739),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 0,
+                                          ),
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        color: Colors.white54,
+                                        size: 20,
+                                      ),
+                                      suffixIcon:
+                                          _addressSearchController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? IconButton(
+                                                  icon: const Icon(
+                                                    Icons.close,
+                                                    size: 18,
+                                                    color: Colors.white54,
+                                                  ),
+                                                  onPressed: () {
+                                                    _addressSearchController
+                                                        .clear();
+                                                    setState(() {
+                                                      _suggestions = [];
+                                                      _showSuggestions =
+                                                          false;
+                                                    });
+                                                  },
+                                                )
+                                              : null,
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: Color(0x553AA8FF),
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: Color(0x553AA8FF),
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFF3AA8FF),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                if (_showSuggestions &&
+                                    _suggestions.isNotEmpty)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xF0071739),
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0x553AA8FF),
+                                      ),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(10),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: _suggestions.map((s) {
+                                          final parts = (s['display_name']
+                                                      as String? ??
+                                                  '')
+                                              .split(',');
+                                          final title =
+                                              parts.first.trim();
+                                          final subtitle = parts
+                                              .skip(1)
+                                              .take(3)
+                                              .map((e) => e.trim())
+                                              .join(', ');
+                                          return InkWell(
+                                            onTap: () =>
+                                                _selectSuggestion(s),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 9,
+                                                  ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.location_on,
+                                                    size: 16,
+                                                    color: Colors.white54,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          title,
+                                                          style: const TextStyle(
+                                                            color:
+                                                                Colors.white,
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow:
+                                                              TextOverflow
+                                                                  .ellipsis,
+                                                        ),
+                                                        if (subtitle
+                                                            .isNotEmpty)
+                                                          Text(
+                                                            subtitle,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white38,
+                                                                  fontSize:
+                                                                      11,
+                                                                ),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                          ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                           // Proximity alert banner
