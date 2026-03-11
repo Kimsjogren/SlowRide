@@ -730,6 +730,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final h = constraints.maxHeight;
+                                  final w = constraints.maxWidth;
                                   final is3D =
                                       _isFollowingMyPosition && _use3DMap;
                                   final matrix = is3D
@@ -738,7 +739,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                           ..rotateX(0.65))
                                       : Matrix4.identity();
                                   return Stack(
+                                    clipBehavior: Clip.hardEdge,
                                     children: [
+                                      // Dark fill — prevent white bleed
+                                      // behind the 3D-tilted map.
+                                      const Positioned.fill(
+                                        child: ColoredBox(
+                                          color: Color(0xFF0A1628),
+                                        ),
+                                      ),
                                       Positioned(
                                         bottom: 0,
                                         left: 0,
@@ -747,7 +756,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                         child: Transform(
                                           alignment: Alignment.bottomCenter,
                                           transform: matrix,
-                                          child: FlutterMap(
+                                          child: SizedBox(
+                                            width: w,
+                                            height: h,
+                                            child: FlutterMap(
                                             options: MapOptions(
                                               initialCenter: center,
                                               initialZoom: _followZoom,
@@ -903,20 +915,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                           ),
                                         ),
                                       ),
-                                      if (is3D)
-                                        Positioned(
-                                          top: 0,
-                                          left: 0,
-                                          right: 0,
-                                          height: h * 0.30,
-                                          child: IgnorePointer(
-                                            child: const DecoratedBox(
+                                      ),
+                                      // Horizon fade — covers top ~45%
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: h * 0.45,
+                                        child: IgnorePointer(
+                                          child: AnimatedOpacity(
+                                            opacity: is3D ? 1.0 : 0.0,
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            child: Container(
                                               decoration: BoxDecoration(
                                                 gradient: LinearGradient(
                                                   begin: Alignment.topCenter,
                                                   end: Alignment.bottomCenter,
                                                   colors: [
-                                                    Color(0xFF050E1F),
+                                                    const Color(
+                                                      0xFF0A1628,
+                                                    ).withValues(alpha: 0.98),
                                                     Colors.transparent,
                                                   ],
                                                 ),
@@ -924,6 +944,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                             ),
                                           ),
                                         ),
+                                      ),
                                     ],
                                   );
                                 },
@@ -1566,22 +1587,21 @@ class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF071739),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        border: Border(top: BorderSide(color: Color(0x443AA8FF), width: 1)),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF071739),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(top: BorderSide(color: Color(0x443AA8FF), width: 1)),
+        ),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottom + 16),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
           Center(
             child: Container(
               width: 40,
@@ -1683,6 +1703,8 @@ class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
             },
           ),
         ],
+          ),
+        ),
       ),
     );
   }
