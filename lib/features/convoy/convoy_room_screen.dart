@@ -686,9 +686,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                 children: [
                                   TileLayer(
                                     urlTemplate:
-                                        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+                                        'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
+                                    additionalOptions: const {
+                                      'mapbox_token':
+                                          'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
+                                    },
                                     userAgentPackageName:
                                         'com.kimtechtool.slowride',
+                                    tileDimension: 512,
+                                    zoomOffset: -1,
                                   ),
                                   MarkerLayer(
                                     markers: [
@@ -750,6 +756,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen> {
                                   ),
                                   RichAttributionWidget(
                                     attributions: [
+                                      TextSourceAttribution('© Mapbox'),
                                       TextSourceAttribution(
                                         '© OpenStreetMap contributors',
                                       ),
