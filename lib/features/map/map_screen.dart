@@ -677,8 +677,9 @@ class _MapScreenState extends State<MapScreen> {
                     followUser: _isNavigating && _isFollowing,
                     heading: _headingDegrees,
                     use3D: _use3DMap,
-                    distToManeuver:
-                        _isNavigating ? _distToNextManeuver : double.infinity,
+                    distToManeuver: _isNavigating
+                        ? _distToNextManeuver
+                        : double.infinity,
                     onUserPanned: _isNavigating
                         ? () => setState(() => _isFollowing = false)
                         : null,
@@ -997,118 +998,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
-
-            // Speed badge — bottom-left during navigation.
-            Positioned(
-              bottom: 130,
-              left: 16,
-              child: ValueListenableBuilder<SpeedUnit>(
-                valueListenable: preferences.speedUnit,
-                builder: (context, speedUnit, _) {
-                  return ValueListenableBuilder<double>(
-                    valueListenable: preferences.maxSpeedKmh,
-                    builder: (context, maxSpeedKmh, _) {
-                      final speedDisplay = preferences.toDisplaySpeed(
-                        speedKmh: _speedKmh,
-                        unit: speedUnit,
-                      );
-                      final over = _speedKmh > maxSpeedKmh;
-                      return Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: over
-                              ? Colors.red.shade700
-                              : const Color(0xEE0A1F63),
-                          border: Border.all(
-                            color: over
-                                ? Colors.red.shade300
-                                : const Color(0xFF3AA8FF),
-                            width: 2.5,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black54,
-                              blurRadius: 10,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              speedDisplay.toStringAsFixed(0),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                height: 1,
-                              ),
-                            ),
-                            Text(
-                              speedUnit == SpeedUnit.kmh ? 'km/h' : 'mph',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
           ],
-
-          // 3D / 2D toggle — bottom-right during navigation.
-          if (_isNavigating)
-            Positioned(
-              bottom: 130,
-              right: 16,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _use3DMap = !_use3DMap);
-                  UserPreferencesService.instance.use3DMap.value = _use3DMap;
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xEE0A1F63),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _use3DMap
-                          ? const Color(0xFF3AA8FF)
-                          : Colors.white30,
-                      width: 1.5,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black45,
-                        blurRadius: 8,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    _use3DMap ? '3D' : '2D',
-                    style: TextStyle(
-                      color: _use3DMap
-                          ? const Color(0xFF3AA8FF)
-                          : Colors.white60,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
 
           // Report alert button — always top-right.
           Positioned(
@@ -1147,7 +1037,7 @@ class _MapScreenState extends State<MapScreen> {
           if (_isNavigating && !_isFollowing)
             Positioned(
               right: 20,
-              bottom: 205,
+              bottom: 196,
               child: GestureDetector(
                 onTap: () {
                   setState(() => _isFollowing = true);
@@ -1178,120 +1068,244 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          // ── Unified bottom nav panel ────────────────────────────────────
           Positioned(
-            left: 20,
-            right: 20,
+            left: 16,
+            right: 16,
             bottom: 22,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xCC071739),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0x553AA8FF)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      if (_isRouting)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      if (_isRouting) const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _routingStatus,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Live ETA row — visible during active navigation.
-                  if (_isNavigating)
-                    Builder(
-                      builder: (_) {
-                        final eta = _formatEta();
-                        if (eta.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.access_time_rounded,
-                                size: 14,
-                                color: Color(0xFF3AA8FF),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                eta,
-                                style: const TextStyle(
-                                  color: Color(0xFF3AA8FF),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  if (_routePoints.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _isNavigating
-                              ? _NavButton(
-                                  icon: Icons.stop_circle_outlined,
-                                  label: l10n.mapEndNavigation,
-                                  color: const Color(0xFFD32F2F),
-                                  onTap: _clearRoute,
-                                )
-                              : _NavButton(
-                                  icon: Icons.navigation_rounded,
-                                  label: l10n.mapStartNavigation,
-                                  color: const Color(0xFF0A7E3F),
-                                  onTap: () {
-                                    final vehicleType = UserPreferencesService
-                                        .instance
-                                        .vehicleType
-                                        .value;
-                                    SlowRoadService.instance.startSession(
-                                      vehicleType,
-                                    );
-                                    setState(() {
-                                      _isNavigating = true;
-                                      _isFollowing = true;
-                                      _tripStartTime = DateTime.now();
-                                      _tripDistanceM = 0;
-                                      _lastNavPos = _currentLocation;
-                                    });
-                                  },
-                                ),
-                        ),
-                        if (!_isNavigating) ...[
-                          const SizedBox(width: 8),
-                          _IconNavButton(
-                            icon: Icons.close_rounded,
-                            onTap: _clearRoute,
+            child: ValueListenableBuilder<SpeedUnit>(
+              valueListenable: preferences.speedUnit,
+              builder: (context, speedUnit, _) {
+                return ValueListenableBuilder<double>(
+                  valueListenable: preferences.maxSpeedKmh,
+                  builder: (context, maxSpeedKmh, _) {
+                    final over = _speedKmh > maxSpeedKmh;
+                    final speedDisplay = preferences.toDisplaySpeed(
+                      speedKmh: _speedKmh,
+                      unit: speedUnit,
+                    );
+                    final eta = _isNavigating ? _formatEta() : '';
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xF0071428),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0x553AA8FF)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black54,
+                            blurRadius: 14,
+                            offset: Offset(0, 4),
                           ),
                         ],
-                      ],
-                    ),
-                  ],
-                ],
-              ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                // Speed circle
+                                if (_isNavigating)
+                                  Container(
+                                    width: 68,
+                                    height: 68,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: over
+                                          ? Colors.red.shade800
+                                              .withValues(alpha: 0.9)
+                                          : const Color(0xFF091428),
+                                      border: Border.all(
+                                        color: over
+                                            ? Colors.red.shade300
+                                            : const Color(0xFF3AA8FF),
+                                        width: 2.5,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          speedDisplay.toStringAsFixed(0),
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            height: 1.0,
+                                          ),
+                                        ),
+                                        Text(
+                                          speedUnit == SpeedUnit.kmh
+                                              ? 'km/h'
+                                              : 'mph',
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                // Route status + ETA
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          if (_isRouting)
+                                            const Padding(
+                                              padding: EdgeInsets.only(
+                                                right: 6,
+                                              ),
+                                              child: SizedBox(
+                                                width: 12,
+                                                height: 12,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.white70,
+                                                    ),
+                                              ),
+                                            ),
+                                          Expanded(
+                                            child: Text(
+                                              _routingStatus,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (eta.isNotEmpty) ...[
+                                        const SizedBox(height: 5),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.access_time_rounded,
+                                              size: 13,
+                                              color: Color(0xFF3AA8FF),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              eta,
+                                              style: const TextStyle(
+                                                color: Color(0xFF3AA8FF),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                // 3D / 2D toggle
+                                if (_isNavigating) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() => _use3DMap = !_use3DMap);
+                                      UserPreferencesService
+                                              .instance
+                                              .use3DMap
+                                              .value =
+                                          _use3DMap;
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 11,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF091428),
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: _use3DMap
+                                              ? const Color(0xFF3AA8FF)
+                                              : Colors.white30,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _use3DMap ? '3D' : '2D',
+                                        style: TextStyle(
+                                          color: _use3DMap
+                                              ? const Color(0xFF3AA8FF)
+                                              : Colors.white60,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          // Action button row
+                          if (_routePoints.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _isNavigating
+                                        ? _NavButton(
+                                            icon: Icons.stop_circle_outlined,
+                                            label: l10n.mapEndNavigation,
+                                            color: const Color(0xFFD32F2F),
+                                            onTap: _clearRoute,
+                                          )
+                                        : _NavButton(
+                                            icon: Icons.navigation_rounded,
+                                            label: l10n.mapStartNavigation,
+                                            color: const Color(0xFF0A7E3F),
+                                            onTap: () {
+                                              final vehicleType =
+                                                  UserPreferencesService
+                                                      .instance
+                                                      .vehicleType
+                                                      .value;
+                                              SlowRoadService.instance
+                                                  .startSession(vehicleType);
+                                              setState(() {
+                                                _isNavigating = true;
+                                                _isFollowing = true;
+                                                _tripStartTime = DateTime.now();
+                                                _tripDistanceM = 0;
+                                                _lastNavPos = _currentLocation;
+                                              });
+                                            },
+                                          ),
+                                  ),
+                                  if (!_isNavigating) ...[
+                                    const SizedBox(width: 8),
+                                    _IconNavButton(
+                                      icon: Icons.close_rounded,
+                                      onTap: _clearRoute,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
