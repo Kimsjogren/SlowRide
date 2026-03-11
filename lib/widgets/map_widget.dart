@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/models/alert_model.dart';
 
 class MapWidget extends StatefulWidget {
   const MapWidget({
@@ -12,6 +13,7 @@ class MapWidget extends StatefulWidget {
     this.currentLocation,
     this.destination,
     this.routePoints = const [],
+    this.alerts = const [],
     this.onTap,
     this.followUser = false,
     this.onUserPanned,
@@ -22,6 +24,7 @@ class MapWidget extends StatefulWidget {
   final LatLng? currentLocation;
   final LatLng? destination;
   final List<LatLng> routePoints;
+  final List<AlertModel> alerts;
   final ValueChanged<LatLng>? onTap;
   final bool followUser;
 
@@ -239,6 +242,15 @@ class _MapWidgetState extends State<MapWidget>
               ],
               MarkerLayer(
                 markers: [
+                  // Alert markers — community reports.
+                  for (final alert in widget.alerts)
+                    Marker(
+                      point: alert.position,
+                      width: 44,
+                      height: 52,
+                      alignment: const Alignment(0, -1),
+                      child: _AlertMarker(alert: alert),
+                    ),
                   if (widget.destination != null)
                     Marker(
                       point: widget.destination!,
@@ -309,6 +321,79 @@ class _MapWidgetState extends State<MapWidget>
       ),
     );
   }
+}
+
+// ─── Alert marker ────────────────────────────────────────────────────────────
+
+class _AlertMarker extends StatelessWidget {
+  const _AlertMarker({required this.alert});
+  final AlertModel alert;
+
+  Color _bgColor(AlertType t) => switch (t) {
+    AlertType.police => const Color(0xFF1565C0),
+    AlertType.roadwork => const Color(0xFFE65100),
+    AlertType.accident => const Color(0xFFC62828),
+    AlertType.trafficJam => const Color(0xFFF57F17),
+    AlertType.speedCamera => const Color(0xFF6A1B9A),
+    AlertType.narrowRoad => const Color(0xFF00695C),
+    AlertType.steepHill => const Color(0xFF37474F),
+    _ => const Color(0xFF4A148C),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _bgColor(alert.type);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.6),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(alert.type.emoji, style: const TextStyle(fontSize: 20)),
+          ),
+        ),
+        // Small triangle tail.
+        CustomPaint(
+          size: const Size(10, 8),
+          painter: _AlertTailPainter(color: color),
+        ),
+      ],
+    );
+  }
+}
+
+class _AlertTailPainter extends CustomPainter {
+  const _AlertTailPainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_AlertTailPainter old) => old.color != color;
 }
 
 // ─── Premium marker widgets ──────────────────────────────────────────────────

@@ -21,9 +21,25 @@ class AppTheme {
         centerTitle: true,
         backgroundColor: Color(0x990A1F7A),
       ),
-      navigationBarTheme: const NavigationBarThemeData(
-        backgroundColor: Color(0x990A1F7A),
-        indicatorColor: Color(0x5537C871),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: const Color(0xF2071328),
+        indicatorColor: const Color(0x441E6BFF),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: Color(0xFF3AA8FF), size: 24);
+          }
+          return const IconThemeData(color: Color(0x99FFFFFF), size: 24);
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              color: Color(0xFF3AA8FF),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return const TextStyle(color: Color(0x99FFFFFF), fontSize: 12);
+        }),
       ),
       cardTheme: const CardThemeData(
         margin: EdgeInsets.zero,

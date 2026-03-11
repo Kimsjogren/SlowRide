@@ -12,6 +12,8 @@ import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/features/alerts/alerts_controller.dart';
+import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/speedometer_widget.dart';
 
@@ -63,6 +65,13 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _lastNavPos;
   double _tripDistanceM = 0;
 
+  // ── Community alerts ──────────────────────────────────────────
+  final AlertsController _alertsController = AlertsController();
+  List<AlertModel> _alerts = const [];
+  Timer? _alertsTimer;
+  // Nearest alert within 400 m while navigating (for proximity warning).
+  AlertModel? _nearbyAlert;
+
   bool _localizedDefaultsSet = false;
   @override
   void didChangeDependencies() {
@@ -91,6 +100,13 @@ class _MapScreenState extends State<MapScreen> {
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Lazy-load prefs for speed calibration (fire-and-forget).
     SpeedCalibrationService.instance.initialize();
+    // Start community alerts polling (immediate + every 30 s).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadAlerts();
+    });
+    _alertsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _loadAlerts();
+    });
   }
 
   void _onExternalNavigationRequest() {
@@ -99,6 +115,30 @@ class _MapScreenState extends State<MapScreen> {
       NavigationRequestService.instance.consume();
       _handleMapTap(dest);
     }
+  }
+
+  Future<void> _loadAlerts() async {
+    final center = _currentLocation ?? const LatLng(59.3293, 18.0686);
+    try {
+      final result = await _alertsController.fetchNearby(center);
+      if (!mounted) return;
+      setState(() => _alerts = result);
+    } catch (_) {}
+  }
+
+  Future<void> _showReportAlertSheet() async {
+    final pos = _currentLocation;
+    if (pos == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _InlineReportSheet(
+        position: pos,
+        controller: _alertsController,
+        onSubmitted: _loadAlerts,
+      ),
+    );
   }
 
   Future<void> _startLocationTracking() async {
@@ -230,6 +270,18 @@ class _MapScreenState extends State<MapScreen> {
               if (newText != null) _nextManeuverText = newText;
               if (newDist != null) _distToNextManeuver = newDist;
               if (newRemaining != null) _remainingDistM = newRemaining;
+              // Proximity check: find any alert within 400 m.
+              _nearbyAlert = _alerts
+                  .where((a) => a.distanceTo(currentPos) <= 400)
+                  .fold<AlertModel?>(
+                    null,
+                    (best, a) =>
+                        best == null ||
+                            a.distanceTo(currentPos) <
+                                best.distanceTo(currentPos)
+                        ? a
+                        : best,
+                  );
             });
             // If this is the first GPS fix and a destination was already set
             // (e.g. from a convoy pin tap before GPS was ready), start routing.
@@ -258,6 +310,7 @@ class _MapScreenState extends State<MapScreen> {
     _addressController.dispose();
     _searchFocus.dispose();
     _debounce?.cancel();
+    _alertsTimer?.cancel();
     _positionSubscription?.cancel();
     super.dispose();
   }
@@ -586,6 +639,7 @@ class _MapScreenState extends State<MapScreen> {
       _tripStartTime = null;
       _tripDistanceM = 0;
       _lastNavPos = null;
+      _nearbyAlert = null;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
   }
@@ -617,6 +671,7 @@ class _MapScreenState extends State<MapScreen> {
                   currentLocation: _currentLocation,
                   destination: _destination,
                   routePoints: _routePoints,
+                  alerts: _alerts,
                   onTap: _isNavigating ? null : _handleMapTap,
                   followUser: _isNavigating && _isFollowing,
                   heading: _headingDegrees,
@@ -878,6 +933,52 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
 
+            // Proximity alert banner — shown when a nearby alert is within 400 m.
+            if (_nearbyAlert != null && _currentLocation != null)
+              Positioned(
+                top: _nextManeuverText.isNotEmpty ? 130 : 50,
+                left: 0,
+                right: 0,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xEEF57F17),
+                      border: Border(
+                        bottom: BorderSide(color: Color(0x66FFCC02), width: 1),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          _nearbyAlert!.type.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${_nearbyAlert!.type.label} · '
+                            '${_nearbyAlert!.distanceTo(_currentLocation!).round()} m bort',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() => _nearbyAlert = null),
+                          child: const Icon(Icons.close,
+                              color: Colors.white70, size: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             // Speed badge — bottom-left during navigation.
             Positioned(
               bottom: 130,
@@ -989,6 +1090,40 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+
+          // Report alert button — always visible top-right (bottom-right during nav).
+          Positioned(
+            right: 16,
+            top: _isNavigating ? null : 56,
+            bottom: _isNavigating ? 205 : null,
+            child: GestureDetector(
+              onTap: _showReportAlertSheet,
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xEE0A1F63),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0x883AA8FF),
+                    width: 1.5,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black45,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFF57F17),
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
 
           // Re-center button — appears when user pans away during navigation.
           if (_isNavigating && !_isFollowing)
@@ -1222,6 +1357,167 @@ class _IconNavButton extends StatelessWidget {
           border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: Icon(icon, color: Colors.white60, size: 20),
+      ),
+    );
+  }
+}
+
+// ── Inline report-alert bottom sheet ─────────────────────────────────────────
+
+class _InlineReportSheet extends StatefulWidget {
+  const _InlineReportSheet({
+    required this.position,
+    required this.controller,
+    required this.onSubmitted,
+  });
+
+  final LatLng position;
+  final AlertsController controller;
+  final VoidCallback onSubmitted;
+
+  @override
+  State<_InlineReportSheet> createState() => _InlineReportSheetState();
+}
+
+class _InlineReportSheetState extends State<_InlineReportSheet> {
+  AlertType? _selected;
+  final _descController = TextEditingController();
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_selected == null) return;
+    setState(() => _submitting = true);
+    await widget.controller.submit(
+      type: _selected!,
+      position: widget.position,
+      description: _descController.text.trim(),
+    );
+    widget.onSubmitted();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF071739),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(color: Color(0x443AA8FF), width: 1),
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(
+          16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const Text(
+            'Rapportera larm',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: AlertType.values.map((t) {
+              final sel = _selected == t;
+              return GestureDetector(
+                onTap: () => setState(() => _selected = t),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: sel
+                        ? const Color(0xFF1E6BFF)
+                        : const Color(0xFF0A1A46),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: sel
+                          ? const Color(0xFF3AA8FF)
+                          : Colors.white24,
+                    ),
+                  ),
+                  child: Text(
+                    '${t.emoji}  ${t.label}',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _descController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Beskrivning (valfritt)',
+              hintStyle: const TextStyle(color: Colors.white38),
+              filled: true,
+              fillColor: const Color(0xFF0A1A46),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_selected == null || _submitting) ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E6BFF),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _submitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Skicka larm',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
