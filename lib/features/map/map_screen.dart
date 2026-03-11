@@ -677,6 +677,8 @@ class _MapScreenState extends State<MapScreen> {
                     followUser: _isNavigating && _isFollowing,
                     heading: _headingDegrees,
                     use3D: _use3DMap,
+                    distToManeuver:
+                        _isNavigating ? _distToNextManeuver : double.infinity,
                     onUserPanned: _isNavigating
                         ? () => setState(() => _isFollowing = false)
                         : null,
@@ -1108,11 +1110,10 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
 
-          // Report alert button — always visible top-right (bottom-right during nav).
+          // Report alert button — always top-right.
           Positioned(
             right: 16,
-            top: _isNavigating ? null : 56,
-            bottom: _isNavigating ? 205 : null,
+            top: 90,
             child: GestureDetector(
               onTap: _showReportAlertSheet,
               child: Container(

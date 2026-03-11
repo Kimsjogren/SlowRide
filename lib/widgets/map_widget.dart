@@ -19,6 +19,7 @@ class MapWidget extends StatefulWidget {
     this.onUserPanned,
     this.heading = 0,
     this.use3D = true,
+    this.distToManeuver = double.infinity,
   });
 
   final LatLng? currentLocation;
@@ -39,6 +40,11 @@ class MapWidget extends StatefulWidget {
   /// perspective tilt. When false the map stays flat (2-D top-down).
   final bool use3D;
 
+  /// Distance in metres to the next maneuver. Used for Waze-style dynamic
+  /// zoom: the camera zooms in smoothly as the turn approaches.
+  /// Defaults to [double.infinity] (= no dynamic zoom).
+  final double distToManeuver;
+
   static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
 
   @override
@@ -54,6 +60,18 @@ class _MapWidgetState extends State<MapWidget>
   double _curLat = 0, _curLng = 0, _curHdg = 0;
   double _tgtLat = 0, _tgtLng = 0, _tgtHdg = 0;
   bool _navInitialized = false;
+
+  // ── Waze-style dynamic zoom ───────────────────────────────────────────────
+  /// Returns the target zoom level based on distance to the next maneuver.
+  double _targetZoom() {
+    final base = widget.use3D ? 18.5 : 16.0;
+    final d = widget.distToManeuver;
+    if (d <= 0 || d > 300) return base;
+    if (d < 50)  return base + 2.0;   // very close: +2
+    if (d < 100) return base + 1.5;   // close:      +1.5
+    if (d < 200) return base + 0.8;   // approaching: +0.8
+    return base + 0.4;                // 200–300 m:  +0.4
+  }
 
   @override
   void initState() {
@@ -79,7 +97,7 @@ class _MapWidgetState extends State<MapWidget>
     _curLat += dLat * kPos;
     _curLng += dLng * kPos;
     _curHdg = (_curHdg + diff * kHdg + 360) % 360;
-    final zoom = widget.use3D ? 18.5 : 16.0;
+    final zoom = _targetZoom();
 
     if (widget.use3D) {
       // In 3D mode shift the camera centre toward the heading so the user
@@ -114,7 +132,7 @@ class _MapWidgetState extends State<MapWidget>
       _curLng = _tgtLng = widget.currentLocation!.longitude;
       _curHdg = _tgtHdg = widget.heading;
       _navInitialized = true;
-      final zoom = widget.use3D ? 18.5 : 16.0;
+      final zoom = _targetZoom();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _mapController.moveAndRotate(
