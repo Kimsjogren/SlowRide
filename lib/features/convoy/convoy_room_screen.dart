@@ -70,6 +70,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   LatLng? _pendingDestination; // set before GPS is ready
   bool _isRouting = false;
   String _routingStatus = '';
+  List<RouteInstruction> _routeInstructions = const [];
+  double _distToNextManeuver = double.infinity;
 
   static const List<Color> _avatarPalette = [
     Color(0xFF1E6BFF),
@@ -165,9 +167,36 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           final hadLocation = _myLocation != null;
 
           if (mounted) {
+            // Compute distance to next maneuver for Waze-style zoom.
+            double newDistToManeuver = double.infinity;
+            if (_routePoints.isNotEmpty && _routeInstructions.isNotEmpty) {
+              final nearestIdx = _nearestRoutePointIndex(point);
+              int instrIdx = 0;
+              for (int i = 0; i < _routeInstructions.length - 1; i++) {
+                if (_routeInstructions[i + 1].pointIndex > nearestIdx) {
+                  instrIdx = i;
+                  break;
+                }
+                instrIdx = i + 1;
+              }
+              final nextIdx = instrIdx + 1;
+              if (nextIdx < _routeInstructions.length) {
+                final next = _routeInstructions[nextIdx];
+                double dist = 0;
+                for (
+                  int i = nearestIdx;
+                  i < next.pointIndex && i < _routePoints.length - 1;
+                  i++
+                ) {
+                  dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+                }
+                newDistToManeuver = dist;
+              }
+            }
             setState(() {
               _myLocation = point;
               _myHeading = heading;
+              _distToNextManeuver = newDistToManeuver;
               // Proximity check: find any alert within 400 m.
               _nearbyAlert = _alerts
                   .where((a) => a.distanceTo(point) <= 400)
@@ -190,7 +219,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 _curLng = _tgtLng = point.longitude;
                 _curHdg = _tgtHdg = heading;
                 _camInitialized = true;
-                final zoom = _use3DMap ? 18.5 : _followZoom;
+                final zoom = _targetZoom();
                 _mapController.moveAndRotate(
                   point,
                   zoom,
@@ -249,6 +278,45 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _messageController.clear();
   }
 
+  // ── Waze-style dynamic zoom ────────────────────────────────────────────
+  double _targetZoom() {
+    final base = _use3DMap ? 18.5 : _followZoom;
+    final d = _distToNextManeuver;
+    if (d <= 0 || d > 300) return base;
+    if (d < 50) return base + 2.0;
+    if (d < 100) return base + 1.5;
+    if (d < 200) return base + 0.8;
+    return base + 0.4;
+  }
+
+  int _nearestRoutePointIndex(LatLng pos) {
+    if (_routePoints.isEmpty) return 0;
+    int best = 0;
+    double bestDist = double.infinity;
+    for (int i = 0; i < _routePoints.length; i++) {
+      final d = _segDist(pos, _routePoints[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  double _segDist(LatLng a, LatLng b) {
+    const r = 6371000.0;
+    final dLat = (b.latitude - a.latitude) * math.pi / 180;
+    final dLng = (b.longitude - a.longitude) * math.pi / 180;
+    final sinLat = math.sin(dLat / 2);
+    final sinLng = math.sin(dLng / 2);
+    final x = sinLat * sinLat +
+        math.cos(a.latitude * math.pi / 180) *
+            math.cos(b.latitude * math.pi / 180) *
+            sinLng *
+            sinLng;
+    return 2 * r * math.asin(math.sqrt(x));
+  }
+
   void _onCamTick(Duration _) {
     if (!_isFollowingMyPosition || !_camInitialized) return;
     const kPos = 0.25;
@@ -261,7 +329,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _curLat += dLat * kPos;
     _curLng += dLng * kPos;
     _curHdg = (_curHdg + diff * kHdg + 360) % 360;
-    final zoom = _use3DMap ? 18.5 : _followZoom;
+    final zoom = _targetZoom();
     if (_use3DMap) {
       const offsetDeg = 0.00045;
       final rad = _curHdg * math.pi / 180.0;
@@ -531,6 +599,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final minutes = (route.durationSeconds / 60).round();
       setState(() {
         _routePoints = route.points;
+        _routeInstructions = route.instructions;
+        _distToNextManeuver = double.infinity;
         _routingStatus = AppLocalizations.of(
           context,
         )!.mapRouteReady(km.toStringAsFixed(1), minutes.toString());
@@ -580,6 +650,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _routeDestination = null;
       _pendingDestination = null;
       _routingStatus = '';
+      _routeInstructions = const [];
+      _distToNextManeuver = double.infinity;
     });
   }
 
@@ -1136,9 +1208,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     ),
                                     onChanged: _onSearchChanged,
                                     onSubmitted: (q) {
-                                      setState(
-                                        () => _showSuggestions = false,
-                                      );
+                                      setState(() => _showSuggestions = false);
                                       _searchAddress(q);
                                     },
                                     decoration: InputDecoration(
@@ -1161,42 +1231,38 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ),
                                       suffixIcon:
                                           _addressSearchController
-                                                  .text
-                                                  .isNotEmpty
-                                              ? IconButton(
-                                                  icon: const Icon(
-                                                    Icons.close,
-                                                    size: 18,
-                                                    color: Colors.white54,
-                                                  ),
-                                                  onPressed: () {
-                                                    _addressSearchController
-                                                        .clear();
-                                                    setState(() {
-                                                      _suggestions = [];
-                                                      _showSuggestions =
-                                                          false;
-                                                    });
-                                                  },
-                                                )
-                                              : null,
+                                              .text
+                                              .isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.close,
+                                                size: 18,
+                                                color: Colors.white54,
+                                              ),
+                                              onPressed: () {
+                                                _addressSearchController
+                                                    .clear();
+                                                setState(() {
+                                                  _suggestions = [];
+                                                  _showSuggestions = false;
+                                                });
+                                              },
+                                            )
+                                          : null,
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                         borderSide: const BorderSide(
                                           color: Color(0x553AA8FF),
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                         borderSide: const BorderSide(
                                           color: Color(0x553AA8FF),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                         borderSide: const BorderSide(
                                           color: Color(0xFF3AA8FF),
                                         ),
@@ -1204,38 +1270,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     ),
                                   ),
                                 ),
-                                if (_showSuggestions &&
-                                    _suggestions.isNotEmpty)
+                                if (_showSuggestions && _suggestions.isNotEmpty)
                                   Container(
                                     margin: const EdgeInsets.only(top: 2),
                                     decoration: BoxDecoration(
                                       color: const Color(0xF0071739),
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
                                         color: const Color(0x553AA8FF),
                                       ),
                                     ),
                                     child: ClipRRect(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(10),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: _suggestions.map((s) {
-                                          final parts = (s['display_name']
-                                                      as String? ??
-                                                  '')
-                                              .split(',');
-                                          final title =
-                                              parts.first.trim();
+                                          final parts =
+                                              (s['display_name'] as String? ??
+                                                      '')
+                                                  .split(',');
+                                          final title = parts.first.trim();
                                           final subtitle = parts
                                               .skip(1)
                                               .take(3)
                                               .map((e) => e.trim())
                                               .join(', ');
                                           return InkWell(
-                                            onTap: () =>
-                                                _selectSuggestion(s),
+                                            onTap: () => _selectSuggestion(s),
                                             child: Padding(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -1258,29 +1319,27 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       children: [
                                                         Text(
                                                           title,
-                                                          style: const TextStyle(
-                                                            color:
-                                                                Colors.white,
-                                                            fontSize: 13,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w500,
-                                                          ),
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 13,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
                                                           maxLines: 1,
-                                                          overflow:
-                                                              TextOverflow
-                                                                  .ellipsis,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                         ),
-                                                        if (subtitle
-                                                            .isNotEmpty)
+                                                        if (subtitle.isNotEmpty)
                                                           Text(
                                                             subtitle,
                                                             style:
                                                                 const TextStyle(
                                                                   color: Colors
                                                                       .white38,
-                                                                  fontSize:
-                                                                      11,
+                                                                  fontSize: 11,
                                                                 ),
                                                             maxLines: 1,
                                                             overflow:
@@ -1550,7 +1609,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     setState(
                                       () => _isFollowingMyPosition = true,
                                     );
-                                    final zoom = _use3DMap ? 18.5 : _followZoom;
+                                    final zoom = _targetZoom();
                                     _mapController.moveAndRotate(
                                       me,
                                       zoom,
