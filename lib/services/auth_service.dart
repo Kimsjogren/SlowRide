@@ -202,7 +202,7 @@ class AuthService {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _nameFromEmail(String? email) {
-    if (email == null || email.isEmpty) return 'SlowRider';
+    if (email == null || email.isEmpty) return 'CruizX-förare';
     final atIndex = email.indexOf('@');
     if (atIndex <= 0) return email;
     return email.substring(0, atIndex);

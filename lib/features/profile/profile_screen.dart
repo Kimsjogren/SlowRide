@@ -21,7 +21,7 @@ class ProfileScreen extends StatelessWidget {
             valueListenable: authService.userName,
             builder: (context, userName, _) {
               final email = authService.userEmail.value;
-              final displayName = userName ?? 'SlowRider';
+              final displayName = userName ?? 'CruizX-förare';
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(

@@ -98,7 +98,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'SlowRide'**
+  /// **'CruizX'**
   String get appTitle;
 
   /// No description provided for @navMap.
@@ -170,7 +170,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.0.0 | SlowRide by KimTechTool'**
+  /// **'v1.0.0 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @alertsTitle.
@@ -866,7 +866,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsScreenSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.'**
+  /// **'Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.'**
   String get alertsScreenSubtitle;
 
   /// No description provided for @alertReportButton.

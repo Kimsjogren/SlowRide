@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shared full-screen background with the SlowRide logo in the top-left corner.
+/// Shared full-screen background with the CruizX logo in the top-left corner.
 /// Use this to wrap the body of every screen (except the map).
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key, required this.child});

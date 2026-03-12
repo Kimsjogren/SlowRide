@@ -309,7 +309,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final dLng = (b.longitude - a.longitude) * math.pi / 180;
     final sinLat = math.sin(dLat / 2);
     final sinLng = math.sin(dLng / 2);
-    final x = sinLat * sinLat +
+    final x =
+        sinLat * sinLat +
         math.cos(a.latitude * math.pi / 180) *
             math.cos(b.latitude * math.pi / 180) *
             sinLng *
@@ -366,7 +367,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final response = await http.get(
         uri,
         headers: const {
-          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );
@@ -394,7 +395,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final response = await http.get(
         uri,
         headers: const {
-          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );

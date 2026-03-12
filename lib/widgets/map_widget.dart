@@ -67,10 +67,10 @@ class _MapWidgetState extends State<MapWidget>
     final base = widget.use3D ? 18.5 : 16.0;
     final d = widget.distToManeuver;
     if (d <= 0 || d > 300) return base;
-    if (d < 50)  return base + 2.0;   // very close: +2
-    if (d < 100) return base + 1.5;   // close:      +1.5
-    if (d < 200) return base + 0.8;   // approaching: +0.8
-    return base + 0.4;                // 200–300 m:  +0.4
+    if (d < 50) return base + 2.0; // very close: +2
+    if (d < 100) return base + 1.5; // close:      +1.5
+    if (d < 200) return base + 0.8; // approaching: +0.8
+    return base + 0.4; // 200–300 m:  +0.4
   }
 
   @override

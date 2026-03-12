@@ -1,6 +1,6 @@
 {
   "@@locale": "sv",
-  "appTitle": "SlowRide",
+  "appTitle": "CruizX",
   "navMap": "Karta",
   "navAlerts": "Varningar",
   "navConvoy": "Konvoj",
@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Laddar inställningar...",
   "splashFinalizingStartup": "Slutför uppstart...",
   "splashReady": "Klar",
-  "splashVersionLine": "v1.0.0 | SlowRide by KimTechTool",
+  "splashVersionLine": "v1.0.0 | CruizX by KimTechTool",
   "alertsTitle": "Community-varningar",
   "alertsSubtitle": "Rapportera och visa vägfaror, kontroller och vägstatus.",
   "convoyRequiresSignInTitle": "Konvoj kräver inloggning",
@@ -180,7 +180,7 @@
 
   "alertGpsUnavailable": "GPS inte tillg\u00e4ngligt \u00e4nnu",
   "alertMustBeLoggedIn": "Du m\u00e5ste vara inloggad f\u00f6r att rapportera",
-  "alertsScreenSubtitle": "Larm fr\u00e5n andra SlowRiders inom ~50 km. Klistra dig p\u00e5 tumsymboler f\u00f6r att bekr\u00e4fta ett larm.",
+  "alertsScreenSubtitle": "Larm fr\u00e5n andra CruizX-förare inom ~50 km. Klistra dig p\u00e5 tumsymboler f\u00f6r att bekr\u00e4fta ett larm.",
   "alertReportButton": "Rapportera",
   "alertTimeJustNow": "Just nu",
   "alertTimeMinutes": "{n} min sedan",

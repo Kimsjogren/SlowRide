@@ -13,11 +13,11 @@ import 'package:slowride/services/user_preferences_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const SlowRideApp());
+  runApp(const CruizXApp());
 }
 
-class SlowRideApp extends StatelessWidget {
-  const SlowRideApp({super.key});
+class CruizXApp extends StatelessWidget {
+  const CruizXApp({super.key});
 
   @override
   Widget build(BuildContext context) {

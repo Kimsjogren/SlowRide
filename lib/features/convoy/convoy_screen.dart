@@ -159,7 +159,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
     final l10n = AppLocalizations.of(context)!;
     final code = convoy.id.split('-').first.toUpperCase();
     Clipboard.setData(
-      ClipboardData(text: 'SlowRide konvoj: "${convoy.name}" (kod: $code)'),
+      ClipboardData(text: 'CruizX konvoj: "${convoy.name}" (kod: $code)'),
     );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

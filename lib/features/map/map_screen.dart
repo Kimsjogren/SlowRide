@@ -340,7 +340,7 @@ class _MapScreenState extends State<MapScreen> {
       final response = await http.get(
         uri,
         headers: const {
-          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );
@@ -391,7 +391,7 @@ class _MapScreenState extends State<MapScreen> {
       final response = await http.get(
         uri,
         headers: const {
-          'User-Agent': 'SlowRide/1.0 (address-search)',
+          'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );
@@ -1115,8 +1115,9 @@ class _MapScreenState extends State<MapScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: over
-                                          ? Colors.red.shade800
-                                              .withValues(alpha: 0.9)
+                                          ? Colors.red.shade800.withValues(
+                                              alpha: 0.9,
+                                            )
                                           : const Color(0xFF091428),
                                       border: Border.all(
                                         color: over

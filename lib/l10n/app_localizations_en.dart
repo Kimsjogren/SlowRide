@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'SlowRide';
+  String get appTitle => 'CruizX';
 
   @override
   String get navMap => 'Map';
@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.0.0 | SlowRide by KimTechTool';
+  String get splashVersionLine => 'v1.0.0 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Community Alerts';
@@ -411,7 +411,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertMustBeLoggedIn => 'You must be signed in to report';
 
   @override
-  String get alertsScreenSubtitle => 'Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.';
+  String get alertsScreenSubtitle => 'Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.';
 
   @override
   String get alertReportButton => 'Report';

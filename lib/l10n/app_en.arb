@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "SlowRide",
+  "appTitle": "CruizX",
   "navMap": "Map",
   "navAlerts": "Alerts",
   "navConvoy": "Convoy",
@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Loading preferences...",
   "splashFinalizingStartup": "Finalizing startup...",
   "splashReady": "Ready",
-  "splashVersionLine": "v1.0.0 | SlowRide by KimTechTool",
+  "splashVersionLine": "v1.0.0 | CruizX by KimTechTool",
   "alertsTitle": "Community Alerts",
   "alertsSubtitle": "Report and view road hazards, checks, and road conditions.",
   "convoyRequiresSignInTitle": "Convoy requires sign in",
@@ -180,7 +180,7 @@
 
   "alertGpsUnavailable": "GPS not available yet",
   "alertMustBeLoggedIn": "You must be signed in to report",
-  "alertsScreenSubtitle": "Alerts from other SlowRiders within ~50 km. Tap thumbs to confirm an alert.",
+  "alertsScreenSubtitle": "Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.",
   "alertReportButton": "Report",
   "alertTimeJustNow": "Just now",
   "alertTimeMinutes": "{n} min ago",

@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Gå med i SlowRide-gemenskapen',
+                  'Gå med i CruizX-gemenskapen',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 14,

@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Välkommen tillbaka till SlowRide',
+                  'Välkommen tillbaka till CruizX',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 14,
