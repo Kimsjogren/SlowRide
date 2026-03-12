@@ -63,6 +63,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isFollowingMyPosition = true;
   bool _use3DMap = true;
   String? _myUserId;
+  String _destinationLabel = '';
 
   // ── Inline routing state ────────────────────────────────────────────────
   List<LatLng> _routePoints = const [];
@@ -72,6 +73,16 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   String _routingStatus = '';
   List<RouteInstruction> _routeInstructions = const [];
   double _distToNextManeuver = double.infinity;
+
+  // ── Navigation mode state ──────────────────────────────────────────────────
+  bool _isNavigating = false;
+  int _nextManeuverSign = 0;
+  String _nextManeuverText = '';
+  List<double> _cumulativeDist = const [];
+  double _totalRouteDistM = 0;
+  double _remainingDistM = 0;
+  double _speedKmh = 0;
+  int _lastNearestIdx = 0;
 
   static const List<Color> _avatarPalette = [
     Color(0xFF1E6BFF),
@@ -161,16 +172,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             pauseLocationUpdatesAutomatically: false,
             showBackgroundLocationIndicator: true,
           ),
-        ).listen((position) async {
+        ).listen((position) {
           final point = LatLng(position.latitude, position.longitude);
-          final heading = position.heading >= 0 ? position.heading : _myHeading;
+          final rawSpeed = position.speed < 0 ? 0.0 : position.speed;
+          final newSpeed = rawSpeed * 3.6;
+          // Only take new heading when actually moving (avoids jitter at rest).
+          final newHeading = (position.speed > 0.5 && position.heading >= 0)
+              ? position.heading
+              : _myHeading;
           final hadLocation = _myLocation != null;
 
           if (mounted) {
-            // Compute distance to next maneuver for Waze-style zoom.
+            // Compute navigation state synchronously (before setState).
             double newDistToManeuver = double.infinity;
+            int? newSign;
+            String? newText;
+            double? newRemaining;
+
             if (_routePoints.isNotEmpty && _routeInstructions.isNotEmpty) {
               final nearestIdx = _nearestRoutePointIndex(point);
+
+              // Remaining distance via O(1) cumulative-dist lookup.
+              if (_isNavigating &&
+                  _cumulativeDist.length == _routePoints.length) {
+                newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx])
+                    .clamp(0.0, _totalRouteDistM);
+              }
+
               int instrIdx = 0;
               for (int i = 0; i < _routeInstructions.length - 1; i++) {
                 if (_routeInstructions[i + 1].pointIndex > nearestIdx) {
@@ -191,12 +219,22 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                   dist += _segDist(_routePoints[i], _routePoints[i + 1]);
                 }
                 newDistToManeuver = dist;
+                newSign = next.sign;
+                newText = next.text;
+              } else {
+                newText = '';
               }
             }
+
+            // Single setState per GPS tick — one rebuild only.
             setState(() {
+              _speedKmh = newSpeed;
               _myLocation = point;
-              _myHeading = heading;
+              _myHeading = newHeading;
               _distToNextManeuver = newDistToManeuver;
+              if (newSign != null) _nextManeuverSign = newSign;
+              if (newText != null) _nextManeuverText = newText;
+              if (newRemaining != null) _remainingDistM = newRemaining;
               // Proximity check: find any alert within 400 m.
               _nearbyAlert = _alerts
                   .where((a) => a.distanceTo(point) <= 400)
@@ -217,18 +255,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               if (!_camInitialized) {
                 _curLat = _tgtLat = point.latitude;
                 _curLng = _tgtLng = point.longitude;
-                _curHdg = _tgtHdg = heading;
+                _curHdg = _tgtHdg = newHeading;
                 _camInitialized = true;
                 final zoom = _targetZoom();
                 _mapController.moveAndRotate(
                   point,
                   zoom,
-                  _use3DMap ? -heading : 0,
+                  _use3DMap ? -newHeading : 0,
                 );
               } else {
                 _tgtLat = point.latitude;
                 _tgtLng = point.longitude;
-                _tgtHdg = heading;
+                _tgtHdg = newHeading;
               }
             }
 
@@ -243,7 +281,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             }
           }
 
-          await _controller.updateMyLocation(
+          // Fire-and-forget — never await network I/O inside GPS stream.
+          _controller.updateMyLocation(
             convoyId: widget.convoy.id,
             position: point,
           );
@@ -289,33 +328,74 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return base + 0.4;
   }
 
-  int _nearestRoutePointIndex(LatLng pos) {
-    if (_routePoints.isEmpty) return 0;
-    int best = 0;
-    double bestDist = double.infinity;
-    for (int i = 0; i < _routePoints.length; i++) {
-      final d = _segDist(pos, _routePoints[i]);
-      if (d < bestDist) {
-        bestDist = d;
-        best = i;
-      }
+  // ── Navigation helpers ─────────────────────────────────────────────────
+  List<double> _buildCumulativeDist(List<LatLng> pts) {
+    if (pts.isEmpty) return const [];
+    final result = List<double>.filled(pts.length, 0);
+    for (int i = 1; i < pts.length; i++) {
+      result[i] = result[i - 1] + _segDist(pts[i - 1], pts[i]);
     }
-    return best;
+    return result;
   }
 
+  String _formatEta() {
+    if (!_isNavigating || _remainingDistM <= 50) return '';
+    if (_speedKmh < 3) return '';
+    final remainingSec = _remainingDistM / (_speedKmh / 3.6);
+    final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
+    final h = arrival.hour.toString().padLeft(2, '0');
+    final m = arrival.minute.toString().padLeft(2, '0');
+    final minLeft = (remainingSec / 60).ceil();
+    if (minLeft < 1) return 'Framme!';
+    if (minLeft < 60) return '$minLeft min · $h:$m';
+    final hours = minLeft ~/ 60;
+    final mins = minLeft % 60;
+    return '${hours}h ${mins}min · $h:$m';
+  }
+
+  IconData _turnIcon(int sign) {
+    return switch (sign) {
+      -3 => Icons.turn_sharp_left,
+      -2 => Icons.turn_left,
+      -1 => Icons.turn_slight_left,
+      0 => Icons.straight,
+      1 => Icons.turn_slight_right,
+      2 => Icons.turn_right,
+      3 => Icons.turn_sharp_right,
+      4 => Icons.flag_rounded,
+      -6 || 6 => Icons.rotate_right,
+      _ => Icons.straight,
+    };
+  }
+
+  // O(window) scan around last known index — avoids O(n) on every GPS tick.
+  int _nearestRoutePointIndex(LatLng pos) {
+    if (_routePoints.isEmpty) return 0;
+    final start = (_lastNearestIdx - 3).clamp(0, _routePoints.length - 1);
+    final end = (_lastNearestIdx + 60).clamp(0, _routePoints.length - 1);
+    double best = double.infinity;
+    int idx = _lastNearestIdx;
+    for (int i = start; i <= end; i++) {
+      final p = _routePoints[i];
+      final dx = p.latitude - pos.latitude;
+      final dy = p.longitude - pos.longitude;
+      final d = dx * dx + dy * dy;
+      if (d < best) {
+        best = d;
+        idx = i;
+      }
+    }
+    _lastNearestIdx = idx;
+    return idx;
+  }
+
+  // Cheap flat-earth approximation — accurate enough for short segments.
   double _segDist(LatLng a, LatLng b) {
-    const r = 6371000.0;
-    final dLat = (b.latitude - a.latitude) * math.pi / 180;
-    final dLng = (b.longitude - a.longitude) * math.pi / 180;
-    final sinLat = math.sin(dLat / 2);
-    final sinLng = math.sin(dLng / 2);
-    final x =
-        sinLat * sinLat +
-        math.cos(a.latitude * math.pi / 180) *
-            math.cos(b.latitude * math.pi / 180) *
-            sinLng *
-            sinLng;
-    return 2 * r * math.asin(math.sqrt(x));
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+    final dx = (b.latitude - a.latitude) * lat2m;
+    final dy = (b.longitude - a.longitude) * lng2m;
+    return math.sqrt(dx * dx + dy * dy);
   }
 
   void _onCamTick(Duration _) {
@@ -426,7 +506,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final lon = double.tryParse(s['lon']?.toString() ?? '');
     final name = s['display_name']?.toString() ?? '';
     if (lat == null || lon == null) return;
-    _addressSearchController.text = name.split(',').first.trim();
+    final label = name.split(',').first.trim();
+    _addressSearchController.text = label;
+    _destinationLabel = label;
     _searchFocus.unfocus();
     setState(() {
       _suggestions = [];
@@ -562,6 +644,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   void _routeToPin(ConvoyPin pin) {
+    _destinationLabel = pin.label;
     Navigator.of(context).pop(); // close bottom sheet
     _routeToDestination(pin.position);
   }
@@ -598,10 +681,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       if (!mounted) return;
       final km = route.distanceMeters / 1000;
       final minutes = (route.durationSeconds / 60).round();
+      final cumDist = _buildCumulativeDist(route.points);
       setState(() {
         _routePoints = route.points;
         _routeInstructions = route.instructions;
+        _cumulativeDist = cumDist;
+        _totalRouteDistM = cumDist.isNotEmpty ? cumDist.last : 0;
+        _remainingDistM = _totalRouteDistM;
+        _lastNearestIdx = 0;
         _distToNextManeuver = double.infinity;
+        _nextManeuverSign = 0;
+        _nextManeuverText = '';
         _routingStatus = AppLocalizations.of(
           context,
         )!.mapRouteReady(km.toStringAsFixed(1), minutes.toString());
@@ -650,9 +740,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _routePoints = const [];
       _routeDestination = null;
       _pendingDestination = null;
+      _isNavigating = false;
+      _destinationLabel = '';
       _routingStatus = '';
       _routeInstructions = const [];
       _distToNextManeuver = double.infinity;
+      _nextManeuverSign = 0;
+      _nextManeuverText = '';
+      _cumulativeDist = const [];
+      _totalRouteDistM = 0;
+      _remainingDistM = 0;
+      _lastNearestIdx = 0;
     });
   }
 
@@ -1361,6 +1459,91 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               ],
                             ),
                           ),
+                          // Navigation turn banner (Apple Maps dark)
+                          if (_isNavigating && _nextManeuverText.isNotEmpty)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    12,
+                                    10,
+                                    12,
+                                    0,
+                                  ),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1C1C1E),
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black87,
+                                          blurRadius: 18,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 72,
+                                          height: 72,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF1C3566),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            _turnIcon(_nextManeuverSign),
+                                            color: Colors.white,
+                                            size: 38,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                _nextManeuverText,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.bold,
+                                                  height: 1.2,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                _distToNextManeuver >= 1000
+                                                    ? '${(_distToNextManeuver / 1000).toStringAsFixed(1)} km'
+                                                    : '${_distToNextManeuver.round()} m',
+                                                style: const TextStyle(
+                                                  color: Colors.white60,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           // Proximity alert banner
                           if (_nearbyAlert != null && _myLocation != null)
                             Positioned(
@@ -1460,68 +1643,367 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               ),
                             ),
                           ),
-                          // Route status bar
+                          // Route / navigation bottom panel (Apple Maps dark)
                           if (_routeDestination != null || _isRouting)
                             Positioned(
-                              left: 16,
-                              right: 16,
-                              bottom: 24,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xEE0D1B2E),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: const Color(0x553AA8FF),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF1C1C1E),
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(22),
                                   ),
-                                  boxShadow: const [
+                                  boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black45,
-                                      blurRadius: 12,
-                                      offset: Offset(0, 4),
+                                      color: Colors.black87,
+                                      blurRadius: 20,
+                                      offset: Offset(0, -2),
                                     ),
                                   ],
                                 ),
-                                child: Row(
-                                  children: [
-                                    if (_isRouting)
-                                      const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Color(0xFF3AA8FF),
-                                        ),
-                                      )
-                                    else
-                                      const Icon(
-                                        Icons.alt_route,
-                                        color: Color(0xFF3AA8FF),
-                                        size: 18,
-                                      ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        _routingStatus,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
+                                child: SafeArea(
+                                  top: false,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      14,
+                                      16,
+                                      12,
                                     ),
-                                    GestureDetector(
-                                      onTap: _clearConvoyRoute,
-                                      child: const Icon(
-                                        Icons.close_rounded,
-                                        color: Colors.white38,
-                                        size: 20,
-                                      ),
+                                    child: ValueListenableBuilder<SpeedUnit>(
+                                      valueListenable: UserPreferencesService
+                                          .instance
+                                          .speedUnit,
+                                      builder: (context, speedUnit, _) {
+                                        return ValueListenableBuilder<double>(
+                                          valueListenable:
+                                              UserPreferencesService
+                                                  .instance
+                                                  .maxSpeedKmh,
+                                          builder: (context, maxSpeedKmh, _) {
+                                            final over =
+                                                _speedKmh > maxSpeedKmh;
+                                            final speedDisplay =
+                                                UserPreferencesService.instance
+                                                    .toDisplaySpeed(
+                                                      speedKmh: _speedKmh,
+                                                      unit: speedUnit,
+                                                    );
+                                            final limitDisplay =
+                                                UserPreferencesService.instance
+                                                    .toDisplaySpeed(
+                                                      speedKmh: maxSpeedKmh,
+                                                      unit: speedUnit,
+                                                    );
+                                            final eta = _isNavigating
+                                                ? _formatEta()
+                                                : '';
+                                            return Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                // Drag handle
+                                                Center(
+                                                  child: Container(
+                                                    width: 40,
+                                                    height: 4,
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                          bottom: 14,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white24,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            2,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    if (_isNavigating) ...[
+                                                      Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Container(
+                                                            width: 52,
+                                                            height: 52,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors.black,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                              border: Border.all(
+                                                                color: over
+                                                                    ? Colors.red
+                                                                    : Colors
+                                                                          .white24,
+                                                                width: 2,
+                                                              ),
+                                                            ),
+                                                            child: Center(
+                                                              child: Text(
+                                                                speedDisplay
+                                                                    .toStringAsFixed(
+                                                                      0,
+                                                                    ),
+                                                                style: TextStyle(
+                                                                  color: over
+                                                                      ? Colors
+                                                                            .redAccent
+                                                                      : Colors
+                                                                            .white,
+                                                                  fontSize: 20,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  height: 1.0,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 5,
+                                                          ),
+                                                          // EU speed limit sign
+                                                          Container(
+                                                            width: 42,
+                                                            height: 42,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors.white,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                              border: Border.all(
+                                                                color: Colors
+                                                                    .red
+                                                                    .shade700,
+                                                                width: 3.5,
+                                                              ),
+                                                            ),
+                                                            child: Center(
+                                                              child: Text(
+                                                                limitDisplay
+                                                                    .toStringAsFixed(
+                                                                      0,
+                                                                    ),
+                                                                style: const TextStyle(
+                                                                  color: Colors
+                                                                      .black,
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  height: 1.0,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(width: 14),
+                                                    ],
+                                                    // Destination info
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          if (_destinationLabel
+                                                              .isNotEmpty) ...[
+                                                            Text(
+                                                              _destinationLabel,
+                                                              style: const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 18,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                height: 1.2,
+                                                              ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 2,
+                                                            ),
+                                                          ],
+                                                          Row(
+                                                            children: [
+                                                              if (_isRouting)
+                                                                const Padding(
+                                                                  padding:
+                                                                      EdgeInsets.only(
+                                                                        right:
+                                                                            6,
+                                                                      ),
+                                                                  child: SizedBox(
+                                                                    width: 12,
+                                                                    height: 12,
+                                                                    child: CircularProgressIndicator(
+                                                                      strokeWidth:
+                                                                          2,
+                                                                      color: Colors
+                                                                          .white54,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              Expanded(
+                                                                child: Text(
+                                                                  _routingStatus,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white70,
+                                                                    fontSize:
+                                                                        14,
+                                                                  ),
+                                                                  maxLines: 2,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          if (eta
+                                                              .isNotEmpty) ...[
+                                                            const SizedBox(
+                                                              height: 2,
+                                                            ),
+                                                            Text(
+                                                              eta,
+                                                              style:
+                                                                  const TextStyle(
+                                                                    color: Colors
+                                                                        .white54,
+                                                                    fontSize:
+                                                                        12,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    // Action button
+                                                    if (_routePoints.isNotEmpty)
+                                                      Column(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .end,
+                                                        children: [
+                                                          _isNavigating
+                                                              ? GestureDetector(
+                                                                  onTap:
+                                                                      _clearConvoyRoute,
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          18,
+                                                                      vertical:
+                                                                          13,
+                                                                    ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: const Color(
+                                                                        0xFFD32F2F,
+                                                                      ),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            14,
+                                                                          ),
+                                                                    ),
+                                                                    child: Text(
+                                                                      l10n.mapEndNavigation,
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        fontSize:
+                                                                            15,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                )
+                                                              : GestureDetector(
+                                                                  onTap: () => setState(() {
+                                                                    _isNavigating =
+                                                                        true;
+                                                                    _isFollowingMyPosition =
+                                                                        true;
+                                                                    _lastNearestIdx =
+                                                                        0;
+                                                                  }),
+                                                                  child: Container(
+                                                                    padding: const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          18,
+                                                                      vertical:
+                                                                          13,
+                                                                    ),
+                                                                    decoration: BoxDecoration(
+                                                                      color: const Color(
+                                                                        0xFF00913F,
+                                                                      ),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            14,
+                                                                          ),
+                                                                    ),
+                                                                    child: Text(
+                                                                      l10n.mapStartNavigation,
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .white,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        fontSize:
+                                                                            15,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                          if (!_isNavigating) ...[
+                                                            const SizedBox(
+                                                              height: 8,
+                                                            ),
+                                                            GestureDetector(
+                                                              onTap:
+                                                                  _clearConvoyRoute,
+                                                              child: const Text(
+                                                                'Avbryt',
+                                                                style: TextStyle(
+                                                                  color: Colors
+                                                                      .white38,
+                                                                  fontSize: 13,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+                                      },
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -1529,7 +2011,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           Positioned(
                             right: 24,
                             bottom: _routeDestination != null || _isRouting
-                                ? 90
+                                ? 160
                                 : 24,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,

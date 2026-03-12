@@ -153,22 +153,23 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     final theme = Theme.of(context);
 
     final size = MediaQuery.sizeOf(context);
-    final barWidth = size.width * 0.72;
+    final logoWidth = size.width * 0.88;
+    final barWidth = size.width * 0.62;
 
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Full-screen splash image
-          Image.asset('assets/Splashlogo.png', fit: BoxFit.cover),
-          // Progress UI pinned near bottom
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: size.height * 0.08,
+          // Full-screen splash background
+          Image.asset('assets/background.png', fit: BoxFit.cover),
+          // Centered logo + progress section
+          Align(
+            alignment: Alignment.center,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                Image.asset('assets/Splashlogo.png', width: logoWidth),
+                const SizedBox(height: 22),
                 SizedBox(
                   width: barWidth,
                   child: LinearProgressIndicator(
@@ -195,6 +196,7 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
