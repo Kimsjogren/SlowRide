@@ -712,7 +712,7 @@ class _MapScreenState extends State<MapScreen> {
                       children: [
                         Image.asset(
                           'assets/logga_nobg.png',
-                          height: 76,
+                          height: 96,
                           fit: BoxFit.contain,
                         ),
                       ],
