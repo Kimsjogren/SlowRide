@@ -299,6 +299,144 @@ abstract class AppLocalizations {
   /// **'Already have an account? Sign in'**
   String get signUpHaveAccountAction;
 
+  /// No description provided for @authGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get authGenericError;
+
+  /// No description provided for @authWelcomeBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back to CruizX'**
+  String get authWelcomeBack;
+
+  /// No description provided for @authRegisterSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the CruizX community'**
+  String get authRegisterSubtitle;
+
+  /// No description provided for @authEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address'**
+  String get authEmailLabel;
+
+  /// No description provided for @authEmailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address'**
+  String get authEmailRequired;
+
+  /// No description provided for @authEmailInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email'**
+  String get authEmailInvalid;
+
+  /// No description provided for @authPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPasswordLabel;
+
+  /// No description provided for @authPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password'**
+  String get authPasswordRequired;
+
+  /// No description provided for @authPasswordMinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 6 characters'**
+  String get authPasswordMinLength;
+
+  /// No description provided for @authConfirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get authConfirmPasswordLabel;
+
+  /// No description provided for @authConfirmPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your password'**
+  String get authConfirmPasswordRequired;
+
+  /// No description provided for @authPasswordsDoNotMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get authPasswordsDoNotMatch;
+
+  /// No description provided for @authDisplayNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get authDisplayNameLabel;
+
+  /// No description provided for @authDisplayNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name'**
+  String get authDisplayNameRequired;
+
+  /// No description provided for @authNoAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'No account? '**
+  String get authNoAccountPrompt;
+
+  /// No description provided for @authAlreadyHaveAccountPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? '**
+  String get authAlreadyHaveAccountPrompt;
+
+  /// No description provided for @authCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get authCancel;
+
+  /// No description provided for @authErrorAllFieldsRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'All fields are required.'**
+  String get authErrorAllFieldsRequired;
+
+  /// No description provided for @authErrorPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 6 characters.'**
+  String get authErrorPasswordTooShort;
+
+  /// No description provided for @authErrorConfirmEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email to confirm your account, then sign in.'**
+  String get authErrorConfirmEmail;
+
+  /// No description provided for @authErrorEmailAndPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and password.'**
+  String get authErrorEmailAndPasswordRequired;
+
+  /// No description provided for @authErrorInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect email or password.'**
+  String get authErrorInvalidCredentials;
+
+  /// No description provided for @authErrorEmailAlreadyInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with that email already exists.'**
+  String get authErrorEmailAlreadyInUse;
+
   /// No description provided for @convoyRealtimeBackendMissing.
   ///
   /// In en, this message translates to:
@@ -322,6 +460,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create convoy'**
   String get convoyCreateButton;
+
+  /// No description provided for @convoyOpenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get convoyOpenButton;
 
   /// No description provided for @convoyJoinButton.
   ///
@@ -545,6 +689,42 @@ abstract class AppLocalizations {
   /// **'Signed in as: {name}'**
   String profileSignedInAs(Object name);
 
+  /// No description provided for @profileDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Driver'**
+  String get profileDefaultName;
+
+  /// No description provided for @profileSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get profileSignedIn;
+
+  /// No description provided for @profileStatsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get profileStatsTitle;
+
+  /// No description provided for @profileStatsConvoys.
+  ///
+  /// In en, this message translates to:
+  /// **'Convoys driven'**
+  String get profileStatsConvoys;
+
+  /// No description provided for @profileStatsTotalDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Total distance'**
+  String get profileStatsTotalDistance;
+
+  /// No description provided for @profileStatsSpeedViolations.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed violations'**
+  String get profileStatsSpeedViolations;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -622,6 +802,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Max speed: {value} {unit}'**
   String settingsMaxSpeedWithUnit(Object value, Object unit);
+
+  /// No description provided for @settingsProCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Pro'**
+  String get settingsProCardTitle;
+
+  /// No description provided for @settingsProStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get settingsProStatusActive;
+
+  /// No description provided for @settingsProStatusInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Not active'**
+  String get settingsProStatusInactive;
+
+  /// No description provided for @settingsProDescriptionActive.
+  ///
+  /// In en, this message translates to:
+  /// **'You have access to all Pro features.'**
+  String get settingsProDescriptionActive;
+
+  /// No description provided for @settingsProDescriptionInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock all features with CruizX Pro.'**
+  String get settingsProDescriptionInactive;
+
+  /// No description provided for @settingsPrivacyPolicyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get settingsPrivacyPolicyLabel;
+
+  /// No description provided for @settingsTermsOfUseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Use (EULA)'**
+  String get settingsTermsOfUseLabel;
+
+  /// No description provided for @settingsLinkOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link right now.'**
+  String get settingsLinkOpenFailed;
+
+  /// No description provided for @settingsRestorePurchaseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not restore purchase.'**
+  String get settingsRestorePurchaseFailed;
 
   /// No description provided for @navigationTitle.
   ///
@@ -718,6 +952,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not create route right now'**
   String get mapRouteFailed;
+
+  /// No description provided for @mapRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'left'**
+  String get mapRemaining;
 
   /// No description provided for @mapRouteNoRouteFound.
   ///
@@ -952,6 +1192,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copied! Share: \"{name}\" code: {code}'**
   String convoyShareCopied(Object name, Object code);
+
+  /// No description provided for @paywallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to CruizX Pro'**
+  String get paywallTitle;
+
+  /// No description provided for @paywallSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No limits. No ads. Full access.'**
+  String get paywallSubtitle;
+
+  /// No description provided for @paywallPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'3.49 \$ / month'**
+  String get paywallPrice;
+
+  /// No description provided for @paywallUpgradeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Pro'**
+  String get paywallUpgradeButton;
+
+  /// No description provided for @paywallRestoreButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchase'**
+  String get paywallRestoreButton;
+
+  /// No description provided for @paywallFreeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get paywallFreeLabel;
+
+  /// No description provided for @paywallProLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro'**
+  String get paywallProLabel;
+
+  /// No description provided for @paywallFeatureRoutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes per day'**
+  String get paywallFeatureRoutes;
+
+  /// No description provided for @paywallFreeRouteLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'2 routes'**
+  String get paywallFreeRouteLimit;
+
+  /// No description provided for @paywallProRouteLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get paywallProRouteLimit;
+
+  /// No description provided for @paywallFeatureConvoy.
+  ///
+  /// In en, this message translates to:
+  /// **'Convoy'**
+  String get paywallFeatureConvoy;
+
+  /// No description provided for @paywallFreeConvoyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'1 active, 2 members'**
+  String get paywallFreeConvoyLimit;
+
+  /// No description provided for @paywallProConvoyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited'**
+  String get paywallProConvoyLimit;
+
+  /// No description provided for @paywallFeatureAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads'**
+  String get paywallFeatureAds;
+
+  /// No description provided for @paywallFreeAds.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown'**
+  String get paywallFreeAds;
+
+  /// No description provided for @paywallProAds.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get paywallProAds;
+
+  /// No description provided for @paywallRouteLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route limit reached'**
+  String get paywallRouteLimitTitle;
+
+  /// No description provided for @paywallRouteLimitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Free users can calculate 2 routes per day. Upgrade to Pro for unlimited navigation.'**
+  String get paywallRouteLimitBody;
+
+  /// No description provided for @paywallConvoyLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Convoy limit reached'**
+  String get paywallConvoyLimitTitle;
+
+  /// No description provided for @paywallConvoyLimitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Free users can only be in 1 convoy at a time.'**
+  String get paywallConvoyLimitBody;
+
+  /// No description provided for @paywallMemberLimitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Convoy is full'**
+  String get paywallMemberLimitTitle;
+
+  /// No description provided for @paywallMemberLimitBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Free users can only join convoys with fewer than 2 members. Upgrade to Pro for unlimited access.'**
+  String get paywallMemberLimitBody;
+
+  /// No description provided for @paywallPurchaseSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'You are now a Pro user!'**
+  String get paywallPurchaseSuccess;
+
+  /// No description provided for @paywallRestoreSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase restored!'**
+  String get paywallRestoreSuccess;
+
+  /// No description provided for @paywallRestoreNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No previous purchase found.'**
+  String get paywallRestoreNotFound;
+
+  /// No description provided for @profileFreePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Free plan'**
+  String get profileFreePlan;
+
+  /// No description provided for @profileProPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro plan'**
+  String get profileProPlan;
+
+  /// No description provided for @profileUpgradeToPro.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade to Pro'**
+  String get profileUpgradeToPro;
+
+  /// No description provided for @profileRoutesUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes today: {count} / {max}'**
+  String profileRoutesUsed(Object count, Object max);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

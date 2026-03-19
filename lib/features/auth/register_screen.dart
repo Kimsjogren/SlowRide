@@ -4,6 +4,19 @@ import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
+String _localizeAuthError(AuthException e, AppLocalizations l10n) {
+  return switch (e.code) {
+    AuthErrorCode.allFieldsRequired => l10n.authErrorAllFieldsRequired,
+    AuthErrorCode.passwordTooShort => l10n.authErrorPasswordTooShort,
+    AuthErrorCode.confirmationEmailSent => l10n.authErrorConfirmEmail,
+    AuthErrorCode.emailAndPasswordRequired =>
+      l10n.authErrorEmailAndPasswordRequired,
+    AuthErrorCode.invalidCredentials => l10n.authErrorInvalidCredentials,
+    AuthErrorCode.emailAlreadyInUse => l10n.authErrorEmailAlreadyInUse,
+    _ => l10n.authGenericError,
+  };
+}
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -45,9 +58,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      setState(
+        () => _error = _localizeAuthError(e, AppLocalizations.of(context)!),
+      );
     } catch (_) {
-      setState(() => _error = 'Något gick fel. Försök igen.');
+      setState(() => _error = AppLocalizations.of(context)!.authGenericError);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -65,9 +80,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 12),
-                const Text(
-                  'Skapa konto',
-                  style: TextStyle(
+                Text(
+                  l10n.signUp,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -76,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Gå med i CruizX-gemenskapen',
+                  l10n.authRegisterSubtitle,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.6),
                     fontSize: 14,
@@ -103,12 +118,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Namn
                         _GlassField(
                           controller: _nameController,
-                          label: 'Visningsnamn',
+                          label: l10n.authDisplayNameLabel,
                           icon: Icons.person_outline,
                           textInputAction: TextInputAction.next,
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
-                              return 'Ange ditt namn';
+                              return l10n.authDisplayNameRequired;
                             }
                             return null;
                           },
@@ -118,15 +133,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // E-post
                         _GlassField(
                           controller: _emailController,
-                          label: 'E-postadress',
+                          label: l10n.authEmailLabel,
                           icon: Icons.email_outlined,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           validator: (v) {
                             if (v == null || v.trim().isEmpty) {
-                              return 'Ange e-postadress';
+                              return l10n.authEmailRequired;
                             }
-                            if (!v.contains('@')) return 'Ogiltig e-post';
+                            if (!v.contains('@')) return l10n.authEmailInvalid;
                             return null;
                           },
                         ),
@@ -135,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Lösenord
                         _GlassField(
                           controller: _passwordController,
-                          label: 'Lösenord',
+                          label: l10n.authPasswordLabel,
                           icon: Icons.lock_outline,
                           obscureText: _obscure,
                           textInputAction: TextInputAction.next,
@@ -151,10 +166,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'Ange lösenord';
+                              return l10n.authPasswordRequired;
                             }
                             if (v.length < 6) {
-                              return 'Minst 6 tecken';
+                              return l10n.authPasswordMinLength;
                             }
                             return null;
                           },
@@ -164,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Bekräfta lösenord
                         _GlassField(
                           controller: _confirmController,
-                          label: 'Bekräfta lösenord',
+                          label: l10n.authConfirmPasswordLabel,
                           icon: Icons.lock_outline,
                           obscureText: _obscureConfirm,
                           textInputAction: TextInputAction.done,
@@ -182,10 +197,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'Bekräfta lösenordet';
+                              return l10n.authConfirmPasswordRequired;
                             }
                             if (v != _passwordController.text) {
-                              return 'Lösenorden matchar inte';
+                              return l10n.authPasswordsDoNotMatch;
                             }
                             return null;
                           },
@@ -250,9 +265,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text(
-                                    'Skapa konto',
-                                    style: TextStyle(
+                                : Text(
+                                    l10n.signUp,
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -271,7 +286,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Har du redan ett konto? ',
+                      l10n.authAlreadyHaveAccountPrompt,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                       ),
@@ -301,7 +316,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(false),
                   child: Text(
-                    'Avbryt',
+                    l10n.authCancel,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.45),
                     ),

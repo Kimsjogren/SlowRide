@@ -5,10 +5,12 @@ import 'package:slowride/features/convoy/convoy_screen.dart';
 import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
 import 'package:slowride/features/settings/settings_screen.dart';
+import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/firebase_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
 Future<void> main() async {
@@ -107,6 +109,12 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     try {
       await UserPreferencesService.instance.initialize();
     } catch (_) {}
+    try {
+      await SubscriptionService.instance.initialize();
+    } catch (_) {}
+    try {
+      await AdService.instance.initialize();
+    } catch (_) {}
     await _setProgress(90);
 
     _updateStartupStatus(l10n.splashFinalizingStartup);
@@ -153,7 +161,7 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     final theme = Theme.of(context);
 
     final size = MediaQuery.sizeOf(context);
-    final logoWidth = size.width * 0.88;
+    final logoWidth = size.width * 0.82;
     final barWidth = size.width * 0.62;
 
     return Scaffold(
@@ -168,8 +176,8 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset('assets/Splashlogo.png', width: logoWidth),
-                const SizedBox(height: 22),
+                Image.asset('assets/logga_nobg.png', width: logoWidth),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: barWidth,
                   child: LinearProgressIndicator(
@@ -297,9 +305,16 @@ class _AppShellState extends State<AppShell> {
           labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
           destinations: destinations,
           onDestinationSelected: (value) {
-            setState(() {
-              _index = value;
-            });
+            if (value == 1 && _index != 1) {
+              // Convoy tab — show interstitial for free users first
+              AdService.instance.showConvoyInterstitial(
+                onDone: () {
+                  if (mounted) setState(() => _index = 1);
+                },
+              );
+            } else {
+              setState(() => _index = value);
+            }
           },
         ),
       ),

@@ -111,6 +111,75 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signUpHaveAccountAction => 'Already have an account? Sign in';
 
   @override
+  String get authGenericError => 'Something went wrong. Please try again.';
+
+  @override
+  String get authWelcomeBack => 'Welcome back to CruizX';
+
+  @override
+  String get authRegisterSubtitle => 'Join the CruizX community';
+
+  @override
+  String get authEmailLabel => 'Email address';
+
+  @override
+  String get authEmailRequired => 'Enter your email address';
+
+  @override
+  String get authEmailInvalid => 'Invalid email';
+
+  @override
+  String get authPasswordLabel => 'Password';
+
+  @override
+  String get authPasswordRequired => 'Enter your password';
+
+  @override
+  String get authPasswordMinLength => 'At least 6 characters';
+
+  @override
+  String get authConfirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get authConfirmPasswordRequired => 'Confirm your password';
+
+  @override
+  String get authPasswordsDoNotMatch => 'Passwords do not match';
+
+  @override
+  String get authDisplayNameLabel => 'Display name';
+
+  @override
+  String get authDisplayNameRequired => 'Enter your name';
+
+  @override
+  String get authNoAccountPrompt => 'No account? ';
+
+  @override
+  String get authAlreadyHaveAccountPrompt => 'Already have an account? ';
+
+  @override
+  String get authCancel => 'Cancel';
+
+  @override
+  String get authErrorAllFieldsRequired => 'All fields are required.';
+
+  @override
+  String get authErrorPasswordTooShort => 'Password must be at least 6 characters.';
+
+  @override
+  String get authErrorConfirmEmail => 'Check your email to confirm your account, then sign in.';
+
+  @override
+  String get authErrorEmailAndPasswordRequired => 'Enter your email and password.';
+
+  @override
+  String get authErrorInvalidCredentials => 'Incorrect email or password.';
+
+  @override
+  String get authErrorEmailAlreadyInUse => 'An account with that email already exists.';
+
+  @override
   String get convoyRealtimeBackendMissing => 'Realtime convoy is not configured yet. Add backend config to share live positions between users.';
 
   @override
@@ -121,6 +190,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get convoyCreateButton => 'Create convoy';
+
+  @override
+  String get convoyOpenButton => 'Open';
 
   @override
   String get convoyJoinButton => 'Join';
@@ -242,6 +314,24 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get profileDefaultName => 'CruizX Driver';
+
+  @override
+  String get profileSignedIn => 'Signed in';
+
+  @override
+  String get profileStatsTitle => 'Statistics';
+
+  @override
+  String get profileStatsConvoys => 'Convoys driven';
+
+  @override
+  String get profileStatsTotalDistance => 'Total distance';
+
+  @override
+  String get profileStatsSpeedViolations => 'Speed violations';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -283,6 +373,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String settingsMaxSpeedWithUnit(Object value, Object unit) {
     return 'Max speed: $value $unit';
   }
+
+  @override
+  String get settingsProCardTitle => 'CruizX Pro';
+
+  @override
+  String get settingsProStatusActive => 'Active';
+
+  @override
+  String get settingsProStatusInactive => 'Not active';
+
+  @override
+  String get settingsProDescriptionActive => 'You have access to all Pro features.';
+
+  @override
+  String get settingsProDescriptionInactive => 'Unlock all features with CruizX Pro.';
+
+  @override
+  String get settingsPrivacyPolicyLabel => 'Privacy Policy';
+
+  @override
+  String get settingsTermsOfUseLabel => 'Terms of Use (EULA)';
+
+  @override
+  String get settingsLinkOpenFailed => 'Could not open the link right now.';
+
+  @override
+  String get settingsRestorePurchaseFailed => 'Could not restore purchase.';
 
   @override
   String get navigationTitle => 'Turn-by-Turn Navigation';
@@ -333,6 +450,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapRouteFailed => 'Could not create route right now';
+
+  @override
+  String get mapRemaining => 'left';
 
   @override
   String get mapRouteNoRouteFound => 'No route found between selected points';
@@ -459,5 +579,94 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String convoyShareCopied(Object name, Object code) {
     return 'Copied! Share: \"$name\" code: $code';
+  }
+
+  @override
+  String get paywallTitle => 'Upgrade to CruizX Pro';
+
+  @override
+  String get paywallSubtitle => 'No limits. No ads. Full access.';
+
+  @override
+  String get paywallPrice => '3.49 \$ / month';
+
+  @override
+  String get paywallUpgradeButton => 'Upgrade to Pro';
+
+  @override
+  String get paywallRestoreButton => 'Restore purchase';
+
+  @override
+  String get paywallFreeLabel => 'Free';
+
+  @override
+  String get paywallProLabel => 'Pro';
+
+  @override
+  String get paywallFeatureRoutes => 'Routes per day';
+
+  @override
+  String get paywallFreeRouteLimit => '2 routes';
+
+  @override
+  String get paywallProRouteLimit => 'Unlimited';
+
+  @override
+  String get paywallFeatureConvoy => 'Convoy';
+
+  @override
+  String get paywallFreeConvoyLimit => '1 active, 2 members';
+
+  @override
+  String get paywallProConvoyLimit => 'Unlimited';
+
+  @override
+  String get paywallFeatureAds => 'Ads';
+
+  @override
+  String get paywallFreeAds => 'Shown';
+
+  @override
+  String get paywallProAds => 'None';
+
+  @override
+  String get paywallRouteLimitTitle => 'Route limit reached';
+
+  @override
+  String get paywallRouteLimitBody => 'Free users can calculate 2 routes per day. Upgrade to Pro for unlimited navigation.';
+
+  @override
+  String get paywallConvoyLimitTitle => 'Convoy limit reached';
+
+  @override
+  String get paywallConvoyLimitBody => 'Free users can only be in 1 convoy at a time.';
+
+  @override
+  String get paywallMemberLimitTitle => 'Convoy is full';
+
+  @override
+  String get paywallMemberLimitBody => 'Free users can only join convoys with fewer than 2 members. Upgrade to Pro for unlimited access.';
+
+  @override
+  String get paywallPurchaseSuccess => 'You are now a Pro user!';
+
+  @override
+  String get paywallRestoreSuccess => 'Purchase restored!';
+
+  @override
+  String get paywallRestoreNotFound => 'No previous purchase found.';
+
+  @override
+  String get profileFreePlan => 'Free plan';
+
+  @override
+  String get profileProPlan => 'Pro plan';
+
+  @override
+  String get profileUpgradeToPro => 'Upgrade to Pro';
+
+  @override
+  String profileRoutesUsed(Object count, Object max) {
+    return 'Routes today: $count / $max';
   }
 }

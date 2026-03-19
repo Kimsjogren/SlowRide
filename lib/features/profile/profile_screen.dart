@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/features/auth/register_screen.dart';
+import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -21,7 +23,7 @@ class ProfileScreen extends StatelessWidget {
             valueListenable: authService.userName,
             builder: (context, userName, _) {
               final email = authService.userEmail.value;
-              final displayName = userName ?? 'CruizX-förare';
+              final displayName = userName ?? l10n.profileDefaultName;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -82,33 +84,160 @@ class ProfileScreen extends StatelessWidget {
 
                     const SizedBox(height: 28),
 
-                    // Info-kort
-                    _InfoCard(
-                      children: [
-                        if (!isLoggedIn) ...[
-                          _InfoRow(
-                            icon: Icons.info_outline,
-                            text: l10n.profileSignInInConvoyHint,
-                          ),
-                        ] else ...[
+                    if (isLoggedIn) ...[
+                      // Info-kort
+                      _InfoCard(
+                        children: [
                           _InfoRow(
                             icon: Icons.check_circle_outline,
-                            text: 'Inloggad',
+                            text: l10n.profileSignedIn,
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                    ] else
+                      const SizedBox(height: 4),
+
+                    // Stats card
+                    _InfoCard(
+                      title: l10n.profileStatsTitle,
+                      children: [
+                        _StatRow(label: l10n.profileStatsConvoys, value: '—'),
+                        _StatRow(
+                          label: l10n.profileStatsTotalDistance,
+                          value: '— km',
+                        ),
+                        _StatRow(
+                          label: l10n.profileStatsSpeedViolations,
+                          value: '—',
+                        ),
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
-                    // Statistik-kort
-                    _InfoCard(
-                      title: 'Statistik',
-                      children: [
-                        _StatRow(label: 'Körda konvojer', value: '—'),
-                        _StatRow(label: 'Totalt avstånd', value: '— km'),
-                        _StatRow(label: 'Hastighetsöverträdelser', value: '—'),
-                      ],
+                    // Subscription plan card (always visible)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: SubscriptionService.instance.isPro,
+                      builder: (context, isPro, _) {
+                        if (isPro) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0D3320),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF52B788,
+                                ).withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.workspace_premium,
+                                  color: Color(0xFF52B788),
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  l10n.profileProPlan,
+                                  style: const TextStyle(
+                                    color: Color(0xFF52B788),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final sub = SubscriptionService.instance;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.13),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.person_outline,
+                                    color: Colors.white54,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          l10n.profileFreePlan,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          l10n.profileRoutesUsed(
+                                            sub.routesToday,
+                                            SubscriptionService
+                                                .freeMaxDailyRoutes,
+                                          ),
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FilledButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute<bool>(
+                                  builder: (_) => const PaywallScreen(),
+                                ),
+                              ),
+                              icon: const Icon(
+                                Icons.workspace_premium,
+                                size: 18,
+                              ),
+                              label: Text(l10n.profileUpgradeToPro),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFB800),
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 13,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 24),
@@ -153,9 +282,9 @@ class ProfileScreen extends StatelessWidget {
                             Icons.person_add_alt_1,
                             color: Colors.white70,
                           ),
-                          label: const Text(
-                            'Skapa konto',
-                            style: TextStyle(color: Colors.white70),
+                          label: Text(
+                            l10n.signUp,
+                            style: const TextStyle(color: Colors.white70),
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(

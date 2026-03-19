@@ -45,6 +45,8 @@ dependencies:
   firebase_auth: any
   cloud_firestore: any
   supabase_flutter: any
+  google_mobile_ads: any
+  url_launcher: any
 
 dev_dependencies:
   flutter_test:

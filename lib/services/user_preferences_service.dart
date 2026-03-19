@@ -14,7 +14,7 @@ class UserPreferencesService {
   );
   final ValueNotifier<double> maxSpeedKmh = ValueNotifier<double>(30);
   final ValueNotifier<String?> languageCode = ValueNotifier<String?>(null);
-  final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(false);
 
   static const String _vehicleTypeKey = 'user_vehicle_type';
   static const String _speedUnitKey = 'user_speed_unit';
@@ -37,7 +37,7 @@ class UserPreferencesService {
 
     maxSpeedKmh.value = _prefs!.getDouble(_maxSpeedKmhKey) ?? 30;
     languageCode.value = _prefs!.getString(_languageCodeKey);
-    use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? true;
+    use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
 
     if (!_listenersAttached) {
       vehicleType.addListener(_onVehicleTypeChanged);

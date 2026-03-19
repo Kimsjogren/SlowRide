@@ -15,6 +15,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/convoy_member_location.dart';
@@ -41,6 +42,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       TextEditingController();
   final FocusNode _searchFocus = FocusNode();
   final MapController _mapController = MapController();
+  late final http.Client _tileHttpClient;
+  late final NetworkTileProvider _tileProvider;
   Timer? _searchDebounce;
   List<Map<String, dynamic>> _suggestions = [];
   bool _showSuggestions = false;
@@ -49,7 +52,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   late final Ticker _camTicker;
   double _curLat = 0, _curLng = 0, _curHdg = 0;
   double _tgtLat = 0, _tgtLng = 0, _tgtHdg = 0;
+  double _filteredTgtHdg = 0;
+  double _rawCompassHdg = 0;
+  double _gpsSpeedMps = 0;
+  Duration? _lastCamTick;
   bool _camInitialized = false;
+  LatLng? _lastLocForBearing;
+
+  // Smooth arrow heading — ticker drives it when following, GPS otherwise.
+  final ValueNotifier<double> _arrowHdg = ValueNotifier<double>(0);
 
   StreamSubscription<Position>? _positionSubscription;
   Timer? _pinRefreshTimer;
@@ -98,9 +109,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const double _followZoom = 16;
   static const Duration _pinTtl = Duration(minutes: 30);
 
+  double _wrap360(double angle) => (angle % 360 + 360) % 360;
+
+  double _angleDiff(double from, double to) {
+    return ((to - from + 540) % 360) - 180;
+  }
+
   @override
   void initState() {
     super.initState();
+    _tileHttpClient = http.Client();
+    _tileProvider = NetworkTileProvider(
+      httpClient: _tileHttpClient,
+      abortObsoleteRequests: true,
+      cachingProvider: BuiltInMapCachingProvider.getOrCreateInstance(
+        maxCacheSize: 1_000_000_000,
+      ),
+    );
     _camTicker = createTicker(_onCamTick)..start();
     _addressSearchController.addListener(() => setState(() {}));
     _myUserId = AuthService.instance.userId.value;
@@ -176,7 +201,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           final point = LatLng(position.latitude, position.longitude);
           final rawSpeed = position.speed < 0 ? 0.0 : position.speed;
           final newSpeed = rawSpeed * 3.6;
-          // Only take new heading when actually moving (avoids jitter at rest).
           final newHeading = (position.speed > 0.5 && position.heading >= 0)
               ? position.heading
               : _myHeading;
@@ -231,10 +255,34 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               _speedKmh = newSpeed;
               _myLocation = point;
               _myHeading = newHeading;
+              // When free-camera, push heading directly so arrow stays correct.
+              if (!_isFollowingMyPosition) _arrowHdg.value = newHeading;
               _distToNextManeuver = newDistToManeuver;
               if (newSign != null) _nextManeuverSign = newSign;
               if (newText != null) _nextManeuverText = newText;
-              if (newRemaining != null) _remainingDistM = newRemaining;
+              if (newRemaining != null) {
+                _remainingDistM = newRemaining;
+                final remKm = newRemaining / 1000;
+                final l10nR = AppLocalizations.of(context)!;
+                final distStr = remKm >= 1.0
+                    ? '${remKm.toStringAsFixed(1)} km ${l10nR.mapRemaining}'
+                    : '${newRemaining.round()} m ${l10nR.mapRemaining}';
+                final vehicleType =
+                    UserPreferencesService.instance.vehicleType.value;
+                final effSpd = SpeedCalibrationService.instance
+                    .effectiveSpeedKmh(vehicleType);
+                if (effSpd > 0 && newRemaining > 50) {
+                  final sec = newRemaining / (effSpd / 3.6);
+                  final arrival = DateTime.now().add(
+                    Duration(seconds: sec.round()),
+                  );
+                  final hh = arrival.hour.toString().padLeft(2, '0');
+                  final mm = arrival.minute.toString().padLeft(2, '0');
+                  _routingStatus = '$distStr  •  $hh:$mm';
+                } else {
+                  _routingStatus = distStr;
+                }
+              }
               // Proximity check: find any alert within 400 m.
               _nearbyAlert = _alerts
                   .where((a) => a.distanceTo(point) <= 400)
@@ -255,7 +303,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               if (!_camInitialized) {
                 _curLat = _tgtLat = point.latitude;
                 _curLng = _tgtLng = point.longitude;
-                _curHdg = _tgtHdg = newHeading;
+                _curHdg = _tgtHdg = _filteredTgtHdg = newHeading;
+                _rawCompassHdg = newHeading;
+                _gpsSpeedMps = rawSpeed;
+                _lastLocForBearing = point;
                 _camInitialized = true;
                 final zoom = _targetZoom();
                 _mapController.moveAndRotate(
@@ -266,7 +317,38 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               } else {
                 _tgtLat = point.latitude;
                 _tgtLng = point.longitude;
-                _tgtHdg = newHeading;
+                _rawCompassHdg = newHeading;
+                _gpsSpeedMps = rawSpeed;
+
+                // Movement-derived bearing is much stabler than raw compass.
+                final prev = _lastLocForBearing;
+                if (prev != null) {
+                  final dLat = point.latitude - prev.latitude;
+                  final dLng = point.longitude - prev.longitude;
+                  final move2 = dLat * dLat + dLng * dLng;
+                  if (move2 > 1.0e-10) {
+                    final motionHeading = _wrap360(
+                      math.atan2(dLng, dLat) * 180 / math.pi,
+                    );
+                    final compassWeight = (_gpsSpeedMps < 2.0)
+                        ? ((2.0 - _gpsSpeedMps) / 2.0).clamp(0.0, 1.0)
+                        : 0.0;
+                    final motionToCompass = _angleDiff(
+                      motionHeading,
+                      _rawCompassHdg,
+                    );
+                    _tgtHdg = _wrap360(
+                      motionHeading + motionToCompass * compassWeight * 0.35,
+                    );
+                  }
+                }
+                _lastLocForBearing = point;
+
+                final targetAlpha = (_gpsSpeedMps / 16.0).clamp(0.14, 0.45);
+                final targetStep = _angleDiff(_filteredTgtHdg, _tgtHdg);
+                _filteredTgtHdg = _wrap360(
+                  _filteredTgtHdg + targetStep * targetAlpha,
+                );
               }
             }
 
@@ -295,6 +377,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
+    _tileHttpClient.close();
+    _arrowHdg.dispose();
     _searchDebounce?.cancel();
     _camTicker.dispose();
     _messageController.dispose();
@@ -398,18 +482,36 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return math.sqrt(dx * dx + dy * dy);
   }
 
-  void _onCamTick(Duration _) {
+  void _onCamTick(Duration elapsed) {
     if (!_isFollowingMyPosition || !_camInitialized) return;
-    const kPos = 0.25;
-    const kHdg = 0.32;
+
+    final last = _lastCamTick;
+    _lastCamTick = elapsed;
+    if (last == null) return;
+    final dtSec = (elapsed - last).inMicroseconds / 1000000.0;
+    if (dtSec <= 0) return;
+
+    final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
+    final kPos = (dtSec * (2.3 + speedN * 2.9)).clamp(0.04, 0.35);
+    final kHdg = (dtSec * (1.9 + speedN * 3.2)).clamp(0.03, 0.33);
+    final maxTurnPerSec = 55.0 + speedN * 95.0;
+    final maxTurnThisTick = maxTurnPerSec * dtSec;
+
     final dLat = _tgtLat - _curLat;
     final dLng = _tgtLng - _curLng;
-    final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
+    final rawDiff = _angleDiff(_curHdg, _filteredTgtHdg);
+    final turnN = (rawDiff.abs() / 45.0).clamp(0.0, 1.0);
+    final boostedMaxTurn = maxTurnThisTick * (1.0 + turnN * 2.2);
+    final diff = rawDiff.clamp(-boostedMaxTurn, boostedMaxTurn);
     // Deadband: skip GPU work when already at target.
     if (dLat.abs() < 1e-7 && dLng.abs() < 1e-7 && diff.abs() < 0.05) return;
-    _curLat += dLat * kPos;
-    _curLng += dLng * kPos;
-    _curHdg = (_curHdg + diff * kHdg + 360) % 360;
+    final turnPosAlpha = (kPos * (1.0 + turnN * 0.35)).clamp(0.04, 0.55);
+    final turnHdgAlpha = (kHdg * (1.0 + turnN * 2.0)).clamp(0.03, 0.70);
+    _curLat += dLat * turnPosAlpha;
+    _curLng += dLng * turnPosAlpha;
+    _curHdg = _wrap360(_curHdg + diff * turnHdgAlpha);
+    // Arrow follows the smoothed heading — only rebuilds the tiny icon widget.
+    _arrowHdg.value = _curHdg;
     final zoom = _targetZoom();
     if (_use3DMap) {
       const offsetDeg = 0.00045;
@@ -581,12 +683,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               ],
             ),
             child: isMe
-                ? Transform.rotate(
-                    angle: _myHeading * 3.14159265 / 180,
-                    child: const Icon(
-                      Icons.navigation,
-                      color: Colors.white,
-                      size: 22,
+                ? ValueListenableBuilder<double>(
+                    valueListenable: _arrowHdg,
+                    builder: (_, hdg, __) => Transform.rotate(
+                      // Match main map correction: Material navigation icon
+                      // has a diagonal baseline at 0°.
+                      angle: (hdg * math.pi / 180) - (math.pi / 4),
+                      child: const Icon(
+                        Icons.navigation,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   )
                 : Center(
@@ -1112,15 +1219,59 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 children: [
                                                   TileLayer(
                                                     urlTemplate:
-                                                        'https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                                                    additionalOptions: const {
-                                                      'mapbox_token':
-                                                          'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
-                                                    },
+                                                        'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+                                                    subdomains: const [
+                                                      'a',
+                                                      'b',
+                                                      'c',
+                                                      'd',
+                                                    ],
                                                     userAgentPackageName:
-                                                        'com.kimtechtool.slowride',
-                                                    tileDimension: 512,
-                                                    zoomOffset: -1,
+                                                        'com.cruizx.mobile',
+                                                    tileProvider: _tileProvider,
+                                                    tileUpdateTransformer:
+                                                        TileUpdateTransformers.throttle(
+                                                          const Duration(
+                                                            milliseconds: 28,
+                                                          ),
+                                                        ),
+                                                    retinaMode:
+                                                        RetinaMode.isHighDensity(
+                                                          context,
+                                                        ),
+                                                    maxNativeZoom: 20,
+                                                    keepBuffer: 3,
+                                                    panBuffer: 1,
+                                                    tileDisplay:
+                                                        const TileDisplay.instantaneous(),
+                                                  ),
+                                                  TileLayer(
+                                                    urlTemplate:
+                                                        'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                                                    subdomains: const [
+                                                      'a',
+                                                      'b',
+                                                      'c',
+                                                      'd',
+                                                    ],
+                                                    userAgentPackageName:
+                                                        'com.cruizx.mobile',
+                                                    tileProvider: _tileProvider,
+                                                    tileUpdateTransformer:
+                                                        TileUpdateTransformers.throttle(
+                                                          const Duration(
+                                                            milliseconds: 28,
+                                                          ),
+                                                        ),
+                                                    retinaMode:
+                                                        RetinaMode.isHighDensity(
+                                                          context,
+                                                        ),
+                                                    maxNativeZoom: 20,
+                                                    keepBuffer: 2,
+                                                    panBuffer: 1,
+                                                    tileDisplay:
+                                                        const TileDisplay.instantaneous(),
                                                   ),
                                                   MarkerLayer(
                                                     markers: [
@@ -1611,38 +1762,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
-                          // Report alert button
-                          Positioned(
-                            right: 24,
-                            top: 90,
-                            child: GestureDetector(
-                              onTap: _showReportAlertSheet,
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xEE0A1F63),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0x883AA8FF),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black45,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: Color(0xFFF57F17),
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                          ),
                           // Route / navigation bottom panel (Apple Maps dark)
                           if (_routeDestination != null || _isRouting)
                             Positioned(
@@ -2009,58 +2128,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                             ),
                           // Buttons overlay
                           Positioned(
-                            right: 24,
+                            right: 14,
                             bottom: _routeDestination != null || _isRouting
-                                ? 160
+                                ? 155
                                 : 24,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() => _use3DMap = !_use3DMap);
-                                    UserPreferencesService
-                                            .instance
-                                            .use3DMap
-                                            .value =
-                                        _use3DMap;
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 7,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xEE0A1F63),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                        color: _use3DMap
-                                            ? const Color(0xFF3AA8FF)
-                                            : Colors.white30,
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black45,
-                                          blurRadius: 8,
-                                          offset: Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      _use3DMap ? '3D' : '2D',
-                                      style: TextStyle(
-                                        color: _use3DMap
-                                            ? const Color(0xFF3AA8FF)
-                                            : Colors.white60,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
                                 FloatingActionButton.small(
                                   heroTag: 'fit_all',
                                   tooltip: AppLocalizations.of(
@@ -2087,7 +2162,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     // the transition starts from here.
                                     _curLat = _tgtLat = me.latitude;
                                     _curLng = _tgtLng = me.longitude;
-                                    _curHdg = _tgtHdg = _myHeading;
+                                    _curHdg = _tgtHdg = _filteredTgtHdg =
+                                        _myHeading;
+                                    _rawCompassHdg = _myHeading;
+                                    _lastLocForBearing = me;
+                                    _lastCamTick = null;
                                     _camInitialized = true;
                                     setState(
                                       () => _isFollowingMyPosition = true,
@@ -2104,6 +2183,76 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                         ? Icons.my_location
                                         : Icons.location_searching,
                                     color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // 2D / 3D toggle
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _use3DMap = !_use3DMap);
+                                    UserPreferencesService
+                                            .instance
+                                            .use3DMap
+                                            .value =
+                                        _use3DMap;
+                                  },
+                                  child: Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xEE0A1F63),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0x883AA8FF),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black45,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _use3DMap ? '3D' : '2D',
+                                        style: const TextStyle(
+                                          color: Colors.white60,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Report alert button
+                                GestureDetector(
+                                  onTap: _showReportAlertSheet,
+                                  child: Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xEE0A1F63),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0x883AA8FF),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black45,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.warning_amber_rounded,
+                                      color: Color(0xFFF57F17),
+                                      size: 22,
+                                    ),
                                   ),
                                 ),
                               ],

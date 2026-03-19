@@ -66,10 +66,16 @@ class AuthService {
     final trimmedName = displayName.trim();
 
     if (normalizedEmail.isEmpty || password.isEmpty || trimmedName.isEmpty) {
-      throw AuthException('Fyll i alla fält.');
+      throw const AuthException(
+        'allFieldsRequired',
+        code: AuthErrorCode.allFieldsRequired,
+      );
     }
     if (password.length < 6) {
-      throw AuthException('Lösenordet måste vara minst 6 tecken.');
+      throw const AuthException(
+        'passwordTooShort',
+        code: AuthErrorCode.passwordTooShort,
+      );
     }
 
     if (SupabaseService.instance.isEnabled) {
@@ -87,8 +93,9 @@ class AuthService {
         isLoggedIn.value = true;
       } else {
         // Email confirmation required — tell the caller.
-        throw AuthException(
-          'Kolla din e-post och bekräfta kontot, logga sedan in.',
+        throw const AuthException(
+          'confirmationEmailSent',
+          code: AuthErrorCode.confirmationEmailSent,
         );
       }
       return;
@@ -97,7 +104,10 @@ class AuthService {
     // ── Local mock ────────────────────────────────────────────────────────
     final accounts = _loadLocalAccounts();
     if (accounts.containsKey(normalizedEmail)) {
-      throw AuthException('Det finns redan ett konto med den e-postadressen.');
+      throw const AuthException(
+        'emailAlreadyInUse',
+        code: AuthErrorCode.emailAlreadyInUse,
+      );
     }
     accounts[normalizedEmail] = {
       'name': trimmedName,
@@ -119,14 +129,21 @@ class AuthService {
     final normalizedEmail = email.trim().toLowerCase();
 
     if (normalizedEmail.isEmpty || password.isEmpty) {
-      throw AuthException('Fyll i e-post och lösenord.');
+      throw const AuthException(
+        'emailAndPasswordRequired',
+        code: AuthErrorCode.emailAndPasswordRequired,
+      );
     }
 
     if (SupabaseService.instance.isEnabled) {
       final response = await SupabaseService.instance.client.auth
           .signInWithPassword(email: normalizedEmail, password: password);
       final user = response.user;
-      if (user == null) throw AuthException('Fel e-post eller lösenord.');
+      if (user == null)
+        throw const AuthException(
+          'invalidCredentials',
+          code: AuthErrorCode.invalidCredentials,
+        );
       userId.value = user.id;
       userEmail.value = user.email;
       userName.value =
@@ -140,7 +157,10 @@ class AuthService {
     final accounts = _loadLocalAccounts();
     final account = accounts[normalizedEmail];
     if (account == null || account['pw'] != password) {
-      throw AuthException('Fel e-post eller lösenord.');
+      throw const AuthException(
+        'invalidCredentials',
+        code: AuthErrorCode.invalidCredentials,
+      );
     }
     userName.value = account['name'] ?? _nameFromEmail(normalizedEmail);
     userEmail.value = normalizedEmail;
@@ -202,7 +222,7 @@ class AuthService {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _nameFromEmail(String? email) {
-    if (email == null || email.isEmpty) return 'CruizX-förare';
+    if (email == null || email.isEmpty) return 'CruizX Driver';
     final atIndex = email.indexOf('@');
     if (atIndex <= 0) return email;
     return email.substring(0, atIndex);
@@ -248,8 +268,19 @@ class AuthService {
 }
 
 class AuthException implements Exception {
-  const AuthException(this.message);
+  const AuthException(this.message, {this.code = AuthErrorCode.unknown});
   final String message;
+  final AuthErrorCode code;
   @override
   String toString() => message;
+}
+
+enum AuthErrorCode {
+  allFieldsRequired,
+  passwordTooShort,
+  confirmationEmailSent,
+  emailAndPasswordRequired,
+  invalidCredentials,
+  emailAlreadyInUse,
+  unknown,
 }

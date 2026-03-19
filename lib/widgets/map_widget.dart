@@ -4,25 +4,30 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
 
 class MapWidget extends StatefulWidget {
   const MapWidget({
     super.key,
-    this.currentLocation,
+    required this.locationNotifier,
+    required this.headingNotifier,
     this.destination,
     this.routePoints = const [],
     this.alerts = const [],
     this.onTap,
     this.followUser = false,
     this.onUserPanned,
-    this.heading = 0,
     this.use3D = true,
-    this.distToManeuver = double.infinity,
+    this.darkMode = false,
   });
 
-  final LatLng? currentLocation;
+  /// Notifiers updated directly by the GPS listener — bypasses setState on
+  /// the parent screen so MapWidget doesn't rebuild every GPS tick.
+  final ValueNotifier<LatLng?> locationNotifier;
+  final ValueNotifier<double> headingNotifier;
+
   final LatLng? destination;
   final List<LatLng> routePoints;
   final List<AlertModel> alerts;
@@ -32,18 +37,12 @@ class MapWidget extends StatefulWidget {
   /// Called when the user manually pans the map during navigation.
   final VoidCallback? onUserPanned;
 
-  /// Compass heading in degrees (0 = north, clockwise). Used to rotate
-  /// the map so the direction of travel is always "up" (Waze-style).
-  final double heading;
-
   /// When true and [followUser] is active, renders the Waze-style 3-D
   /// perspective tilt. When false the map stays flat (2-D top-down).
   final bool use3D;
 
-  /// Distance in metres to the next maneuver. Used for Waze-style dynamic
-  /// zoom: the camera zooms in smoothly as the turn approaches.
-  /// Defaults to [double.infinity] (= no dynamic zoom).
-  final double distToManeuver;
+  /// Light/dark map style toggle.
+  final bool darkMode;
 
   static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
 
@@ -54,68 +53,227 @@ class MapWidget extends StatefulWidget {
 class _MapWidgetState extends State<MapWidget>
     with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
+  late final http.Client _tileHttpClient;
+  late final NetworkTileProvider _tileProvider;
+
+  // ── Marker state (updated via notifiers, isolated from parent setState) ──
+  LatLng? _markerLocation;
+
+  // Smooth heading notifier — driven by the ticker at 60fps so the arrow
+  // interpolates instead of jumping to raw GPS heading each tick.
+  late final ValueNotifier<double> _arrowHdg;
 
   // ── Smooth camera animation ────────────────────────────────────────────
   late final Ticker _ticker;
   double _curLat = 0, _curLng = 0, _curHdg = 0;
   double _tgtLat = 0, _tgtLng = 0, _tgtHdg = 0;
+  double _filteredTgtHdg = 0;
+  double _rawCompassHdg = 0;
+  double _gpsSpeedMps = 0;
+  DateTime? _lastGpsAt;
+  Duration? _lastTickAt;
+  Duration? _lastCameraTickAt;
   bool _navInitialized = false;
+  LatLng? _lastLocForBearing;
 
-  // ── Waze-style dynamic zoom ───────────────────────────────────────────────
-  /// Returns the target zoom level based on distance to the next maneuver.
-  double _targetZoom() {
-    final base = widget.use3D ? 18.5 : 16.0;
-    final d = widget.distToManeuver;
-    if (d <= 0 || d > 300) return base;
-    if (d < 50) return base + 2.0; // very close: +2
-    if (d < 100) return base + 1.5; // close:      +1.5
-    if (d < 200) return base + 0.8; // approaching: +0.8
-    return base + 0.4; // 200–300 m:  +0.4
-  }
+  // Fixed zoom levels — no dynamic zoom on approach.
+  // Dynamic zoom caused flutter_map to load a completely new tile set
+  // every time the maneuver distance crossed a threshold → white flashes.
+  double get _navZoom => widget.use3D ? 17.5 : 16.0;
 
   @override
   void initState() {
     super.initState();
+    _tileHttpClient = http.Client();
+    _tileProvider = NetworkTileProvider(
+      httpClient: _tileHttpClient,
+      abortObsoleteRequests: true,
+      cachingProvider: BuiltInMapCachingProvider.getOrCreateInstance(
+        maxCacheSize: 1_000_000_000,
+      ),
+    );
+    _markerLocation = widget.locationNotifier.value;
+    _rawCompassHdg = widget.headingNotifier.value;
+    _arrowHdg = ValueNotifier<double>(_rawCompassHdg);
+    widget.locationNotifier.addListener(_onLocationUpdate);
+    widget.headingNotifier.addListener(_onHeadingUpdate);
     _ticker = createTicker(_onTick)..start();
   }
 
-  void _onTick(Duration _) {
+  double _wrap360(double angle) => (angle % 360 + 360) % 360;
+
+  double _angleDiff(double from, double to) {
+    return ((to - from + 540) % 360) - 180;
+  }
+
+  // Cheap local approximation for short GPS segments.
+  double _segmentMeters(LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+    final dx = (b.latitude - a.latitude) * lat2m;
+    final dy = (b.longitude - a.longitude) * lng2m;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  void _onLocationUpdate() {
+    final loc = widget.locationNotifier.value;
+    if (loc == null || !mounted) return;
+    // Update ticker targets (no setState — ticker reads these fields directly).
+    if (widget.followUser) {
+      if (!_navInitialized) {
+        _curLat = _tgtLat = loc.latitude;
+        _curLng = _tgtLng = loc.longitude;
+        _filteredTgtHdg = _rawCompassHdg;
+        _tgtHdg = _rawCompassHdg;
+        _lastLocForBearing = loc;
+        _lastGpsAt = DateTime.now();
+        _navInitialized = true;
+      } else {
+        _tgtLat = loc.latitude;
+        _tgtLng = loc.longitude;
+        final prev = _lastLocForBearing;
+        final now = DateTime.now();
+        if (prev != null) {
+          final meters = _segmentMeters(prev, loc);
+          final dt = _lastGpsAt == null
+              ? 0.0
+              : now.difference(_lastGpsAt!).inMilliseconds / 1000.0;
+          if (dt > 0.02) {
+            _gpsSpeedMps = meters / dt;
+          }
+
+          // Movement bearing is primary target. Compass is only blended in
+          // at very low speeds where GPS bearing is unreliable.
+          if (meters > 0.6) {
+            final motionHeading = _wrap360(
+              math.atan2(
+                    loc.longitude - prev.longitude,
+                    loc.latitude - prev.latitude,
+                  ) *
+                  180 /
+                  math.pi,
+            );
+            final compassWeight = (_gpsSpeedMps < 2.0)
+                ? ((2.0 - _gpsSpeedMps) / 2.0).clamp(0.0, 1.0)
+                : 0.0;
+            final motionToCompass = _angleDiff(motionHeading, _rawCompassHdg);
+            _tgtHdg = _wrap360(
+              motionHeading + motionToCompass * compassWeight * 0.35,
+            );
+          }
+        }
+        _lastLocForBearing = loc;
+        _lastGpsAt = now;
+
+        // Separate low-pass for target heading (decoupled from camera angle).
+        final targetAlpha = (_gpsSpeedMps / 16.0).clamp(0.14, 0.45);
+        final targetStep = _angleDiff(_filteredTgtHdg, _tgtHdg);
+        _filteredTgtHdg = _wrap360(_filteredTgtHdg + targetStep * targetAlpha);
+      }
+    }
+    // In follow mode we render a fixed overlay marker, so avoid rebuilding
+    // the whole map tree on every GPS sample.
+    if (widget.followUser) {
+      _markerLocation = loc;
+      return;
+    }
+
+    // Outside follow mode we still need marker updates inside MarkerLayer.
+    if (mounted) setState(() => _markerLocation = loc);
+  }
+
+  void _onHeadingUpdate() {
+    _rawCompassHdg = widget.headingNotifier.value;
+    // In follow mode, heading updates are blended in _onLocationUpdate.
+    if (widget.followUser) return;
+
+    _tgtHdg = _rawCompassHdg;
+    // In non-nav mode the ticker isn't running, so push _arrowHdg directly.
+    // ValueListenableBuilder inside _LocationDot handles the repaint —
+    // no setState needed here at all.
+    _arrowHdg.value = widget.headingNotifier.value;
+  }
+
+  void _onTick(Duration elapsed) {
     if (!widget.followUser || !_navInitialized) return;
-    // kPos: position catches up in ~180ms at 60fps (was 0.18 = ~280ms).
-    // kHdg: heading responds faster so turns feel immediate.
-    const kPos = 0.25;
-    const kHdg = 0.32;
+
+    final tickNow = elapsed;
+    final lastTick = _lastTickAt;
+    _lastTickAt = tickNow;
+    if (lastTick == null) return;
+
+    final dtSec = (tickNow - lastTick).inMicroseconds / 1000000.0;
+    if (dtSec <= 0) return;
+
+    // Speed-adaptive smoothing: stable at low speed, responsive at higher speed.
+    final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
+    final posAlpha = (dtSec * (2.3 + speedN * 2.9)).clamp(0.04, 0.35);
+    final hdgAlpha = (dtSec * (1.9 + speedN * 3.2)).clamp(0.03, 0.33);
+    final maxTurnPerSec = 55.0 + speedN * 95.0;
+    final maxTurnThisTick = maxTurnPerSec * dtSec;
+
     final dLat = _tgtLat - _curLat;
     final dLng = _tgtLng - _curLng;
-    final diff = ((_tgtHdg - _curHdg + 540) % 360) - 180;
+    final rawDiff = _angleDiff(_curHdg, _filteredTgtHdg);
+    final turnN = (rawDiff.abs() / 45.0).clamp(0.0, 1.0);
+    // Cap turn rate to avoid map snaps in tight turns.
+    final boostedMaxTurn = maxTurnThisTick * (1.0 + turnN * 2.2);
+    final diff = rawDiff.clamp(-boostedMaxTurn, boostedMaxTurn);
 
     // Deadband: skip moveAndRotate (= zero GPU work) when already at target.
     // 1e-7° ≈ 1 cm; 0.05° heading is imperceptible. This eliminates constant
     // 60fps repaints while the user is stationary.
     if (dLat.abs() < 1e-7 && dLng.abs() < 1e-7 && diff.abs() < 0.05) return;
 
-    _curLat += dLat * kPos;
-    _curLng += dLng * kPos;
-    _curHdg = (_curHdg + diff * kHdg + 360) % 360;
-    final zoom = _targetZoom();
+    final turnPosAlpha = (posAlpha * (1.0 + turnN * 0.35)).clamp(0.04, 0.55);
+    final turnHdgAlpha = (hdgAlpha * (1.0 + turnN * 2.0)).clamp(0.03, 0.70);
+    _curLat += dLat * turnPosAlpha;
+    _curLng += dLng * turnPosAlpha;
+    _curHdg = _wrap360(_curHdg + diff * turnHdgAlpha);
+    // Keep arrow in sync with the smoothed camera heading — ValueNotifier
+    // notifies only the tiny _LocationDot subtree, zero setState cost.
+    _arrowHdg.value = _curHdg;
+    final zoom = _navZoom;
 
     if (widget.use3D) {
-      // In 3D mode shift the camera centre toward the heading so the user
-      // dot sits in the lower third of the screen rather than the middle.
-      // At zoom 18.5 one degree latitude ≈ 10 000 map units; we shift by
-      // a fraction of a degree "behind" the heading direction.
-      const offsetDeg = 0.00045; // ~50 m in lat/lng degrees
+      // Shift camera centre ahead of the user so the dot sits in the lower
+      // third. offsetDeg tuned for zoom 17.5 (~80 m offset at that zoom).
+      const offsetDeg = 0.00050;
       final rad = _curHdg * 3.141592653589793 / 180.0;
       final cLat = _curLat + offsetDeg * math.cos(rad);
       final cLng = _curLng + offsetDeg * math.sin(rad);
-      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
+      final moveDelta2 = dLat * dLat + dLng * dLng;
+      final lastCam = _lastCameraTickAt;
+      final shouldPaintCamera =
+          lastCam == null ||
+          (tickNow - lastCam).inMilliseconds >= 16 ||
+          diff.abs() > 0.35 ||
+          moveDelta2 > 1e-10;
+      if (shouldPaintCamera) {
+        _lastCameraTickAt = tickNow;
+        _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
+      }
     } else {
-      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+      final moveDelta2 = dLat * dLat + dLng * dLng;
+      final lastCam = _lastCameraTickAt;
+      final shouldPaintCamera =
+          lastCam == null ||
+          (tickNow - lastCam).inMilliseconds >= 16 ||
+          diff.abs() > 0.35 ||
+          moveDelta2 > 1e-10;
+      if (shouldPaintCamera) {
+        _lastCameraTickAt = tickNow;
+        _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
+      }
     }
   }
 
   @override
   void dispose() {
+    widget.locationNotifier.removeListener(_onLocationUpdate);
+    widget.headingNotifier.removeListener(_onHeadingUpdate);
+    _tileHttpClient.close();
+    _arrowHdg.dispose();
     _ticker.dispose();
     super.dispose();
   }
@@ -125,22 +283,29 @@ class _MapWidgetState extends State<MapWidget>
     super.didUpdateWidget(oldWidget);
 
     // Waze-style: zoom in and orient map to heading when navigation starts.
-    if (widget.followUser &&
-        !oldWidget.followUser &&
-        widget.currentLocation != null) {
-      _curLat = _tgtLat = widget.currentLocation!.latitude;
-      _curLng = _tgtLng = widget.currentLocation!.longitude;
-      _curHdg = _tgtHdg = widget.heading;
-      _navInitialized = true;
-      final zoom = _targetZoom();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _mapController.moveAndRotate(
-          widget.currentLocation!,
-          zoom,
-          -widget.heading,
-        );
-      });
+    if (widget.followUser && !oldWidget.followUser) {
+      final loc = widget.locationNotifier.value;
+      final hdg = widget.headingNotifier.value;
+      if (loc != null) {
+        _curLat = _tgtLat = loc.latitude;
+        _curLng = _tgtLng = loc.longitude;
+        _curHdg = _tgtHdg = _filteredTgtHdg = hdg;
+        _arrowHdg.value = hdg;
+        _navInitialized = true;
+        final zoom = _navZoom;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (widget.use3D) {
+            const offsetDeg = 0.00060;
+            final rad = _curHdg * 3.141592653589793 / 180.0;
+            final cLat = _curLat + offsetDeg * math.cos(rad);
+            final cLng = _curLng + offsetDeg * math.sin(rad);
+            _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -hdg);
+          } else {
+            _mapController.moveAndRotate(loc, zoom, -hdg);
+          }
+        });
+      }
       return;
     }
 
@@ -165,29 +330,21 @@ class _MapWidgetState extends State<MapWidget>
     if (widget.followUser &&
         widget.use3D != oldWidget.use3D &&
         _navInitialized) {
-      final zoom = widget.use3D ? 18.5 : 16.0;
-      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
-    }
-
-    // During active navigation: update animation TARGET.
-    if (widget.followUser &&
-        widget.currentLocation != null &&
-        (widget.currentLocation != oldWidget.currentLocation ||
-            widget.heading != oldWidget.heading)) {
-      if (!_navInitialized) {
-        _curLat = widget.currentLocation!.latitude;
-        _curLng = widget.currentLocation!.longitude;
-        _curHdg = widget.heading;
-        _navInitialized = true;
-      }
-      _tgtLat = widget.currentLocation!.latitude;
-      _tgtLng = widget.currentLocation!.longitude;
-      _tgtHdg = widget.heading;
+      _mapController.moveAndRotate(
+        LatLng(_curLat, _curLng),
+        _navZoom,
+        -_curHdg,
+      );
     }
 
     // Reset when navigation ends.
     if (!widget.followUser && oldWidget.followUser) {
       _navInitialized = false;
+      _lastLocForBearing = null;
+      _lastGpsAt = null;
+      _gpsSpeedMps = 0;
+      _lastTickAt = null;
+      _lastCameraTickAt = null;
     }
   }
 
@@ -198,11 +355,12 @@ class _MapWidgetState extends State<MapWidget>
     // relayouts/repaints. Only a type change would destroy FlutterMap.
     final is3D = widget.followUser && widget.use3D;
 
-    // Strong Waze-style perspective: ~37° tilt anchored at bottom-centre.
+    // Waze-style perspective tilt — reduced from 37° to 28° to cut down
+    // the amount of horizon visible, which reduces far-tile loading.
     final matrix = is3D
         ? (Matrix4.identity()
-            ..setEntry(3, 2, 0.001) // perspective depth
-            ..rotateX(0.65)) // ≈ 37° forward tilt
+            ..setEntry(3, 2, 0.0008) // perspective depth
+            ..rotateX(0.49)) // ≈ 28° forward tilt
         : Matrix4.identity();
 
     return ClipRRect(
@@ -221,8 +379,9 @@ class _MapWidgetState extends State<MapWidget>
           final mapWidget = FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: widget.currentLocation ?? MapWidget._defaultCenter,
-              initialZoom: widget.followUser ? (is3D ? 18.5 : 16.0) : 12.0,
+              initialCenter:
+                  widget.locationNotifier.value ?? MapWidget._defaultCenter,
+              initialZoom: widget.followUser ? _navZoom : 12.0,
               onTap: (_, point) => widget.onTap?.call(point),
               onPositionChanged: (camera, hasGesture) {
                 if (hasGesture && widget.followUser) {
@@ -232,20 +391,39 @@ class _MapWidgetState extends State<MapWidget>
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://api.mapbox.com/styles/v1/mapbox/navigation-night-v1/tiles/{z}/{x}/{y}@2x?access_token={mapbox_token}',
-                additionalOptions: const {
-                  'mapbox_token':
-                      'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
-                },
-                userAgentPackageName: 'com.kimtechtool.slowride',
-                tileDimension: 512,
-                zoomOffset: -1,
-                // Pre-cache tiles outside the viewport to avoid
-                // blank tile flashes when panning or rotating.
-                keepBuffer: 4,
+                urlTemplate: widget.darkMode
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'com.cruizx.mobile',
+                tileProvider: _tileProvider,
+                tileUpdateTransformer: TileUpdateTransformers.throttle(
+                  const Duration(milliseconds: 28),
+                ),
+                retinaMode: RetinaMode.isHighDensity(context),
+                maxNativeZoom: 20,
+                // Large buffers + instant tile appearance to eliminate
+                // white flashes when rotating/panning during navigation.
+                keepBuffer: 3,
                 panBuffer: 1,
+                tileDisplay: const TileDisplay.instantaneous(),
               ),
+              if (widget.darkMode)
+                TileLayer(
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.cruizx.mobile',
+                  tileProvider: _tileProvider,
+                  tileUpdateTransformer: TileUpdateTransformers.throttle(
+                    const Duration(milliseconds: 28),
+                  ),
+                  retinaMode: RetinaMode.isHighDensity(context),
+                  maxNativeZoom: 20,
+                  keepBuffer: 2,
+                  panBuffer: 1,
+                  tileDisplay: const TileDisplay.instantaneous(),
+                ),
               if (widget.routePoints.isNotEmpty) ...[
                 PolylineLayer(
                   polylines: [
@@ -289,12 +467,15 @@ class _MapWidgetState extends State<MapWidget>
                       alignment: const Alignment(0, -1),
                       child: const _DestinationPin(),
                     ),
-                  if (widget.currentLocation != null)
+                  if (_markerLocation != null && !widget.followUser)
                     Marker(
-                      point: widget.currentLocation!,
+                      point: _markerLocation!,
                       width: 48,
                       height: 48,
-                      child: _LocationDot(heading: widget.heading),
+                      child: _LocationDot(
+                        headingNotifier: _arrowHdg,
+                        lockNorthUp: false,
+                      ),
                     ),
                 ],
               ),
@@ -345,6 +526,36 @@ class _MapWidgetState extends State<MapWidget>
                   ),
                 ),
               ),
+              if (widget.darkMode)
+                IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0x333A4D7A),
+                          const Color(0x1A70423B),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              // Keep the navigation arrow fixed on screen in follow mode.
+              // This removes micro-jitter from GPS sample cadence while the
+              // map animates smoothly beneath the marker.
+              if (widget.followUser)
+                IgnorePointer(
+                  child: Align(
+                    alignment: is3D
+                        ? const Alignment(0, 0.36)
+                        : Alignment.center,
+                    child: _LocationDot(
+                      headingNotifier: _arrowHdg,
+                      lockNorthUp: true,
+                    ),
+                  ),
+                ),
             ],
           );
         },
@@ -429,41 +640,54 @@ class _AlertTailPainter extends CustomPainter {
 // ─── Premium marker widgets ──────────────────────────────────────────────────
 
 class _LocationDot extends StatelessWidget {
-  const _LocationDot({this.heading = 0});
+  const _LocationDot({
+    required this.headingNotifier,
+    required this.lockNorthUp,
+  });
 
-  final double heading;
+  // Material navigation icon has a built-in diagonal baseline.
+  // Compensate so 0° renders as true "straight up".
+  static const double _iconHeadingOffsetRad = -math.pi / 4;
+
+  final ValueNotifier<double> headingNotifier;
+  final bool lockNorthUp;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Transform.rotate(
-        // heading 0 = north; Icons.navigation_rounded already points up (north)
-        // so we just rotate by heading degrees converted to radians.
-        angle: heading * 3.141592653589793 / 180.0,
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF1E90FF),
-            border: Border.all(color: Colors.white, width: 2.5),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1E90FF).withValues(alpha: 0.75),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-              BoxShadow(
-                color: const Color(0xFF1E90FF).withValues(alpha: 0.30),
-                blurRadius: 22,
-                spreadRadius: 8,
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.navigation_rounded,
-            color: Colors.white,
-            size: 20,
+    return ValueListenableBuilder<double>(
+      valueListenable: headingNotifier,
+      builder: (_, heading, __) => Center(
+        child: Transform.rotate(
+          // heading 0 = north; Icons.navigation_rounded already points up (north)
+          // so we rotate and also compensate icon baseline offset.
+          angle:
+              (lockNorthUp ? 0.0 : heading * math.pi / 180.0) +
+              _iconHeadingOffsetRad,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF1E90FF),
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1E90FF).withValues(alpha: 0.75),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: const Color(0xFF1E90FF).withValues(alpha: 0.30),
+                  blurRadius: 22,
+                  spreadRadius: 8,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.navigation_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
         ),
       ),

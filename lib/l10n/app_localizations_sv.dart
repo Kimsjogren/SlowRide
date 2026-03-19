@@ -111,6 +111,75 @@ class AppLocalizationsSv extends AppLocalizations {
   String get signUpHaveAccountAction => 'Har du redan konto? Logga in';
 
   @override
+  String get authGenericError => 'Något gick fel. Försök igen.';
+
+  @override
+  String get authWelcomeBack => 'Välkommen tillbaka till CruizX';
+
+  @override
+  String get authRegisterSubtitle => 'Gå med i CruizX-gemenskapen';
+
+  @override
+  String get authEmailLabel => 'E-postadress';
+
+  @override
+  String get authEmailRequired => 'Ange e-postadress';
+
+  @override
+  String get authEmailInvalid => 'Ogiltig e-post';
+
+  @override
+  String get authPasswordLabel => 'Lösenord';
+
+  @override
+  String get authPasswordRequired => 'Ange lösenord';
+
+  @override
+  String get authPasswordMinLength => 'Minst 6 tecken';
+
+  @override
+  String get authConfirmPasswordLabel => 'Bekräfta lösenord';
+
+  @override
+  String get authConfirmPasswordRequired => 'Bekräfta lösenordet';
+
+  @override
+  String get authPasswordsDoNotMatch => 'Lösenorden matchar inte';
+
+  @override
+  String get authDisplayNameLabel => 'Visningsnamn';
+
+  @override
+  String get authDisplayNameRequired => 'Ange ditt namn';
+
+  @override
+  String get authNoAccountPrompt => 'Inget konto? ';
+
+  @override
+  String get authAlreadyHaveAccountPrompt => 'Har du redan ett konto? ';
+
+  @override
+  String get authCancel => 'Avbryt';
+
+  @override
+  String get authErrorAllFieldsRequired => 'Fyll i alla fält.';
+
+  @override
+  String get authErrorPasswordTooShort => 'Lösenordet måste vara minst 6 tecken.';
+
+  @override
+  String get authErrorConfirmEmail => 'Kolla din e-post och bekräfta kontot, logga sedan in.';
+
+  @override
+  String get authErrorEmailAndPasswordRequired => 'Fyll i e-post och lösenord.';
+
+  @override
+  String get authErrorInvalidCredentials => 'Fel e-post eller lösenord.';
+
+  @override
+  String get authErrorEmailAlreadyInUse => 'Det finns redan ett konto med den e-postadressen.';
+
+  @override
   String get convoyRealtimeBackendMissing => 'Realtime-konvoj är inte konfigurerad ännu. Lägg till backend-konfiguration för att dela liveposition mellan användare.';
 
   @override
@@ -121,6 +190,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get convoyCreateButton => 'Skapa konvoj';
+
+  @override
+  String get convoyOpenButton => 'Öppna';
 
   @override
   String get convoyJoinButton => 'Gå med';
@@ -242,6 +314,24 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String get profileDefaultName => 'CruizX-förare';
+
+  @override
+  String get profileSignedIn => 'Inloggad';
+
+  @override
+  String get profileStatsTitle => 'Statistik';
+
+  @override
+  String get profileStatsConvoys => 'Körda konvojer';
+
+  @override
+  String get profileStatsTotalDistance => 'Totalt avstånd';
+
+  @override
+  String get profileStatsSpeedViolations => 'Hastighetsöverträdelser';
+
+  @override
   String get settingsTitle => 'Inställningar';
 
   @override
@@ -283,6 +373,33 @@ class AppLocalizationsSv extends AppLocalizations {
   String settingsMaxSpeedWithUnit(Object value, Object unit) {
     return 'Maxhastighet: $value $unit';
   }
+
+  @override
+  String get settingsProCardTitle => 'CruizX Pro';
+
+  @override
+  String get settingsProStatusActive => 'Aktiv';
+
+  @override
+  String get settingsProStatusInactive => 'Inte aktiv';
+
+  @override
+  String get settingsProDescriptionActive => 'Du har tillgang till alla Pro-funktioner.';
+
+  @override
+  String get settingsProDescriptionInactive => 'Lasa upp alla funktioner med CruizX Pro.';
+
+  @override
+  String get settingsPrivacyPolicyLabel => 'Integritetspolicy';
+
+  @override
+  String get settingsTermsOfUseLabel => 'Anvandarvillkor (EULA)';
+
+  @override
+  String get settingsLinkOpenFailed => 'Kunde inte oppna lanken just nu.';
+
+  @override
+  String get settingsRestorePurchaseFailed => 'Kunde inte aterstalla kop.';
 
   @override
   String get navigationTitle => 'Sväng-för-sväng-navigering';
@@ -333,6 +450,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get mapRouteFailed => 'Kunde inte skapa rutt just nu';
+
+  @override
+  String get mapRemaining => 'kvar';
 
   @override
   String get mapRouteNoRouteFound => 'Ingen rutt hittades mellan valda punkter';
@@ -459,5 +579,94 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String convoyShareCopied(Object name, Object code) {
     return 'Kopierat! Dela: \"$name\" kod: $code';
+  }
+
+  @override
+  String get paywallTitle => 'Uppgradera till CruizX Pro';
+
+  @override
+  String get paywallSubtitle => 'Inga begränsningar. Ingen reklam. Full åtkomst.';
+
+  @override
+  String get paywallPrice => '3,49 \$ / månad';
+
+  @override
+  String get paywallUpgradeButton => 'Uppgradera till Pro';
+
+  @override
+  String get paywallRestoreButton => 'Återställ köp';
+
+  @override
+  String get paywallFreeLabel => 'Free';
+
+  @override
+  String get paywallProLabel => 'Pro';
+
+  @override
+  String get paywallFeatureRoutes => 'Rutter per dag';
+
+  @override
+  String get paywallFreeRouteLimit => '2 rutter';
+
+  @override
+  String get paywallProRouteLimit => 'Obegränsat';
+
+  @override
+  String get paywallFeatureConvoy => 'Konvoj';
+
+  @override
+  String get paywallFreeConvoyLimit => '1 aktiv, 2 medlemmar';
+
+  @override
+  String get paywallProConvoyLimit => 'Obegränsat';
+
+  @override
+  String get paywallFeatureAds => 'Reklam';
+
+  @override
+  String get paywallFreeAds => 'Visas';
+
+  @override
+  String get paywallProAds => 'Ingen';
+
+  @override
+  String get paywallRouteLimitTitle => 'Dagsgransen nådd';
+
+  @override
+  String get paywallRouteLimitBody => 'Free-användare kan beräkna 2 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
+
+  @override
+  String get paywallConvoyLimitTitle => 'Konvojgräns nådd';
+
+  @override
+  String get paywallConvoyLimitBody => 'Free-användare kan bara vara med i 1 konvoj åt gången.';
+
+  @override
+  String get paywallMemberLimitTitle => 'Konvojen är full';
+
+  @override
+  String get paywallMemberLimitBody => 'Free-användare kan bara gå med i konvojer med färre än 2 medlemmar. Uppgradera till Pro för obegränsad åtkomst.';
+
+  @override
+  String get paywallPurchaseSuccess => 'Du är nu en Pro-användare!';
+
+  @override
+  String get paywallRestoreSuccess => 'Köpet återställt!';
+
+  @override
+  String get paywallRestoreNotFound => 'Inget tidigare köp hittades.';
+
+  @override
+  String get profileFreePlan => 'Free-plan';
+
+  @override
+  String get profileProPlan => 'Pro-plan';
+
+  @override
+  String get profileUpgradeToPro => 'Uppgradera till Pro';
+
+  @override
+  String profileRoutesUsed(Object count, Object max) {
+    return 'Rutter idag: $count / $max';
   }
 }

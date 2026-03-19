@@ -16,6 +16,8 @@ import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/speedometer_widget.dart';
+import 'package:slowride/features/paywall/paywall_screen.dart';
+import 'package:slowride/services/subscription_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -35,9 +37,14 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionSubscription;
   double _speedKmh = 0;
-  double _headingDegrees = 0;
   LatLng? _currentLocation;
   String _locationStatus = '';
+
+  // Notifiers that feed MapWidget directly — updating them does NOT cause
+  // the whole screen to rebuild (unlike setState).
+  final ValueNotifier<LatLng?> _locationNotifier = ValueNotifier(null);
+  final ValueNotifier<double> _headingNotifier = ValueNotifier(0);
+
   // Tracks progress along route so nearest-point scan is O(1) not O(n).
   int _lastNearestIdx = 0;
   String _routingStatus = '';
@@ -46,6 +53,7 @@ class _MapScreenState extends State<MapScreen> {
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
   bool _use3DMap = true;
+  bool _useDarkMap = false;
   LatLng? _destination;
   String _destinationLabel = '';
   List<LatLng> _routePoints = const [];
@@ -60,7 +68,6 @@ class _MapScreenState extends State<MapScreen> {
   // Cumulative distance from route start to each point (metres).
   List<double> _cumulativeDist = const [];
   double _totalRouteDistM = 0;
-  double _remainingDistM = 0;
   // Per-trip tracking: accumulated while _isNavigating is true.
   DateTime? _tripStartTime;
   LatLng? _lastNavPos;
@@ -72,6 +79,14 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _alertsTimer;
   // Nearest alert within 400 m while navigating (for proximity warning).
   AlertModel? _nearbyAlert;
+
+  // ── GPS simulation (test-only, visible in debug builds) ──────────────
+  bool _isSimulating = false;
+  Timer? _simTimer;
+  int _simPtIdx = 0;
+  double _simSegOffsetM = 0;
+  static const double _simSpeedKmh = 50.0;
+  static const Duration _simInterval = Duration(milliseconds: 200);
 
   bool _localizedDefaultsSet = false;
   @override
@@ -189,103 +204,18 @@ class _MapScreenState extends State<MapScreen> {
           Geolocator.getPositionStream(locationSettings: settings).listen((
             position,
           ) {
-            if (!mounted) {
-              return;
-            }
-
-            final speedMetersPerSecond = position.speed < 0
-                ? 0
-                : position.speed;
+            if (!mounted || _isSimulating) return;
 
             final hadLocation = _currentLocation != null;
             final currentPos = LatLng(position.latitude, position.longitude);
-            final newSpeed = speedMetersPerSecond * 3.6;
+            final newSpeed = (position.speed < 0 ? 0 : position.speed) * 3.6;
+            final heading = (position.speed > 0.5 && position.heading >= 0)
+                ? position.heading
+                : _headingNotifier.value;
 
-            // Record GPS trace while navigating (SlowRoad Learning Engine).
-            // Do this BEFORE setState so we don't trigger an extra rebuild.
-            if (_isNavigating) {
-              SlowRoadService.instance.addPoint(currentPos, newSpeed);
-            }
+            _processLocationUpdate(currentPos, newSpeed, heading);
 
-            // ── Trip-distance accumulation (speed calibration) ─────────────
-            double newTripDist = _tripDistanceM;
-            if (_isNavigating && _lastNavPos != null) {
-              newTripDist += _segDist(_lastNavPos!, currentPos);
-            }
-
-            // Compute new instruction state + remaining distance synchronously.
-            int? newSign;
-            String? newText;
-            double? newDist;
-            double? newRemaining;
-            if (_isNavigating && _routePoints.isNotEmpty) {
-              final nearestIdx = _nearestRoutePointIndex(currentPos);
-              // Remaining distance via O(1) cumulative-dist lookup.
-              if (_cumulativeDist.length == _routePoints.length) {
-                newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx])
-                    .clamp(0.0, _totalRouteDistM);
-              }
-              if (_instructions.isNotEmpty) {
-                int instrIdx = 0;
-                for (int i = 0; i < _instructions.length - 1; i++) {
-                  if (_instructions[i + 1].pointIndex > nearestIdx) {
-                    instrIdx = i;
-                    break;
-                  }
-                  instrIdx = i + 1;
-                }
-                final nextIdx = instrIdx + 1;
-                if (nextIdx < _instructions.length) {
-                  final next = _instructions[nextIdx];
-                  double dist = 0;
-                  for (
-                    int i = nearestIdx;
-                    i < next.pointIndex && i < _routePoints.length - 1;
-                    i++
-                  ) {
-                    dist += _segDist(_routePoints[i], _routePoints[i + 1]);
-                  }
-                  newSign = next.sign;
-                  newText = next.text;
-                  newDist = dist;
-                } else {
-                  newText = '';
-                }
-              }
-            }
-
-            // Single setState — one rebuild per GPS tick.
-            setState(() {
-              _speedKmh = newSpeed;
-              // Only update heading when moving to avoid jitter when still.
-              if (position.speed > 0.5 && position.heading >= 0) {
-                _headingDegrees = position.heading;
-              }
-              _currentLocation = currentPos;
-              _locationStatus = l10n.mapGpsActive;
-              if (_isNavigating) {
-                _tripDistanceM = newTripDist;
-                _lastNavPos = currentPos;
-              }
-              if (newSign != null) _nextManeuverSign = newSign;
-              if (newText != null) _nextManeuverText = newText;
-              if (newDist != null) _distToNextManeuver = newDist;
-              if (newRemaining != null) _remainingDistM = newRemaining;
-              // Proximity check: find any alert within 400 m.
-              _nearbyAlert = _alerts
-                  .where((a) => a.distanceTo(currentPos) <= 400)
-                  .fold<AlertModel?>(
-                    null,
-                    (best, a) =>
-                        best == null ||
-                            a.distanceTo(currentPos) <
-                                best.distanceTo(currentPos)
-                        ? a
-                        : best,
-                  );
-            });
-            // If this is the first GPS fix and a destination was already set
-            // (e.g. from a convoy pin tap before GPS was ready), start routing.
+            // First GPS fix: auto-start routing if destination was set early.
             if (!hadLocation &&
                 _destination != null &&
                 _routePoints.isEmpty &&
@@ -308,9 +238,12 @@ class _MapScreenState extends State<MapScreen> {
     NavigationRequestService.instance.pendingDestination.removeListener(
       _onExternalNavigationRequest,
     );
+    _locationNotifier.dispose();
+    _headingNotifier.dispose();
     _addressController.dispose();
     _searchFocus.dispose();
     _debounce?.cancel();
+    _simTimer?.cancel();
     _alertsTimer?.cancel();
     _positionSubscription?.cancel();
     super.dispose();
@@ -488,27 +421,6 @@ class _MapScreenState extends State<MapScreen> {
     return result;
   }
 
-  /// Formatted ETA string using the learned (or fallback) speed.
-  /// Returns empty string when not navigating or remaining < 50 m.
-  String _formatEta() {
-    if (!_isNavigating || _remainingDistM <= 50) return '';
-    final vehicleType = UserPreferencesService.instance.vehicleType.value;
-    final effectiveSpeed = SpeedCalibrationService.instance.effectiveSpeedKmh(
-      vehicleType,
-    );
-    if (effectiveSpeed <= 0) return '';
-    final remainingSec = _remainingDistM / (effectiveSpeed / 3.6);
-    final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
-    final h = arrival.hour.toString().padLeft(2, '0');
-    final m = arrival.minute.toString().padLeft(2, '0');
-    final minLeft = (remainingSec / 60).ceil();
-    if (minLeft < 1) return 'Framme!';
-    if (minLeft < 60) return '$minLeft min · $h:$m';
-    final hours = minLeft ~/ 60;
-    final mins = minLeft % 60;
-    return '${hours}h ${mins}min · $h:$m';
-  }
-
   IconData _turnIcon(int sign) {
     return switch (sign) {
       -3 => Icons.turn_sharp_left,
@@ -534,6 +446,16 @@ class _MapScreenState extends State<MapScreen> {
         _destination = destination;
         _routingStatus = l10n.mapWaitingForGps;
       });
+      return;
+    }
+
+    // ── Free tier route limit ─────────────────────────────────────────
+    if (!SubscriptionService.instance.canStartRoute()) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<bool>(
+          builder: (_) => const PaywallScreen(reason: PaywallReason.routeLimit),
+        ),
+      );
       return;
     }
 
@@ -563,7 +485,6 @@ class _MapScreenState extends State<MapScreen> {
         _routePoints = route.points;
         _cumulativeDist = cumDist;
         _totalRouteDistM = totalDist;
-        _remainingDistM = totalDist;
         _instructions = route.instructions;
         _lastNearestIdx = 0; // reset forward-scan index for new route
         _nextManeuverText = '';
@@ -574,6 +495,7 @@ class _MapScreenState extends State<MapScreen> {
           minutes.toStringAsFixed(0),
         );
       });
+      SubscriptionService.instance.recordRoute();
     } on RoutingException catch (error) {
       if (!mounted) {
         return;
@@ -613,6 +535,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _clearRoute() {
+    _simTimer?.cancel();
+    _simTimer = null;
     // Calibrate speed with this trip's data, then end the SlowRoad session.
     if (_isNavigating) {
       final start = _tripStartTime;
@@ -643,13 +567,188 @@ class _MapScreenState extends State<MapScreen> {
       _distToNextManeuver = 0;
       _cumulativeDist = const [];
       _totalRouteDistM = 0;
-      _remainingDistM = 0;
       _tripStartTime = null;
       _tripDistanceM = 0;
       _lastNavPos = null;
       _nearbyAlert = null;
+      _isSimulating = false;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
+  }
+
+  // ── Shared location-update processor (used by GPS stream + sim) ──────────
+  void _processLocationUpdate(
+    LatLng currentPos,
+    double newSpeed,
+    double heading,
+  ) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+
+    if (_isNavigating) {
+      SlowRoadService.instance.addPoint(currentPos, newSpeed);
+    }
+
+    double newTripDist = _tripDistanceM;
+    if (_isNavigating && _lastNavPos != null) {
+      newTripDist += _segDist(_lastNavPos!, currentPos);
+    }
+
+    int? newSign;
+    String? newText;
+    double? newDist;
+    double? newRemaining;
+    if (_isNavigating && _routePoints.isNotEmpty) {
+      final nearestIdx = _nearestRoutePointIndex(currentPos);
+      if (_cumulativeDist.length == _routePoints.length) {
+        newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx]).clamp(
+          0.0,
+          _totalRouteDistM,
+        );
+      }
+      if (_instructions.isNotEmpty) {
+        int instrIdx = 0;
+        for (int i = 0; i < _instructions.length - 1; i++) {
+          if (_instructions[i + 1].pointIndex > nearestIdx) {
+            instrIdx = i;
+            break;
+          }
+          instrIdx = i + 1;
+        }
+        final nextIdx = instrIdx + 1;
+        if (nextIdx < _instructions.length) {
+          final next = _instructions[nextIdx];
+          double dist = 0;
+          for (
+            int i = nearestIdx;
+            i < next.pointIndex && i < _routePoints.length - 1;
+            i++
+          ) {
+            dist += _segDist(_routePoints[i], _routePoints[i + 1]);
+          }
+          newSign = next.sign;
+          newText = next.text;
+          newDist = dist;
+        } else {
+          newText = '';
+        }
+      }
+    }
+
+    _locationNotifier.value = currentPos;
+    if (newSpeed > 0.5) _headingNotifier.value = heading;
+
+    setState(() {
+      _speedKmh = newSpeed;
+      _currentLocation = currentPos;
+      _locationStatus = l10n.mapGpsActive;
+      if (_isNavigating) {
+        _tripDistanceM = newTripDist;
+        _lastNavPos = currentPos;
+      }
+      if (newSign != null) _nextManeuverSign = newSign;
+      if (newText != null) _nextManeuverText = newText;
+      if (newDist != null) _distToNextManeuver = newDist;
+      if (newRemaining != null) {
+        final remKm = newRemaining / 1000;
+        final distStr = remKm >= 1.0
+            ? '${remKm.toStringAsFixed(1)} km ${l10n.mapRemaining}'
+            : '${newRemaining.round()} m ${l10n.mapRemaining}';
+        final vehicleType = UserPreferencesService.instance.vehicleType.value;
+        final effSpd = SpeedCalibrationService.instance.effectiveSpeedKmh(
+          vehicleType,
+        );
+        if (effSpd > 0 && newRemaining > 50) {
+          final sec = newRemaining / (effSpd / 3.6);
+          final arrival = DateTime.now().add(Duration(seconds: sec.round()));
+          final hh = arrival.hour.toString().padLeft(2, '0');
+          final mm = arrival.minute.toString().padLeft(2, '0');
+          _routingStatus = '$distStr  •  $hh:$mm';
+        } else {
+          _routingStatus = distStr;
+        }
+      }
+      _nearbyAlert = _alerts
+          .where((a) => a.distanceTo(currentPos) <= 400)
+          .fold<AlertModel?>(
+            null,
+            (best, a) =>
+                best == null ||
+                    a.distanceTo(currentPos) < best.distanceTo(currentPos)
+                ? a
+                : best,
+          );
+    });
+  }
+
+  // ── GPS simulation ────────────────────────────────────────────────────────
+  void _startSimulation() {
+    if (_routePoints.isEmpty) return;
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _simPtIdx = 0;
+    _simSegOffsetM = 0;
+    final vt = UserPreferencesService.instance.vehicleType.value;
+    SlowRoadService.instance.startSession(vt);
+    setState(() {
+      _isSimulating = true;
+      _isNavigating = true;
+      _isFollowing = true;
+      _tripStartTime = DateTime.now();
+      _tripDistanceM = 0;
+      _lastNavPos = _routePoints[0];
+      _currentLocation = _routePoints[0];
+    });
+    _locationNotifier.value = _routePoints[0];
+    _simTimer = Timer.periodic(_simInterval, (_) => _simStep());
+  }
+
+  void _simStep() {
+    if (!mounted || _routePoints.isEmpty) {
+      _clearRoute();
+      return;
+    }
+    const metersPerSec = _simSpeedKmh / 3.6;
+    final intervalSec = _simInterval.inMilliseconds / 1000.0;
+    double toAdvance = metersPerSec * intervalSec;
+
+    int idx = _simPtIdx;
+    double offset = _simSegOffsetM;
+
+    while (toAdvance > 0 && idx < _routePoints.length - 1) {
+      final segLen = _segDist(_routePoints[idx], _routePoints[idx + 1]);
+      final remaining = segLen - offset;
+      if (toAdvance >= remaining) {
+        toAdvance -= remaining;
+        idx++;
+        offset = 0;
+      } else {
+        offset += toAdvance;
+        toAdvance = 0;
+      }
+    }
+
+    _simPtIdx = idx;
+    _simSegOffsetM = offset;
+
+    if (idx >= _routePoints.length - 1) {
+      _clearRoute();
+      return;
+    }
+
+    final ptA = _routePoints[idx];
+    final ptB = _routePoints[idx + 1];
+    final segLen = _segDist(ptA, ptB);
+    final t = segLen > 0 ? (offset / segLen).clamp(0.0, 1.0) : 0.0;
+    final simPos = LatLng(
+      ptA.latitude + (ptB.latitude - ptA.latitude) * t,
+      ptA.longitude + (ptB.longitude - ptA.longitude) * t,
+    );
+    final dLat = ptB.latitude - ptA.latitude;
+    final dLng = ptB.longitude - ptA.longitude;
+    final heading = (math.atan2(dLng, dLat) * 180 / math.pi + 360) % 360;
+
+    _processLocationUpdate(simPos, _simSpeedKmh, heading);
   }
 
   @override
@@ -677,17 +776,15 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(mapRadius),
                 child: RepaintBoundary(
                   child: MapWidget(
-                    currentLocation: _currentLocation,
+                    locationNotifier: _locationNotifier,
+                    headingNotifier: _headingNotifier,
                     destination: _destination,
                     routePoints: _routePoints,
                     alerts: _alerts,
                     onTap: _isNavigating ? null : _handleMapTap,
                     followUser: _isNavigating && _isFollowing,
-                    heading: _headingDegrees,
                     use3D: _use3DMap,
-                    distToManeuver: _isNavigating
-                        ? _distToNextManeuver
-                        : double.infinity,
+                    darkMode: _useDarkMap,
                     onUserPanned: _isNavigating
                         ? () => setState(() => _isFollowing = false)
                         : null,
@@ -696,7 +793,7 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-          // ── Top UI: logo + search + speedometer (hidden while navigating) ──
+          // ── Top UI: logo + speedometer (hidden while navigating) ──
           if (!_isNavigating)
             Positioned(
               top: 18,
@@ -725,125 +822,6 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Column(
-                    children: [
-                      TextField(
-                        controller: _addressController,
-                        focusNode: _searchFocus,
-                        textInputAction: TextInputAction.search,
-                        onChanged: _onSearchChanged,
-                        onSubmitted: (q) {
-                          setState(() {
-                            _showSuggestions = false;
-                          });
-                          _searchAddress(q);
-                        },
-                        decoration: InputDecoration(
-                          hintText: l10n.mapAddressFieldHint,
-                          filled: true,
-                          fillColor: const Color(0xCC081B4F),
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _addressController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.close),
-                                  onPressed: () {
-                                    _addressController.clear();
-                                    setState(() {
-                                      _suggestions = [];
-                                      _showSuggestions = false;
-                                    });
-                                  },
-                                )
-                              : IconButton(
-                                  icon: const Icon(Icons.arrow_forward),
-                                  onPressed: () {
-                                    setState(() {
-                                      _showSuggestions = false;
-                                    });
-                                    _searchAddress(_addressController.text);
-                                  },
-                                ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      if (_showSuggestions && _suggestions.isNotEmpty)
-                        Container(
-                          margin: const EdgeInsets.only(top: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xF0071739),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0x553AA8FF)),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: _suggestions.map((s) {
-                                final parts =
-                                    (s['display_name'] as String? ?? '').split(
-                                      ',',
-                                    );
-                                final title = parts.first.trim();
-                                final subtitle = parts
-                                    .skip(1)
-                                    .take(3)
-                                    .map((e) => e.trim())
-                                    .join(', ');
-                                return InkWell(
-                                  onTap: () => _selectSuggestion(s),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.location_on,
-                                          size: 18,
-                                          color: Colors.white54,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                title,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w500,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              if (subtitle.isNotEmpty)
-                                                Text(
-                                                  subtitle,
-                                                  style: TextStyle(
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.5),
-                                                    fontSize: 12,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                    ],
                   ),
                   const SizedBox(height: 12),
                   ValueListenableBuilder<SpeedUnit>(
@@ -874,6 +852,137 @@ class _MapScreenState extends State<MapScreen> {
                         },
                       );
                     },
+                  ),
+                ],
+              ),
+            ),
+
+          // ── Bottom search bar (hidden while navigating) ──────────────────
+          if (!_isNavigating)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom:
+                  (_destination != null ||
+                      _routePoints.isNotEmpty ||
+                      _isRouting)
+                  ? 170
+                  : 80,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_showSuggestions && _suggestions.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xF0071739),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0x553AA8FF)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: _suggestions.map((s) {
+                            final parts = (s['display_name'] as String? ?? '')
+                                .split(',');
+                            final title = parts.first.trim();
+                            final subtitle = parts
+                                .skip(1)
+                                .take(3)
+                                .map((e) => e.trim())
+                                .join(', ');
+                            return InkWell(
+                              onTap: () => _selectSuggestion(s),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      size: 18,
+                                      color: Colors.white54,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          if (subtitle.isNotEmpty)
+                                            Text(
+                                              subtitle,
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.5,
+                                                ),
+                                                fontSize: 12,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  TextField(
+                    controller: _addressController,
+                    focusNode: _searchFocus,
+                    textInputAction: TextInputAction.search,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (q) {
+                      setState(() {
+                        _showSuggestions = false;
+                      });
+                      _searchAddress(q);
+                    },
+                    decoration: InputDecoration(
+                      hintText: l10n.mapAddressFieldHint,
+                      filled: true,
+                      fillColor: const Color(0xCC081B4F),
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _addressController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                _addressController.clear();
+                                setState(() {
+                                  _suggestions = [];
+                                  _showSuggestions = false;
+                                });
+                              },
+                            )
+                          : IconButton(
+                              icon: const Icon(Icons.arrow_forward),
+                              onPressed: () {
+                                setState(() {
+                                  _showSuggestions = false;
+                                });
+                                _searchAddress(_addressController.text);
+                              },
+                            ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1022,44 +1131,118 @@ class _MapScreenState extends State<MapScreen> {
               ),
           ],
 
-          // Report alert button
+          // Right-side floating buttons (report + 2D/3D)
           Positioned(
-            right: 16,
-            top: _isNavigating && _nextManeuverText.isNotEmpty ? 172 : 90,
-            child: GestureDetector(
-              onTap: _showReportAlertSheet,
-              child: Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: const Color(0xEE0A1F63),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: const Color(0x883AA8FF),
-                    width: 1.5,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black45,
-                      blurRadius: 8,
-                      offset: Offset(0, 3),
+            right: 14,
+            bottom: 155,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 2D / 3D toggle
+                GestureDetector(
+                  onTap: () {
+                    setState(() => _use3DMap = !_use3DMap);
+                    UserPreferencesService.instance.use3DMap.value = _use3DMap;
+                  },
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0A1F63),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0x883AA8FF),
+                        width: 1.5,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
                     ),
-                  ],
+                    child: Center(
+                      child: Text(
+                        _use3DMap ? '3D' : '2D',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.warning_amber_rounded,
-                  color: Color(0xFFF57F17),
-                  size: 22,
+                const SizedBox(height: 10),
+                // Light / Dark map style toggle
+                GestureDetector(
+                  onTap: () {
+                    setState(() => _useDarkMap = !_useDarkMap);
+                  },
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0A1F63),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0x883AA8FF),
+                        width: 1.5,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      _useDarkMap ? Icons.dark_mode : Icons.light_mode,
+                      color: Colors.white70,
+                      size: 22,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 10),
+                // Report alert button
+                GestureDetector(
+                  onTap: _showReportAlertSheet,
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0A1F63),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0x883AA8FF),
+                        width: 1.5,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFF57F17),
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
           // Re-center button — appears when user pans away during navigation.
           if (_isNavigating && !_isFollowing)
             Positioned(
-              right: 20,
-              bottom: 214,
+              right: 14,
+              bottom: 335,
               child: GestureDetector(
                 onTap: () {
                   setState(() => _isFollowing = true);
@@ -1127,7 +1310,6 @@ class _MapScreenState extends State<MapScreen> {
                               speedKmh: maxSpeedKmh,
                               unit: speedUnit,
                             );
-                            final eta = _isNavigating ? _formatEta() : '';
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1258,16 +1440,6 @@ class _MapScreenState extends State<MapScreen> {
                                               ),
                                             ],
                                           ),
-                                          if (eta.isNotEmpty) ...[
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              eta,
-                                              style: const TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
                                         ],
                                       ),
                                     ),
@@ -1365,42 +1537,28 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                               ),
                                             ),
-                                          ],
-                                          if (_isNavigating) ...[
                                             const SizedBox(height: 8),
                                             GestureDetector(
-                                              onTap: () {
-                                                setState(
-                                                  () => _use3DMap = !_use3DMap,
-                                                );
-                                                UserPreferencesService
-                                                        .instance
-                                                        .use3DMap
-                                                        .value =
-                                                    _use3DMap;
-                                              },
+                                              onTap: _startSimulation,
                                               child: Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 5,
+                                                      horizontal: 12,
+                                                      vertical: 7,
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color: const Color(
-                                                    0xFF2C2C2E,
+                                                    0xFF7B2FBE,
                                                   ),
                                                   borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: Colors.white24,
-                                                  ),
+                                                      BorderRadius.circular(10),
                                                 ),
-                                                child: Text(
-                                                  _use3DMap ? '3D' : '2D',
-                                                  style: const TextStyle(
-                                                    color: Colors.white60,
-                                                    fontWeight: FontWeight.bold,
+                                                child: const Text(
+                                                  '▶ Simulera',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
                                                     fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
                                               ),
@@ -1449,13 +1607,24 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
   Future<void> _submit() async {
     if (_selected == null) return;
     setState(() => _submitting = true);
-    await widget.controller.submit(
-      type: _selected!,
-      position: widget.position,
-      description: '',
-    );
-    widget.onSubmitted();
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await widget.controller.submit(
+        type: _selected!,
+        position: widget.position,
+        description: '',
+      );
+      widget.onSubmitted();
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kunde inte rapportera larm just nu.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
   }
 
   @override

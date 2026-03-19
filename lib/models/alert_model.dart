@@ -26,14 +26,14 @@ extension AlertTypeX on AlertType {
   };
 
   String get label => switch (this) {
-    AlertType.police => 'Polis',
-    AlertType.roadwork => 'Vägarbete',
-    AlertType.accident => 'Olycka',
-    AlertType.trafficJam => 'Trafikstockning',
-    AlertType.speedCamera => 'Fartkamera',
-    AlertType.hazard => 'Fara på vägen',
-    AlertType.narrowRoad => 'Smal väg',
-    AlertType.steepHill => 'Brant backe',
+    AlertType.police => 'Police',
+    AlertType.roadwork => 'Roadwork',
+    AlertType.accident => 'Accident',
+    AlertType.trafficJam => 'Traffic jam',
+    AlertType.speedCamera => 'Speed camera',
+    AlertType.hazard => 'Hazard',
+    AlertType.narrowRoad => 'Narrow road',
+    AlertType.steepHill => 'Steep hill',
   };
 
   String localizedLabel(AppLocalizations l10n) => switch (this) {

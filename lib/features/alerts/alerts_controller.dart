@@ -87,31 +87,34 @@ class AlertsController {
       'lng': position.longitude,
       'description': description,
       'upvotes': 0,
-      'user_id': ?userId,
+      'user_id': userId,
     };
 
     if (SupabaseService.instance.isEnabled) {
-      final row = await SupabaseService.instance.client
-          .from('community_alerts')
-          .insert(payload)
-          .select()
-          .single();
-      final alert = AlertModel.fromMap(Map<String, dynamic>.from(row as Map));
-      return alert;
-    } else {
-      // Local fallback — generate a fake id so the UI can display it.
-      final alert = AlertModel(
-        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-        type: type,
-        position: position,
-        description: description,
-        upvotes: 0,
-        createdAt: DateTime.now(),
-        userId: userId,
-      );
-      _localAlerts.insert(0, alert);
-      return alert;
+      try {
+        final row = await SupabaseService.instance.client
+            .from('community_alerts')
+            .insert(payload)
+            .select()
+            .single();
+        return AlertModel.fromMap(Map<String, dynamic>.from(row as Map));
+      } catch (_) {
+        // Fall through to local fallback so report flow never hangs/fails.
+      }
     }
+
+    // Local fallback — generate a fake id so the UI can display it.
+    final alert = AlertModel(
+      id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+      type: type,
+      position: position,
+      description: description,
+      upvotes: 0,
+      createdAt: DateTime.now(),
+      userId: userId,
+    );
+    _localAlerts.insert(0, alert);
+    return alert;
   }
 
   // ── Upvote ────────────────────────────────────────────────────────────────
