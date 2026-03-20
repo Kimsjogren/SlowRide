@@ -204,6 +204,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get convoyJoinFirstHint => 'Gå med i konvojen först och tryck sedan för att öppna chat och karta.';
 
   @override
+  String get convoyInviteButton => 'Bjud in';
+
+  @override
   String get convoyTabMap => 'Karta';
 
   @override
@@ -476,6 +479,25 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'Ingen lagligt godkänd rutt hittades för vald fordonstyp.';
 
   @override
+  String get mapModeLabel2d => '2D';
+
+  @override
+  String get mapModeLabel3d => '3D';
+
+  @override
+  String mapManeuverInDistance(Object distance) {
+    return 'Om $distance';
+  }
+
+  @override
+  String mapManeuverTowardRoad(Object road) {
+    return 'Mot $road';
+  }
+
+  @override
+  String get mapSimulateButton => 'Simulera';
+
+  @override
   String get speedometerLiveSpeed => 'Aktuell hastighet';
 
   @override
@@ -565,6 +587,15 @@ class AppLocalizationsSv extends AppLocalizations {
   String get alertReportedSuccess => 'Larm rapporterat! Tack 🙏';
 
   @override
+  String get alertReportFailed => 'Kunde inte rapportera larm just nu.';
+
+  @override
+  String get adBannerLoading => 'Annons laddas…';
+
+  @override
+  String get adBannerWaitingRetry => 'Annons väntar på nätverk… (tryck för försök igen)';
+
+  @override
   String get mapStartNavigation => 'Starta navigation';
 
   @override
@@ -579,6 +610,32 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String convoyShareCopied(Object name, Object code) {
     return 'Kopierat! Dela: \"$name\" kod: $code';
+  }
+
+  @override
+  String convoyShareClipboard(Object name, Object code) {
+    return 'CruizX konvoj: \"$name\" (kod: $code)';
+  }
+
+  @override
+  String convoyPinMarkedBy(Object name) {
+    return 'Markerad av $name';
+  }
+
+  @override
+  String get convoyNavigateToPin => 'Navigera hit';
+
+  @override
+  String get convoyEtaArrived => 'Framme!';
+
+  @override
+  String convoyEtaMinutes(Object minutes, Object time) {
+    return '$minutes min · $time';
+  }
+
+  @override
+  String convoyEtaHours(Object hours, Object minutes, Object time) {
+    return '${hours}h ${minutes}min · $time';
   }
 
   @override
@@ -669,4 +726,178 @@ class AppLocalizationsSv extends AppLocalizations {
   String profileRoutesUsed(Object count, Object max) {
     return 'Rutter idag: $count / $max';
   }
+
+  @override
+  String get profileChangePhoto => 'Byt profilbild';
+
+  @override
+  String get profileTakePhoto => 'Ta foto';
+
+  @override
+  String get profileChooseFromGallery => 'Välj från galleri';
+
+  @override
+  String get profilePhotoUploadFailed => 'Kunde inte ladda upp foto';
+
+  @override
+  String get parentModeTitle => 'Föräldraläge';
+
+  @override
+  String get parentModeDescription => 'Låt en förälder följa din körning i realtid. Perfekt för unga A-traktor-förare som vill ge sina föräldrar trygghet.';
+
+  @override
+  String get parentModeLoginRequired => 'Du måste vara inloggad för att använda föräldraläge.';
+
+  @override
+  String get parentModeEnable => 'Aktivera föräldraläge';
+
+  @override
+  String get parentModeEnabledSubtitle => 'Föräldrar kan följa din körning';
+
+  @override
+  String get parentModeDisabledSubtitle => 'Ingen delning aktiv';
+
+  @override
+  String get parentModeInviteCode => 'Inbjudningskod';
+
+  @override
+  String get parentModeInviteCodeSubtitle => 'Dela denna kod med din förälder för att länka deras konto.';
+
+  @override
+  String get parentModeCopyCode => 'Kopiera';
+
+  @override
+  String get parentModeShareCode => 'Dela';
+
+  @override
+  String get parentModeCodeCopied => 'Kod kopierad!';
+
+  @override
+  String get parentModeShareSubject => 'CruizX Föräldrakod';
+
+  @override
+  String parentModeShareMessage(Object code) {
+    return 'Hej! Använd denna kod för att följa min körning i CruizX: $code';
+  }
+
+  @override
+  String get parentModeLinkedParents => 'Länkade föräldrar';
+
+  @override
+  String get parentModeNoParentsLinked => 'Inga föräldrar länkade ännu. Dela din kod!';
+
+  @override
+  String get parentModeUnlinkTitle => 'Ta bort förälder?';
+
+  @override
+  String parentModeUnlinkMessage(Object name) {
+    return 'Vill du ta bort $name som förälder? De kommer inte längre kunna följa din körning.';
+  }
+
+  @override
+  String get parentModeUnlink => 'Ta bort';
+
+  @override
+  String get parentModeShareSettings => 'Vad ska delas';
+
+  @override
+  String get parentModeShareLocation => 'Dela position';
+
+  @override
+  String get parentModeShareLocationSubtitle => 'Visa var du befinner dig på kartan';
+
+  @override
+  String get parentModeShareSpeed => 'Dela hastighet';
+
+  @override
+  String get parentModeShareSpeedSubtitle => 'Visa din aktuella hastighet';
+
+  @override
+  String get parentModeAlertSettings => 'Notiser till föräldrar';
+
+  @override
+  String get parentModeSpeedAlert => 'Hastighetsvarning';
+
+  @override
+  String parentModeSpeedAlertSubtitle(Object limit) {
+    return 'Meddela när hastigheten överstiger $limit km/h';
+  }
+
+  @override
+  String get parentModeSpeedLimit => 'Gräns';
+
+  @override
+  String get parentModeNightAlert => 'Nattkörningsvarning';
+
+  @override
+  String parentModeNightAlertSubtitle(Object start, Object end) {
+    return 'Meddela vid körning mellan kl. $start–$end';
+  }
+
+  @override
+  String get cancel => 'Avbryt';
+
+  @override
+  String get login => 'Logga in';
+
+  @override
+  String get parentDashboardTitle => 'Föräldra-dashboard';
+
+  @override
+  String get parentDashboardMapTab => 'Karta';
+
+  @override
+  String get parentDashboardAlertsTab => 'Larm';
+
+  @override
+  String get parentDashboardAddChild => 'Lägg till barn';
+
+  @override
+  String get parentDashboardOnline => 'Online';
+
+  @override
+  String get parentDashboardOffline => 'Offline';
+
+  @override
+  String get parentDashboardNoAlerts => 'Inga larm de senaste 24 timmarna';
+
+  @override
+  String get parentDashboardNoChildren => 'Inga barn länkade ännu';
+
+  @override
+  String get parentDashboardNoChildrenHint => 'Lägg till ett barn genom att ange deras inbjudningskod från CruizX Föräldraläge.';
+
+  @override
+  String get parentDashboardEnterCode => 'Ange inbjudningskod';
+
+  @override
+  String get parentDashboardEnterCodeHint => 'Be ditt barn dela sin 6-tecken inbjudningskod från Föräldraläge-inställningarna.';
+
+  @override
+  String get parentDashboardLink => 'Länka';
+
+  @override
+  String get parentDashboardLinkSuccess => 'Länkning lyckades!';
+
+  @override
+  String get parentDashboardLinkFailed => 'Kunde inte hitta barn med den koden. Kontrollera koden och försök igen.';
+
+  @override
+  String get parentDashboardSpeedingAlert => 'Hastighetsvarning';
+
+  @override
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
+    return '$name körde i $speed km/h (gräns: $limit km/h)';
+  }
+
+  @override
+  String get parentDashboardNightAlert => 'Nattkörning';
+
+  @override
+  String parentDashboardNightDetail(Object name) {
+    return '$name kör på natten';
+  }
+
+  @override
+  String get parentDashboardViewChild => 'Visa som förälder';
 }

@@ -47,6 +47,8 @@ dependencies:
   supabase_flutter: any
   google_mobile_ads: any
   url_launcher: any
+  image_picker: any
+  share_plus: any
 
 dev_dependencies:
   flutter_test:

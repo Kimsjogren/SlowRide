@@ -15,6 +15,9 @@ import 'package:slowride/services/user_preferences_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await UserPreferencesService.instance.initialize();
+  } catch (_) {}
   runApp(const CruizXApp());
 }
 

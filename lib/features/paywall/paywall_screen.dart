@@ -141,9 +141,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               ),
                             ],
                           ),
-                          child: const Text(
-                            'PRO',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.paywallProLabel.toUpperCase(),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
                               fontSize: 12,

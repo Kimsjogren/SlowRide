@@ -21,6 +21,8 @@ class MapWidget extends StatefulWidget {
     this.onUserPanned,
     this.use3D = true,
     this.darkMode = false,
+    this.nextManeuverDistanceMeters,
+    this.nextManeuverSign,
   });
 
   /// Notifiers updated directly by the GPS listener — bypasses setState on
@@ -43,6 +45,13 @@ class MapWidget extends StatefulWidget {
 
   /// Light/dark map style toggle.
   final bool darkMode;
+
+  /// Distance to next maneuver in meters while navigating.
+  /// Used for adaptive turn zoom similar to major navigation apps.
+  final double? nextManeuverDistanceMeters;
+
+  /// Sign/type of next maneuver. Used to increase zoom for sharper turns.
+  final int? nextManeuverSign;
 
   static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
 
@@ -75,11 +84,38 @@ class _MapWidgetState extends State<MapWidget>
   Duration? _lastCameraTickAt;
   bool _navInitialized = false;
   LatLng? _lastLocForBearing;
+  int _lastRouteIdx = 0;
 
-  // Fixed zoom levels — no dynamic zoom on approach.
-  // Dynamic zoom caused flutter_map to load a completely new tile set
-  // every time the maneuver distance crossed a threshold → white flashes.
-  double get _navZoom => widget.use3D ? 17.5 : 16.0;
+  double _curZoom = 16.0;
+  double _tgtZoom = 16.0;
+
+  double _computeNavZoom() {
+    // Base cruise zoom tuned for readability and tile stability.
+    final baseZoom = widget.use3D ? 17.5 : 16.0;
+    final maneuverDist = widget.nextManeuverDistanceMeters;
+    if (maneuverDist == null || maneuverDist <= 0) return baseZoom;
+
+    // Continuous zoom profile to avoid threshold jitter near bucket edges.
+    final nearFactor = ((320.0 - maneuverDist) / 320.0).clamp(0.0, 1.0);
+    final distBoost = math.pow(nearFactor, 1.28).toDouble() * 1.05;
+
+    final sign = widget.nextManeuverSign ?? 0;
+    final absSign = sign.abs();
+    final signBoost = switch (absSign) {
+      3 => 0.42,
+      2 => 0.28,
+      1 => 0.14,
+      6 => 0.34,
+      _ => 0.0,
+    };
+
+    // Apply sign boost mostly when we're reasonably close to the turn.
+    final proximityWeight = ((220.0 - maneuverDist) / 220.0).clamp(0.0, 1.0);
+    final add = distBoost + signBoost * proximityWeight;
+
+    final maxZoom = widget.use3D ? 18.8 : 17.2;
+    return (baseZoom + add).clamp(baseZoom, maxZoom);
+  }
 
   @override
   void initState() {
@@ -115,6 +151,119 @@ class _MapWidgetState extends State<MapWidget>
     return math.sqrt(dx * dx + dy * dy);
   }
 
+  double _bearingDeg(LatLng from, LatLng to) {
+    final dLat = to.latitude - from.latitude;
+    final dLng = to.longitude - from.longitude;
+    return _wrap360(math.atan2(dLng, dLat) * 180 / math.pi);
+  }
+
+  /// Distance-based lookahead: find heading 40m ahead along route.
+  /// Much more stable than naive "next 3 points" approach.
+  double _routeLookaheadHeading(int startIdx, double lookaheadM) {
+    final pts = widget.routePoints;
+    if (pts.length < 2) return _rawCompassHdg;
+    final i = startIdx.clamp(0, pts.length - 1);
+
+    // Walk along route until we've traveled lookaheadM meters.
+    double accum = 0;
+    int endIdx = i;
+    for (int j = i; j < pts.length - 1 && accum < lookaheadM; j++) {
+      accum += _segmentMeters(pts[j], pts[j + 1]);
+      endIdx = j + 1;
+    }
+    // If route is too short, just use last point.
+    if (endIdx == i && i < pts.length - 1) endIdx = i + 1;
+
+    return _bearingDeg(pts[i], pts[endIdx]);
+  }
+
+  /// Project location onto nearest route segment (not just nearest point).
+  /// Returns (closestPoint, segmentIndex, distanceToRoute).
+  (LatLng, int, double) _projectOntoRoute(LatLng loc) {
+    final pts = widget.routePoints;
+    if (pts.length < 2) return (loc, 0, 0);
+
+    // Scan forward from last known index (never go backwards to avoid jumps).
+    final searchStart = _lastRouteIdx.clamp(0, pts.length - 2);
+    final searchEnd = (searchStart + 50).clamp(0, pts.length - 2);
+
+    int bestSeg = searchStart;
+    double bestDistSq = double.infinity;
+    LatLng bestProj = pts[searchStart];
+
+    for (int i = searchStart; i <= searchEnd; i++) {
+      final a = pts[i];
+      final b = pts[i + 1];
+      // Project loc onto segment a–b.
+      final (proj, distSq) = _projectPointOnSegment(loc, a, b);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestProj = proj;
+        bestSeg = i;
+      }
+    }
+
+    // Only advance if we've clearly passed current segment start.
+    // This prevents "magnetizing" to far-ahead segments at intersections.
+    if (bestSeg > _lastRouteIdx) {
+      final distToOldStart = _segmentMeters(loc, pts[_lastRouteIdx]);
+      if (distToOldStart > 8) {
+        _lastRouteIdx = bestSeg;
+      }
+    }
+
+    return (bestProj, _lastRouteIdx, math.sqrt(bestDistSq));
+  }
+
+  /// Project point P onto line segment A–B, return (projectedPoint, distanceSq).
+  (LatLng, double) _projectPointOnSegment(LatLng p, LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+
+    final ax = a.latitude * lat2m;
+    final ay = a.longitude * lng2m;
+    final bx = b.latitude * lat2m;
+    final by = b.longitude * lng2m;
+    final px = p.latitude * lat2m;
+    final py = p.longitude * lng2m;
+
+    final abx = bx - ax;
+    final aby = by - ay;
+    final apx = px - ax;
+    final apy = py - ay;
+
+    final abLenSq = abx * abx + aby * aby;
+    if (abLenSq < 1e-10) {
+      // Degenerate segment.
+      final dx = px - ax;
+      final dy = py - ay;
+      return (a, dx * dx + dy * dy);
+    }
+
+    var t = (apx * abx + apy * aby) / abLenSq;
+    t = t.clamp(0.0, 1.0);
+
+    final projX = ax + t * abx;
+    final projY = ay + t * aby;
+    final dx = px - projX;
+    final dy = py - projY;
+
+    final projLat = projX / lat2m;
+    final projLng = projY / lng2m;
+    return (LatLng(projLat, projLng), dx * dx + dy * dy);
+  }
+
+  (double heading, double distToRouteM)? _routeHeadingNear(LatLng loc) {
+    final pts = widget.routePoints;
+    if (pts.length < 2) return null;
+
+    final (_, segIdx, distM) = _projectOntoRoute(loc);
+
+    // 40m lookahead for smooth heading that doesn't flip at turns.
+    final heading = _routeLookaheadHeading(segIdx, 40.0);
+    return (heading, distM);
+  }
+
   void _onLocationUpdate() {
     final loc = widget.locationNotifier.value;
     if (loc == null || !mounted) return;
@@ -127,14 +276,17 @@ class _MapWidgetState extends State<MapWidget>
         _tgtHdg = _rawCompassHdg;
         _lastLocForBearing = loc;
         _lastGpsAt = DateTime.now();
+        _curZoom = _tgtZoom = _computeNavZoom();
         _navInitialized = true;
       } else {
-        _tgtLat = loc.latitude;
-        _tgtLng = loc.longitude;
         final prev = _lastLocForBearing;
         final now = DateTime.now();
+        double meters = 0;
+        final routeInfo = _routeHeadingNear(loc);
+        final routeHeading = routeInfo?.$1;
+        final distToRouteM = routeInfo?.$2;
         if (prev != null) {
-          final meters = _segmentMeters(prev, loc);
+          meters = _segmentMeters(prev, loc);
           final dt = _lastGpsAt == null
               ? 0.0
               : now.difference(_lastGpsAt!).inMilliseconds / 1000.0;
@@ -142,10 +294,20 @@ class _MapWidgetState extends State<MapWidget>
             _gpsSpeedMps = meters / dt;
           }
 
+          // Ignore tiny GPS drift while almost stationary.
+          final distToTarget = _segmentMeters(LatLng(_tgtLat, _tgtLng), loc);
+          final shouldMoveCameraTarget =
+              _gpsSpeedMps > 2.0 || distToTarget > 2.0;
+          if (shouldMoveCameraTarget) {
+            _tgtLat = loc.latitude;
+            _tgtLng = loc.longitude;
+          }
+
           // Movement bearing is primary target. Compass is only blended in
           // at very low speeds where GPS bearing is unreliable.
-          if (meters > 0.6) {
-            final motionHeading = _wrap360(
+          double? motionHeading;
+          if (meters > 2.0 && _gpsSpeedMps > 1.2) {
+            motionHeading = _wrap360(
               math.atan2(
                     loc.longitude - prev.longitude,
                     loc.latitude - prev.latitude,
@@ -153,22 +315,29 @@ class _MapWidgetState extends State<MapWidget>
                   180 /
                   math.pi,
             );
-            final compassWeight = (_gpsSpeedMps < 2.0)
-                ? ((2.0 - _gpsSpeedMps) / 2.0).clamp(0.0, 1.0)
-                : 0.0;
-            final motionToCompass = _angleDiff(motionHeading, _rawCompassHdg);
-            _tgtHdg = _wrap360(
-              motionHeading + motionToCompass * compassWeight * 0.35,
-            );
+          }
+
+          // ROUTE-LOCKED HEADING: When navigating on a route, use route
+          // direction exclusively. This is how Google Maps/Waze work.
+          if (routeHeading != null && (distToRouteM ?? 999) < 20) {
+            // Full route lock when on route - no compass, no motion blending.
+            _tgtHdg = routeHeading;
+          } else if (motionHeading != null) {
+            // Off-route or no route: use GPS motion heading
+            _tgtHdg = motionHeading;
+          } else if (_gpsSpeedMps < 1.0) {
+            // At very low speed, keep heading stable instead of chasing noise.
+            _tgtHdg = _filteredTgtHdg;
           }
         }
         _lastLocForBearing = loc;
         _lastGpsAt = now;
 
         // Separate low-pass for target heading (decoupled from camera angle).
-        final targetAlpha = (_gpsSpeedMps / 16.0).clamp(0.14, 0.45);
+        final targetAlpha = (_gpsSpeedMps / 16.0).clamp(0.08, 0.32);
         final targetStep = _angleDiff(_filteredTgtHdg, _tgtHdg);
         _filteredTgtHdg = _wrap360(_filteredTgtHdg + targetStep * targetAlpha);
+        _tgtZoom = _computeNavZoom();
       }
     }
     // In follow mode we render a fixed overlay marker, so avoid rebuilding
@@ -207,9 +376,9 @@ class _MapWidgetState extends State<MapWidget>
 
     // Speed-adaptive smoothing: stable at low speed, responsive at higher speed.
     final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
-    final posAlpha = (dtSec * (2.3 + speedN * 2.9)).clamp(0.04, 0.35);
-    final hdgAlpha = (dtSec * (1.9 + speedN * 3.2)).clamp(0.03, 0.33);
-    final maxTurnPerSec = 55.0 + speedN * 95.0;
+    final posAlpha = (dtSec * (1.5 + speedN * 2.0)).clamp(0.02, 0.22);
+    final hdgAlpha = (dtSec * (1.2 + speedN * 2.4)).clamp(0.02, 0.25);
+    final maxTurnPerSec = 35.0 + speedN * 75.0;
     final maxTurnThisTick = maxTurnPerSec * dtSec;
 
     final dLat = _tgtLat - _curLat;
@@ -233,7 +402,9 @@ class _MapWidgetState extends State<MapWidget>
     // Keep arrow in sync with the smoothed camera heading — ValueNotifier
     // notifies only the tiny _LocationDot subtree, zero setState cost.
     _arrowHdg.value = _curHdg;
-    final zoom = _navZoom;
+    final zoomAlpha = (dtSec * 2.8).clamp(0.04, 0.25);
+    _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
+    final zoom = _curZoom;
 
     if (widget.use3D) {
       // Shift camera centre ahead of the user so the dot sits in the lower
@@ -246,8 +417,8 @@ class _MapWidgetState extends State<MapWidget>
       final lastCam = _lastCameraTickAt;
       final shouldPaintCamera =
           lastCam == null ||
-          (tickNow - lastCam).inMilliseconds >= 16 ||
-          diff.abs() > 0.35 ||
+          (tickNow - lastCam).inMilliseconds >= 33 ||
+          diff.abs() > 0.8 ||
           moveDelta2 > 1e-10;
       if (shouldPaintCamera) {
         _lastCameraTickAt = tickNow;
@@ -258,8 +429,8 @@ class _MapWidgetState extends State<MapWidget>
       final lastCam = _lastCameraTickAt;
       final shouldPaintCamera =
           lastCam == null ||
-          (tickNow - lastCam).inMilliseconds >= 16 ||
-          diff.abs() > 0.35 ||
+          (tickNow - lastCam).inMilliseconds >= 33 ||
+          diff.abs() > 0.8 ||
           moveDelta2 > 1e-10;
       if (shouldPaintCamera) {
         _lastCameraTickAt = tickNow;
@@ -292,7 +463,8 @@ class _MapWidgetState extends State<MapWidget>
         _curHdg = _tgtHdg = _filteredTgtHdg = hdg;
         _arrowHdg.value = hdg;
         _navInitialized = true;
-        final zoom = _navZoom;
+        final zoom = _computeNavZoom();
+        _curZoom = _tgtZoom = zoom;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (widget.use3D) {
@@ -328,11 +500,15 @@ class _MapWidgetState extends State<MapWidget>
 
     // 3D↔2D toggle during nav: snap zoom immediately.
     if (widget.followUser &&
-        widget.use3D != oldWidget.use3D &&
+        (widget.use3D != oldWidget.use3D ||
+            widget.nextManeuverDistanceMeters !=
+                oldWidget.nextManeuverDistanceMeters ||
+            widget.nextManeuverSign != oldWidget.nextManeuverSign) &&
         _navInitialized) {
+      _tgtZoom = _computeNavZoom();
       _mapController.moveAndRotate(
         LatLng(_curLat, _curLng),
-        _navZoom,
+        _tgtZoom,
         -_curHdg,
       );
     }
@@ -343,8 +519,15 @@ class _MapWidgetState extends State<MapWidget>
       _lastLocForBearing = null;
       _lastGpsAt = null;
       _gpsSpeedMps = 0;
+      _curZoom = 16.0;
+      _tgtZoom = 16.0;
+      _lastRouteIdx = 0;
       _lastTickAt = null;
       _lastCameraTickAt = null;
+    }
+
+    if (widget.routePoints != oldWidget.routePoints) {
+      _lastRouteIdx = 0;
     }
   }
 
@@ -381,7 +564,7 @@ class _MapWidgetState extends State<MapWidget>
             options: MapOptions(
               initialCenter:
                   widget.locationNotifier.value ?? MapWidget._defaultCenter,
-              initialZoom: widget.followUser ? _navZoom : 12.0,
+              initialZoom: widget.followUser ? _computeNavZoom() : 12.0,
               onTap: (_, point) => widget.onTap?.call(point),
               onPositionChanged: (camera, hasGesture) {
                 if (hasGesture && widget.followUser) {
@@ -656,13 +839,13 @@ class _LocationDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<double>(
       valueListenable: headingNotifier,
-      builder: (_, heading, __) => Center(
+      builder: (contextValue, heading, childValue) => Center(
         child: Transform.rotate(
           // heading 0 = north; Icons.navigation_rounded already points up (north)
           // so we rotate and also compensate icon baseline offset.
-          angle:
-              (lockNorthUp ? 0.0 : heading * math.pi / 180.0) +
-              _iconHeadingOffsetRad,
+          angle: lockNorthUp
+              ? 0.0
+              : (heading * math.pi / 180.0) + _iconHeadingOffsetRad,
           child: Container(
             width: 38,
             height: 38,
@@ -683,11 +866,7 @@ class _LocationDot extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.navigation_rounded,
-              color: Colors.white,
-              size: 20,
-            ),
+            child: const Icon(Icons.navigation, color: Colors.white, size: 20),
           ),
         ),
       ),

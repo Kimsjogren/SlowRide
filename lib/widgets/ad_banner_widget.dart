@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/subscription_service.dart';
 
 /// Loads and displays an AdMob banner. Hidden automatically for Pro users.
@@ -87,6 +88,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (!_allowAdsForCurrentUser) {
       return const SizedBox.shrink();
     }
@@ -106,8 +108,8 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
         alignment: Alignment.center,
         child: Text(
           _retryCount <= _maxRetries
-              ? 'Annons laddas…'
-              : 'Annons väntar på nätverk… (tryck för försök igen)',
+              ? l10n.adBannerLoading
+              : l10n.adBannerWaitingRetry,
           style: const TextStyle(color: Colors.white38, fontSize: 11),
         ),
       ),

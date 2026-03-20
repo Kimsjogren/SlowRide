@@ -485,6 +485,12 @@ abstract class AppLocalizations {
   /// **'Join the convoy first, then tap it to open chat and map.'**
   String get convoyJoinFirstHint;
 
+  /// No description provided for @convoyInviteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get convoyInviteButton;
+
   /// No description provided for @convoyTabMap.
   ///
   /// In en, this message translates to:
@@ -1001,6 +1007,36 @@ abstract class AppLocalizations {
   /// **'No legally compliant route found for this vehicle type.'**
   String get mapRouteNotAllowedForVehicle;
 
+  /// No description provided for @mapModeLabel2d.
+  ///
+  /// In en, this message translates to:
+  /// **'2D'**
+  String get mapModeLabel2d;
+
+  /// No description provided for @mapModeLabel3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D'**
+  String get mapModeLabel3d;
+
+  /// No description provided for @mapManeuverInDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}'**
+  String mapManeuverInDistance(Object distance);
+
+  /// No description provided for @mapManeuverTowardRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Toward {road}'**
+  String mapManeuverTowardRoad(Object road);
+
+  /// No description provided for @mapSimulateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Simulate'**
+  String get mapSimulateButton;
+
   /// No description provided for @speedometerLiveSpeed.
   ///
   /// In en, this message translates to:
@@ -1163,6 +1199,24 @@ abstract class AppLocalizations {
   /// **'Alert reported! Thank you 🙏'**
   String get alertReportedSuccess;
 
+  /// No description provided for @alertReportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not report alert right now.'**
+  String get alertReportFailed;
+
+  /// No description provided for @adBannerLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading ad…'**
+  String get adBannerLoading;
+
+  /// No description provided for @adBannerWaitingRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Ad is waiting for network… (tap to retry)'**
+  String get adBannerWaitingRetry;
+
   /// No description provided for @mapStartNavigation.
   ///
   /// In en, this message translates to:
@@ -1192,6 +1246,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copied! Share: \"{name}\" code: {code}'**
   String convoyShareCopied(Object name, Object code);
+
+  /// No description provided for @convoyShareClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX convoy: \"{name}\" (code: {code})'**
+  String convoyShareClipboard(Object name, Object code);
+
+  /// No description provided for @convoyPinMarkedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked by {name}'**
+  String convoyPinMarkedBy(Object name);
+
+  /// No description provided for @convoyNavigateToPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate here'**
+  String get convoyNavigateToPin;
+
+  /// No description provided for @convoyEtaArrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrived!'**
+  String get convoyEtaArrived;
+
+  /// No description provided for @convoyEtaMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min · {time}'**
+  String convoyEtaMinutes(Object minutes, Object time);
+
+  /// No description provided for @convoyEtaHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}min · {time}'**
+  String convoyEtaHours(Object hours, Object minutes, Object time);
 
   /// No description provided for @paywallTitle.
   ///
@@ -1366,6 +1456,330 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Routes today: {count} / {max}'**
   String profileRoutesUsed(Object count, Object max);
+
+  /// No description provided for @profileChangePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change profile photo'**
+  String get profileChangePhoto;
+
+  /// No description provided for @profileTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get profileTakePhoto;
+
+  /// No description provided for @profileChooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get profileChooseFromGallery;
+
+  /// No description provided for @profilePhotoUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to upload photo'**
+  String get profilePhotoUploadFailed;
+
+  /// No description provided for @parentModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent Mode'**
+  String get parentModeTitle;
+
+  /// No description provided for @parentModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Let a parent follow your driving in real-time. Perfect for young A-tractor drivers who want to give their parents peace of mind.'**
+  String get parentModeDescription;
+
+  /// No description provided for @parentModeLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'You must be logged in to use Parent Mode.'**
+  String get parentModeLoginRequired;
+
+  /// No description provided for @parentModeEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Parent Mode'**
+  String get parentModeEnable;
+
+  /// No description provided for @parentModeEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parents can follow your driving'**
+  String get parentModeEnabledSubtitle;
+
+  /// No description provided for @parentModeDisabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No sharing active'**
+  String get parentModeDisabledSubtitle;
+
+  /// No description provided for @parentModeInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Code'**
+  String get parentModeInviteCode;
+
+  /// No description provided for @parentModeInviteCodeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code with your parent to link their account.'**
+  String get parentModeInviteCodeSubtitle;
+
+  /// No description provided for @parentModeCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get parentModeCopyCode;
+
+  /// No description provided for @parentModeShareCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get parentModeShareCode;
+
+  /// No description provided for @parentModeCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied!'**
+  String get parentModeCodeCopied;
+
+  /// No description provided for @parentModeShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Parent Code'**
+  String get parentModeShareSubject;
+
+  /// No description provided for @parentModeShareMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi! Use this code to follow my driving in CruizX: {code}'**
+  String parentModeShareMessage(Object code);
+
+  /// No description provided for @parentModeLinkedParents.
+  ///
+  /// In en, this message translates to:
+  /// **'Linked Parents'**
+  String get parentModeLinkedParents;
+
+  /// No description provided for @parentModeNoParentsLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'No parents linked yet. Share your code!'**
+  String get parentModeNoParentsLinked;
+
+  /// No description provided for @parentModeUnlinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove parent?'**
+  String get parentModeUnlinkTitle;
+
+  /// No description provided for @parentModeUnlinkMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to remove {name} as a parent? They will no longer be able to follow your driving.'**
+  String parentModeUnlinkMessage(Object name);
+
+  /// No description provided for @parentModeUnlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get parentModeUnlink;
+
+  /// No description provided for @parentModeShareSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'What to share'**
+  String get parentModeShareSettings;
+
+  /// No description provided for @parentModeShareLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Share location'**
+  String get parentModeShareLocation;
+
+  /// No description provided for @parentModeShareLocationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show where you are on the map'**
+  String get parentModeShareLocationSubtitle;
+
+  /// No description provided for @parentModeShareSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Share speed'**
+  String get parentModeShareSpeed;
+
+  /// No description provided for @parentModeShareSpeedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show your current speed'**
+  String get parentModeShareSpeedSubtitle;
+
+  /// No description provided for @parentModeAlertSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications to parents'**
+  String get parentModeAlertSettings;
+
+  /// No description provided for @parentModeSpeedAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed alert'**
+  String get parentModeSpeedAlert;
+
+  /// No description provided for @parentModeSpeedAlertSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify when speed exceeds {limit} km/h'**
+  String parentModeSpeedAlertSubtitle(Object limit);
+
+  /// No description provided for @parentModeSpeedLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit'**
+  String get parentModeSpeedLimit;
+
+  /// No description provided for @parentModeNightAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Night driving alert'**
+  String get parentModeNightAlert;
+
+  /// No description provided for @parentModeNightAlertSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify when driving between {start}–{end}'**
+  String parentModeNightAlertSubtitle(Object start, Object end);
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @login.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get login;
+
+  /// No description provided for @parentDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent Dashboard'**
+  String get parentDashboardTitle;
+
+  /// No description provided for @parentDashboardMapTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get parentDashboardMapTab;
+
+  /// No description provided for @parentDashboardAlertsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get parentDashboardAlertsTab;
+
+  /// No description provided for @parentDashboardAddChild.
+  ///
+  /// In en, this message translates to:
+  /// **'Add child'**
+  String get parentDashboardAddChild;
+
+  /// No description provided for @parentDashboardOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get parentDashboardOnline;
+
+  /// No description provided for @parentDashboardOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get parentDashboardOffline;
+
+  /// No description provided for @parentDashboardNoAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts in the last 24 hours'**
+  String get parentDashboardNoAlerts;
+
+  /// No description provided for @parentDashboardNoChildren.
+  ///
+  /// In en, this message translates to:
+  /// **'No children linked yet'**
+  String get parentDashboardNoChildren;
+
+  /// No description provided for @parentDashboardNoChildrenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a child by entering their invite code from CruizX Parent Mode.'**
+  String get parentDashboardNoChildrenHint;
+
+  /// No description provided for @parentDashboardEnterCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter invite code'**
+  String get parentDashboardEnterCode;
+
+  /// No description provided for @parentDashboardEnterCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask your child to share their 6-character invite code from Parent Mode settings.'**
+  String get parentDashboardEnterCodeHint;
+
+  /// No description provided for @parentDashboardLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get parentDashboardLink;
+
+  /// No description provided for @parentDashboardLinkSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Successfully linked!'**
+  String get parentDashboardLinkSuccess;
+
+  /// No description provided for @parentDashboardLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not find child with that code. Check the code and try again.'**
+  String get parentDashboardLinkFailed;
+
+  /// No description provided for @parentDashboardSpeedingAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed alert'**
+  String get parentDashboardSpeedingAlert;
+
+  /// No description provided for @parentDashboardSpeedingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} drove at {speed} km/h (limit: {limit} km/h)'**
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit);
+
+  /// No description provided for @parentDashboardNightAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Night driving'**
+  String get parentDashboardNightAlert;
+
+  /// No description provided for @parentDashboardNightDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is driving at night'**
+  String parentDashboardNightDetail(Object name);
+
+  /// No description provided for @parentDashboardViewChild.
+  ///
+  /// In en, this message translates to:
+  /// **'View as parent'**
+  String get parentDashboardViewChild;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

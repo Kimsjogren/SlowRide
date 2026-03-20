@@ -204,6 +204,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get convoyJoinFirstHint => 'Join the convoy first, then tap it to open chat and map.';
 
   @override
+  String get convoyInviteButton => 'Invite';
+
+  @override
   String get convoyTabMap => 'Map';
 
   @override
@@ -476,6 +479,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'No legally compliant route found for this vehicle type.';
 
   @override
+  String get mapModeLabel2d => '2D';
+
+  @override
+  String get mapModeLabel3d => '3D';
+
+  @override
+  String mapManeuverInDistance(Object distance) {
+    return 'In $distance';
+  }
+
+  @override
+  String mapManeuverTowardRoad(Object road) {
+    return 'Toward $road';
+  }
+
+  @override
+  String get mapSimulateButton => 'Simulate';
+
+  @override
   String get speedometerLiveSpeed => 'Live speed';
 
   @override
@@ -565,6 +587,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertReportedSuccess => 'Alert reported! Thank you 🙏';
 
   @override
+  String get alertReportFailed => 'Could not report alert right now.';
+
+  @override
+  String get adBannerLoading => 'Loading ad…';
+
+  @override
+  String get adBannerWaitingRetry => 'Ad is waiting for network… (tap to retry)';
+
+  @override
   String get mapStartNavigation => 'Start navigation';
 
   @override
@@ -579,6 +610,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String convoyShareCopied(Object name, Object code) {
     return 'Copied! Share: \"$name\" code: $code';
+  }
+
+  @override
+  String convoyShareClipboard(Object name, Object code) {
+    return 'CruizX convoy: \"$name\" (code: $code)';
+  }
+
+  @override
+  String convoyPinMarkedBy(Object name) {
+    return 'Marked by $name';
+  }
+
+  @override
+  String get convoyNavigateToPin => 'Navigate here';
+
+  @override
+  String get convoyEtaArrived => 'Arrived!';
+
+  @override
+  String convoyEtaMinutes(Object minutes, Object time) {
+    return '$minutes min · $time';
+  }
+
+  @override
+  String convoyEtaHours(Object hours, Object minutes, Object time) {
+    return '${hours}h ${minutes}min · $time';
   }
 
   @override
@@ -669,4 +726,178 @@ class AppLocalizationsEn extends AppLocalizations {
   String profileRoutesUsed(Object count, Object max) {
     return 'Routes today: $count / $max';
   }
+
+  @override
+  String get profileChangePhoto => 'Change profile photo';
+
+  @override
+  String get profileTakePhoto => 'Take photo';
+
+  @override
+  String get profileChooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get profilePhotoUploadFailed => 'Failed to upload photo';
+
+  @override
+  String get parentModeTitle => 'Parent Mode';
+
+  @override
+  String get parentModeDescription => 'Let a parent follow your driving in real-time. Perfect for young A-tractor drivers who want to give their parents peace of mind.';
+
+  @override
+  String get parentModeLoginRequired => 'You must be logged in to use Parent Mode.';
+
+  @override
+  String get parentModeEnable => 'Enable Parent Mode';
+
+  @override
+  String get parentModeEnabledSubtitle => 'Parents can follow your driving';
+
+  @override
+  String get parentModeDisabledSubtitle => 'No sharing active';
+
+  @override
+  String get parentModeInviteCode => 'Invite Code';
+
+  @override
+  String get parentModeInviteCodeSubtitle => 'Share this code with your parent to link their account.';
+
+  @override
+  String get parentModeCopyCode => 'Copy';
+
+  @override
+  String get parentModeShareCode => 'Share';
+
+  @override
+  String get parentModeCodeCopied => 'Code copied!';
+
+  @override
+  String get parentModeShareSubject => 'CruizX Parent Code';
+
+  @override
+  String parentModeShareMessage(Object code) {
+    return 'Hi! Use this code to follow my driving in CruizX: $code';
+  }
+
+  @override
+  String get parentModeLinkedParents => 'Linked Parents';
+
+  @override
+  String get parentModeNoParentsLinked => 'No parents linked yet. Share your code!';
+
+  @override
+  String get parentModeUnlinkTitle => 'Remove parent?';
+
+  @override
+  String parentModeUnlinkMessage(Object name) {
+    return 'Do you want to remove $name as a parent? They will no longer be able to follow your driving.';
+  }
+
+  @override
+  String get parentModeUnlink => 'Remove';
+
+  @override
+  String get parentModeShareSettings => 'What to share';
+
+  @override
+  String get parentModeShareLocation => 'Share location';
+
+  @override
+  String get parentModeShareLocationSubtitle => 'Show where you are on the map';
+
+  @override
+  String get parentModeShareSpeed => 'Share speed';
+
+  @override
+  String get parentModeShareSpeedSubtitle => 'Show your current speed';
+
+  @override
+  String get parentModeAlertSettings => 'Notifications to parents';
+
+  @override
+  String get parentModeSpeedAlert => 'Speed alert';
+
+  @override
+  String parentModeSpeedAlertSubtitle(Object limit) {
+    return 'Notify when speed exceeds $limit km/h';
+  }
+
+  @override
+  String get parentModeSpeedLimit => 'Limit';
+
+  @override
+  String get parentModeNightAlert => 'Night driving alert';
+
+  @override
+  String parentModeNightAlertSubtitle(Object start, Object end) {
+    return 'Notify when driving between $start–$end';
+  }
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get login => 'Log in';
+
+  @override
+  String get parentDashboardTitle => 'Parent Dashboard';
+
+  @override
+  String get parentDashboardMapTab => 'Map';
+
+  @override
+  String get parentDashboardAlertsTab => 'Alerts';
+
+  @override
+  String get parentDashboardAddChild => 'Add child';
+
+  @override
+  String get parentDashboardOnline => 'Online';
+
+  @override
+  String get parentDashboardOffline => 'Offline';
+
+  @override
+  String get parentDashboardNoAlerts => 'No alerts in the last 24 hours';
+
+  @override
+  String get parentDashboardNoChildren => 'No children linked yet';
+
+  @override
+  String get parentDashboardNoChildrenHint => 'Add a child by entering their invite code from CruizX Parent Mode.';
+
+  @override
+  String get parentDashboardEnterCode => 'Enter invite code';
+
+  @override
+  String get parentDashboardEnterCodeHint => 'Ask your child to share their 6-character invite code from Parent Mode settings.';
+
+  @override
+  String get parentDashboardLink => 'Link';
+
+  @override
+  String get parentDashboardLinkSuccess => 'Successfully linked!';
+
+  @override
+  String get parentDashboardLinkFailed => 'Could not find child with that code. Check the code and try again.';
+
+  @override
+  String get parentDashboardSpeedingAlert => 'Speed alert';
+
+  @override
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
+    return '$name drove at $speed km/h (limit: $limit km/h)';
+  }
+
+  @override
+  String get parentDashboardNightAlert => 'Night driving';
+
+  @override
+  String parentDashboardNightDetail(Object name) {
+    return '$name is driving at night';
+  }
+
+  @override
+  String get parentDashboardViewChild => 'View as parent';
 }

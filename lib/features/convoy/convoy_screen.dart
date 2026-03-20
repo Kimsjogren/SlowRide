@@ -164,7 +164,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
     final l10n = AppLocalizations.of(context)!;
     final code = convoy.id.split('-').first.toUpperCase();
     Clipboard.setData(
-      ClipboardData(text: 'CruizX konvoj: "${convoy.name}" (kod: $code)'),
+      ClipboardData(text: l10n.convoyShareClipboard(convoy.name, code)),
     );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -523,7 +523,9 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                                   ),
                                                   const SizedBox(width: 3),
                                                   Text(
-                                                    '${convoy.memberCount} ${convoy.memberCount == 1 ? "medlem" : "medlemmar"}',
+                                                    l10n.convoyMembers(
+                                                      convoy.memberCount,
+                                                    ),
                                                     style: TextStyle(
                                                       color: Colors.white
                                                           .withValues(
@@ -612,8 +614,8 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                                     Icons.person_add_alt_1,
                                                     size: 14,
                                                   ),
-                                                  label: const Text(
-                                                    'Bjud in',
+                                                  label: Text(
+                                                    l10n.convoyInviteButton,
                                                     style: TextStyle(
                                                       fontSize: 12,
                                                     ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/features/auth/register_screen.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
@@ -7,8 +8,101 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _picker = ImagePicker();
+  bool _isUploadingAvatar = false;
+
+  Future<void> _pickAndUploadAvatar() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Show bottom sheet with options.
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.profileChangePhoto,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.white70),
+                title: Text(
+                  l10n.profileTakePhoto,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.white70),
+                title: Text(
+                  l10n.profileChooseFromGallery,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final image = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (image == null) return;
+
+      setState(() => _isUploadingAvatar = true);
+
+      final bytes = await image.readAsBytes();
+      final url = await AuthService.instance.updateAvatar(bytes, image.name);
+
+      if (url == null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.profilePhotoUploadFailed),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.profilePhotoUploadFailed),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,23 +126,92 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // Avatar
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        isLoggedIn ? Icons.person : Icons.person_outline,
-                        size: 48,
-                        color: Colors.white70,
-                      ),
+                    // Avatar (tappable when logged in)
+                    ValueListenableBuilder<String?>(
+                      valueListenable: authService.avatarUrl,
+                      builder: (context, avatarUrl, _) {
+                        final hasAvatar =
+                            avatarUrl != null && avatarUrl.isNotEmpty;
+
+                        Widget avatarContent;
+                        if (_isUploadingAvatar) {
+                          avatarContent = const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white70,
+                            ),
+                          );
+                        } else if (hasAvatar) {
+                          avatarContent = ClipOval(
+                            child: Image.network(
+                              avatarUrl,
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stack) => Icon(
+                                isLoggedIn
+                                    ? Icons.person
+                                    : Icons.person_outline,
+                                size: 48,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          );
+                        } else {
+                          avatarContent = Icon(
+                            isLoggedIn ? Icons.person : Icons.person_outline,
+                            size: 48,
+                            color: Colors.white70,
+                          );
+                        }
+
+                        return GestureDetector(
+                          onTap: isLoggedIn ? _pickAndUploadAvatar : null,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: hasAvatar
+                                      ? Colors.transparent
+                                      : Colors.white.withValues(alpha: 0.12),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.35),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Center(child: avatarContent),
+                              ),
+                              if (isLoggedIn)
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E6BFF),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFF0D1B2A),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 14),
 

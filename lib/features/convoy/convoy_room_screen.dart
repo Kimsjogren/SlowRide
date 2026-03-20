@@ -55,6 +55,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   double _filteredTgtHdg = 0;
   double _rawCompassHdg = 0;
   double _gpsSpeedMps = 0;
+  double _curZoom = _followZoom;
+  double _tgtZoom = _followZoom;
   Duration? _lastCamTick;
   bool _camInitialized = false;
   LatLng? _lastLocForBearing;
@@ -212,9 +214,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             int? newSign;
             String? newText;
             double? newRemaining;
+            double headingForArrow = newHeading;
 
             if (_routePoints.isNotEmpty && _routeInstructions.isNotEmpty) {
-              final nearestIdx = _nearestRoutePointIndex(point);
+              // Use segment projection for accurate route position.
+              final (_, nearestIdx, distToRouteM) = _projectOntoRoute(point);
 
               // Remaining distance via O(1) cumulative-dist lookup.
               if (_isNavigating &&
@@ -248,15 +252,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               } else {
                 newText = '';
               }
+
+              // ROUTE-LOCKED HEADING: Use route direction exclusively when
+              // on route. This is how Google Maps/Waze work — no blending.
+              final routeHeading = _routeHeadingAt(nearestIdx);
+              if (distToRouteM < 20) {
+                // Full route lock when on route.
+                headingForArrow = routeHeading;
+              } else {
+                // Off-route: use GPS heading.
+                headingForArrow = newHeading;
+              }
             }
 
             // Single setState per GPS tick — one rebuild only.
             setState(() {
               _speedKmh = newSpeed;
               _myLocation = point;
-              _myHeading = newHeading;
+              _myHeading = headingForArrow;
               // When free-camera, push heading directly so arrow stays correct.
-              if (!_isFollowingMyPosition) _arrowHdg.value = newHeading;
+              if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
               _distToNextManeuver = newDistToManeuver;
               if (newSign != null) _nextManeuverSign = newSign;
               if (newText != null) _nextManeuverText = newText;
@@ -303,21 +318,22 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               if (!_camInitialized) {
                 _curLat = _tgtLat = point.latitude;
                 _curLng = _tgtLng = point.longitude;
-                _curHdg = _tgtHdg = _filteredTgtHdg = newHeading;
-                _rawCompassHdg = newHeading;
+                _curHdg = _tgtHdg = _filteredTgtHdg = headingForArrow;
+                _rawCompassHdg = headingForArrow;
                 _gpsSpeedMps = rawSpeed;
                 _lastLocForBearing = point;
                 _camInitialized = true;
                 final zoom = _targetZoom();
+                _curZoom = _tgtZoom = zoom;
                 _mapController.moveAndRotate(
                   point,
                   zoom,
-                  _use3DMap ? -newHeading : 0,
+                  _use3DMap ? -headingForArrow : 0,
                 );
               } else {
                 _tgtLat = point.latitude;
                 _tgtLng = point.longitude;
-                _rawCompassHdg = newHeading;
+                _rawCompassHdg = headingForArrow;
                 _gpsSpeedMps = rawSpeed;
 
                 // Movement-derived bearing is much stabler than raw compass.
@@ -349,6 +365,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 _filteredTgtHdg = _wrap360(
                   _filteredTgtHdg + targetStep * targetAlpha,
                 );
+                _tgtZoom = _targetZoom();
               }
             }
 
@@ -403,13 +420,240 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   // ── Waze-style dynamic zoom ────────────────────────────────────────────
   double _targetZoom() {
-    final base = _use3DMap ? 18.5 : _followZoom;
+    final base = _use3DMap ? 17.5 : _followZoom;
     final d = _distToNextManeuver;
-    if (d <= 0 || d > 300) return base;
-    if (d < 50) return base + 2.0;
-    if (d < 100) return base + 1.5;
-    if (d < 200) return base + 0.8;
-    return base + 0.4;
+    if (d <= 0) return base;
+
+    final nearFactor = ((320.0 - d) / 320.0).clamp(0.0, 1.0);
+    final distBoost = math.pow(nearFactor, 1.28).toDouble() * 1.05;
+
+    final absSign = _nextManeuverSign.abs();
+    final signBoost = switch (absSign) {
+      3 => 0.42,
+      2 => 0.28,
+      1 => 0.14,
+      6 => 0.34,
+      _ => 0.0,
+    };
+    final proximityWeight = ((220.0 - d) / 220.0).clamp(0.0, 1.0);
+    final add = distBoost + signBoost * proximityWeight;
+
+    final maxZoom = _use3DMap ? 18.8 : 17.2;
+    return (base + add).clamp(base, maxZoom);
+  }
+
+  /// Distance-based lookahead: find heading 40m ahead along route.
+  /// Much more stable than naive "next 3 points" approach.
+  double _routeLookaheadHeading(int startIdx, double lookaheadM) {
+    if (_routePoints.length < 2) return _myHeading;
+    final i = startIdx.clamp(0, _routePoints.length - 1);
+
+    // Walk along route until we've traveled lookaheadM meters.
+    double accum = 0;
+    int endIdx = i;
+    for (int j = i; j < _routePoints.length - 1 && accum < lookaheadM; j++) {
+      accum += _segDist(_routePoints[j], _routePoints[j + 1]);
+      endIdx = j + 1;
+    }
+    // If route is too short, just use last point.
+    if (endIdx == i && i < _routePoints.length - 1) endIdx = i + 1;
+
+    final a = _routePoints[i];
+    final b = _routePoints[endIdx];
+    return _wrap360(
+      math.atan2(b.longitude - a.longitude, b.latitude - a.latitude) *
+          180 /
+          math.pi,
+    );
+  }
+
+  /// Project location onto nearest route segment (not just nearest point).
+  /// Returns (closestPoint, segmentIndex, distanceToRoute).
+  (LatLng, int, double) _projectOntoRoute(LatLng loc) {
+    if (_routePoints.length < 2) return (loc, 0, 0);
+
+    // Scan forward from last known index (never go backwards to avoid jumps).
+    final searchStart = _lastNearestIdx.clamp(0, _routePoints.length - 2);
+    final searchEnd = (searchStart + 50).clamp(0, _routePoints.length - 2);
+
+    int bestSeg = searchStart;
+    double bestDistSq = double.infinity;
+    LatLng bestProj = _routePoints[searchStart];
+
+    for (int i = searchStart; i <= searchEnd; i++) {
+      final a = _routePoints[i];
+      final b = _routePoints[i + 1];
+      // Project loc onto segment a–b.
+      final (proj, distSq) = _projectPointOnSegment(loc, a, b);
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        bestProj = proj;
+        bestSeg = i;
+      }
+    }
+
+    // Only advance if we've clearly passed current segment start.
+    // This prevents "magnetizing" to far-ahead segments at intersections.
+    if (bestSeg > _lastNearestIdx) {
+      final distToOldStart = _segDist(loc, _routePoints[_lastNearestIdx]);
+      if (distToOldStart > 8) {
+        _lastNearestIdx = bestSeg;
+      }
+    }
+
+    return (bestProj, _lastNearestIdx, math.sqrt(bestDistSq));
+  }
+
+  /// Project point P onto line segment A–B, return (projectedPoint, distanceSq).
+  (LatLng, double) _projectPointOnSegment(LatLng p, LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+
+    final ax = a.latitude * lat2m;
+    final ay = a.longitude * lng2m;
+    final bx = b.latitude * lat2m;
+    final by = b.longitude * lng2m;
+    final px = p.latitude * lat2m;
+    final py = p.longitude * lng2m;
+
+    final abx = bx - ax;
+    final aby = by - ay;
+    final apx = px - ax;
+    final apy = py - ay;
+
+    final abLenSq = abx * abx + aby * aby;
+    if (abLenSq < 1e-10) {
+      // Degenerate segment.
+      final dx = px - ax;
+      final dy = py - ay;
+      return (a, dx * dx + dy * dy);
+    }
+
+    var t = (apx * abx + apy * aby) / abLenSq;
+    t = t.clamp(0.0, 1.0);
+
+    final projX = ax + t * abx;
+    final projY = ay + t * aby;
+    final dx = px - projX;
+    final dy = py - projY;
+
+    final projLat = projX / lat2m;
+    final projLng = projY / lng2m;
+    return (LatLng(projLat, projLng), dx * dx + dy * dy);
+  }
+
+  double _routeHeadingAt(int idx) {
+    // Use 40m lookahead for smooth and stable heading.
+    return _routeLookaheadHeading(idx, 40.0);
+  }
+
+  String _formatManeuverDistance(double meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+    return '${meters.round()} m';
+  }
+
+  String? _maneuverTargetFromText(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+
+    final patterns = <RegExp>[
+      RegExp(
+        r'\b(?:in pa|in p\u00e5|mot|towards|onto)\s+(.+)$',
+        caseSensitive: false,
+      ),
+      RegExp(r'\b(?:vid)\s+(.+)$', caseSensitive: false),
+    ];
+
+    for (final re in patterns) {
+      final m = re.firstMatch(t);
+      if (m != null && m.groupCount >= 1) {
+        final road = (m.group(1) ?? '')
+            .replaceAll(RegExp(r'[.!]+$'), '')
+            .trim();
+        if (road.isNotEmpty) return road;
+      }
+    }
+
+    return null;
+  }
+
+  String _maneuverPrimaryText(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return t;
+
+    final cleaned = t
+        .replaceAll(
+          RegExp(
+            r'\s+(?:in pa|in p\u00e5|mot|towards|onto|vid)\s+.+$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+
+    return cleaned.isNotEmpty ? cleaned : t;
+  }
+
+  Color _maneuverAccentColor(double distanceMeters, int sign) {
+    final absSign = sign.abs();
+    if (distanceMeters <= 30) return const Color(0xFFD84315);
+    if (distanceMeters <= 65 && (absSign >= 2 || absSign == 6)) {
+      return const Color(0xFFEF6C00);
+    }
+    if (distanceMeters <= 140 && absSign >= 2) {
+      return const Color(0xFFFB8C00);
+    }
+    return const Color(0xFF274D94);
+  }
+
+  String _addressTitleFromResult(Map<String, dynamic> result) {
+    final addr = result['address'];
+    if (addr is Map<String, dynamic>) {
+      String fromAddress(String key) => (addr[key] ?? '').toString().trim();
+      final road = [
+        fromAddress('road'),
+        fromAddress('pedestrian'),
+        fromAddress('residential'),
+        fromAddress('street'),
+        fromAddress('footway'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+      final houseNumber = fromAddress('house_number');
+      if (road.isNotEmpty) {
+        return houseNumber.isNotEmpty ? '$road $houseNumber' : road;
+      }
+    }
+
+    final display = (result['display_name']?.toString() ?? '').trim();
+    if (display.isEmpty) return '';
+    final parts = display
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return '';
+
+    final first = parts[0];
+    final second = parts.length > 1 ? parts[1] : '';
+    final firstIsHouseNumber = RegExp(r'^\d+[A-Za-z]?$').hasMatch(first);
+    if (firstIsHouseNumber && second.isNotEmpty) {
+      return '$second $first';
+    }
+
+    return first;
+  }
+
+  String _addressSubtitleFromResult(Map<String, dynamic> result) {
+    final display = (result['display_name']?.toString() ?? '').trim();
+    if (display.isEmpty) return '';
+    final parts = display
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length <= 1) return '';
+    return parts.skip(1).take(3).join(', ');
   }
 
   // ── Navigation helpers ─────────────────────────────────────────────────
@@ -423,18 +667,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   String _formatEta() {
+    final l10n = AppLocalizations.of(context)!;
     if (!_isNavigating || _remainingDistM <= 50) return '';
     if (_speedKmh < 3) return '';
     final remainingSec = _remainingDistM / (_speedKmh / 3.6);
     final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
     final h = arrival.hour.toString().padLeft(2, '0');
     final m = arrival.minute.toString().padLeft(2, '0');
+    final hhmm = '$h:$m';
     final minLeft = (remainingSec / 60).ceil();
-    if (minLeft < 1) return 'Framme!';
-    if (minLeft < 60) return '$minLeft min · $h:$m';
+    if (minLeft < 1) return l10n.convoyEtaArrived;
+    if (minLeft < 60) return l10n.convoyEtaMinutes(minLeft, hhmm);
     final hours = minLeft ~/ 60;
     final mins = minLeft % 60;
-    return '${hours}h ${mins}min · $h:$m';
+    return l10n.convoyEtaHours(hours, mins, hhmm);
   }
 
   IconData _turnIcon(int sign) {
@@ -450,27 +696,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       -6 || 6 => Icons.rotate_right,
       _ => Icons.straight,
     };
-  }
-
-  // O(window) scan around last known index — avoids O(n) on every GPS tick.
-  int _nearestRoutePointIndex(LatLng pos) {
-    if (_routePoints.isEmpty) return 0;
-    final start = (_lastNearestIdx - 3).clamp(0, _routePoints.length - 1);
-    final end = (_lastNearestIdx + 60).clamp(0, _routePoints.length - 1);
-    double best = double.infinity;
-    int idx = _lastNearestIdx;
-    for (int i = start; i <= end; i++) {
-      final p = _routePoints[i];
-      final dx = p.latitude - pos.latitude;
-      final dy = p.longitude - pos.longitude;
-      final d = dx * dx + dy * dy;
-      if (d < best) {
-        best = d;
-        idx = i;
-      }
-    }
-    _lastNearestIdx = idx;
-    return idx;
   }
 
   // Cheap flat-earth approximation — accurate enough for short segments.
@@ -510,9 +735,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _curLat += dLat * turnPosAlpha;
     _curLng += dLng * turnPosAlpha;
     _curHdg = _wrap360(_curHdg + diff * turnHdgAlpha);
+    final zoomAlpha = (dtSec * 2.8).clamp(0.04, 0.25);
+    _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
     // Arrow follows the smoothed heading — only rebuilds the tiny icon widget.
     _arrowHdg.value = _curHdg;
-    final zoom = _targetZoom();
+    final zoom = _curZoom;
     if (_use3DMap) {
       const offsetDeg = 0.00045;
       final rad = _curHdg * math.pi / 180.0;
@@ -543,6 +770,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
+        'addressdetails': '1',
         'limit': '6',
         'countrycodes': 'se',
       });
@@ -572,7 +800,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
+        'addressdetails': '1',
         'limit': '1',
+        'countrycodes': 'se',
       });
       final response = await http.get(
         uri,
@@ -606,9 +836,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   void _selectSuggestion(Map<String, dynamic> s) {
     final lat = double.tryParse(s['lat']?.toString() ?? '');
     final lon = double.tryParse(s['lon']?.toString() ?? '');
-    final name = s['display_name']?.toString() ?? '';
     if (lat == null || lon == null) return;
-    final label = name.split(',').first.trim();
+    final label = _addressTitleFromResult(s);
     _addressSearchController.text = label;
     _destinationLabel = label;
     _searchFocus.unfocus();
@@ -685,16 +914,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             child: isMe
                 ? ValueListenableBuilder<double>(
                     valueListenable: _arrowHdg,
-                    builder: (_, hdg, __) => Transform.rotate(
-                      // Match main map correction: Material navigation icon
-                      // has a diagonal baseline at 0°.
-                      angle: (hdg * math.pi / 180) - (math.pi / 4),
-                      child: const Icon(
-                        Icons.navigation,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
+                    builder: (contextValue, hdg, childValue) =>
+                        Transform.rotate(
+                          // Match main map correction: Material navigation icon
+                          // has a diagonal baseline at 0°.
+                          angle: (hdg * math.pi / 180) - (math.pi / 4),
+                          child: const Icon(
+                            Icons.navigation,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
                   )
                 : Center(
                     child: Text(
@@ -862,6 +1092,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   void _showPinOptions(ConvoyPin pin) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -904,7 +1135,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 if (pin.userLabel.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
-                    'Markerad av ${pin.userLabel}',
+                    l10n.convoyPinMarkedBy(pin.userLabel),
                     style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                 ],
@@ -920,8 +1151,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.alt_route),
-                    label: const Text(
-                      'Navigera hit',
+                    label: Text(
+                      l10n.convoyNavigateToPin,
                       style: TextStyle(fontSize: 16),
                     ),
                     onPressed: () => _routeToPin(pin),
@@ -1171,7 +1402,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     final matrix = is3D
                                         ? (Matrix4.identity()
                                             ..setEntry(3, 2, 0.001)
-                                            ..rotateX(0.65))
+                                            ..rotateX(0.49))
                                         : Matrix4.identity();
                                     return Stack(
                                       clipBehavior: Clip.hardEdge,
@@ -1535,16 +1766,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: _suggestions.map((s) {
-                                          final parts =
-                                              (s['display_name'] as String? ??
-                                                      '')
-                                                  .split(',');
-                                          final title = parts.first.trim();
-                                          final subtitle = parts
-                                              .skip(1)
-                                              .take(3)
-                                              .map((e) => e.trim())
-                                              .join(', ');
+                                          final title = _addressTitleFromResult(
+                                            s,
+                                          );
+                                          final subtitle =
+                                              _addressSubtitleFromResult(s);
                                           return InkWell(
                                             onTap: () => _selectSuggestion(s),
                                             child: Padding(
@@ -1643,50 +1869,123 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     ),
                                     child: Row(
                                       children: [
-                                        Container(
-                                          width: 72,
-                                          height: 72,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF1C3566),
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            _turnIcon(_nextManeuverSign),
-                                            color: Colors.white,
-                                            size: 38,
-                                          ),
+                                        Builder(
+                                          builder: (_) {
+                                            final accent = _maneuverAccentColor(
+                                              _distToNextManeuver,
+                                              _nextManeuverSign,
+                                            );
+                                            return Container(
+                                              width: 72,
+                                              height: 72,
+                                              decoration: BoxDecoration(
+                                                color: accent.withValues(
+                                                  alpha: 0.36,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                                border: Border.all(
+                                                  color: accent.withValues(
+                                                    alpha: 0.9,
+                                                  ),
+                                                  width: 1.2,
+                                                ),
+                                              ),
+                                              child: Icon(
+                                                _turnIcon(_nextManeuverSign),
+                                                color: Colors.white,
+                                                size: 38,
+                                              ),
+                                            );
+                                          },
                                         ),
                                         const SizedBox(width: 14),
                                         Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                _nextManeuverText,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 22,
-                                                  fontWeight: FontWeight.bold,
-                                                  height: 1.2,
-                                                ),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                _distToNextManeuver >= 1000
-                                                    ? '${(_distToNextManeuver / 1000).toStringAsFixed(1)} km'
-                                                    : '${_distToNextManeuver.round()} m',
-                                                style: const TextStyle(
-                                                  color: Colors.white60,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                            ],
+                                          child: Builder(
+                                            builder: (_) {
+                                              final accent =
+                                                  _maneuverAccentColor(
+                                                    _distToNextManeuver,
+                                                    _nextManeuverSign,
+                                                  );
+                                              return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: accent,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            999,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      l10n.mapManeuverInDistance(
+                                                        _formatManeuverDistance(
+                                                          _distToNextManeuver,
+                                                        ),
+                                                      ),
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        letterSpacing: 0.1,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 7),
+                                                  Text(
+                                                    _maneuverPrimaryText(
+                                                      _nextManeuverText,
+                                                    ),
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 22,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      height: 1.2,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  if (_maneuverTargetFromText(
+                                                        _nextManeuverText,
+                                                      ) !=
+                                                      null)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            top: 4,
+                                                          ),
+                                                      child: Text(
+                                                        l10n.mapManeuverTowardRoad(
+                                                          _maneuverTargetFromText(
+                                                            _nextManeuverText,
+                                                          )!,
+                                                        ),
+                                                        style: const TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                ],
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
@@ -1698,7 +1997,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           // Proximity alert banner
                           if (_nearbyAlert != null && _myLocation != null)
                             Positioned(
-                              top: 80,
+                              top: _isNavigating && _nextManeuverText.isNotEmpty
+                                  ? 165
+                                  : 80,
                               left: 0,
                               right: 0,
                               child: Material(
@@ -2102,8 +2403,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                             GestureDetector(
                                                               onTap:
                                                                   _clearConvoyRoute,
-                                                              child: const Text(
-                                                                'Avbryt',
+                                                              child: Text(
+                                                                l10n.authCancel,
                                                                 style: TextStyle(
                                                                   color: Colors
                                                                       .white38,
@@ -2216,7 +2517,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     ),
                                     child: Center(
                                       child: Text(
-                                        _use3DMap ? '3D' : '2D',
+                                        _use3DMap
+                                            ? l10n.mapModeLabel3d
+                                            : l10n.mapModeLabel2d,
                                         style: const TextStyle(
                                           color: Colors.white60,
                                           fontWeight: FontWeight.bold,

@@ -65,6 +65,7 @@
   "convoyJoinButton": "Gå med",
   "convoyLeaveButton": "Lämna",
   "convoyJoinFirstHint": "Gå med i konvojen först och tryck sedan för att öppna chat och karta.",
+  "convoyInviteButton": "Bjud in",
   "convoyTabMap": "Karta",
   "convoyTabChat": "Chat",
   "convoyMapHint": "Tryck på kartan för att lägga en delad pin.",
@@ -188,6 +189,21 @@
   "mapRouteUnknownProvider": "Routing-provider är inte korrekt konfigurerad",
   "mapRouteTooFastForVehicle": "Rutt stoppad: beräknad medelhastighet är för hög för vald fordonstyp.",
   "mapRouteNotAllowedForVehicle": "Ingen lagligt godkänd rutt hittades för vald fordonstyp.",
+  "mapModeLabel2d": "2D",
+  "mapModeLabel3d": "3D",
+  "mapManeuverInDistance": "Om {distance}",
+  "@mapManeuverInDistance": {
+    "placeholders": {
+      "distance": {}
+    }
+  },
+  "mapManeuverTowardRoad": "Mot {road}",
+  "@mapManeuverTowardRoad": {
+    "placeholders": {
+      "road": {}
+    }
+  },
+  "mapSimulateButton": "Simulera",
   "speedometerLiveSpeed": "Aktuell hastighet",
   "speedometerMaxSpeedWithUnit": "Maxhastighet: {value} {unit}",
   "@speedometerMaxSpeedWithUnit": {
@@ -233,6 +249,11 @@
   "alertReportDescHint2": "Valfri beskrivning\u2026 (t.ex. \"stor gren\")",
   "alertReportedSuccess": "Larm rapporterat! Tack \ud83d\ude4f",
 
+  "alertReportFailed": "Kunde inte rapportera larm just nu.",
+
+  "adBannerLoading": "Annons laddas…",
+  "adBannerWaitingRetry": "Annons väntar på nätverk… (tryck för försök igen)",
+
   "mapStartNavigation": "Starta navigation",
   "mapEndNavigation": "Avsluta navigation",
   "convoyShowAll": "Visa alla",
@@ -240,6 +261,24 @@
   "convoyShareCopied": "Kopierat! Dela: \"{name}\" kod: {code}",
   "@convoyShareCopied": {
     "placeholders": { "name": {}, "code": {} }
+  },
+  "convoyShareClipboard": "CruizX konvoj: \"{name}\" (kod: {code})",
+  "@convoyShareClipboard": {
+    "placeholders": { "name": {}, "code": {} }
+  },
+  "convoyPinMarkedBy": "Markerad av {name}",
+  "@convoyPinMarkedBy": {
+    "placeholders": { "name": {} }
+  },
+  "convoyNavigateToPin": "Navigera hit",
+  "convoyEtaArrived": "Framme!",
+  "convoyEtaMinutes": "{minutes} min · {time}",
+  "@convoyEtaMinutes": {
+    "placeholders": { "minutes": {}, "time": {} }
+  },
+  "convoyEtaHours": "{hours}h {minutes}min · {time}",
+  "@convoyEtaHours": {
+    "placeholders": { "hours": {}, "minutes": {}, "time": {} }
   },
 
   "paywallTitle": "Uppgradera till CruizX Pro",
@@ -273,5 +312,79 @@
   "profileRoutesUsed": "Rutter idag: {count} / {max}",
   "@profileRoutesUsed": {
     "placeholders": { "count": {}, "max": {} }
-  }
+  },
+  "profileChangePhoto": "Byt profilbild",
+  "profileTakePhoto": "Ta foto",
+  "profileChooseFromGallery": "Välj från galleri",
+  "profilePhotoUploadFailed": "Kunde inte ladda upp foto",
+
+  "parentModeTitle": "Föräldraläge",
+  "parentModeDescription": "Låt en förälder följa din körning i realtid. Perfekt för unga A-traktor-förare som vill ge sina föräldrar trygghet.",
+  "parentModeLoginRequired": "Du måste vara inloggad för att använda föräldraläge.",
+  "parentModeEnable": "Aktivera föräldraläge",
+  "parentModeEnabledSubtitle": "Föräldrar kan följa din körning",
+  "parentModeDisabledSubtitle": "Ingen delning aktiv",
+  "parentModeInviteCode": "Inbjudningskod",
+  "parentModeInviteCodeSubtitle": "Dela denna kod med din förälder för att länka deras konto.",
+  "parentModeCopyCode": "Kopiera",
+  "parentModeShareCode": "Dela",
+  "parentModeCodeCopied": "Kod kopierad!",
+  "parentModeShareSubject": "CruizX Föräldrakod",
+  "parentModeShareMessage": "Hej! Använd denna kod för att följa min körning i CruizX: {code}",
+  "@parentModeShareMessage": {
+    "placeholders": { "code": {} }
+  },
+  "parentModeLinkedParents": "Länkade föräldrar",
+  "parentModeNoParentsLinked": "Inga föräldrar länkade ännu. Dela din kod!",
+  "parentModeUnlinkTitle": "Ta bort förälder?",
+  "parentModeUnlinkMessage": "Vill du ta bort {name} som förälder? De kommer inte längre kunna följa din körning.",
+  "@parentModeUnlinkMessage": {
+    "placeholders": { "name": {} }
+  },
+  "parentModeUnlink": "Ta bort",
+  "parentModeShareSettings": "Vad ska delas",
+  "parentModeShareLocation": "Dela position",
+  "parentModeShareLocationSubtitle": "Visa var du befinner dig på kartan",
+  "parentModeShareSpeed": "Dela hastighet",
+  "parentModeShareSpeedSubtitle": "Visa din aktuella hastighet",
+  "parentModeAlertSettings": "Notiser till föräldrar",
+  "parentModeSpeedAlert": "Hastighetsvarning",
+  "parentModeSpeedAlertSubtitle": "Meddela när hastigheten överstiger {limit} km/h",
+  "@parentModeSpeedAlertSubtitle": {
+    "placeholders": { "limit": {} }
+  },
+  "parentModeSpeedLimit": "Gräns",
+  "parentModeNightAlert": "Nattkörningsvarning",
+  "parentModeNightAlertSubtitle": "Meddela vid körning mellan kl. {start}–{end}",
+  "@parentModeNightAlertSubtitle": {
+    "placeholders": { "start": {}, "end": {} }
+  },
+  "cancel": "Avbryt",
+  "login": "Logga in",
+
+  "parentDashboardTitle": "Föräldra-dashboard",
+  "parentDashboardMapTab": "Karta",
+  "parentDashboardAlertsTab": "Larm",
+  "parentDashboardAddChild": "Lägg till barn",
+  "parentDashboardOnline": "Online",
+  "parentDashboardOffline": "Offline",
+  "parentDashboardNoAlerts": "Inga larm de senaste 24 timmarna",
+  "parentDashboardNoChildren": "Inga barn länkade ännu",
+  "parentDashboardNoChildrenHint": "Lägg till ett barn genom att ange deras inbjudningskod från CruizX Föräldraläge.",
+  "parentDashboardEnterCode": "Ange inbjudningskod",
+  "parentDashboardEnterCodeHint": "Be ditt barn dela sin 6-tecken inbjudningskod från Föräldraläge-inställningarna.",
+  "parentDashboardLink": "Länka",
+  "parentDashboardLinkSuccess": "Länkning lyckades!",
+  "parentDashboardLinkFailed": "Kunde inte hitta barn med den koden. Kontrollera koden och försök igen.",
+  "parentDashboardSpeedingAlert": "Hastighetsvarning",
+  "parentDashboardSpeedingDetail": "{name} körde i {speed} km/h (gräns: {limit} km/h)",
+  "@parentDashboardSpeedingDetail": {
+    "placeholders": { "name": {}, "speed": {}, "limit": {} }
+  },
+  "parentDashboardNightAlert": "Nattkörning",
+  "parentDashboardNightDetail": "{name} kör på natten",
+  "@parentDashboardNightDetail": {
+    "placeholders": { "name": {} }
+  },
+  "parentDashboardViewChild": "Visa som förälder"
 }

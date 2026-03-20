@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,12 +15,14 @@ class AuthService {
   final ValueNotifier<String?> userName = ValueNotifier<String?>(null);
   final ValueNotifier<String?> userEmail = ValueNotifier<String?>(null);
   final ValueNotifier<String?> userId = ValueNotifier<String?>(null);
+  final ValueNotifier<String?> avatarUrl = ValueNotifier<String?>(null);
 
   bool get supportsRealtimeBackend => SupabaseService.instance.isEnabled;
 
   static const String _isLoggedInKey = 'auth_is_logged_in';
   static const String _userNameKey = 'auth_user_name';
   static const String _userEmailKey = 'auth_user_email';
+  static const String _avatarUrlKey = 'auth_avatar_url';
   // Local mock: stores {"email": {"name":"...", "pw":"..."}}
   static const String _localAccountsKey = 'auth_local_accounts';
 
@@ -39,10 +42,12 @@ class AuthService {
       userName.value =
           user?.userMetadata?['display_name'] as String? ??
           _nameFromEmail(user?.email);
+      avatarUrl.value = user?.userMetadata?['avatar_url'] as String?;
     } else {
       isLoggedIn.value = _prefs?.getBool(_isLoggedInKey) ?? false;
       userName.value = _prefs?.getString(_userNameKey);
       userEmail.value = _prefs?.getString(_userEmailKey);
+      avatarUrl.value = _prefs?.getString(_avatarUrlKey);
       userId.value = null;
     }
 
@@ -50,6 +55,7 @@ class AuthService {
       isLoggedIn.addListener(_persistAuthState);
       userName.addListener(_persistUserName);
       userEmail.addListener(_persistUserEmail);
+      avatarUrl.addListener(_persistAvatarUrl);
       _listenersAttached = true;
     }
   }
@@ -215,8 +221,53 @@ class AuthService {
     userName.value = null;
     userEmail.value = null;
     userId.value = null;
+    avatarUrl.value = null;
     isLoggedIn.value = false;
     _pendingOtpEmail = null;
+  }
+
+  // ── Avatar upload ─────────────────────────────────────────────────────────
+
+  /// Uploads avatar image and returns the public URL.
+  Future<String?> updateAvatar(Uint8List bytes, String fileName) async {
+    if (!SupabaseService.instance.isEnabled) {
+      // Local mode: can't store avatars without backend.
+      return null;
+    }
+
+    final uid = userId.value;
+    if (uid == null) return null;
+
+    final ext = fileName.split('.').last.toLowerCase();
+    final path = 'avatars/$uid.$ext';
+
+    try {
+      // Upload to Supabase Storage (bucket: avatars).
+      await SupabaseService.instance.client.storage
+          .from('avatars')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      // Get public URL with cache-busting timestamp.
+      final baseUrl = SupabaseService.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(path);
+      final publicUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      // Save to user metadata.
+      await SupabaseService.instance.client.auth.updateUser(
+        UserAttributes(data: {'avatar_url': publicUrl}),
+      );
+
+      avatarUrl.value = publicUrl;
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Avatar upload failed: $e');
+      return null;
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -263,6 +314,15 @@ class AuthService {
       await _prefs?.remove(_userEmailKey);
     } else {
       await _prefs?.setString(_userEmailKey, v);
+    }
+  }
+
+  Future<void> _persistAvatarUrl() async {
+    final v = avatarUrl.value;
+    if (v == null || v.isEmpty) {
+      await _prefs?.remove(_avatarUrlKey);
+    } else {
+      await _prefs?.setString(_avatarUrlKey, v);
     }
   }
 }

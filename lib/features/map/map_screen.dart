@@ -268,6 +268,7 @@ class _MapScreenState extends State<MapScreen> {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
+        'addressdetails': '1',
         'limit': '6',
         'countrycodes': 'se',
       });
@@ -291,13 +292,12 @@ class _MapScreenState extends State<MapScreen> {
   void _selectSuggestion(Map<String, dynamic> suggestion) {
     final lat = double.tryParse(suggestion['lat']?.toString() ?? '');
     final lon = double.tryParse(suggestion['lon']?.toString() ?? '');
-    final name = suggestion['display_name']?.toString() ?? '';
     if (lat == null || lon == null) return;
     setState(() {
       _suggestions = [];
       _showSuggestions = false;
     });
-    final label = name.split(',').first.trim();
+    final label = _addressTitleFromResult(suggestion);
     _addressController.text = label;
     _destinationLabel = label;
     _searchFocus.unfocus();
@@ -321,6 +321,7 @@ class _MapScreenState extends State<MapScreen> {
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
+        'addressdetails': '1',
         'limit': '1',
       });
 
@@ -364,10 +365,7 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      _destinationLabel = (first['display_name']?.toString() ?? rawQuery)
-          .split(',')
-          .first
-          .trim();
+      _destinationLabel = _addressTitleFromResult(first, fallback: rawQuery);
       await _handleMapTap(LatLng(lat, lon));
     } catch (_) {
       if (!mounted) {
@@ -411,6 +409,88 @@ class _MapScreenState extends State<MapScreen> {
     return math.sqrt(dx * dx + dy * dy);
   }
 
+  double _normalizeDeg(double angle) => (angle % 360 + 360) % 360;
+
+  double _bearingDeg(LatLng a, LatLng b) {
+    final dLat = b.latitude - a.latitude;
+    final dLng = b.longitude - a.longitude;
+    return _normalizeDeg(math.atan2(dLng, dLat) * 180 / math.pi);
+  }
+
+  /// Distance-based lookahead: find heading 40m ahead along route.
+  /// Much more stable than naive "next segment" approach.
+  double _routeLookaheadHeading(int startIdx, double lookaheadM) {
+    if (_routePoints.length < 2) return _headingNotifier.value;
+    final i = startIdx.clamp(0, _routePoints.length - 1);
+
+    // Walk along route until we've traveled lookaheadM meters.
+    double accum = 0;
+    int endIdx = i;
+    for (int j = i; j < _routePoints.length - 1 && accum < lookaheadM; j++) {
+      accum += _segDist(_routePoints[j], _routePoints[j + 1]);
+      endIdx = j + 1;
+    }
+    // If route is too short, just use last point.
+    if (endIdx == i && i < _routePoints.length - 1) endIdx = i + 1;
+
+    return _bearingDeg(_routePoints[i], _routePoints[endIdx]);
+  }
+
+  double _routeHeadingAt(int nearestIdx) {
+    // Use 40m lookahead for smooth heading that doesn't flip at turns.
+    return _routeLookaheadHeading(nearestIdx, 40.0);
+  }
+
+  String _addressTitleFromResult(
+    Map<String, dynamic> result, {
+    String fallback = '',
+  }) {
+    final address = result['address'];
+    if (address is Map) {
+      String getPart(String key) => (address[key] ?? '').toString().trim();
+      final road = [
+        getPart('road'),
+        getPart('pedestrian'),
+        getPart('residential'),
+        getPart('street'),
+        getPart('footway'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+      final houseNumber = getPart('house_number');
+      if (road.isNotEmpty) {
+        return houseNumber.isNotEmpty ? '$road $houseNumber' : road;
+      }
+    }
+
+    final display = (result['display_name']?.toString() ?? fallback).trim();
+    if (display.isEmpty) return fallback.trim();
+    final parts = display
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return fallback.trim();
+
+    final first = parts[0];
+    final second = parts.length > 1 ? parts[1] : '';
+    final firstIsHouseNumber = RegExp(r'^\d+[A-Za-z]?$').hasMatch(first);
+    if (firstIsHouseNumber && second.isNotEmpty) {
+      return '$second $first';
+    }
+    return first;
+  }
+
+  String _addressSubtitleFromResult(Map<String, dynamic> result) {
+    final display = (result['display_name']?.toString() ?? '').trim();
+    if (display.isEmpty) return '';
+    final parts = display
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (parts.length <= 1) return '';
+    return parts.skip(1).take(3).join(', ');
+  }
+
   /// Precompute cumulative distances so remaining-dist lookups are O(1).
   List<double> _buildCumulativeDist(List<LatLng> pts) {
     if (pts.isEmpty) return const [];
@@ -434,6 +514,67 @@ class _MapScreenState extends State<MapScreen> {
       -6 || 6 => Icons.rotate_right,
       _ => Icons.straight,
     };
+  }
+
+  String _formatManeuverDistance(double meters) {
+    if (meters >= 1000) {
+      return '${(meters / 1000).toStringAsFixed(1)} km';
+    }
+    return '${meters.round()} m';
+  }
+
+  String? _maneuverTargetFromText(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+
+    final patterns = <RegExp>[
+      RegExp(
+        r'\b(?:in pa|in p\u00e5|mot|towards|onto)\s+(.+)$',
+        caseSensitive: false,
+      ),
+      RegExp(r'\b(?:vid)\s+(.+)$', caseSensitive: false),
+    ];
+
+    for (final re in patterns) {
+      final m = re.firstMatch(t);
+      if (m != null && m.groupCount >= 1) {
+        final road = (m.group(1) ?? '')
+            .replaceAll(RegExp(r'[.!]+$'), '')
+            .trim();
+        if (road.isNotEmpty) return road;
+      }
+    }
+
+    return null;
+  }
+
+  String _maneuverPrimaryText(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return t;
+
+    final cleaned = t
+        .replaceAll(
+          RegExp(
+            r'\s+(?:in pa|in p\u00e5|mot|towards|onto|vid)\s+.+$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
+
+    return cleaned.isNotEmpty ? cleaned : t;
+  }
+
+  Color _maneuverAccentColor(double distanceMeters, int sign) {
+    final absSign = sign.abs();
+    if (distanceMeters <= 30) return const Color(0xFFD84315);
+    if (distanceMeters <= 65 && (absSign >= 2 || absSign == 6)) {
+      return const Color(0xFFEF6C00);
+    }
+    if (distanceMeters <= 140 && absSign >= 2) {
+      return const Color(0xFFFB8C00);
+    }
+    return const Color(0xFF274D94);
   }
 
   Future<void> _handleMapTap(LatLng destination) async {
@@ -598,8 +739,12 @@ class _MapScreenState extends State<MapScreen> {
     String? newText;
     double? newDist;
     double? newRemaining;
+    int? nearestIdxForHeading;
+    double? nearestPointDistM;
     if (_isNavigating && _routePoints.isNotEmpty) {
       final nearestIdx = _nearestRoutePointIndex(currentPos);
+      nearestIdxForHeading = nearestIdx;
+      nearestPointDistM = _segDist(currentPos, _routePoints[nearestIdx]);
       if (_cumulativeDist.length == _routePoints.length) {
         newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx]).clamp(
           0.0,
@@ -636,7 +781,21 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     _locationNotifier.value = currentPos;
-    if (newSpeed > 0.5) _headingNotifier.value = heading;
+    if (newSpeed > 0.5) {
+      var headingForArrow = heading;
+      if (_isNavigating &&
+          nearestIdxForHeading != null &&
+          nearestPointDistM != null) {
+        // ROUTE-LOCKED: When on route, use route direction exclusively.
+        // This is how Google Maps/Waze work — no GPS/compass blending.
+        if (nearestPointDistM < 20) {
+          // Full route lock when within 20m of route.
+          headingForArrow = _routeHeadingAt(nearestIdxForHeading);
+        }
+        // Otherwise keep GPS heading (off-route).
+      }
+      _headingNotifier.value = headingForArrow;
+    }
 
     setState(() {
       _speedKmh = newSpeed;
@@ -780,6 +939,10 @@ class _MapScreenState extends State<MapScreen> {
                     headingNotifier: _headingNotifier,
                     destination: _destination,
                     routePoints: _routePoints,
+                    nextManeuverDistanceMeters: _isNavigating
+                        ? _distToNextManeuver
+                        : null,
+                    nextManeuverSign: _isNavigating ? _nextManeuverSign : null,
                     alerts: _alerts,
                     onTap: _isNavigating ? null : _handleMapTap,
                     followUser: _isNavigating && _isFollowing,
@@ -885,14 +1048,8 @@ class _MapScreenState extends State<MapScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: _suggestions.map((s) {
-                            final parts = (s['display_name'] as String? ?? '')
-                                .split(',');
-                            final title = parts.first.trim();
-                            final subtitle = parts
-                                .skip(1)
-                                .take(3)
-                                .map((e) => e.trim())
-                                .join(', ');
+                            final title = _addressTitleFromResult(s);
+                            final subtitle = _addressSubtitleFromResult(s);
                             return InkWell(
                               onTap: () => _selectSuggestion(s),
                               child: Padding(
@@ -1000,6 +1157,8 @@ class _MapScreenState extends State<MapScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                     child: Container(
+                      // Urgency tint improves readability during close/complex turns.
+                      // Major apps shift color closer to maneuver for attention.
                       decoration: BoxDecoration(
                         color: const Color(0xFF1C1C1E),
                         borderRadius: BorderRadius.circular(20),
@@ -1011,55 +1170,108 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1C3566),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Icon(
-                              _turnIcon(_nextManeuverSign),
-                              color: Colors.white,
-                              size: 44,
-                            ),
+                          Builder(
+                            builder: (_) {
+                              final accent = _maneuverAccentColor(
+                                _distToNextManeuver,
+                                _nextManeuverSign,
+                              );
+                              return Container(
+                                width: 72,
+                                height: 72,
+                                decoration: BoxDecoration(
+                                  color: accent.withValues(alpha: 0.36),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: accent.withValues(alpha: 0.9),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  _turnIcon(_nextManeuverSign),
+                                  color: Colors.white,
+                                  size: 44,
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(width: 14),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _nextManeuverText,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  _distToNextManeuver >= 1000
-                                      ? '${(_distToNextManeuver / 1000).toStringAsFixed(1)} km'
-                                      : '${_distToNextManeuver.round()} m',
-                                  style: const TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
+                            child: Builder(
+                              builder: (_) {
+                                final accent = _maneuverAccentColor(
+                                  _distToNextManeuver,
+                                  _nextManeuverSign,
+                                );
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: accent,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        l10n.mapManeuverInDistance(
+                                          _formatManeuverDistance(
+                                            _distToNextManeuver,
+                                          ),
+                                        ),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.1,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 7),
+                                    Text(
+                                      _maneuverPrimaryText(_nextManeuverText),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.2,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (_maneuverTargetFromText(
+                                          _nextManeuverText,
+                                        ) !=
+                                        null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          l10n.mapManeuverTowardRoad(
+                                            _maneuverTargetFromText(
+                                              _nextManeuverText,
+                                            )!,
+                                          ),
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ],
@@ -1164,7 +1376,7 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        _use3DMap ? '3D' : '2D',
+                        _use3DMap ? l10n.mapModeLabel3d : l10n.mapModeLabel2d,
                         style: const TextStyle(
                           color: Colors.white60,
                           fontWeight: FontWeight.bold,
@@ -1529,8 +1741,8 @@ class _MapScreenState extends State<MapScreen> {
                                             const SizedBox(height: 8),
                                             GestureDetector(
                                               onTap: _clearRoute,
-                                              child: const Text(
-                                                'Avbryt',
+                                              child: Text(
+                                                l10n.authCancel,
                                                 style: TextStyle(
                                                   color: Colors.white38,
                                                   fontSize: 13,
@@ -1553,8 +1765,8 @@ class _MapScreenState extends State<MapScreen> {
                                                   borderRadius:
                                                       BorderRadius.circular(10),
                                                 ),
-                                                child: const Text(
-                                                  '▶ Simulera',
+                                                child: Text(
+                                                  '▶ ${l10n.mapSimulateButton}',
                                                   style: TextStyle(
                                                     color: Colors.white,
                                                     fontSize: 12,
@@ -1617,9 +1829,10 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kunde inte rapportera larm just nu.')),
-      );
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.alertReportFailed)));
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
