@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:slowride/features/auth/mfa_verify_screen.dart';
 import 'package:slowride/features/auth/register_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
@@ -50,7 +51,16 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text,
         password: _passwordController.text,
       );
-      if (mounted) Navigator.of(context).pop(true);
+      if (!mounted) return;
+      // Check if 2FA is required
+      if (AuthService.instance.mfaRequired) {
+        final verified = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const MfaVerifyScreen()),
+        );
+        if (mounted) Navigator.of(context).pop(verified == true);
+      } else {
+        Navigator.of(context).pop(true);
+      }
     } on AuthException catch (e) {
       setState(
         () => _error = _localizeAuthError(e, AppLocalizations.of(context)!),

@@ -554,6 +554,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final successMsg = l10n.parentDashboardLinkSuccess;
     final failMsg = l10n.parentDashboardLinkFailed;
+    final selfMsg = l10n.parentDashboardLinkSelf;
 
     final result = await showDialog<bool>(
       context: context,
@@ -622,14 +623,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     );
 
     if (result == true && _codeController.text.length == 6) {
-      final success = await ParentService.instance.linkToChildWithCode(
+      final linkResult = await ParentService.instance.linkToChildWithCode(
         _codeController.text,
       );
 
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(success ? successMsg : failMsg)),
-      );
+      final msg = switch (linkResult) {
+        'ok' => successMsg,
+        'self' => selfMsg,
+        _ => failMsg,
+      };
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 

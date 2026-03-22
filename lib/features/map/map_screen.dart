@@ -18,6 +18,7 @@ import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/speedometer_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/subscription_service.dart';
+import 'package:slowride/services/tts_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -63,6 +64,9 @@ class _MapScreenState extends State<MapScreen> {
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
   double _distToNextManeuver = 0;
+  String _lastSpokenManeuver = '';
+  bool _spokenEarlyWarning = false;
+  String _currentStreetName = '';
 
   // ── Speed calibration + live ETA ──────────────────────────────────
   // Cumulative distance from route start to each point (metres).
@@ -445,6 +449,10 @@ class _MapScreenState extends State<MapScreen> {
     Map<String, dynamic> result, {
     String fallback = '',
   }) {
+    // Show business / POI name when available
+    final name = (result['name']?.toString() ?? '').trim();
+    if (name.isNotEmpty) return name;
+
     final address = result['address'];
     if (address is Map) {
       String getPart(String key) => (address[key] ?? '').toString().trim();
@@ -480,6 +488,33 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _addressSubtitleFromResult(Map<String, dynamic> result) {
+    // When result has a POI name, show the street as subtitle
+    final name = (result['name']?.toString() ?? '').trim();
+    if (name.isNotEmpty) {
+      final address = result['address'];
+      if (address is Map) {
+        String getPart(String key) => (address[key] ?? '').toString().trim();
+        final road = [
+          getPart('road'),
+          getPart('pedestrian'),
+          getPart('residential'),
+          getPart('street'),
+          getPart('footway'),
+        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+        final houseNumber = getPart('house_number');
+        final city = [
+          getPart('city'),
+          getPart('town'),
+          getPart('village'),
+        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+        final parts = <String>[
+          if (road.isNotEmpty)
+            houseNumber.isNotEmpty ? '$road $houseNumber' : road,
+          if (city.isNotEmpty) city,
+        ];
+        if (parts.isNotEmpty) return parts.join(', ');
+      }
+    }
     final display = (result['display_name']?.toString() ?? '').trim();
     if (display.isEmpty) return '';
     final parts = display
@@ -514,6 +549,27 @@ class _MapScreenState extends State<MapScreen> {
       -6 || 6 => Icons.rotate_right,
       _ => Icons.straight,
     };
+  }
+
+  void _announceManeuver(String text, double distMeters) {
+    if (text.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    // Announce at ~200m (early warning) and ~50m (final reminder)
+    if (distMeters <= 200 && distMeters > 50 && !_spokenEarlyWarning) {
+      _spokenEarlyWarning = true;
+      final distText = distMeters >= 1000
+          ? l10n.voiceInKm((distMeters / 1000).toStringAsFixed(1))
+          : l10n.voiceInMeters(((distMeters / 10).round() * 10).toString());
+      TtsService.instance.speak('$distText, $text');
+    } else if (distMeters <= 50 && _lastSpokenManeuver != text) {
+      _lastSpokenManeuver = text;
+      _spokenEarlyWarning = false;
+      TtsService.instance.speak(text);
+    }
+    // Reset when new maneuver comes (distance increases)
+    if (distMeters > 250) {
+      _spokenEarlyWarning = false;
+    }
   }
 
   String _formatManeuverDistance(double meters) {
@@ -706,6 +762,7 @@ class _MapScreenState extends State<MapScreen> {
       _nextManeuverText = '';
       _nextManeuverSign = 0;
       _distToNextManeuver = 0;
+      _currentStreetName = '';
       _cumulativeDist = const [];
       _totalRouteDistM = 0;
       _tripStartTime = null;
@@ -739,6 +796,7 @@ class _MapScreenState extends State<MapScreen> {
     String? newText;
     double? newDist;
     double? newRemaining;
+    String? newStreetName;
     int? nearestIdxForHeading;
     double? nearestPointDistM;
     if (_isNavigating && _routePoints.isNotEmpty) {
@@ -759,6 +817,11 @@ class _MapScreenState extends State<MapScreen> {
             break;
           }
           instrIdx = i + 1;
+        }
+        // Track current street name from the active instruction
+        final currentInstr = _instructions[instrIdx];
+        if (currentInstr.streetName.isNotEmpty) {
+          newStreetName = currentInstr.streetName;
         }
         final nextIdx = instrIdx + 1;
         if (nextIdx < _instructions.length) {
@@ -808,6 +871,12 @@ class _MapScreenState extends State<MapScreen> {
       if (newSign != null) _nextManeuverSign = newSign;
       if (newText != null) _nextManeuverText = newText;
       if (newDist != null) _distToNextManeuver = newDist;
+      if (newStreetName != null) _currentStreetName = newStreetName;
+
+      // Voice navigation announcements
+      if (_isNavigating && newText != null && newDist != null) {
+        _announceManeuver(newText, newDist);
+      }
       if (newRemaining != null) {
         final remKm = newRemaining / 1000;
         final distStr = remKm >= 1.0
@@ -1418,6 +1487,42 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
+                // Voice navigation toggle
+                ValueListenableBuilder<bool>(
+                  valueListenable: TtsService.instance.enabled,
+                  builder: (context, ttsOn, _) {
+                    return GestureDetector(
+                      onTap: () {
+                        TtsService.instance.enabled.value = !ttsOn;
+                      },
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: const Color(0xEE0A1F63),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: const Color(0x883AA8FF),
+                            width: 1.5,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black45,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          ttsOn ? Icons.volume_up : Icons.volume_off,
+                          color: Colors.white70,
+                          size: 22,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
                 // Report alert button
                 GestureDetector(
                   onTap: _showReportAlertSheet,
@@ -1481,6 +1586,45 @@ class _MapScreenState extends State<MapScreen> {
                     Icons.my_location,
                     color: Colors.white,
                     size: 22,
+                  ),
+                ),
+              ),
+            ),
+          // ── Current street name pill ────────────────────────────────
+          if (_isNavigating && _currentStreetName.isNotEmpty)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom:
+                  (_destination != null ||
+                      _routePoints.isNotEmpty ||
+                      _isRouting)
+                  ? 165
+                  : 100,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    _currentStreetName,
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

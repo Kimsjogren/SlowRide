@@ -16,6 +16,7 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
+import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/convoy_member_location.dart';
@@ -75,6 +76,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   double _myHeading = 0;
   bool _isFollowingMyPosition = true;
   bool _use3DMap = true;
+  bool _useDarkMap = true;
   String? _myUserId;
   String _destinationLabel = '';
 
@@ -91,6 +93,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isNavigating = false;
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
+  String _currentStreetName = '';
+  String _lastSpokenManeuver = '';
+  bool _spokenEarlyWarning = false;
   List<double> _cumulativeDist = const [];
   double _totalRouteDistM = 0;
   double _remainingDistM = 0;
@@ -213,6 +218,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             double newDistToManeuver = double.infinity;
             int? newSign;
             String? newText;
+            String? newStreetName;
             double? newRemaining;
             double headingForArrow = newHeading;
 
@@ -234,6 +240,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                   break;
                 }
                 instrIdx = i + 1;
+              }
+              // Track current street name
+              final currentInstr = _routeInstructions[instrIdx];
+              if (currentInstr.streetName.isNotEmpty) {
+                newStreetName = currentInstr.streetName;
               }
               final nextIdx = instrIdx + 1;
               if (nextIdx < _routeInstructions.length) {
@@ -275,6 +286,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               _distToNextManeuver = newDistToManeuver;
               if (newSign != null) _nextManeuverSign = newSign;
               if (newText != null) _nextManeuverText = newText;
+              if (newStreetName != null) _currentStreetName = newStreetName;
+              // Voice navigation announcements
+              if (_isNavigating &&
+                  newText != null &&
+                  newDistToManeuver.isFinite) {
+                _announceManeuver(newText, newDistToManeuver);
+              }
               if (newRemaining != null) {
                 _remainingDistM = newRemaining;
                 final remKm = newRemaining / 1000;
@@ -609,6 +627,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   String _addressTitleFromResult(Map<String, dynamic> result) {
+    // Show business / POI name when available
+    final name = (result['name']?.toString() ?? '').trim();
+    if (name.isNotEmpty) return name;
+
     final addr = result['address'];
     if (addr is Map<String, dynamic>) {
       String fromAddress(String key) => (addr[key] ?? '').toString().trim();
@@ -645,6 +667,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   String _addressSubtitleFromResult(Map<String, dynamic> result) {
+    // When result has a POI name, show the street as subtitle
+    final name = (result['name']?.toString() ?? '').trim();
+    if (name.isNotEmpty) {
+      final addr = result['address'];
+      if (addr is Map) {
+        String getPart(String key) => (addr[key] ?? '').toString().trim();
+        final road = [
+          getPart('road'),
+          getPart('pedestrian'),
+          getPart('residential'),
+          getPart('street'),
+          getPart('footway'),
+        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+        final houseNumber = getPart('house_number');
+        final city = [
+          getPart('city'),
+          getPart('town'),
+          getPart('village'),
+        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+        final parts = <String>[
+          if (road.isNotEmpty)
+            houseNumber.isNotEmpty ? '$road $houseNumber' : road,
+          if (city.isNotEmpty) city,
+        ];
+        if (parts.isNotEmpty) return parts.join(', ');
+      }
+    }
     final display = (result['display_name']?.toString() ?? '').trim();
     if (display.isEmpty) return '';
     final parts = display
@@ -1049,20 +1098,25 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       }
     } on RoutingException catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _routePoints = const [];
         _routingStatus = switch (e.code) {
-          RoutingErrorCode.noRouteFound => AppLocalizations.of(
-            context,
-          )!.mapRouteNoRouteFound,
-          RoutingErrorCode.providerUnavailable => AppLocalizations.of(
-            context,
-          )!.mapRouteProviderUnavailable,
-          _ => AppLocalizations.of(context)!.mapRouteFailed,
+          RoutingErrorCode.noRouteFound => l10n.mapRouteNoRouteFound,
+          RoutingErrorCode.providerUnavailable =>
+            l10n.mapRouteProviderUnavailable,
+          RoutingErrorCode.missingApiKey => l10n.mapRouteMissingApiKey,
+          RoutingErrorCode.invalidGeometry => l10n.mapRouteInvalidGeometry,
+          RoutingErrorCode.unknownProvider => l10n.mapRouteUnknownProvider,
+          RoutingErrorCode.routeTooFastForVehicle =>
+            l10n.mapRouteTooFastForVehicle,
+          RoutingErrorCode.routeNotAllowedForVehicle =>
+            l10n.mapRouteNotAllowedForVehicle,
         };
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      debugPrint('Convoy routing error: $e');
       setState(() {
         _routePoints = const [];
         _routingStatus = AppLocalizations.of(context)!.mapRouteFailed;
@@ -1084,11 +1138,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _distToNextManeuver = double.infinity;
       _nextManeuverSign = 0;
       _nextManeuverText = '';
+      _currentStreetName = '';
+      _lastSpokenManeuver = '';
+      _spokenEarlyWarning = false;
       _cumulativeDist = const [];
       _totalRouteDistM = 0;
       _remainingDistM = 0;
       _lastNearestIdx = 0;
     });
+  }
+
+  void _announceManeuver(String text, double distMeters) {
+    if (text.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (distMeters <= 200 && distMeters > 50 && !_spokenEarlyWarning) {
+      _spokenEarlyWarning = true;
+      final distText = distMeters >= 1000
+          ? l10n.voiceInKm((distMeters / 1000).toStringAsFixed(1))
+          : l10n.voiceInMeters(((distMeters / 10).round() * 10).toString());
+      TtsService.instance.speak('$distText, $text');
+    } else if (distMeters <= 50 && _lastSpokenManeuver != text) {
+      _lastSpokenManeuver = text;
+      _spokenEarlyWarning = false;
+      TtsService.instance.speak(text);
+    }
+    if (distMeters > 250) {
+      _spokenEarlyWarning = false;
+    }
   }
 
   void _showPinOptions(ConvoyPin pin) {
@@ -1449,8 +1525,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 mapController: _mapController,
                                                 children: [
                                                   TileLayer(
-                                                    urlTemplate:
-                                                        'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+                                                    urlTemplate: _useDarkMap
+                                                        ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+                                                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
                                                     subdomains: const [
                                                       'a',
                                                       'b',
@@ -1477,8 +1554,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                         const TileDisplay.instantaneous(),
                                                   ),
                                                   TileLayer(
-                                                    urlTemplate:
-                                                        'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                                                    urlTemplate: _useDarkMap
+                                                        ? 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png'
+                                                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
                                                     subdomains: const [
                                                       'a',
                                                       'b',
@@ -2063,6 +2141,44 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
+                          // ── Current street name pill ─────────────────────
+                          if (_isNavigating && _currentStreetName.isNotEmpty)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: (_routeDestination != null || _isRouting)
+                                  ? 165
+                                  : 100,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    _currentStreetName,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           // Route / navigation bottom panel (Apple Maps dark)
                           if (_routeDestination != null || _isRouting)
                             Positioned(
@@ -2528,6 +2644,78 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ),
                                     ),
                                   ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Light / Dark map style toggle
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() => _useDarkMap = !_useDarkMap);
+                                  },
+                                  child: Container(
+                                    width: 46,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xEE0A1F63),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0x883AA8FF),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black45,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      _useDarkMap
+                                          ? Icons.dark_mode
+                                          : Icons.light_mode,
+                                      color: Colors.white70,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Voice navigation toggle
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: TtsService.instance.enabled,
+                                  builder: (context, ttsOn, _) {
+                                    return GestureDetector(
+                                      onTap: () {
+                                        TtsService.instance.enabled.value =
+                                            !ttsOn;
+                                      },
+                                      child: Container(
+                                        width: 46,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xEE0A1F63),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: const Color(0x883AA8FF),
+                                            width: 1.5,
+                                          ),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Colors.black45,
+                                              blurRadius: 8,
+                                              offset: Offset(0, 3),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          ttsOn
+                                              ? Icons.volume_up
+                                              : Icons.volume_off,
+                                          color: Colors.white70,
+                                          size: 22,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 const SizedBox(height: 10),
                                 // Report alert button

@@ -22,6 +22,9 @@ class UserPreferencesService {
   static const String _languageCodeKey = 'user_language_code';
   static const String _use3DMapKey = 'user_use_3d_map';
 
+  /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_A-tractor'.
+  static const String _vehicleSpeedPrefix = 'vehicle_speed_';
+
   SharedPreferences? _prefs;
   bool _listenersAttached = false;
 
@@ -51,16 +54,24 @@ class UserPreferencesService {
   }
 
   void _onVehicleTypeChanged() {
-    // Automatically set the default max speed for the selected vehicle type.
-    switch (vehicleType.value) {
+    // Load the user's saved speed for this vehicle, or use the vehicle default.
+    final defaultSpeed = _defaultSpeedFor(vehicleType.value);
+    final savedSpeed = _prefs?.getDouble(
+      '$_vehicleSpeedPrefix${vehicleType.value}',
+    );
+    maxSpeedKmh.value = savedSpeed ?? defaultSpeed;
+  }
+
+  static double _defaultSpeedFor(String vehicle) {
+    switch (vehicle) {
       case 'A-tractor':
-        maxSpeedKmh.value = 30;
+        return 30;
       case 'Moped car':
-        maxSpeedKmh.value = 45;
+        return 45;
       case 'Tractor':
-        maxSpeedKmh.value = 30;
+        return 30;
       default:
-        maxSpeedKmh.value = 30;
+        return 30;
     }
   }
 
@@ -74,6 +85,11 @@ class UserPreferencesService {
 
   Future<void> _persistMaxSpeedKmh() async {
     await _prefs?.setDouble(_maxSpeedKmhKey, maxSpeedKmh.value);
+    // Also save per-vehicle so switching back restores the user's chosen speed.
+    await _prefs?.setDouble(
+      '$_vehicleSpeedPrefix${vehicleType.value}',
+      maxSpeedKmh.value,
+    );
   }
 
   Future<void> _persist3DMap() async {

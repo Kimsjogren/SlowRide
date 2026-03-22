@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:slowride/services/subscription_service.dart';
 
@@ -39,7 +43,40 @@ class AdService {
   bool _convoyAdLoading = false;
 
   Future<void> initialize() async {
+    // Request ATT permission on iOS 14+ before loading ads
+    if (Platform.isIOS) {
+      try {
+        final status =
+            await AppTrackingTransparency.trackingAuthorizationStatus;
+        debugPrint('[AdService] ATT status: $status');
+
+        if (status == TrackingStatus.notDetermined) {
+          // Small delay recommended by Apple before showing ATT prompt
+          await Future.delayed(const Duration(milliseconds: 500));
+          final newStatus =
+              await AppTrackingTransparency.requestTrackingAuthorization();
+          debugPrint('[AdService] ATT requested, new status: $newStatus');
+        }
+      } catch (e) {
+        debugPrint('[AdService] ATT error: $e');
+      }
+    }
+
+    debugPrint('[AdService] Initializing MobileAds...');
     await MobileAds.instance.initialize();
+
+    // Register test devices for development (required for test ads on real devices)
+    // Add device IDs from console logs here during testing
+    MobileAds.instance.updateRequestConfiguration(
+      RequestConfiguration(
+        testDeviceIds: [
+          'dcf7da2138fb5c5cd5b04c95cf08fccd', // Kim's iPhone17
+          // Add more test device IDs here as needed
+        ],
+      ),
+    );
+    debugPrint('[AdService] MobileAds initialized ✅ (test devices configured)');
+
     _preloadConvoyInterstitial();
   }
 

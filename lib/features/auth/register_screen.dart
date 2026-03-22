@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:slowride/features/auth/login_screen.dart';
+import 'package:slowride/features/auth/mfa_setup_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
 String _localizeAuthError(AuthException e, AppLocalizations l10n) {
@@ -56,6 +58,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         displayName: _nameController.text,
       );
+      if (!mounted) return;
+      // Recommend MFA setup
+      if (SupabaseService.instance.isEnabled) {
+        final l10n = AppLocalizations.of(context)!;
+        final setupNow = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF0F1B3D),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.shield, color: Color(0xFF1E6BFF), size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.mfaRecommendTitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              l10n.mfaRecommendBody,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  l10n.mfaRecommendLater,
+                  style: const TextStyle(color: Colors.white54),
+                ),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E6BFF),
+                ),
+                child: Text(l10n.mfaRecommendSetup),
+              ),
+            ],
+          ),
+        );
+        if (setupNow == true && mounted) {
+          await Navigator.of(context).push<bool>(
+            MaterialPageRoute(builder: (_) => const MfaSetupScreen()),
+          );
+        }
+      }
       if (mounted) Navigator.of(context).pop(true);
     } on AuthException catch (e) {
       setState(

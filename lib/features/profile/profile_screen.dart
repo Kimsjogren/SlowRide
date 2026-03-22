@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:slowride/features/auth/login_screen.dart';
+import 'package:slowride/features/auth/mfa_setup_screen.dart';
 import 'package:slowride/features/auth/register_screen.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
@@ -463,6 +465,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 24),
                     ],
 
+                    // 2FA / Tvåfaktorsautentisering
+                    if (isLoggedIn && SupabaseService.instance.isEnabled)
+                      _TwoFactorCard(),
+
                     // Logga ut-knapp
                     if (isLoggedIn)
                       SizedBox(
@@ -581,6 +587,145 @@ class _StatRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TwoFactorCard extends StatefulWidget {
+  @override
+  State<_TwoFactorCard> createState() => _TwoFactorCardState();
+}
+
+class _TwoFactorCardState extends State<_TwoFactorCard> {
+  bool? _enabled;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    final on = await AuthService.instance.mfaEnabled;
+    if (mounted) setState(() => _enabled = on);
+  }
+
+  Future<void> _enable() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const MfaSetupScreen()),
+    );
+    if (result == true) _checkStatus();
+  }
+
+  Future<void> _disable() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F1B3D),
+        title: Text(
+          l10n.mfaDisableTitle,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          l10n.mfaDisableBody,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              l10n.mfaDisableConfirm,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _busy = true);
+    try {
+      await AuthService.instance.unenrollMfa();
+    } finally {
+      _checkStatus();
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (_enabled == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _enabled! ? Icons.verified_user : Icons.shield_outlined,
+              color: _enabled! ? const Color(0xFF4CAF50) : Colors.white38,
+              size: 28,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.mfaProfileTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _enabled! ? l10n.mfaStatusOn : l10n.mfaStatusOff,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _busy
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white54,
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _enabled! ? _disable : _enable,
+                    child: Text(
+                      _enabled! ? l10n.mfaTurnOff : l10n.mfaTurnOn,
+                      style: TextStyle(
+                        color: _enabled!
+                            ? Colors.redAccent
+                            : const Color(0xFF1E6BFF),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }

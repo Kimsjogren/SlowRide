@@ -145,11 +145,12 @@ class AuthService {
       final response = await SupabaseService.instance.client.auth
           .signInWithPassword(email: normalizedEmail, password: password);
       final user = response.user;
-      if (user == null)
+      if (user == null) {
         throw const AuthException(
           'invalidCredentials',
           code: AuthErrorCode.invalidCredentials,
         );
+      }
       userId.value = user.id;
       userEmail.value = user.email;
       userName.value =
@@ -210,6 +211,80 @@ class AuthService {
     userEmail.value = user.email;
     userName.value = _nameFromEmail(user.email);
     isLoggedIn.value = true;
+  }
+
+  // ── MFA / TOTP ────────────────────────────────────────────────────────────
+
+  /// Returns true when the signed-in user still needs to complete a second
+  /// factor challenge before being fully authenticated.
+  bool get mfaRequired {
+    if (!SupabaseService.instance.isEnabled) return false;
+    final aal = SupabaseService.instance.client.auth.mfa
+        .getAuthenticatorAssuranceLevel();
+    return aal.currentLevel == AuthenticatorAssuranceLevels.aal1 &&
+        aal.nextLevel == AuthenticatorAssuranceLevels.aal2;
+  }
+
+  /// Returns true when the user has enrolled at least one TOTP factor.
+  Future<bool> get mfaEnabled async {
+    if (!SupabaseService.instance.isEnabled) return false;
+    final factors = await SupabaseService.instance.client.auth.mfa
+        .listFactors();
+    return factors.totp.any((f) => f.status == FactorStatus.verified);
+  }
+
+  /// Enroll a new TOTP factor. Returns the TOTP QR-code SVG string, the
+  /// manual secret and the factor-id needed for verification.
+  Future<({String qrCode, String secret, String factorId})> enrollMfa() async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    final res = await SupabaseService.instance.client.auth.mfa.enroll(
+      factorType: FactorType.totp,
+      issuer: 'CruizX',
+      friendlyName: 'CruizX 2FA',
+    );
+    return (
+      qrCode: res.totp!.qrCode,
+      secret: res.totp!.secret,
+      factorId: res.id,
+    );
+  }
+
+  /// Verify a TOTP code against an enrolled factor. Used both during initial
+  /// setup (to confirm the user scanned the QR) and after login.
+  Future<void> verifyMfa({
+    required String factorId,
+    required String code,
+  }) async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    await SupabaseService.instance.client.auth.mfa.challengeAndVerify(
+      factorId: factorId,
+      code: code.trim(),
+    );
+  }
+
+  /// Remove (unenroll) a TOTP factor — effectively disables 2FA.
+  Future<void> unenrollMfa() async {
+    if (!SupabaseService.instance.isEnabled) return;
+    final factors = await SupabaseService.instance.client.auth.mfa
+        .listFactors();
+    for (final f in factors.totp) {
+      await SupabaseService.instance.client.auth.mfa.unenroll(f.id);
+    }
+  }
+
+  /// Returns the factor-id of the first verified TOTP factor, or null.
+  Future<String?> get verifiedFactorId async {
+    if (!SupabaseService.instance.isEnabled) return null;
+    final factors = await SupabaseService.instance.client.auth.mfa
+        .listFactors();
+    final verified = factors.totp.where(
+      (f) => f.status == FactorStatus.verified,
+    );
+    return verified.isEmpty ? null : verified.first.id;
   }
 
   // ── Sign out ──────────────────────────────────────────────────────────────

@@ -1490,7 +1490,7 @@ abstract class AppLocalizations {
   /// No description provided for @parentModeDescription.
   ///
   /// In en, this message translates to:
-  /// **'Let a parent follow your driving in real-time. Perfect for young A-tractor drivers who want to give their parents peace of mind.'**
+  /// **'Let a parent follow your driving in real-time.'**
   String get parentModeDescription;
 
   /// No description provided for @parentModeLoginRequired.
@@ -1751,6 +1751,12 @@ abstract class AppLocalizations {
   /// **'Could not find child with that code. Check the code and try again.'**
   String get parentDashboardLinkFailed;
 
+  /// No description provided for @parentDashboardLinkSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot link to your own account. Ask your child to share their code from their account.'**
+  String get parentDashboardLinkSelf;
+
   /// No description provided for @parentDashboardSpeedingAlert.
   ///
   /// In en, this message translates to:
@@ -1780,6 +1786,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View as parent'**
   String get parentDashboardViewChild;
+
+  /// No description provided for @settingsVoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice navigation'**
+  String get settingsVoiceNavigation;
+
+  /// No description provided for @settingsVoiceNavigationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Read turn instructions aloud'**
+  String get settingsVoiceNavigationSubtitle;
+
+  /// No description provided for @voiceTurnLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn left'**
+  String get voiceTurnLeft;
+
+  /// No description provided for @voiceTurnRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn right'**
+  String get voiceTurnRight;
+
+  /// No description provided for @voiceTurnSharpLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sharp left'**
+  String get voiceTurnSharpLeft;
+
+  /// No description provided for @voiceTurnSharpRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sharp right'**
+  String get voiceTurnSharpRight;
+
+  /// No description provided for @voiceTurnSlightLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn slight left'**
+  String get voiceTurnSlightLeft;
+
+  /// No description provided for @voiceTurnSlightRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn slight right'**
+  String get voiceTurnSlightRight;
+
+  /// No description provided for @voiceContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue straight'**
+  String get voiceContinue;
+
+  /// No description provided for @voiceRoundabout.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the roundabout'**
+  String get voiceRoundabout;
+
+  /// No description provided for @voiceDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reached your destination'**
+  String get voiceDestination;
+
+  /// No description provided for @voiceInMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'In {meters} meters'**
+  String voiceInMeters(Object meters);
+
+  /// No description provided for @voiceInKm.
+  ///
+  /// In en, this message translates to:
+  /// **'In {km} kilometers'**
+  String voiceInKm(Object km);
+
+  /// No description provided for @mfaSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable two-factor authentication'**
+  String get mfaSetupTitle;
+
+  /// No description provided for @mfaSetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the QR code with an authenticator app like Google Authenticator or Authy'**
+  String get mfaSetupSubtitle;
+
+  /// No description provided for @mfaScanQr.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan the code above and enter the 6-digit code below'**
+  String get mfaScanQr;
+
+  /// No description provided for @mfaVerifyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get mfaVerifyButton;
+
+  /// No description provided for @mfaVerifyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-factor authentication'**
+  String get mfaVerifyTitle;
+
+  /// No description provided for @mfaVerifySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code from your authenticator app'**
+  String get mfaVerifySubtitle;
+
+  /// No description provided for @mfaInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid code, try again'**
+  String get mfaInvalidCode;
+
+  /// No description provided for @mfaCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and sign out'**
+  String get mfaCancel;
+
+  /// No description provided for @mfaProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Two-factor authentication'**
+  String get mfaProfileTitle;
+
+  /// No description provided for @mfaStatusOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled — your account is protected'**
+  String get mfaStatusOn;
+
+  /// No description provided for @mfaStatusOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get mfaStatusOff;
+
+  /// No description provided for @mfaTurnOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get mfaTurnOn;
+
+  /// No description provided for @mfaTurnOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get mfaTurnOff;
+
+  /// No description provided for @mfaDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off 2FA?'**
+  String get mfaDisableTitle;
+
+  /// No description provided for @mfaDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will be less secure without two-factor authentication.'**
+  String get mfaDisableBody;
+
+  /// No description provided for @mfaDisableConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get mfaDisableConfirm;
+
+  /// No description provided for @mfaShowManualKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t scan? Show key manually'**
+  String get mfaShowManualKey;
+
+  /// No description provided for @mfaHideManualKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide manual key'**
+  String get mfaHideManualKey;
+
+  /// No description provided for @mfaKeyCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Key copied'**
+  String get mfaKeyCopied;
+
+  /// No description provided for @mfaRecommendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Protect your account'**
+  String get mfaRecommendTitle;
+
+  /// No description provided for @mfaRecommendBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We recommend enabling two-factor authentication to protect your account. You can use an authenticator app like Google Authenticator or Authy.'**
+  String get mfaRecommendBody;
+
+  /// No description provided for @mfaRecommendSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable now'**
+  String get mfaRecommendSetup;
+
+  /// No description provided for @mfaRecommendLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get mfaRecommendLater;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

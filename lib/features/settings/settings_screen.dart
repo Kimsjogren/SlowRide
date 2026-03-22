@@ -6,6 +6,7 @@ import 'package:slowride/features/settings/parent_settings_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/subscription_service.dart';
+import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:slowride/widgets/ad_banner_widget.dart';
@@ -272,6 +273,53 @@ class SettingsScreen extends StatelessWidget {
                         },
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Voice navigation toggle
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: TtsService.instance.enabled,
+                    builder: (context, ttsEnabled, _) {
+                      return SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          l10n.settingsVoiceNavigation,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Text(
+                          l10n.settingsVoiceNavigationSubtitle,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 13,
+                          ),
+                        ),
+                        secondary: Icon(
+                          ttsEnabled ? Icons.volume_up : Icons.volume_off,
+                          color: ttsEnabled
+                              ? const Color(0xFF00C8FF)
+                              : Colors.white38,
+                        ),
+                        value: ttsEnabled,
+                        activeColor: const Color(0xFF00C8FF),
+                        onChanged: (v) => TtsService.instance.enabled.value = v,
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 16),

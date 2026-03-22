@@ -472,109 +472,121 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                               ),
                                       ),
                                     ),
-                                    child: Row(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        // Ikon
-                                        Container(
-                                          width: 42,
-                                          height: 42,
-                                          decoration: BoxDecoration(
-                                            color: const Color(
-                                              0xFF1E6BFF,
-                                            ).withValues(alpha: 0.25),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                          child: Icon(
-                                            convoy.isJoined
-                                                ? Icons.groups
-                                                : Icons.groups_outlined,
-                                            color: convoy.isJoined
-                                                ? const Color(0xFF3AA8FF)
-                                                : Colors.white60,
-                                            size: 22,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                convoy.name,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 15,
-                                                ),
+                                        Row(
+                                          children: [
+                                            // Ikon
+                                            Container(
+                                              width: 42,
+                                              height: 42,
+                                              decoration: BoxDecoration(
+                                                color: const Color(
+                                                  0xFF1E6BFF,
+                                                ).withValues(alpha: 0.25),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
-                                              const SizedBox(height: 3),
-                                              Row(
+                                              child: Icon(
+                                                convoy.isJoined
+                                                    ? Icons.groups
+                                                    : Icons.groups_outlined,
+                                                color: convoy.isJoined
+                                                    ? const Color(0xFF3AA8FF)
+                                                    : Colors.white60,
+                                                size: 22,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
-                                                  Icon(
-                                                    Icons.person_outline,
-                                                    size: 11,
-                                                    color: Colors.white
-                                                        .withValues(
-                                                          alpha: 0.45,
-                                                        ),
-                                                  ),
-                                                  const SizedBox(width: 3),
                                                   Text(
-                                                    l10n.convoyMembers(
-                                                      convoy.memberCount,
-                                                    ),
-                                                    style: TextStyle(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.5,
-                                                          ),
-                                                      fontSize: 12,
+                                                    convoy.name,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 15,
                                                     ),
                                                   ),
-                                                  if (isLeader) ...[
-                                                    const SizedBox(width: 8),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            const Color(
-                                                              0xFF1E6BFF,
-                                                            ).withValues(
-                                                              alpha: 0.35,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
+                                                  const SizedBox(height: 3),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.person_outline,
+                                                        size: 11,
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.45,
                                                             ),
                                                       ),
-                                                      child: Text(
-                                                        l10n.convoyYouBadge,
-                                                        style: const TextStyle(
-                                                          color: Color(
-                                                            0xFF3AA8FF,
-                                                          ),
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.w600,
+                                                      const SizedBox(width: 3),
+                                                      Text(
+                                                        l10n.convoyMembers(
+                                                          convoy.memberCount,
+                                                        ),
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.5,
+                                                              ),
+                                                          fontSize: 12,
                                                         ),
                                                       ),
-                                                    ),
-                                                  ],
+                                                      if (isLeader) ...[
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 6,
+                                                                vertical: 2,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                const Color(
+                                                                  0xFF1E6BFF,
+                                                                ).withValues(
+                                                                  alpha: 0.35,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  4,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            l10n.convoyYouBadge,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Color(
+                                                                    0xFF3AA8FF,
+                                                                  ),
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
                                                 ],
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
+                                        const SizedBox(height: 10),
                                         // Åtgärdsknappar
                                         Row(
-                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
                                           children: [
                                             if (convoy.isJoined)
                                               Padding(

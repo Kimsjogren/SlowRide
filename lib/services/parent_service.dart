@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -248,11 +249,11 @@ class ParentService {
   }
 
   Map<String, dynamic> _parseJson(String json) {
-    // Minimal JSON parsing for settings
     try {
       final trimmed = json.trim();
       if (!trimmed.startsWith('{')) return {};
-      // Use Dart's built-in JSON parsing via Uri
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) return decoded;
       return {};
     } catch (_) {
       return {};
@@ -333,12 +334,14 @@ class ParentService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Link to a child using their invite code.
-  Future<bool> linkToChildWithCode(String code) async {
-    if (!SupabaseService.instance.isEnabled) return false;
-    if (!AuthService.instance.isLoggedIn.value) return false;
+  /// Returns 'ok' on success, 'self' if trying to link to own account,
+  /// 'not_found' if code is invalid, or 'error' on failure.
+  Future<String> linkToChildWithCode(String code) async {
+    if (!SupabaseService.instance.isEnabled) return 'error';
+    if (!AuthService.instance.isLoggedIn.value) return 'error';
 
     final parentId = AuthService.instance.userId.value;
-    if (parentId == null) return false;
+    if (parentId == null) return 'error';
 
     try {
       // Find the child with this invite code.
@@ -349,12 +352,12 @@ class ParentService {
           .eq('is_active', true)
           .maybeSingle();
 
-      if (shareResponse == null) return false;
+      if (shareResponse == null) return 'not_found';
 
       final childId = shareResponse['user_id'] as String;
 
       // Don't allow linking to yourself.
-      if (childId == parentId) return false;
+      if (childId == parentId) return 'self';
 
       // Check if already linked.
       final existingLink = await SupabaseService.instance.client
@@ -364,7 +367,7 @@ class ParentService {
           .eq('child_id', childId)
           .maybeSingle();
 
-      if (existingLink != null) return true; // Already linked.
+      if (existingLink != null) return 'ok'; // Already linked.
 
       // Create the link.
       await SupabaseService.instance.client.from('parent_links').insert({
@@ -374,10 +377,10 @@ class ParentService {
       });
 
       await loadLinkedChildren();
-      return true;
+      return 'ok';
     } catch (e) {
       debugPrint('Failed to link to child: $e');
-      return false;
+      return 'error';
     }
   }
 

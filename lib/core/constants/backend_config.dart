@@ -3,7 +3,7 @@ class BackendConfig {
 
   static const String routingProvider = String.fromEnvironment(
     'ROUTING_PROVIDER',
-    defaultValue: 'graphhopper',
+    defaultValue: 'valhalla',
   );
 
   static const String osrmBaseUrl = String.fromEnvironment(
@@ -32,6 +32,12 @@ class BackendConfig {
     defaultValue: '52178d6d-1ee2-4d38-bb96-3700da1afd5b',
   );
 
+  /// Valhalla self-hosted routing API
+  static const String valhallaBaseUrl = String.fromEnvironment(
+    'VALHALLA_BASE_URL',
+    defaultValue: 'https://api.cruizx.com',
+  );
+
   /// Mapbox access token (pk.) used for map tiles and future SDK features
   static const String mapboxAccessToken = String.fromEnvironment(
     'MAPBOX_TOKEN',
@@ -50,4 +56,18 @@ class BackendConfig {
   );
 
   static const bool strictSlowVehicleRouting = true;
+
+  /// Force Pro mode for testing. Default is false (free version).
+  /// Build with: flutter run --dart-define=FORCE_PRO=true
+  static const bool forcePro = bool.fromEnvironment(
+    'FORCE_PRO',
+    defaultValue: false,
+  );
+
+  /// Force Free mode for testing (clears any saved Pro status).
+  /// Build with: flutter run --dart-define=FORCE_FREE=true
+  static const bool forceFree = bool.fromEnvironment(
+    'FORCE_FREE',
+    defaultValue: false,
+  );
 }

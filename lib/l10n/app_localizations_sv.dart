@@ -743,7 +743,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentModeTitle => 'Föräldraläge';
 
   @override
-  String get parentModeDescription => 'Låt en förälder följa din körning i realtid. Perfekt för unga A-traktor-förare som vill ge sina föräldrar trygghet.';
+  String get parentModeDescription => 'Låt en förälder följa din körning i realtid.';
 
   @override
   String get parentModeLoginRequired => 'Du måste vara inloggad för att använda föräldraläge.';
@@ -883,6 +883,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentDashboardLinkFailed => 'Kunde inte hitta barn med den koden. Kontrollera koden och försök igen.';
 
   @override
+  String get parentDashboardLinkSelf => 'Du kan inte länka till ditt eget konto. Be ditt barn dela sin kod från sitt konto.';
+
+  @override
   String get parentDashboardSpeedingAlert => 'Hastighetsvarning';
 
   @override
@@ -900,4 +903,116 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get parentDashboardViewChild => 'Visa som förälder';
+
+  @override
+  String get settingsVoiceNavigation => 'Röstnavigering';
+
+  @override
+  String get settingsVoiceNavigationSubtitle => 'Läs upp svänginstruktioner';
+
+  @override
+  String get voiceTurnLeft => 'Sväng vänster';
+
+  @override
+  String get voiceTurnRight => 'Sväng höger';
+
+  @override
+  String get voiceTurnSharpLeft => 'Sväng skarpt vänster';
+
+  @override
+  String get voiceTurnSharpRight => 'Sväng skarpt höger';
+
+  @override
+  String get voiceTurnSlightLeft => 'Sväng svagt vänster';
+
+  @override
+  String get voiceTurnSlightRight => 'Sväng svagt höger';
+
+  @override
+  String get voiceContinue => 'Fortsätt rakt fram';
+
+  @override
+  String get voiceRoundabout => 'Kör in i rondellen';
+
+  @override
+  String get voiceDestination => 'Du har nått din destination';
+
+  @override
+  String voiceInMeters(Object meters) {
+    return 'Om $meters meter';
+  }
+
+  @override
+  String voiceInKm(Object km) {
+    return 'Om $km kilometer';
+  }
+
+  @override
+  String get mfaSetupTitle => 'Aktivera tvåfaktorsautentisering';
+
+  @override
+  String get mfaSetupSubtitle => 'Skanna QR-koden med en autentiseringsapp som Google Authenticator eller Authy';
+
+  @override
+  String get mfaScanQr => 'Skanna koden ovan och ange den 6-siffriga koden nedan';
+
+  @override
+  String get mfaVerifyButton => 'Verifiera';
+
+  @override
+  String get mfaVerifyTitle => 'Tvåfaktorsautentisering';
+
+  @override
+  String get mfaVerifySubtitle => 'Ange den 6-siffriga koden från din autentiseringsapp';
+
+  @override
+  String get mfaInvalidCode => 'Felaktig kod, försök igen';
+
+  @override
+  String get mfaCancel => 'Avbryt och logga ut';
+
+  @override
+  String get mfaProfileTitle => 'Tvåfaktorsautentisering';
+
+  @override
+  String get mfaStatusOn => 'Aktiverad — ditt konto är skyddat';
+
+  @override
+  String get mfaStatusOff => 'Inaktiverad';
+
+  @override
+  String get mfaTurnOn => 'Aktivera';
+
+  @override
+  String get mfaTurnOff => 'Stäng av';
+
+  @override
+  String get mfaDisableTitle => 'Stäng av 2FA?';
+
+  @override
+  String get mfaDisableBody => 'Ditt konto blir mindre säkert utan tvåfaktorsautentisering.';
+
+  @override
+  String get mfaDisableConfirm => 'Stäng av';
+
+  @override
+  String get mfaShowManualKey => 'Kan du inte skanna? Visa nyckel manuellt';
+
+  @override
+  String get mfaHideManualKey => 'Dölj manuell nyckel';
+
+  @override
+  String get mfaKeyCopied => 'Nyckel kopierad';
+
+  @override
+  String get mfaRecommendTitle => 'Skydda ditt konto';
+
+  @override
+  String get mfaRecommendBody => 'Vi rekommenderar att du aktiverar tvåfaktorsautentisering för att skydda ditt konto. Du kan använda en autentiseringsapp som Google Authenticator eller Authy.';
+
+  @override
+  String get mfaRecommendSetup => 'Aktivera nu';
+
+  @override
+  String get mfaRecommendLater => 'Senare';
 }

@@ -6,6 +6,7 @@ import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
 import 'package:slowride/features/settings/settings_screen.dart';
 import 'package:slowride/services/ad_service.dart';
+import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/firebase_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
@@ -117,6 +118,9 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     } catch (_) {}
     try {
       await AdService.instance.initialize();
+    } catch (_) {}
+    try {
+      await TtsService.instance.initialize();
     } catch (_) {}
     await _setProgress(90);
 

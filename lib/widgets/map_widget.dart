@@ -828,9 +828,8 @@ class _LocationDot extends StatelessWidget {
     required this.lockNorthUp,
   });
 
-  // Material navigation icon has a built-in diagonal baseline.
-  // Compensate so 0° renders as true "straight up".
-  static const double _iconHeadingOffsetRad = -math.pi / 4;
+  // Icons.navigation points straight up (north), no offset needed.
+  static const double _iconHeadingOffsetRad = 0;
 
   final ValueNotifier<double> headingNotifier;
   final bool lockNorthUp;

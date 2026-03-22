@@ -743,7 +743,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentModeTitle => 'Parent Mode';
 
   @override
-  String get parentModeDescription => 'Let a parent follow your driving in real-time. Perfect for young A-tractor drivers who want to give their parents peace of mind.';
+  String get parentModeDescription => 'Let a parent follow your driving in real-time.';
 
   @override
   String get parentModeLoginRequired => 'You must be logged in to use Parent Mode.';
@@ -883,6 +883,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentDashboardLinkFailed => 'Could not find child with that code. Check the code and try again.';
 
   @override
+  String get parentDashboardLinkSelf => 'You cannot link to your own account. Ask your child to share their code from their account.';
+
+  @override
   String get parentDashboardSpeedingAlert => 'Speed alert';
 
   @override
@@ -900,4 +903,116 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parentDashboardViewChild => 'View as parent';
+
+  @override
+  String get settingsVoiceNavigation => 'Voice navigation';
+
+  @override
+  String get settingsVoiceNavigationSubtitle => 'Read turn instructions aloud';
+
+  @override
+  String get voiceTurnLeft => 'Turn left';
+
+  @override
+  String get voiceTurnRight => 'Turn right';
+
+  @override
+  String get voiceTurnSharpLeft => 'Turn sharp left';
+
+  @override
+  String get voiceTurnSharpRight => 'Turn sharp right';
+
+  @override
+  String get voiceTurnSlightLeft => 'Turn slight left';
+
+  @override
+  String get voiceTurnSlightRight => 'Turn slight right';
+
+  @override
+  String get voiceContinue => 'Continue straight';
+
+  @override
+  String get voiceRoundabout => 'Enter the roundabout';
+
+  @override
+  String get voiceDestination => 'You have reached your destination';
+
+  @override
+  String voiceInMeters(Object meters) {
+    return 'In $meters meters';
+  }
+
+  @override
+  String voiceInKm(Object km) {
+    return 'In $km kilometers';
+  }
+
+  @override
+  String get mfaSetupTitle => 'Enable two-factor authentication';
+
+  @override
+  String get mfaSetupSubtitle => 'Scan the QR code with an authenticator app like Google Authenticator or Authy';
+
+  @override
+  String get mfaScanQr => 'Scan the code above and enter the 6-digit code below';
+
+  @override
+  String get mfaVerifyButton => 'Verify';
+
+  @override
+  String get mfaVerifyTitle => 'Two-factor authentication';
+
+  @override
+  String get mfaVerifySubtitle => 'Enter the 6-digit code from your authenticator app';
+
+  @override
+  String get mfaInvalidCode => 'Invalid code, try again';
+
+  @override
+  String get mfaCancel => 'Cancel and sign out';
+
+  @override
+  String get mfaProfileTitle => 'Two-factor authentication';
+
+  @override
+  String get mfaStatusOn => 'Enabled — your account is protected';
+
+  @override
+  String get mfaStatusOff => 'Disabled';
+
+  @override
+  String get mfaTurnOn => 'Enable';
+
+  @override
+  String get mfaTurnOff => 'Turn off';
+
+  @override
+  String get mfaDisableTitle => 'Turn off 2FA?';
+
+  @override
+  String get mfaDisableBody => 'Your account will be less secure without two-factor authentication.';
+
+  @override
+  String get mfaDisableConfirm => 'Turn off';
+
+  @override
+  String get mfaShowManualKey => 'Can\'t scan? Show key manually';
+
+  @override
+  String get mfaHideManualKey => 'Hide manual key';
+
+  @override
+  String get mfaKeyCopied => 'Key copied';
+
+  @override
+  String get mfaRecommendTitle => 'Protect your account';
+
+  @override
+  String get mfaRecommendBody => 'We recommend enabling two-factor authentication to protect your account. You can use an authenticator app like Google Authenticator or Authy.';
+
+  @override
+  String get mfaRecommendSetup => 'Enable now';
+
+  @override
+  String get mfaRecommendLater => 'Later';
 }

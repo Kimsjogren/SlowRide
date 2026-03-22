@@ -14,10 +14,10 @@ void main() {
   testWidgets('Splash screen renders branding and progress', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const SlowRideApp());
+    await tester.pumpWidget(const CruizXApp());
 
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.text('v1.0.0 | SlowRide by KimTechTool'), findsOneWidget);
+    expect(find.text('v1.0.0 | CruizX by KimTechTool'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();

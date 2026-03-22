@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 
 enum PaywallReason { routeLimit, convoyLimit, memberLimit }
 
@@ -19,7 +20,18 @@ class SubscriptionService {
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
-    isPro.value = _prefs.getBool(_isProKey) ?? false;
+
+    // FORCE_FREE clears saved Pro and sets free mode (for testing ads etc.)
+    if (BackendConfig.forceFree) {
+      await _prefs.setBool(_isProKey, false);
+      isPro.value = false;
+    } else if (BackendConfig.forcePro) {
+      // FORCE_PRO overrides to Pro mode
+      isPro.value = true;
+    } else {
+      // Normal: read from stored preferences
+      isPro.value = _prefs.getBool(_isProKey) ?? false;
+    }
   }
 
   // ── Daily route tracking ────────────────────────────────────────────────

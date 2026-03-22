@@ -34,6 +34,7 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
         ),
       ),
       body: AppBackground(
+        showLogo: false,
         child: SafeArea(
           child: ValueListenableBuilder<bool>(
             valueListenable: AuthService.instance.isLoggedIn,
@@ -50,36 +51,59 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
   }
 
   Widget _buildLoginRequired(BuildContext context, AppLocalizations l10n) {
-    return Center(
+    return Align(
+      alignment: const Alignment(0, -0.55),
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.family_restroom, size: 80, color: Colors.white54),
-            const SizedBox(height: 24),
-            Text(
-              l10n.parentModeLoginRequired,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 18),
+            Image.asset(
+              'assets/logga_nobg.png',
+              width: 290,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00C8FF),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
               ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-                );
-              },
-              child: Text(l10n.login),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.family_restroom,
+                    size: 36,
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.parentModeLoginRequired,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LoginScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.login),
+                    label: Text(l10n.login),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
