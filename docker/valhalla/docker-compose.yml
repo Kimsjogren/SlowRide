@@ -2,15 +2,16 @@
 # Self-hosted routing for A-traktor, Mopedbil and Tractor navigation
 #
 # Quick start:
-#   1. Place sweden-latest.osm.pbf in ./data/ folder
-#   2. Run: docker-compose up -d
-#   3. Wait for tiles to build (first run takes ~30-60 min for Sweden)
-#   4. Test: curl http://localhost:8002/status
+#   1. Run: docker-compose up -d
+#   2. Wait for tiles to build (first run takes several hours with all countries)
+#   3. Test: curl http://localhost:8002/status
 #
 # Download maps from Geofabrik:
-#   Sweden: https://download.geofabrik.de/europe/sweden-latest.osm.pbf
-#   Norway: https://download.geofabrik.de/europe/norway-latest.osm.pbf
+#   Sweden:  https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+#   Norway:  https://download.geofabrik.de/europe/norway-latest.osm.pbf
+#   Denmark: https://download.geofabrik.de/europe/denmark-latest.osm.pbf
 #   Finland: https://download.geofabrik.de/europe/finland-latest.osm.pbf
+#   France:  https://download.geofabrik.de/europe/france-latest.osm.pbf
 
 version: '3.8'
 
@@ -22,51 +23,25 @@ services:
     ports:
       - "8002:8002"
     volumes:
-      # Map data and tiles storage
       - ./data:/custom_files
     environment:
-      # Build tiles automatically when container starts (Nordic countries)
-      - tile_urls=https://download.geofabrik.de/europe/sweden-latest.osm.pbf https://download.geofabrik.de/europe/norway-latest.osm.pbf https://download.geofabrik.de/europe/denmark-latest.osm.pbf https://download.geofabrik.de/europe/finland-latest.osm.pbf
-      
-      # Use all available CPU cores for tile building
+      - "tile_urls=https://download.geofabrik.de/europe/sweden-latest.osm.pbf https://download.geofabrik.de/europe/norway-latest.osm.pbf https://download.geofabrik.de/europe/denmark-latest.osm.pbf https://download.geofabrik.de/europe/finland-latest.osm.pbf https://download.geofabrik.de/europe/france-latest.osm.pbf"
       - use_tiles_ignore_pbf=False
       - force_rebuild=False
-      
-      # Server configuration
       - serve_tiles=True
       - build_elevation=False
       - build_admins=True
       - build_time_zones=True
-      
-      # Memory settings (adjust based on your server)
-      # For all Nordic countries, 8GB recommended
       - additional_data_elevation=
-    
-    # Resource limits (adjust based on your server specs)
     deploy:
       resources:
         limits:
-          memory: 10G
+          memory: 16G
         reservations:
           memory: 4G
-    
-    # Health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/status"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-
-# Optional: Add more countries by duplicating the service
-# Example for Nordic coverage:
-#
-#  valhalla-nordic:
-#    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
-#    container_name: slowride-valhalla-nordic
-#    ports:
-#      - "8003:8002"
-#    volumes:
-#      - ./data-nordic:/custom_files
-#    environment:
-#      - tile_urls=https://download.geofabrik.de/europe/sweden-latest.osm.pbf https://download.geofabrik.de/europe/norway-latest.osm.pbf https://download.geofabrik.de/europe/finland-latest.osm.pbf
+      start_period: 300s

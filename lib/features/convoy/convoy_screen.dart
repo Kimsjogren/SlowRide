@@ -184,7 +184,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
       valueListenable: authService.isLoggedIn,
       builder: (context, isLoggedIn, _) {
         return AppBackground(
-          showLogo: isLoggedIn,
+          showLogo: false,
           child: Column(
             children: [
               Expanded(
@@ -296,8 +296,17 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Image.asset(
+                            'assets/logga_nobg.png',
+                            width: 200,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slowride/models/country_vehicle_rules.dart';
 
 enum SpeedUnit { kmh, mph }
 
@@ -14,12 +15,16 @@ class UserPreferencesService {
   );
   final ValueNotifier<double> maxSpeedKmh = ValueNotifier<double>(30);
   final ValueNotifier<String?> languageCode = ValueNotifier<String?>(null);
+  final ValueNotifier<String> countryCode = ValueNotifier<String>(
+    CountryVehicleRules.defaultCountry,
+  );
   final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(false);
 
   static const String _vehicleTypeKey = 'user_vehicle_type';
   static const String _speedUnitKey = 'user_speed_unit';
   static const String _maxSpeedKmhKey = 'user_max_speed_kmh';
   static const String _languageCodeKey = 'user_language_code';
+  static const String _countryCodeKey = 'user_country_code';
   static const String _use3DMapKey = 'user_use_3d_map';
 
   /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_A-tractor'.
@@ -40,6 +45,9 @@ class UserPreferencesService {
 
     maxSpeedKmh.value = _prefs!.getDouble(_maxSpeedKmhKey) ?? 30;
     languageCode.value = _prefs!.getString(_languageCodeKey);
+    countryCode.value =
+        _prefs!.getString(_countryCodeKey) ??
+        CountryVehicleRules.defaultCountry;
     use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
 
     if (!_listenersAttached) {
@@ -48,6 +56,8 @@ class UserPreferencesService {
       speedUnit.addListener(_persistSpeedUnit);
       maxSpeedKmh.addListener(_persistMaxSpeedKmh);
       languageCode.addListener(_persistLanguageCode);
+      countryCode.addListener(_onCountryChanged);
+      countryCode.addListener(_persistCountryCode);
       use3DMap.addListener(_persist3DMap);
       _listenersAttached = true;
     }
@@ -55,23 +65,27 @@ class UserPreferencesService {
 
   void _onVehicleTypeChanged() {
     // Load the user's saved speed for this vehicle, or use the vehicle default.
-    final defaultSpeed = _defaultSpeedFor(vehicleType.value);
+    final defaultSpeed = CountryVehicleRules.defaultSpeedFor(
+      countryCode.value,
+      vehicleType.value,
+    );
     final savedSpeed = _prefs?.getDouble(
       '$_vehicleSpeedPrefix${vehicleType.value}',
     );
     maxSpeedKmh.value = savedSpeed ?? defaultSpeed;
   }
 
-  static double _defaultSpeedFor(String vehicle) {
-    switch (vehicle) {
-      case 'A-tractor':
-        return 30;
-      case 'Moped car':
-        return 45;
-      case 'Tractor':
-        return 30;
-      default:
-        return 30;
+  void _onCountryChanged() {
+    // Country changed — update speed to the new country default unless the
+    // user has a saved speed for this vehicle.
+    final savedSpeed = _prefs?.getDouble(
+      '$_vehicleSpeedPrefix${vehicleType.value}',
+    );
+    if (savedSpeed == null) {
+      maxSpeedKmh.value = CountryVehicleRules.defaultSpeedFor(
+        countryCode.value,
+        vehicleType.value,
+      );
     }
   }
 
@@ -103,6 +117,10 @@ class UserPreferencesService {
       return;
     }
     await _prefs?.setString(_languageCodeKey, current);
+  }
+
+  Future<void> _persistCountryCode() async {
+    await _prefs?.setString(_countryCodeKey, countryCode.value);
   }
 
   Locale? get localeOverride {

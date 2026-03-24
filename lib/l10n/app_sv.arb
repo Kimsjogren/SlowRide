@@ -131,6 +131,17 @@
   "settingsLanguageSystem": "Systemstandard",
   "settingsLanguageEnglish": "Engelska",
   "settingsLanguageSwedish": "Svenska",
+  "settingsLanguageFrench": "Franska",
+  "settingsLanguageNorwegian": "Norska",
+  "settingsLanguageDanish": "Danska",
+  "settingsLanguageFinnish": "Finska",
+  "settingsCountryLabel": "Land (trafikregler)",
+  "settingsCountrySweden": "\ud83c\uddf8\ud83c\uddea Sverige",
+  "settingsCountryNorway": "\ud83c\uddf3\ud83c\uddf4 Norge",
+  "settingsCountryDenmark": "\ud83c\udde9\ud83c\uddf0 Danmark",
+  "settingsCountryFinland": "\ud83c\uddeb\ud83c\uddee Finland",
+  "settingsCountryFrance": "\ud83c\uddeb\ud83c\uddf7 Frankrike",
+  "settingsCountryHint": "Hastighetsgränser och vägregler anpassas efter valt land.",
   "settingsLanguageCurrentlyUsing": "Använder nu: {mode}",
   "@settingsLanguageCurrentlyUsing": {
     "placeholders": {
@@ -189,6 +200,15 @@
   "mapRouteUnknownProvider": "Routing-provider är inte korrekt konfigurerad",
   "mapRouteTooFastForVehicle": "Rutt stoppad: beräknad medelhastighet är för hög för vald fordonstyp.",
   "mapRouteNotAllowedForVehicle": "Ingen lagligt godkänd rutt hittades för vald fordonstyp.",
+  "routeBlockedTitle": "Rutt ej tillgänglig",
+  "routeBlockedBody": "Ingen laglig rutt hittades till destinationen för din {vehicleType}. Destinationen kan ligga vid eller bara nås via vägar som inte är tillåtna för fordonstypen (t.ex. motorväg).",
+  "@routeBlockedBody": {
+    "placeholders": {
+      "vehicleType": {}
+    }
+  },
+  "routeBlockedOk": "OK",
+  "routeBlockedTryOther": "Pröva en annan destination",
   "mapModeLabel2d": "2D",
   "mapModeLabel3d": "3D",
   "mapManeuverInDistance": "Om {distance}",
@@ -283,7 +303,7 @@
 
   "paywallTitle": "Uppgradera till CruizX Pro",
   "paywallSubtitle": "Inga begränsningar. Ingen reklam. Full åtkomst.",
-  "paywallPrice": "3,49 $ / månad",
+  "paywallPrice": "39 kr / månad",
   "paywallUpgradeButton": "Uppgradera till Pro",
   "paywallRestoreButton": "Återställ köp",
   "paywallFreeLabel": "Free",

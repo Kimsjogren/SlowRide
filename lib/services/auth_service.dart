@@ -339,8 +339,9 @@ class AuthService {
 
       avatarUrl.value = publicUrl;
       return publicUrl;
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('Avatar upload failed: $e');
+      debugPrint('Stack: $st');
       return null;
     }
   }

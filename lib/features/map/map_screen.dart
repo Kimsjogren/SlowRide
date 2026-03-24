@@ -12,10 +12,10 @@ import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/widgets/map_widget.dart';
-import 'package:slowride/widgets/speedometer_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
@@ -39,7 +39,6 @@ class _MapScreenState extends State<MapScreen> {
   StreamSubscription<Position>? _positionSubscription;
   double _speedKmh = 0;
   LatLng? _currentLocation;
-  String _locationStatus = '';
 
   // Notifiers that feed MapWidget directly — updating them does NOT cause
   // the whole screen to rebuild (unlike setState).
@@ -92,6 +91,7 @@ class _MapScreenState extends State<MapScreen> {
   static const double _simSpeedKmh = 50.0;
   static const Duration _simInterval = Duration(milliseconds: 200);
 
+  bool _countryAutoDetected = false;
   bool _localizedDefaultsSet = false;
   @override
   void didChangeDependencies() {
@@ -102,7 +102,6 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     final l10n = AppLocalizations.of(context)!;
-    _locationStatus = l10n.mapStartingGps;
     _routingStatus = l10n.mapTapToSelectDestination;
     _localizedDefaultsSet = true;
   }
@@ -162,17 +161,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _startLocationTracking() async {
-    final l10n = AppLocalizations.of(context)!;
-
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (!mounted) {
           return;
         }
-        setState(() {
-          _locationStatus = l10n.mapLocationServicesDisabled;
-        });
         return;
       }
 
@@ -186,9 +180,6 @@ class _MapScreenState extends State<MapScreen> {
         if (!mounted) {
           return;
         }
-        setState(() {
-          _locationStatus = l10n.mapLocationPermissionMissing;
-        });
         return;
       }
 
@@ -219,6 +210,18 @@ class _MapScreenState extends State<MapScreen> {
 
             _processLocationUpdate(currentPos, newSpeed, heading);
 
+            // First GPS fix: auto-detect country from coordinates.
+            if (!_countryAutoDetected) {
+              _countryAutoDetected = true;
+              final detected = CountryVehicleRules.countryFromCoordinates(
+                currentPos.latitude,
+                currentPos.longitude,
+              );
+              if (detected != null) {
+                UserPreferencesService.instance.countryCode.value = detected;
+              }
+            }
+
             // First GPS fix: auto-start routing if destination was set early.
             if (!hadLocation &&
                 _destination != null &&
@@ -231,9 +234,7 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) {
         return;
       }
-      setState(() {
-        _locationStatus = l10n.mapGpsUnavailable;
-      });
+      // GPS unavailable
     }
   }
 
@@ -269,12 +270,13 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _fetchSuggestions(String query) async {
     try {
+      final codes = CountryVehicleRules.supportedCountries.join(',');
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
         'addressdetails': '1',
         'limit': '6',
-        'countrycodes': 'se',
+        'countrycodes': codes,
       });
       final response = await http.get(
         uri,
@@ -536,6 +538,32 @@ class _MapScreenState extends State<MapScreen> {
     return result;
   }
 
+  Widget _mapCircleButton({
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: const Color(0xEE0A1F63),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0x883AA8FF), width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black45,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+
   IconData _turnIcon(int sign) {
     return switch (sign) {
       -3 => Icons.turn_sharp_left,
@@ -698,6 +726,11 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
+      final isRouteBlocked =
+          error.code == RoutingErrorCode.noRouteFound ||
+          error.code == RoutingErrorCode.routeTooFastForVehicle ||
+          error.code == RoutingErrorCode.routeNotAllowedForVehicle;
+
       setState(() {
         _routePoints = const [];
         _routingStatus = switch (error.code) {
@@ -713,6 +746,50 @@ class _MapScreenState extends State<MapScreen> {
             l10n.mapRouteNotAllowedForVehicle,
         };
       });
+
+      if (isRouteBlocked) {
+        final vehicleName = switch (preferences.vehicleType.value) {
+          'A-tractor' => l10n.settingsVehicleAtractor,
+          'Moped car' => l10n.settingsVehicleMopedCar,
+          'Tractor' => l10n.settingsVehicleTractor,
+          _ => preferences.vehicleType.value,
+        };
+
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF0A1F63),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.block, color: Colors.redAccent, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.routeBlockedTitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              l10n.routeBlockedBody(vehicleName),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  l10n.routeBlockedOk,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -863,7 +940,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
-      _locationStatus = l10n.mapGpsActive;
       if (_isNavigating) {
         _tripDistanceM = newTripDist;
         _lastNavPos = currentPos;
@@ -1025,67 +1101,126 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-          // ── Top UI: logo + speedometer (hidden while navigating) ──
+          // ── Logo (top-left) ─────────────────────────────────────────────
           if (!_isNavigating)
             Positioned(
-              top: 18,
-              left: 20,
-              right: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC071739),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0x883AA8FF)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/logga_nobg.png',
-                          height: 96,
-                          fit: BoxFit.contain,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ValueListenableBuilder<SpeedUnit>(
-                    valueListenable: preferences.speedUnit,
-                    builder: (context, speedUnit, _) {
-                      return ValueListenableBuilder<double>(
-                        valueListenable: preferences.maxSpeedKmh,
-                        builder: (context, maxSpeedKmh, _) {
-                          final speedDisplay = preferences.toDisplaySpeed(
-                            speedKmh: _speedKmh,
-                            unit: speedUnit,
-                          );
-                          final maxSpeedDisplay = preferences.toDisplaySpeed(
-                            speedKmh: maxSpeedKmh,
-                            unit: speedUnit,
-                          );
-                          final speedUnitLabel = speedUnit == SpeedUnit.kmh
-                              ? l10n.settingsSpeedUnitKmh
-                              : l10n.settingsSpeedUnitMph;
-
-                          return SpeedometerWidget(
-                            speedValue: speedDisplay,
-                            speedUnitLabel: speedUnitLabel,
-                            maxSpeedValue: maxSpeedDisplay,
-                            isOverSpeed: _speedKmh > maxSpeedKmh,
-                            statusText: _locationStatus,
-                          );
-                        },
+              top: 12,
+              left: 16,
+              child: Image.asset(
+                'assets/logga_nobg.png',
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+            ),
+          // ── Compact speed bubble (aligned with right-side buttons) ─────────
+          if (!_isNavigating)
+            Positioned(
+              left: 14,
+              bottom: 155,
+              child: ValueListenableBuilder<SpeedUnit>(
+                valueListenable: preferences.speedUnit,
+                builder: (context, speedUnit, _) {
+                  return ValueListenableBuilder<double>(
+                    valueListenable: preferences.maxSpeedKmh,
+                    builder: (context, maxSpeedKmh, _) {
+                      final over = _speedKmh > maxSpeedKmh;
+                      final speedDisplay = preferences.toDisplaySpeed(
+                        speedKmh: _speedKmh,
+                        unit: speedUnit,
+                      );
+                      final limitDisplay = preferences.toDisplaySpeed(
+                        speedKmh: maxSpeedKmh,
+                        unit: speedUnit,
+                      );
+                      final unitLabel = speedUnit == SpeedUnit.kmh
+                          ? l10n.settingsSpeedUnitKmh
+                          : l10n.settingsSpeedUnitMph;
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Current speed circle
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: over
+                                  ? const Color(0xFFD32F2F)
+                                  : const Color(0xEE0A1F63),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: over
+                                    ? Colors.red.shade300
+                                    : const Color(0x883AA8FF),
+                                width: 1.5,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black45,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  speedDisplay.toStringAsFixed(0),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.0,
+                                  ),
+                                ),
+                                Text(
+                                  unitLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 9,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // EU speed limit sign
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.red.shade700,
+                                width: 3,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black38,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Text(
+                                limitDisplay.toStringAsFixed(0),
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.0,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     },
-                  ),
-                ],
+                  );
+                },
               ),
             ),
 
@@ -1098,8 +1233,8 @@ class _MapScreenState extends State<MapScreen> {
                   (_destination != null ||
                       _routePoints.isNotEmpty ||
                       _isRouting)
-                  ? 170
-                  : 80,
+                  ? 110
+                  : 24,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1412,143 +1547,64 @@ class _MapScreenState extends State<MapScreen> {
               ),
           ],
 
-          // Right-side floating buttons (report + 2D/3D)
+          // Right-side floating buttons
           Positioned(
             right: 14,
-            bottom: 155,
+            bottom:
+                (_destination != null || _routePoints.isNotEmpty || _isRouting)
+                ? 155
+                : 24,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 2D / 3D toggle
-                GestureDetector(
+                _mapCircleButton(
                   onTap: () {
                     setState(() => _use3DMap = !_use3DMap);
                     UserPreferencesService.instance.use3DMap.value = _use3DMap;
                   },
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: const Color(0xEE0A1F63),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0x883AA8FF),
-                        width: 1.5,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        _use3DMap ? l10n.mapModeLabel3d : l10n.mapModeLabel2d,
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
+                  child: Text(
+                    _use3DMap ? l10n.mapModeLabel3d : l10n.mapModeLabel2d,
+                    style: const TextStyle(
+                      color: Colors.white60,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 // Light / Dark map style toggle
-                GestureDetector(
-                  onTap: () {
-                    setState(() => _useDarkMap = !_useDarkMap);
-                  },
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: const Color(0xEE0A1F63),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0x883AA8FF),
-                        width: 1.5,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      _useDarkMap ? Icons.dark_mode : Icons.light_mode,
-                      color: Colors.white70,
-                      size: 22,
-                    ),
+                _mapCircleButton(
+                  onTap: () => setState(() => _useDarkMap = !_useDarkMap),
+                  child: Icon(
+                    _useDarkMap ? Icons.dark_mode : Icons.light_mode,
+                    color: Colors.white70,
+                    size: 19,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 // Voice navigation toggle
                 ValueListenableBuilder<bool>(
                   valueListenable: TtsService.instance.enabled,
                   builder: (context, ttsOn, _) {
-                    return GestureDetector(
-                      onTap: () {
-                        TtsService.instance.enabled.value = !ttsOn;
-                      },
-                      child: Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: const Color(0xEE0A1F63),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0x883AA8FF),
-                            width: 1.5,
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black45,
-                              blurRadius: 8,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          ttsOn ? Icons.volume_up : Icons.volume_off,
-                          color: Colors.white70,
-                          size: 22,
-                        ),
+                    return _mapCircleButton(
+                      onTap: () => TtsService.instance.enabled.value = !ttsOn,
+                      child: Icon(
+                        ttsOn ? Icons.volume_up : Icons.volume_off,
+                        color: Colors.white70,
+                        size: 19,
                       ),
                     );
                   },
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 // Report alert button
-                GestureDetector(
+                _mapCircleButton(
                   onTap: _showReportAlertSheet,
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: const Color(0xEE0A1F63),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0x883AA8FF),
-                        width: 1.5,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.warning_amber_rounded,
-                      color: Color(0xFFF57F17),
-                      size: 22,
-                    ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFF57F17),
+                    size: 19,
                   ),
                 ),
               ],
@@ -1559,7 +1615,7 @@ class _MapScreenState extends State<MapScreen> {
           if (_isNavigating && !_isFollowing)
             Positioned(
               right: 14,
-              bottom: 335,
+              bottom: 345,
               child: GestureDetector(
                 onTap: () {
                   setState(() => _isFollowing = true);

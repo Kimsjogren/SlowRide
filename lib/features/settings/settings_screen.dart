@@ -4,6 +4,7 @@ import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/features/settings/parent_settings_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
+import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
@@ -41,6 +42,15 @@ class SettingsScreen extends StatelessWidget {
         SnackBar(
           content: Text(
             restored ? l10n.paywallRestoreSuccess : l10n.paywallRestoreNotFound,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
+          backgroundColor: restored
+              ? const Color(0xFF00913F)
+              : Colors.redAccent.withValues(alpha: 0.85),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       );
@@ -50,7 +60,16 @@ class SettingsScreen extends StatelessWidget {
       }
       messenger.showSnackBar(
         SnackBar(
-          content: Text(error.message ?? l10n.settingsRestorePurchaseFailed),
+          content: Text(
+            error.message ?? l10n.settingsRestorePurchaseFailed,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
@@ -134,6 +153,64 @@ class SettingsScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 16),
+                      // Country selector — affects routing rules and speed limits.
+                      ValueListenableBuilder<String>(
+                        valueListenable: preferences.countryCode,
+                        builder: (context, country, _) {
+                          return DropdownButtonFormField<String>(
+                            dropdownColor: const Color(0xFF0A1F63),
+                            style: valueStyle,
+                            iconEnabledColor: Colors.white70,
+                            initialValue: country,
+                            decoration: InputDecoration(
+                              labelText: l10n.settingsCountryLabel,
+                              labelStyle: labelStyle,
+                              enabledBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white24),
+                              ),
+                              focusedBorder: const UnderlineInputBorder(
+                                borderSide: BorderSide(color: Colors.white54),
+                              ),
+                            ),
+                            items: [
+                              DropdownMenuItem(
+                                value: 'SE',
+                                child: Text(l10n.settingsCountrySweden),
+                              ),
+                              DropdownMenuItem(
+                                value: 'NO',
+                                child: Text(l10n.settingsCountryNorway),
+                              ),
+                              DropdownMenuItem(
+                                value: 'DK',
+                                child: Text(l10n.settingsCountryDenmark),
+                              ),
+                              DropdownMenuItem(
+                                value: 'FI',
+                                child: Text(l10n.settingsCountryFinland),
+                              ),
+                              DropdownMenuItem(
+                                value: 'FR',
+                                child: Text(l10n.settingsCountryFrance),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                preferences.countryCode.value = value;
+                              }
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.settingsCountryHint,
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       ValueListenableBuilder<String?>(
                         valueListenable: preferences.languageCode,
                         builder: (context, languageCode, _) {
@@ -165,6 +242,22 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'sv',
                                 child: Text(l10n.settingsLanguageSwedish),
                               ),
+                              DropdownMenuItem(
+                                value: 'fr',
+                                child: Text(l10n.settingsLanguageFrench),
+                              ),
+                              DropdownMenuItem(
+                                value: 'nb',
+                                child: Text(l10n.settingsLanguageNorwegian),
+                              ),
+                              DropdownMenuItem(
+                                value: 'da',
+                                child: Text(l10n.settingsLanguageDanish),
+                              ),
+                              DropdownMenuItem(
+                                value: 'fi',
+                                child: Text(l10n.settingsLanguageFinnish),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value == null || value == 'system') {
@@ -183,6 +276,10 @@ class SettingsScreen extends StatelessWidget {
                           final currentMode = switch (languageCode) {
                             'en' => l10n.settingsLanguageEnglish,
                             'sv' => l10n.settingsLanguageSwedish,
+                            'fr' => l10n.settingsLanguageFrench,
+                            'nb' => l10n.settingsLanguageNorwegian,
+                            'da' => l10n.settingsLanguageDanish,
+                            'fi' => l10n.settingsLanguageFinnish,
                             _ => l10n.settingsLanguageSystem,
                           };
                           return Text(
@@ -214,59 +311,77 @@ class SettingsScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 16),
-                      ValueListenableBuilder<SpeedUnit>(
-                        valueListenable: preferences.speedUnit,
-                        builder: (context, unit, _) {
-                          return ValueListenableBuilder<double>(
-                            valueListenable: preferences.maxSpeedKmh,
-                            builder: (context, maxSpeedKmh, _) {
-                              final maxSpeedDisplay = preferences
-                                  .toDisplaySpeed(
-                                    speedKmh: maxSpeedKmh,
-                                    unit: unit,
-                                  );
-                              final speedUnitLabel = unit == SpeedUnit.kmh
-                                  ? l10n.settingsSpeedUnitKmh
-                                  : l10n.settingsSpeedUnitMph;
-                              final minDisplay = unit == SpeedUnit.kmh
-                                  ? 20.0
-                                  : 12.0;
-                              final maxDisplay = unit == SpeedUnit.kmh
-                                  ? 45.0
-                                  : 28.0;
+                      ValueListenableBuilder<String>(
+                        valueListenable: preferences.countryCode,
+                        builder: (context, country, _) {
+                          return ValueListenableBuilder<SpeedUnit>(
+                            valueListenable: preferences.speedUnit,
+                            builder: (context, unit, _) {
+                              return ValueListenableBuilder<double>(
+                                valueListenable: preferences.maxSpeedKmh,
+                                builder: (context, maxSpeedKmh, _) {
+                                  final maxSpeedDisplay = preferences
+                                      .toDisplaySpeed(
+                                        speedKmh: maxSpeedKmh,
+                                        unit: unit,
+                                      );
+                                  final speedUnitLabel = unit == SpeedUnit.kmh
+                                      ? l10n.settingsSpeedUnitKmh
+                                      : l10n.settingsSpeedUnitMph;
+                                  // Slider max adapts to the country's legal
+                                  // max for the current vehicle type.
+                                  final legalMax =
+                                      CountryVehicleRules.maxLegalSpeedFor(
+                                        country,
+                                        preferences.vehicleType.value,
+                                      );
+                                  final minDisplay = unit == SpeedUnit.kmh
+                                      ? 15.0
+                                      : 9.0;
+                                  final maxDisplay = unit == SpeedUnit.kmh
+                                      ? legalMax
+                                      : preferences.toDisplaySpeed(
+                                          speedKmh: legalMax,
+                                          unit: unit,
+                                        );
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    l10n.settingsMaxSpeedWithUnit(
-                                      maxSpeedDisplay.toStringAsFixed(0),
-                                      speedUnitLabel,
-                                    ),
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  Slider(
-                                    min: minDisplay,
-                                    max: maxDisplay,
-                                    divisions: (maxDisplay - minDisplay)
-                                        .round(),
-                                    value: maxSpeedDisplay.clamp(
-                                      minDisplay,
-                                      maxDisplay,
-                                    ),
-                                    label: maxSpeedDisplay.toStringAsFixed(0),
-                                    onChanged: (value) {
-                                      preferences.maxSpeedKmh.value =
-                                          preferences.fromDisplaySpeed(
-                                            value: value,
-                                            unit: unit,
-                                          );
-                                    },
-                                  ),
-                                ],
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        l10n.settingsMaxSpeedWithUnit(
+                                          maxSpeedDisplay.toStringAsFixed(0),
+                                          speedUnitLabel,
+                                        ),
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Slider(
+                                        min: minDisplay,
+                                        max: maxDisplay,
+                                        divisions: (maxDisplay - minDisplay)
+                                            .round(),
+                                        value: maxSpeedDisplay.clamp(
+                                          minDisplay,
+                                          maxDisplay,
+                                        ),
+                                        label: maxSpeedDisplay.toStringAsFixed(
+                                          0,
+                                        ),
+                                        onChanged: (value) {
+                                          preferences.maxSpeedKmh.value =
+                                              preferences.fromDisplaySpeed(
+                                                value: value,
+                                                unit: unit,
+                                              );
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
                           );

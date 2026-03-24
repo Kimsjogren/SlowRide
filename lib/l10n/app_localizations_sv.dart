@@ -350,6 +350,39 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsLanguageSwedish => 'Svenska';
 
   @override
+  String get settingsLanguageFrench => 'Franska';
+
+  @override
+  String get settingsLanguageNorwegian => 'Norska';
+
+  @override
+  String get settingsLanguageDanish => 'Danska';
+
+  @override
+  String get settingsLanguageFinnish => 'Finska';
+
+  @override
+  String get settingsCountryLabel => 'Land (trafikregler)';
+
+  @override
+  String get settingsCountrySweden => '🇸🇪 Sverige';
+
+  @override
+  String get settingsCountryNorway => '🇳🇴 Norge';
+
+  @override
+  String get settingsCountryDenmark => '🇩🇰 Danmark';
+
+  @override
+  String get settingsCountryFinland => '🇫🇮 Finland';
+
+  @override
+  String get settingsCountryFrance => '🇫🇷 Frankrike';
+
+  @override
+  String get settingsCountryHint => 'Hastighetsgränser och vägregler anpassas efter valt land.';
+
+  @override
   String settingsLanguageCurrentlyUsing(Object mode) {
     return 'Använder nu: $mode';
   }
@@ -477,6 +510,20 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get mapRouteNotAllowedForVehicle => 'Ingen lagligt godkänd rutt hittades för vald fordonstyp.';
+
+  @override
+  String get routeBlockedTitle => 'Rutt ej tillgänglig';
+
+  @override
+  String routeBlockedBody(Object vehicleType) {
+    return 'Ingen laglig rutt hittades till destinationen för din $vehicleType. Destinationen kan ligga vid eller bara nås via vägar som inte är tillåtna för fordonstypen (t.ex. motorväg).';
+  }
+
+  @override
+  String get routeBlockedOk => 'OK';
+
+  @override
+  String get routeBlockedTryOther => 'Pröva en annan destination';
 
   @override
   String get mapModeLabel2d => '2D';
@@ -645,7 +692,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallSubtitle => 'Inga begränsningar. Ingen reklam. Full åtkomst.';
 
   @override
-  String get paywallPrice => '3,49 \$ / månad';
+  String get paywallPrice => '39 kr / månad';
 
   @override
   String get paywallUpgradeButton => 'Uppgradera till Pro';

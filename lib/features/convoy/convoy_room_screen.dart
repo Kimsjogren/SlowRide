@@ -18,6 +18,7 @@ import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/models/convoy_message.dart';
@@ -64,6 +65,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   // Smooth arrow heading — ticker drives it when following, GPS otherwise.
   final ValueNotifier<double> _arrowHdg = ValueNotifier<double>(0);
+  // Speed notifier — drives speed display without setState.
+  final ValueNotifier<double> _speedNotifier = ValueNotifier<double>(0);
+  Duration? _lastCameraTickAt;
 
   StreamSubscription<Position>? _positionSubscription;
   Timer? _pinRefreshTimer;
@@ -276,58 +280,75 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               }
             }
 
-            // Single setState per GPS tick — one rebuild only.
-            setState(() {
-              _speedKmh = newSpeed;
-              _myLocation = point;
-              _myHeading = headingForArrow;
-              // When free-camera, push heading directly so arrow stays correct.
-              if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
-              _distToNextManeuver = newDistToManeuver;
-              if (newSign != null) _nextManeuverSign = newSign;
-              if (newText != null) _nextManeuverText = newText;
-              if (newStreetName != null) _currentStreetName = newStreetName;
-              // Voice navigation announcements
-              if (_isNavigating &&
-                  newText != null &&
-                  newDistToManeuver.isFinite) {
-                _announceManeuver(newText, newDistToManeuver);
+            // Always update fields directly (no setState for position/speed
+            // in follow mode — avoids full widget-tree rebuild every GPS tick,
+            // which was causing the arrow to stutter every ~1-3 s).
+            _speedKmh = newSpeed;
+            _speedNotifier.value = newSpeed;
+            _myLocation = point;
+            _myHeading = headingForArrow;
+            if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
+            _distToNextManeuver = newDistToManeuver;
+
+            // Voice navigation (fire before setState check).
+            if (_isNavigating &&
+                newText != null &&
+                newDistToManeuver.isFinite) {
+              _announceManeuver(newText, newDistToManeuver);
+            }
+
+            // Compute routing status string.
+            if (newRemaining != null) {
+              _remainingDistM = newRemaining;
+              final remKm = newRemaining / 1000;
+              final l10nR = AppLocalizations.of(context)!;
+              final distStr = remKm >= 1.0
+                  ? '${remKm.toStringAsFixed(1)} km ${l10nR.mapRemaining}'
+                  : '${newRemaining.round()} m ${l10nR.mapRemaining}';
+              final vehicleType =
+                  UserPreferencesService.instance.vehicleType.value;
+              final effSpd = SpeedCalibrationService.instance.effectiveSpeedKmh(
+                vehicleType,
+              );
+              if (effSpd > 0 && newRemaining > 50) {
+                final sec = newRemaining / (effSpd / 3.6);
+                final arrival = DateTime.now().add(
+                  Duration(seconds: sec.round()),
+                );
+                final hh = arrival.hour.toString().padLeft(2, '0');
+                final mm = arrival.minute.toString().padLeft(2, '0');
+                _routingStatus = '$distStr  •  $hh:$mm';
+              } else {
+                _routingStatus = distStr;
               }
-              if (newRemaining != null) {
-                _remainingDistM = newRemaining;
-                final remKm = newRemaining / 1000;
-                final l10nR = AppLocalizations.of(context)!;
-                final distStr = remKm >= 1.0
-                    ? '${remKm.toStringAsFixed(1)} km ${l10nR.mapRemaining}'
-                    : '${newRemaining.round()} m ${l10nR.mapRemaining}';
-                final vehicleType =
-                    UserPreferencesService.instance.vehicleType.value;
-                final effSpd = SpeedCalibrationService.instance
-                    .effectiveSpeedKmh(vehicleType);
-                if (effSpd > 0 && newRemaining > 50) {
-                  final sec = newRemaining / (effSpd / 3.6);
-                  final arrival = DateTime.now().add(
-                    Duration(seconds: sec.round()),
-                  );
-                  final hh = arrival.hour.toString().padLeft(2, '0');
-                  final mm = arrival.minute.toString().padLeft(2, '0');
-                  _routingStatus = '$distStr  •  $hh:$mm';
-                } else {
-                  _routingStatus = distStr;
-                }
-              }
-              // Proximity check: find any alert within 400 m.
-              _nearbyAlert = _alerts
-                  .where((a) => a.distanceTo(point) <= 400)
-                  .fold<AlertModel?>(
-                    null,
-                    (best, a) =>
-                        best == null ||
-                            a.distanceTo(point) < best.distanceTo(point)
-                        ? a
-                        : best,
-                  );
-            });
+            }
+
+            // Proximity check.
+            _nearbyAlert = _alerts
+                .where((a) => a.distanceTo(point) <= 400)
+                .fold<AlertModel?>(
+                  null,
+                  (best, a) =>
+                      best == null ||
+                          a.distanceTo(point) < best.distanceTo(point)
+                      ? a
+                      : best,
+                );
+
+            // Only call setState when UI-visible text actually changes, or
+            // when not following (marker layer needs rebuild).
+            final needsRebuild =
+                !_isFollowingMyPosition ||
+                newSign != null ||
+                newText != null ||
+                newStreetName != null;
+            if (needsRebuild) {
+              setState(() {
+                if (newSign != null) _nextManeuverSign = newSign;
+                if (newText != null) _nextManeuverText = newText;
+                if (newStreetName != null) _currentStreetName = newStreetName;
+              });
+            }
 
             // Feed the camera ticker with the latest target.
             // The ticker interpolates smoothly at 60 fps — no direct
@@ -354,26 +375,35 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 _rawCompassHdg = headingForArrow;
                 _gpsSpeedMps = rawSpeed;
 
-                // Movement-derived bearing is much stabler than raw compass.
-                final prev = _lastLocForBearing;
-                if (prev != null) {
-                  final dLat = point.latitude - prev.latitude;
-                  final dLng = point.longitude - prev.longitude;
-                  final move2 = dLat * dLat + dLng * dLng;
-                  if (move2 > 1.0e-10) {
-                    final motionHeading = _wrap360(
-                      math.atan2(dLng, dLat) * 180 / math.pi,
-                    );
-                    final compassWeight = (_gpsSpeedMps < 2.0)
-                        ? ((2.0 - _gpsSpeedMps) / 2.0).clamp(0.0, 1.0)
-                        : 0.0;
-                    final motionToCompass = _angleDiff(
-                      motionHeading,
-                      _rawCompassHdg,
-                    );
-                    _tgtHdg = _wrap360(
-                      motionHeading + motionToCompass * compassWeight * 0.35,
-                    );
+                // When route-locked heading is active (headingForArrow came
+                // from the route), use it directly instead of blending with
+                // motion heading. This prevents jitter at low GPS speeds.
+                final onRoute =
+                    _routePoints.isNotEmpty && _routeInstructions.isNotEmpty;
+                if (onRoute) {
+                  _tgtHdg = headingForArrow;
+                } else {
+                  // Movement-derived bearing is much stabler than raw compass.
+                  final prev = _lastLocForBearing;
+                  if (prev != null) {
+                    final dLat = point.latitude - prev.latitude;
+                    final dLng = point.longitude - prev.longitude;
+                    final move2 = dLat * dLat + dLng * dLng;
+                    if (move2 > 1.0e-10) {
+                      final motionHeading = _wrap360(
+                        math.atan2(dLng, dLat) * 180 / math.pi,
+                      );
+                      final compassWeight = (_gpsSpeedMps < 2.0)
+                          ? ((2.0 - _gpsSpeedMps) / 2.0).clamp(0.0, 1.0)
+                          : 0.0;
+                      final motionToCompass = _angleDiff(
+                        motionHeading,
+                        _rawCompassHdg,
+                      );
+                      _tgtHdg = _wrap360(
+                        motionHeading + motionToCompass * compassWeight * 0.35,
+                      );
+                    }
                   }
                 }
                 _lastLocForBearing = point;
@@ -414,6 +444,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _alertsTimer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
+    _speedNotifier.dispose();
     _searchDebounce?.cancel();
     _camTicker.dispose();
     _messageController.dispose();
@@ -786,9 +817,25 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _curHdg = _wrap360(_curHdg + diff * turnHdgAlpha);
     final zoomAlpha = (dtSec * 2.8).clamp(0.04, 0.25);
     _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
-    // Arrow follows the smoothed heading — only rebuilds the tiny icon widget.
-    _arrowHdg.value = _curHdg;
+    // Arrow shows offset between camera heading and route heading
+    // so the arrow always points along the road on screen.
+    _arrowHdg.value = _angleDiff(_curHdg, _filteredTgtHdg);
     final zoom = _curZoom;
+
+    // Throttle GPU camera updates to ~30fps (same as MapWidget).
+    // The ticker still runs at 60fps for smooth interpolation of
+    // _curLat/_curLng/_curHdg, but we only push to the map controller
+    // when enough has changed or enough time has passed.
+    final moveDelta2 = dLat * dLat + dLng * dLng;
+    final lastCam = _lastCameraTickAt;
+    final shouldPaintCamera =
+        lastCam == null ||
+        (elapsed - lastCam).inMilliseconds >= 33 ||
+        diff.abs() > 0.8 ||
+        moveDelta2 > 1e-10;
+    if (!shouldPaintCamera) return;
+    _lastCameraTickAt = elapsed;
+
     if (_use3DMap) {
       const offsetDeg = 0.00045;
       final rad = _curHdg * math.pi / 180.0;
@@ -816,12 +863,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   Future<void> _fetchSuggestions(String query) async {
     try {
+      final codes = CountryVehicleRules.supportedCountries.join(',');
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
         'addressdetails': '1',
         'limit': '6',
-        'countrycodes': 'se',
+        'countrycodes': codes,
       });
       final response = await http.get(
         uri,
@@ -846,12 +894,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     if (query.isEmpty) return;
     setState(() => _showSuggestions = false);
     try {
+      final codes = CountryVehicleRules.supportedCountries.join(',');
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'q': query,
         'format': 'jsonv2',
         'addressdetails': '1',
         'limit': '1',
-        'countrycodes': 'se',
+        'countrycodes': codes,
       });
       final response = await http.get(
         uri,
@@ -965,9 +1014,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                     valueListenable: _arrowHdg,
                     builder: (contextValue, hdg, childValue) =>
                         Transform.rotate(
-                          // Match main map correction: Material navigation icon
-                          // has a diagonal baseline at 0°.
-                          angle: (hdg * math.pi / 180) - (math.pi / 4),
+                          angle: hdg * math.pi / 180,
                           child: const Icon(
                             Icons.navigation,
                             color: Colors.white,
@@ -991,18 +1038,54 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
+  Widget _convoyCircleButton({
+    required VoidCallback onTap,
+    required Widget child,
+    Color? color,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color ?? const Color(0xEE0A1F63),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0x883AA8FF), width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black45,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Center(child: child),
+      ),
+    );
+  }
+
   void _fitAllMembers(List<ConvoyMemberLocation> locations) {
     final points = [...locations.map((m) => m.position), ?_myLocation];
     if (points.isEmpty) return;
+    // Disable 3D before zooming out to prevent white bleed.
+    setState(() {
+      _isFollowingMyPosition = false;
+      _use3DMap = false;
+    });
     if (points.length == 1) {
-      _mapController.move(points.first, _followZoom);
+      _mapController.moveAndRotate(points.first, _followZoom, 0);
       return;
     }
     final bounds = LatLngBounds.fromPoints(points);
     _mapController.fitCamera(
-      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(72)),
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(72),
+        maxZoom: 17,
+      ),
     );
-    setState(() => _isFollowingMyPosition = false);
+    _mapController.rotate(0);
   }
 
   Future<void> _loadAlerts() async {
@@ -1099,6 +1182,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     } on RoutingException catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
+
+      final isRouteBlocked =
+          e.code == RoutingErrorCode.noRouteFound ||
+          e.code == RoutingErrorCode.routeTooFastForVehicle ||
+          e.code == RoutingErrorCode.routeNotAllowedForVehicle;
+
       setState(() {
         _routePoints = const [];
         _routingStatus = switch (e.code) {
@@ -1114,6 +1203,51 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             l10n.mapRouteNotAllowedForVehicle,
         };
       });
+
+      if (isRouteBlocked) {
+        final vehicleType = UserPreferencesService.instance.vehicleType.value;
+        final vehicleName = switch (vehicleType) {
+          'A-tractor' => l10n.settingsVehicleAtractor,
+          'Moped car' => l10n.settingsVehicleMopedCar,
+          'Tractor' => l10n.settingsVehicleTractor,
+          _ => vehicleType,
+        };
+
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF0A1F63),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.block, color: Colors.redAccent, size: 28),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.routeBlockedTitle,
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              l10n.routeBlockedBody(vehicleName),
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(
+                  l10n.routeBlockedOk,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       debugPrint('Convoy routing error: $e');
@@ -1464,145 +1598,145 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                     Expanded(
                       child: Stack(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: RepaintBoundary(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final h = constraints.maxHeight;
-                                    final w = constraints.maxWidth;
-                                    final is3D =
-                                        _isFollowingMyPosition && _use3DMap;
-                                    final matrix = is3D
-                                        ? (Matrix4.identity()
-                                            ..setEntry(3, 2, 0.001)
-                                            ..rotateX(0.49))
-                                        : Matrix4.identity();
-                                    return Stack(
-                                      clipBehavior: Clip.hardEdge,
-                                      children: [
-                                        // Dark fill — prevent white bleed
-                                        // behind the 3D-tilted map.
-                                        const Positioned.fill(
-                                          child: ColoredBox(
-                                            color: Color(0xFF0A1628),
-                                          ),
+                          RepaintBoundary(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(0),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final h = constraints.maxHeight;
+                                  final w = constraints.maxWidth;
+                                  final is3D =
+                                      _isFollowingMyPosition && _use3DMap;
+                                  final matrix = is3D
+                                      ? (Matrix4.identity()
+                                          ..setEntry(3, 2, 0.001)
+                                          ..rotateX(0.49))
+                                      : Matrix4.identity();
+                                  return Stack(
+                                    clipBehavior: Clip.hardEdge,
+                                    children: [
+                                      // Dark fill — prevent white bleed
+                                      // behind the 3D-tilted map.
+                                      const Positioned.fill(
+                                        child: ColoredBox(
+                                          color: Color(0xFF0A1628),
                                         ),
-                                        Positioned(
-                                          bottom: 0,
-                                          left: 0,
-                                          right: 0,
-                                          height: h,
-                                          child: Transform(
-                                            alignment: Alignment.bottomCenter,
-                                            transform: matrix,
-                                            child: SizedBox(
-                                              width: w,
-                                              height: h,
-                                              child: FlutterMap(
-                                                options: MapOptions(
-                                                  initialCenter: center,
-                                                  initialZoom: _followZoom,
-                                                  initialRotation: 0,
-                                                  onTap: (_, point) =>
-                                                      _showQuickHazardPicker(
-                                                        point,
-                                                        l10n,
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: h,
+                                        child: Transform(
+                                          alignment: Alignment.bottomCenter,
+                                          transform: matrix,
+                                          child: SizedBox(
+                                            width: w,
+                                            height: h,
+                                            child: FlutterMap(
+                                              options: MapOptions(
+                                                initialCenter: center,
+                                                initialZoom: _followZoom,
+                                                initialRotation: 0,
+                                                onTap: (_, point) =>
+                                                    _showQuickHazardPicker(
+                                                      point,
+                                                      l10n,
+                                                    ),
+                                                onPositionChanged: (_, hasGesture) {
+                                                  if (!hasGesture ||
+                                                      !_isFollowingMyPosition) {
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _isFollowingMyPosition =
+                                                        false;
+                                                  });
+                                                },
+                                              ),
+                                              mapController: _mapController,
+                                              children: [
+                                                TileLayer(
+                                                  urlTemplate: _useDarkMap
+                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
+                                                  subdomains: const [
+                                                    'a',
+                                                    'b',
+                                                    'c',
+                                                    'd',
+                                                  ],
+                                                  userAgentPackageName:
+                                                      'com.cruizx.mobile',
+                                                  tileProvider: _tileProvider,
+                                                  tileUpdateTransformer:
+                                                      TileUpdateTransformers.throttle(
+                                                        const Duration(
+                                                          milliseconds: 28,
+                                                        ),
                                                       ),
-                                                  onPositionChanged: (_, hasGesture) {
-                                                    if (!hasGesture ||
-                                                        !_isFollowingMyPosition) {
-                                                      return;
-                                                    }
-                                                    setState(() {
-                                                      _isFollowingMyPosition =
-                                                          false;
-                                                    });
-                                                  },
+                                                  retinaMode:
+                                                      RetinaMode.isHighDensity(
+                                                        context,
+                                                      ),
+                                                  maxNativeZoom: 20,
+                                                  keepBuffer: 3,
+                                                  panBuffer: 1,
+                                                  tileDisplay:
+                                                      const TileDisplay.instantaneous(),
                                                 ),
-                                                mapController: _mapController,
-                                                children: [
-                                                  TileLayer(
-                                                    urlTemplate: _useDarkMap
-                                                        ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                                                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
-                                                    subdomains: const [
-                                                      'a',
-                                                      'b',
-                                                      'c',
-                                                      'd',
-                                                    ],
-                                                    userAgentPackageName:
-                                                        'com.cruizx.mobile',
-                                                    tileProvider: _tileProvider,
-                                                    tileUpdateTransformer:
-                                                        TileUpdateTransformers.throttle(
-                                                          const Duration(
-                                                            milliseconds: 28,
-                                                          ),
+                                                TileLayer(
+                                                  urlTemplate: _useDarkMap
+                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png'
+                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+                                                  subdomains: const [
+                                                    'a',
+                                                    'b',
+                                                    'c',
+                                                    'd',
+                                                  ],
+                                                  userAgentPackageName:
+                                                      'com.cruizx.mobile',
+                                                  tileProvider: _tileProvider,
+                                                  tileUpdateTransformer:
+                                                      TileUpdateTransformers.throttle(
+                                                        const Duration(
+                                                          milliseconds: 28,
                                                         ),
-                                                    retinaMode:
-                                                        RetinaMode.isHighDensity(
-                                                          context,
-                                                        ),
-                                                    maxNativeZoom: 20,
-                                                    keepBuffer: 3,
-                                                    panBuffer: 1,
-                                                    tileDisplay:
-                                                        const TileDisplay.instantaneous(),
-                                                  ),
-                                                  TileLayer(
-                                                    urlTemplate: _useDarkMap
-                                                        ? 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png'
-                                                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-                                                    subdomains: const [
-                                                      'a',
-                                                      'b',
-                                                      'c',
-                                                      'd',
-                                                    ],
-                                                    userAgentPackageName:
-                                                        'com.cruizx.mobile',
-                                                    tileProvider: _tileProvider,
-                                                    tileUpdateTransformer:
-                                                        TileUpdateTransformers.throttle(
-                                                          const Duration(
-                                                            milliseconds: 28,
-                                                          ),
-                                                        ),
-                                                    retinaMode:
-                                                        RetinaMode.isHighDensity(
-                                                          context,
-                                                        ),
-                                                    maxNativeZoom: 20,
-                                                    keepBuffer: 2,
-                                                    panBuffer: 1,
-                                                    tileDisplay:
-                                                        const TileDisplay.instantaneous(),
-                                                  ),
-                                                  MarkerLayer(
-                                                    markers: [
-                                                      // Alert markers
-                                                      for (final alert
-                                                          in _alerts)
-                                                        Marker(
-                                                          point: alert.position,
-                                                          width: 44,
-                                                          height: 52,
-                                                          alignment:
-                                                              const Alignment(
-                                                                0,
-                                                                -1,
-                                                              ),
-                                                          child:
-                                                              _ConvoyAlertMarker(
-                                                                alert: alert,
-                                                              ),
-                                                        ),
-                                                      for (final member
-                                                          in locations)
+                                                      ),
+                                                  retinaMode:
+                                                      RetinaMode.isHighDensity(
+                                                        context,
+                                                      ),
+                                                  maxNativeZoom: 20,
+                                                  keepBuffer: 2,
+                                                  panBuffer: 1,
+                                                  tileDisplay:
+                                                      const TileDisplay.instantaneous(),
+                                                ),
+                                                MarkerLayer(
+                                                  markers: [
+                                                    // Alert markers
+                                                    for (final alert in _alerts)
+                                                      Marker(
+                                                        point: alert.position,
+                                                        width: 44,
+                                                        height: 52,
+                                                        alignment:
+                                                            const Alignment(
+                                                              0,
+                                                              -1,
+                                                            ),
+                                                        child:
+                                                            _ConvoyAlertMarker(
+                                                              alert: alert,
+                                                            ),
+                                                      ),
+                                                    for (final member
+                                                        in locations)
+                                                      if (!(member.userId ==
+                                                              _myUserId &&
+                                                          _isFollowingMyPosition))
                                                         Marker(
                                                           point:
                                                               member.position,
@@ -1614,306 +1748,362 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                 l10n,
                                                               ),
                                                         ),
-                                                      for (final pin in pins)
-                                                        Marker(
-                                                          point: pin.position,
-                                                          width: 90,
-                                                          height: 42,
-                                                          child: GestureDetector(
-                                                            onTap: () =>
-                                                                _showPinOptions(
-                                                                  pin,
-                                                                ),
-                                                            child: Column(
-                                                              children: [
-                                                                Container(
-                                                                  padding:
-                                                                      const EdgeInsets.symmetric(
-                                                                        horizontal:
-                                                                            6,
-                                                                        vertical:
-                                                                            2,
-                                                                      ),
-                                                                  decoration: BoxDecoration(
-                                                                    color: Theme.of(
-                                                                      context,
-                                                                    ).colorScheme.surface,
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                          8,
-                                                                        ),
-                                                                    border: Border.all(
-                                                                      color:
-                                                                          _pinColor(
-                                                                            pin.type,
-                                                                          ).withValues(
-                                                                            alpha:
-                                                                                0.6,
-                                                                          ),
-                                                                    ),
-                                                                  ),
-                                                                  child: Text(
-                                                                    pin.label,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style: Theme.of(
-                                                                      context,
-                                                                    ).textTheme.labelSmall,
-                                                                  ),
-                                                                ),
-                                                                Icon(
-                                                                  _pinIcon(
-                                                                    pin.type,
-                                                                  ),
-                                                                  color:
-                                                                      _pinColor(
-                                                                        pin.type,
-                                                                      ),
-                                                                  size: 18,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ),
-                                                    ],
-                                                  ),
-                                                  RichAttributionWidget(
-                                                    attributions: [
-                                                      TextSourceAttribution(
-                                                        '© Mapbox',
-                                                      ),
-                                                      TextSourceAttribution(
-                                                        '© OpenStreetMap contributors',
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  // Route polyline
-                                                  if (_routePoints.isNotEmpty)
-                                                    PolylineLayer(
-                                                      polylines: [
-                                                        Polyline(
-                                                          points: _routePoints,
-                                                          color: const Color(
-                                                            0xFF3AA8FF,
-                                                          ),
-                                                          strokeWidth: 5,
-                                                          borderColor:
-                                                              const Color(
-                                                                0xFF0A3D6E,
+                                                    for (final pin in pins)
+                                                      Marker(
+                                                        point: pin.position,
+                                                        width: 90,
+                                                        height: 42,
+                                                        child: GestureDetector(
+                                                          onTap: () =>
+                                                              _showPinOptions(
+                                                                pin,
                                                               ),
-                                                          borderStrokeWidth: 2,
+                                                          child: Column(
+                                                            children: [
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          6,
+                                                                      vertical:
+                                                                          2,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color: Theme.of(
+                                                                    context,
+                                                                  ).colorScheme.surface,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  border: Border.all(
+                                                                    color:
+                                                                        _pinColor(
+                                                                          pin.type,
+                                                                        ).withValues(
+                                                                          alpha:
+                                                                              0.6,
+                                                                        ),
+                                                                  ),
+                                                                ),
+                                                                child: Text(
+                                                                  pin.label,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: Theme.of(
+                                                                    context,
+                                                                  ).textTheme.labelSmall,
+                                                                ),
+                                                              ),
+                                                              Icon(
+                                                                _pinIcon(
+                                                                  pin.type,
+                                                                ),
+                                                                color:
+                                                                    _pinColor(
+                                                                      pin.type,
+                                                                    ),
+                                                                size: 18,
+                                                              ),
+                                                            ],
+                                                          ),
                                                         ),
-                                                      ],
+                                                      ),
+                                                  ],
+                                                ),
+                                                RichAttributionWidget(
+                                                  attributions: [
+                                                    TextSourceAttribution(
+                                                      '© Mapbox',
                                                     ),
-                                                ],
-                                              ),
+                                                    TextSourceAttribution(
+                                                      '© OpenStreetMap contributors',
+                                                    ),
+                                                  ],
+                                                ),
+                                                // Route polyline
+                                                if (_routePoints.isNotEmpty)
+                                                  PolylineLayer(
+                                                    polylines: [
+                                                      Polyline(
+                                                        points: _routePoints,
+                                                        color: const Color(
+                                                          0xFF3AA8FF,
+                                                        ),
+                                                        strokeWidth: 5,
+                                                        borderColor:
+                                                            const Color(
+                                                              0xFF0A3D6E,
+                                                            ),
+                                                        borderStrokeWidth: 2,
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                         ),
-                                        // Horizon fade — covers top ~45%
-                                        Positioned(
-                                          top: 0,
-                                          left: 0,
-                                          right: 0,
-                                          height: h * 0.45,
-                                          child: IgnorePointer(
-                                            child: AnimatedOpacity(
-                                              opacity: is3D ? 1.0 : 0.0,
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topCenter,
-                                                    end: Alignment.bottomCenter,
-                                                    colors: [
-                                                      const Color(
-                                                        0xFF0A1628,
-                                                      ).withValues(alpha: 0.98),
-                                                      Colors.transparent,
-                                                    ],
-                                                  ),
+                                      ),
+                                      // Horizon fade — covers top ~45%
+                                      Positioned(
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        height: h * 0.45,
+                                        child: IgnorePointer(
+                                          child: AnimatedOpacity(
+                                            opacity: is3D ? 1.0 : 0.0,
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    const Color(
+                                                      0xFF0A1628,
+                                                    ).withValues(alpha: 0.98),
+                                                    Colors.transparent,
+                                                  ],
                                                 ),
                                               ),
                                             ),
                                           ),
                                         ),
-                                      ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          // ── Fixed arrow overlay (follow mode) ──
+                          // Removes jitter by keeping the arrow fixed on
+                          // screen while the map animates beneath it.
+                          if (_isFollowingMyPosition && _myLocation != null)
+                            IgnorePointer(
+                              child: Align(
+                                alignment: _use3DMap
+                                    ? const Alignment(0, 0.36)
+                                    : Alignment.center,
+                                child: ValueListenableBuilder<double>(
+                                  valueListenable: _arrowHdg,
+                                  builder: (_, hdgOffset, child) {
+                                    return Transform.rotate(
+                                      angle: hdgOffset * math.pi / 180,
+                                      child: Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: const Color(0xFF1E6BFF),
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 2.5,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFF1E6BFF,
+                                              ).withValues(alpha: 0.75),
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.navigation,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
                                     );
                                   },
                                 ),
                               ),
                             ),
-                          ),
-                          // Address search bar (replaces hint overlay)
-                          Positioned(
-                            left: 16,
-                            top: 16,
-                            right: 72,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  height: 44,
-                                  child: TextField(
-                                    controller: _addressSearchController,
-                                    focusNode: _searchFocus,
-                                    textInputAction: TextInputAction.search,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                    onChanged: _onSearchChanged,
-                                    onSubmitted: (q) {
-                                      setState(() => _showSuggestions = false);
-                                      _searchAddress(q);
-                                    },
-                                    decoration: InputDecoration(
-                                      hintText: l10n.mapAddressFieldHint,
-                                      hintStyle: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 13,
+                          // Address search bar (hidden during navigation)
+                          if (!_isNavigating)
+                            Positioned(
+                              left: 16,
+                              top: 16,
+                              right: 72,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    height: 44,
+                                    child: TextField(
+                                      controller: _addressSearchController,
+                                      focusNode: _searchFocus,
+                                      textInputAction: TextInputAction.search,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
                                       ),
-                                      filled: true,
-                                      fillColor: const Color(0xDD071739),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 0,
+                                      onChanged: _onSearchChanged,
+                                      onSubmitted: (q) {
+                                        setState(
+                                          () => _showSuggestions = false,
+                                        );
+                                        _searchAddress(q);
+                                      },
+                                      decoration: InputDecoration(
+                                        hintText: l10n.mapAddressFieldHint,
+                                        hintStyle: const TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 13,
+                                        ),
+                                        filled: true,
+                                        fillColor: const Color(0xDD071739),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 0,
+                                            ),
+                                        prefixIcon: const Icon(
+                                          Icons.search,
+                                          color: Colors.white54,
+                                          size: 20,
+                                        ),
+                                        suffixIcon:
+                                            _addressSearchController
+                                                .text
+                                                .isNotEmpty
+                                            ? IconButton(
+                                                icon: const Icon(
+                                                  Icons.close,
+                                                  size: 18,
+                                                  color: Colors.white54,
+                                                ),
+                                                onPressed: () {
+                                                  _addressSearchController
+                                                      .clear();
+                                                  setState(() {
+                                                    _suggestions = [];
+                                                    _showSuggestions = false;
+                                                  });
+                                                },
+                                              )
+                                            : null,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
                                           ),
-                                      prefixIcon: const Icon(
-                                        Icons.search,
-                                        color: Colors.white54,
-                                        size: 20,
-                                      ),
-                                      suffixIcon:
-                                          _addressSearchController
-                                              .text
-                                              .isNotEmpty
-                                          ? IconButton(
-                                              icon: const Icon(
-                                                Icons.close,
-                                                size: 18,
-                                                color: Colors.white54,
-                                              ),
-                                              onPressed: () {
-                                                _addressSearchController
-                                                    .clear();
-                                                setState(() {
-                                                  _suggestions = [];
-                                                  _showSuggestions = false;
-                                                });
-                                              },
-                                            )
-                                          : null,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: const BorderSide(
-                                          color: Color(0x553AA8FF),
+                                          borderSide: const BorderSide(
+                                            color: Color(0x553AA8FF),
+                                          ),
                                         ),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: const BorderSide(
-                                          color: Color(0x553AA8FF),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0x553AA8FF),
+                                          ),
                                         ),
-                                      ),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                        borderSide: const BorderSide(
-                                          color: Color(0xFF3AA8FF),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Color(0xFF3AA8FF),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                if (_showSuggestions && _suggestions.isNotEmpty)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xF0071739),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color: const Color(0x553AA8FF),
+                                  if (_showSuggestions &&
+                                      _suggestions.isNotEmpty)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xF0071739),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0x553AA8FF),
+                                        ),
                                       ),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: _suggestions.map((s) {
-                                          final title = _addressTitleFromResult(
-                                            s,
-                                          );
-                                          final subtitle =
-                                              _addressSubtitleFromResult(s);
-                                          return InkWell(
-                                            onTap: () => _selectSuggestion(s),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 9,
-                                                  ),
-                                              child: Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.location_on,
-                                                    size: 16,
-                                                    color: Colors.white54,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          title,
-                                                          style:
-                                                              const TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                                fontSize: 13,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                              ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                        ),
-                                                        if (subtitle.isNotEmpty)
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: _suggestions.map((s) {
+                                            final title =
+                                                _addressTitleFromResult(s);
+                                            final subtitle =
+                                                _addressSubtitleFromResult(s);
+                                            return InkWell(
+                                              onTap: () => _selectSuggestion(s),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 9,
+                                                    ),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.location_on,
+                                                      size: 16,
+                                                      color: Colors.white54,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
                                                           Text(
-                                                            subtitle,
+                                                            title,
                                                             style:
                                                                 const TextStyle(
                                                                   color: Colors
-                                                                      .white38,
-                                                                  fontSize: 11,
+                                                                      .white,
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
                                                                 ),
                                                             maxLines: 1,
                                                             overflow:
                                                                 TextOverflow
                                                                     .ellipsis,
                                                           ),
-                                                      ],
+                                                          if (subtitle
+                                                              .isNotEmpty)
+                                                            Text(
+                                                              subtitle,
+                                                              style:
+                                                                  const TextStyle(
+                                                                    color: Colors
+                                                                        .white38,
+                                                                    fontSize:
+                                                                        11,
+                                                                  ),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                            ),
+                                                        ],
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          );
-                                        }).toList(),
+                                            );
+                                          }).toList(),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
                           // Navigation turn banner (Apple Maps dark)
                           if (_isNavigating && _nextManeuverText.isNotEmpty)
                             Positioned(
@@ -1942,8 +2132,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ],
                                     ),
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 14,
+                                      horizontal: 14,
+                                      vertical: 10,
                                     ),
                                     child: Row(
                                       children: [
@@ -1954,14 +2144,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               _nextManeuverSign,
                                             );
                                             return Container(
-                                              width: 72,
-                                              height: 72,
+                                              width: 56,
+                                              height: 56,
                                               decoration: BoxDecoration(
                                                 color: accent.withValues(
                                                   alpha: 0.36,
                                                 ),
                                                 borderRadius:
-                                                    BorderRadius.circular(16),
+                                                    BorderRadius.circular(14),
                                                 border: Border.all(
                                                   color: accent.withValues(
                                                     alpha: 0.9,
@@ -1972,12 +2162,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               child: Icon(
                                                 _turnIcon(_nextManeuverSign),
                                                 color: Colors.white,
-                                                size: 38,
+                                                size: 30,
                                               ),
                                             );
                                           },
                                         ),
-                                        const SizedBox(width: 14),
+                                        const SizedBox(width: 12),
                                         Expanded(
                                           child: Builder(
                                             builder: (_) {
@@ -2019,19 +2209,19 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       ),
                                                     ),
                                                   ),
-                                                  const SizedBox(height: 7),
+                                                  const SizedBox(height: 5),
                                                   Text(
                                                     _maneuverPrimaryText(
                                                       _nextManeuverText,
                                                     ),
                                                     style: const TextStyle(
                                                       color: Colors.white,
-                                                      fontSize: 22,
+                                                      fontSize: 18,
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       height: 1.2,
                                                     ),
-                                                    maxLines: 2,
+                                                    maxLines: 1,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),
@@ -2144,13 +2334,16 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           // ── Current street name pill ─────────────────────
                           if (_isNavigating && _currentStreetName.isNotEmpty)
                             Positioned(
-                              left: 0,
-                              right: 0,
+                              left: 16,
+                              right: 62,
                               bottom: (_routeDestination != null || _isRouting)
-                                  ? 165
+                                  ? 170
                                   : 100,
                               child: Center(
                                 child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 260,
+                                  ),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 8,
@@ -2175,6 +2368,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
                                 ),
                               ),
@@ -2208,332 +2403,360 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       16,
                                       12,
                                     ),
-                                    child: ValueListenableBuilder<SpeedUnit>(
-                                      valueListenable: UserPreferencesService
-                                          .instance
-                                          .speedUnit,
-                                      builder: (context, speedUnit, _) {
-                                        return ValueListenableBuilder<double>(
+                                    child: ValueListenableBuilder<double>(
+                                      valueListenable: _speedNotifier,
+                                      builder: (context, liveSpeed, _) {
+                                        return ValueListenableBuilder<
+                                          SpeedUnit
+                                        >(
                                           valueListenable:
                                               UserPreferencesService
                                                   .instance
-                                                  .maxSpeedKmh,
-                                          builder: (context, maxSpeedKmh, _) {
-                                            final over =
-                                                _speedKmh > maxSpeedKmh;
-                                            final speedDisplay =
-                                                UserPreferencesService.instance
-                                                    .toDisplaySpeed(
-                                                      speedKmh: _speedKmh,
-                                                      unit: speedUnit,
-                                                    );
-                                            final limitDisplay =
-                                                UserPreferencesService.instance
-                                                    .toDisplaySpeed(
-                                                      speedKmh: maxSpeedKmh,
-                                                      unit: speedUnit,
-                                                    );
-                                            final eta = _isNavigating
-                                                ? _formatEta()
-                                                : '';
-                                            return Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                // Drag handle
-                                                Center(
-                                                  child: Container(
-                                                    width: 40,
-                                                    height: 4,
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                          bottom: 14,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white24,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            2,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Row(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.center,
+                                                  .speedUnit,
+                                          builder: (context, speedUnit, _) {
+                                            return ValueListenableBuilder<
+                                              double
+                                            >(
+                                              valueListenable:
+                                                  UserPreferencesService
+                                                      .instance
+                                                      .maxSpeedKmh,
+                                              builder: (context, maxSpeedKmh, _) {
+                                                final over =
+                                                    liveSpeed > maxSpeedKmh;
+                                                final speedDisplay =
+                                                    UserPreferencesService
+                                                        .instance
+                                                        .toDisplaySpeed(
+                                                          speedKmh: liveSpeed,
+                                                          unit: speedUnit,
+                                                        );
+                                                final limitDisplay =
+                                                    UserPreferencesService
+                                                        .instance
+                                                        .toDisplaySpeed(
+                                                          speedKmh: maxSpeedKmh,
+                                                          unit: speedUnit,
+                                                        );
+                                                final eta = _isNavigating
+                                                    ? _formatEta()
+                                                    : '';
+                                                return Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   children: [
-                                                    if (_isNavigating) ...[
-                                                      Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          Container(
-                                                            width: 52,
-                                                            height: 52,
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors.black,
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                              border: Border.all(
-                                                                color: over
-                                                                    ? Colors.red
-                                                                    : Colors
-                                                                          .white24,
-                                                                width: 2,
-                                                              ),
+                                                    // Drag handle
+                                                    Center(
+                                                      child: Container(
+                                                        width: 40,
+                                                        height: 4,
+                                                        margin:
+                                                            const EdgeInsets.only(
+                                                              bottom: 14,
                                                             ),
-                                                            child: Center(
-                                                              child: Text(
-                                                                speedDisplay
-                                                                    .toStringAsFixed(
-                                                                      0,
-                                                                    ),
-                                                                style: TextStyle(
-                                                                  color: over
-                                                                      ? Colors
-                                                                            .redAccent
-                                                                      : Colors
-                                                                            .white,
-                                                                  fontSize: 20,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  height: 1.0,
-                                                                ),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white24,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                2,
                                                               ),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 5,
-                                                          ),
-                                                          // EU speed limit sign
-                                                          Container(
-                                                            width: 42,
-                                                            height: 42,
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors.white,
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                              border: Border.all(
-                                                                color: Colors
-                                                                    .red
-                                                                    .shade700,
-                                                                width: 3.5,
-                                                              ),
-                                                            ),
-                                                            child: Center(
-                                                              child: Text(
-                                                                limitDisplay
-                                                                    .toStringAsFixed(
-                                                                      0,
-                                                                    ),
-                                                                style: const TextStyle(
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        if (_isNavigating) ...[
+                                                          Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              Container(
+                                                                width: 52,
+                                                                height: 52,
+                                                                decoration: BoxDecoration(
                                                                   color: Colors
                                                                       .black,
-                                                                  fontSize: 13,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  height: 1.0,
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                  border: Border.all(
+                                                                    color: over
+                                                                        ? Colors
+                                                                              .red
+                                                                        : Colors
+                                                                              .white24,
+                                                                    width: 2,
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(width: 14),
-                                                    ],
-                                                    // Destination info
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        children: [
-                                                          if (_destinationLabel
-                                                              .isNotEmpty) ...[
-                                                            Text(
-                                                              _destinationLabel,
-                                                              style: const TextStyle(
-                                                                color: Colors
-                                                                    .white,
-                                                                fontSize: 18,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                height: 1.2,
-                                                              ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 2,
-                                                            ),
-                                                          ],
-                                                          Row(
-                                                            children: [
-                                                              if (_isRouting)
-                                                                const Padding(
-                                                                  padding:
-                                                                      EdgeInsets.only(
-                                                                        right:
-                                                                            6,
-                                                                      ),
-                                                                  child: SizedBox(
-                                                                    width: 12,
-                                                                    height: 12,
-                                                                    child: CircularProgressIndicator(
-                                                                      strokeWidth:
-                                                                          2,
-                                                                      color: Colors
-                                                                          .white54,
+                                                                child: Center(
+                                                                  child: Text(
+                                                                    speedDisplay
+                                                                        .toStringAsFixed(
+                                                                          0,
+                                                                        ),
+                                                                    style: TextStyle(
+                                                                      color:
+                                                                          over
+                                                                          ? Colors.redAccent
+                                                                          : Colors.white,
+                                                                      fontSize:
+                                                                          20,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      height:
+                                                                          1.0,
                                                                     ),
                                                                   ),
                                                                 ),
-                                                              Expanded(
-                                                                child: Text(
-                                                                  _routingStatus,
-                                                                  style: const TextStyle(
+                                                              ),
+                                                              const SizedBox(
+                                                                height: 5,
+                                                              ),
+                                                              // EU speed limit sign
+                                                              Container(
+                                                                width: 42,
+                                                                height: 42,
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                  border: Border.all(
                                                                     color: Colors
-                                                                        .white70,
-                                                                    fontSize:
-                                                                        14,
+                                                                        .red
+                                                                        .shade700,
+                                                                    width: 3.5,
                                                                   ),
-                                                                  maxLines: 2,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
+                                                                ),
+                                                                child: Center(
+                                                                  child: Text(
+                                                                    limitDisplay
+                                                                        .toStringAsFixed(
+                                                                          0,
+                                                                        ),
+                                                                    style: const TextStyle(
+                                                                      color: Colors
+                                                                          .black,
+                                                                      fontSize:
+                                                                          13,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      height:
+                                                                          1.0,
+                                                                    ),
+                                                                  ),
                                                                 ),
                                                               ),
                                                             ],
                                                           ),
-                                                          if (eta
-                                                              .isNotEmpty) ...[
-                                                            const SizedBox(
-                                                              height: 2,
-                                                            ),
-                                                            Text(
-                                                              eta,
-                                                              style:
-                                                                  const TextStyle(
+                                                          const SizedBox(
+                                                            width: 14,
+                                                          ),
+                                                        ],
+                                                        // Destination info
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              if (_destinationLabel
+                                                                  .isNotEmpty) ...[
+                                                                Text(
+                                                                  _destinationLabel,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize:
+                                                                        18,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    height: 1.2,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 2,
+                                                                ),
+                                                              ],
+                                                              Row(
+                                                                children: [
+                                                                  if (_isRouting)
+                                                                    const Padding(
+                                                                      padding:
+                                                                          EdgeInsets.only(
+                                                                            right:
+                                                                                6,
+                                                                          ),
+                                                                      child: SizedBox(
+                                                                        width:
+                                                                            12,
+                                                                        height:
+                                                                            12,
+                                                                        child: CircularProgressIndicator(
+                                                                          strokeWidth:
+                                                                              2,
+                                                                          color:
+                                                                              Colors.white54,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      _routingStatus,
+                                                                      style: const TextStyle(
+                                                                        color: Colors
+                                                                            .white70,
+                                                                        fontSize:
+                                                                            14,
+                                                                      ),
+                                                                      maxLines:
+                                                                          2,
+                                                                      overflow:
+                                                                          TextOverflow
+                                                                              .ellipsis,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              if (eta
+                                                                  .isNotEmpty) ...[
+                                                                const SizedBox(
+                                                                  height: 2,
+                                                                ),
+                                                                Text(
+                                                                  eta,
+                                                                  style: const TextStyle(
                                                                     color: Colors
                                                                         .white54,
                                                                     fontSize:
                                                                         12,
                                                                   ),
-                                                            ),
-                                                          ],
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 12),
-                                                    // Action button
-                                                    if (_routePoints.isNotEmpty)
-                                                      Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
-                                                          _isNavigating
-                                                              ? GestureDetector(
+                                                                ),
+                                                              ],
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+                                                        // Action button
+                                                        if (_routePoints
+                                                            .isNotEmpty)
+                                                          Column(
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .end,
+                                                            children: [
+                                                              _isNavigating
+                                                                  ? GestureDetector(
+                                                                      onTap:
+                                                                          _clearConvoyRoute,
+                                                                      child: Container(
+                                                                        padding: const EdgeInsets.symmetric(
+                                                                          horizontal:
+                                                                              18,
+                                                                          vertical:
+                                                                              13,
+                                                                        ),
+                                                                        decoration: BoxDecoration(
+                                                                          color: const Color(
+                                                                            0xFFD32F2F,
+                                                                          ),
+                                                                          borderRadius: BorderRadius.circular(
+                                                                            14,
+                                                                          ),
+                                                                        ),
+                                                                        child: Text(
+                                                                          l10n.mapEndNavigation,
+                                                                          style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            fontSize:
+                                                                                15,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    )
+                                                                  : GestureDetector(
+                                                                      onTap: () => setState(() {
+                                                                        _isNavigating =
+                                                                            true;
+                                                                        _isFollowingMyPosition =
+                                                                            true;
+                                                                        _lastNearestIdx =
+                                                                            0;
+                                                                      }),
+                                                                      child: Container(
+                                                                        padding: const EdgeInsets.symmetric(
+                                                                          horizontal:
+                                                                              18,
+                                                                          vertical:
+                                                                              13,
+                                                                        ),
+                                                                        decoration: BoxDecoration(
+                                                                          color: const Color(
+                                                                            0xFF00913F,
+                                                                          ),
+                                                                          borderRadius: BorderRadius.circular(
+                                                                            14,
+                                                                          ),
+                                                                        ),
+                                                                        child: Text(
+                                                                          l10n.mapStartNavigation,
+                                                                          style: const TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            fontSize:
+                                                                                15,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                              if (!_isNavigating) ...[
+                                                                const SizedBox(
+                                                                  height: 8,
+                                                                ),
+                                                                GestureDetector(
                                                                   onTap:
                                                                       _clearConvoyRoute,
-                                                                  child: Container(
-                                                                    padding: const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          18,
-                                                                      vertical:
+                                                                  child: Text(
+                                                                    l10n.authCancel,
+                                                                    style: TextStyle(
+                                                                      color: Colors
+                                                                          .white38,
+                                                                      fontSize:
                                                                           13,
-                                                                    ),
-                                                                    decoration: BoxDecoration(
-                                                                      color: const Color(
-                                                                        0xFFD32F2F,
-                                                                      ),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                            14,
-                                                                          ),
-                                                                    ),
-                                                                    child: Text(
-                                                                      l10n.mapEndNavigation,
-                                                                      style: const TextStyle(
-                                                                        color: Colors
-                                                                            .white,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontSize:
-                                                                            15,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                )
-                                                              : GestureDetector(
-                                                                  onTap: () => setState(() {
-                                                                    _isNavigating =
-                                                                        true;
-                                                                    _isFollowingMyPosition =
-                                                                        true;
-                                                                    _lastNearestIdx =
-                                                                        0;
-                                                                  }),
-                                                                  child: Container(
-                                                                    padding: const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          18,
-                                                                      vertical:
-                                                                          13,
-                                                                    ),
-                                                                    decoration: BoxDecoration(
-                                                                      color: const Color(
-                                                                        0xFF00913F,
-                                                                      ),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                            14,
-                                                                          ),
-                                                                    ),
-                                                                    child: Text(
-                                                                      l10n.mapStartNavigation,
-                                                                      style: const TextStyle(
-                                                                        color: Colors
-                                                                            .white,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontSize:
-                                                                            15,
-                                                                      ),
                                                                     ),
                                                                   ),
                                                                 ),
-                                                          if (!_isNavigating) ...[
-                                                            const SizedBox(
-                                                              height: 8,
-                                                            ),
-                                                            GestureDetector(
-                                                              onTap:
-                                                                  _clearConvoyRoute,
-                                                              child: Text(
-                                                                l10n.authCancel,
-                                                                style: TextStyle(
-                                                                  color: Colors
-                                                                      .white38,
-                                                                  fontSize: 13,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ],
-                                                      ),
+                                                              ],
+                                                            ],
+                                                          ),
+                                                      ],
+                                                    ),
                                                   ],
-                                                ),
-                                              ],
+                                                );
+                                              },
                                             );
                                           },
                                         );
@@ -2547,36 +2770,25 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           Positioned(
                             right: 14,
                             bottom: _routeDestination != null || _isRouting
-                                ? 155
+                                ? 165
                                 : 24,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                FloatingActionButton.small(
-                                  heroTag: 'fit_all',
-                                  tooltip: AppLocalizations.of(
-                                    context,
-                                  )!.convoyShowAll,
-                                  backgroundColor: const Color(0xFF1E3A5F),
-                                  onPressed: () => _fitAllMembers(locations),
+                                _convoyCircleButton(
+                                  onTap: () => _fitAllMembers(locations),
                                   child: const Icon(
                                     Icons.people_alt_outlined,
-                                    color: Colors.white,
+                                    color: Colors.white70,
+                                    size: 19,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                FloatingActionButton.small(
-                                  heroTag: 'recenter',
-                                  tooltip: l10n.convoyRecenterTooltip,
-                                  backgroundColor: _isFollowingMyPosition
-                                      ? const Color(0xFF1E6BFF)
-                                      : const Color(0xFF1E3A5F),
-                                  onPressed: () {
+                                _convoyCircleButton(
+                                  onTap: () {
                                     final me = _myLocation;
                                     if (me == null) return;
-                                    // Snap ticker to current position so
-                                    // the transition starts from here.
                                     _curLat = _tgtLat = me.latitude;
                                     _curLng = _tgtLng = me.longitude;
                                     _curHdg = _tgtHdg = _filteredTgtHdg =
@@ -2595,16 +2807,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       _use3DMap ? -_myHeading : 0,
                                     );
                                   },
+                                  color: _isFollowingMyPosition
+                                      ? const Color(0xFF1E6BFF)
+                                      : null,
                                   child: Icon(
                                     _isFollowingMyPosition
                                         ? Icons.my_location
                                         : Icons.location_searching,
-                                    color: Colors.white,
+                                    color: Colors.white70,
+                                    size: 19,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 // 2D / 3D toggle
-                                GestureDetector(
+                                _convoyCircleButton(
                                   onTap: () {
                                     setState(() => _use3DMap = !_use3DMap);
                                     UserPreferencesService
@@ -2613,137 +2829,59 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                             .value =
                                         _use3DMap;
                                   },
-                                  child: Container(
-                                    width: 46,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xEE0A1F63),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0x883AA8FF),
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black45,
-                                          blurRadius: 8,
-                                          offset: Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        _use3DMap
-                                            ? l10n.mapModeLabel3d
-                                            : l10n.mapModeLabel2d,
-                                        style: const TextStyle(
-                                          color: Colors.white60,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
+                                  child: Text(
+                                    _use3DMap
+                                        ? l10n.mapModeLabel3d
+                                        : l10n.mapModeLabel2d,
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 // Light / Dark map style toggle
-                                GestureDetector(
+                                _convoyCircleButton(
                                   onTap: () {
                                     setState(() => _useDarkMap = !_useDarkMap);
                                   },
-                                  child: Container(
-                                    width: 46,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xEE0A1F63),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0x883AA8FF),
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black45,
-                                          blurRadius: 8,
-                                          offset: Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      _useDarkMap
-                                          ? Icons.dark_mode
-                                          : Icons.light_mode,
-                                      color: Colors.white70,
-                                      size: 22,
-                                    ),
+                                  child: Icon(
+                                    _useDarkMap
+                                        ? Icons.dark_mode
+                                        : Icons.light_mode,
+                                    color: Colors.white70,
+                                    size: 19,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 // Voice navigation toggle
                                 ValueListenableBuilder<bool>(
                                   valueListenable: TtsService.instance.enabled,
                                   builder: (context, ttsOn, _) {
-                                    return GestureDetector(
+                                    return _convoyCircleButton(
                                       onTap: () {
                                         TtsService.instance.enabled.value =
                                             !ttsOn;
                                       },
-                                      child: Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xEE0A1F63),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: const Color(0x883AA8FF),
-                                            width: 1.5,
-                                          ),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Colors.black45,
-                                              blurRadius: 8,
-                                              offset: Offset(0, 3),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Icon(
-                                          ttsOn
-                                              ? Icons.volume_up
-                                              : Icons.volume_off,
-                                          color: Colors.white70,
-                                          size: 22,
-                                        ),
+                                      child: Icon(
+                                        ttsOn
+                                            ? Icons.volume_up
+                                            : Icons.volume_off,
+                                        color: Colors.white70,
+                                        size: 19,
                                       ),
                                     );
                                   },
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                                 // Report alert button
-                                GestureDetector(
+                                _convoyCircleButton(
                                   onTap: _showReportAlertSheet,
-                                  child: Container(
-                                    width: 46,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xEE0A1F63),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: const Color(0x883AA8FF),
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Colors.black45,
-                                          blurRadius: 8,
-                                          offset: Offset(0, 3),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.warning_amber_rounded,
-                                      color: Color(0xFFF57F17),
-                                      size: 22,
-                                    ),
+                                  child: const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Color(0xFFF57F17),
+                                    size: 19,
                                   ),
                                 ),
                               ],
@@ -2752,106 +2890,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                         ],
                       ),
                     ),
-                    // Members strip
-                    if (locations.isNotEmpty)
-                      Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0A1628),
-                          border: Border(
-                            top: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.1),
-                            ),
-                          ),
-                        ),
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          itemCount: locations.length,
-                          itemBuilder: (ctx, i) {
-                            final m = locations[i];
-                            final isMe = m.userId == _myUserId;
-                            final stale = _isMemberStale(m);
-                            final color = isMe
-                                ? const Color(0xFF1E6BFF)
-                                : _memberColor(m.userId);
-                            final minsAgo = DateTime.now()
-                                .difference(m.updatedAt)
-                                .inMinutes;
-                            return GestureDetector(
-                              onTap: () =>
-                                  _mapController.move(m.position, _followZoom),
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 16),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Opacity(
-                                      opacity: stale ? 0.4 : 1.0,
-                                      child: Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: color,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: isMe ? 2.5 : 1.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: color.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                              blurRadius: 6,
-                                            ),
-                                          ],
-                                        ),
-                                        child: Center(
-                                          child: isMe
-                                              ? const Icon(
-                                                  Icons.navigation,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                )
-                                              : Text(
-                                                  m.userLabel.isNotEmpty
-                                                      ? m.userLabel[0]
-                                                            .toUpperCase()
-                                                      : '?',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      stale
-                                          ? l10n.convoyMemberStaleTime(minsAgo)
-                                          : (isMe
-                                                ? l10n.convoyMemberMe
-                                                : m.userLabel.split(' ').first),
-                                      style: TextStyle(
-                                        color: stale
-                                            ? Colors.white30
-                                            : Colors.white70,
-                                        fontSize: 9,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
                   ],
                 );
               },

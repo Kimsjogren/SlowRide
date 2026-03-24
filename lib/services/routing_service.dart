@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
+import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
 enum RoutingErrorCode {
@@ -68,6 +69,7 @@ class RoutingService {
     final provider = BackendConfig.routingProvider;
     // Use the user's chosen speed (they may have adjusted it from the default).
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
+    final country = UserPreferencesService.instance.countryCode.value;
     late final RouteResult route;
 
     if (provider == _providerGraphHopper) {
@@ -76,6 +78,7 @@ class RoutingService {
         destination: destination,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeed,
+        countryCode: country,
       );
     } else if (provider == _providerOpenRouteService) {
       route = await _getRouteFromOpenRouteService(
@@ -83,9 +86,14 @@ class RoutingService {
         destination: destination,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeed,
+        countryCode: country,
       );
       // Only validate speed for ORS — it returns actual vehicle travel times.
-      _validateRouteSpeed(route: route, vehicleType: vehicleType);
+      _validateRouteSpeed(
+        route: route,
+        vehicleType: vehicleType,
+        countryCode: country,
+      );
     } else if (provider == _providerOsrmSelfHosted ||
         provider == _providerOsrmPublic) {
       route = await _getRouteFromOsrm(
@@ -93,6 +101,7 @@ class RoutingService {
         destination: destination,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeed,
+        countryCode: country,
       );
       // OSRM calculates car travel times, not slow-vehicle times —
       // skip speed validation to avoid false positives.
@@ -102,6 +111,7 @@ class RoutingService {
         destination: destination,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeed,
+        countryCode: country,
       );
       // Valhalla uses our custom costing options with correct max speeds,
       // so duration is already accurate for slow vehicles.
@@ -117,6 +127,7 @@ class RoutingService {
     required LatLng destination,
     required String vehicleType,
     required double userSpeedKmh,
+    required String countryCode,
   }) async {
     final apiKey = BackendConfig.graphhopperApiKey;
     if (apiKey.isEmpty) {
@@ -129,7 +140,7 @@ class RoutingService {
     // The `avoid` parameter IS supported on free plans (unlike custom_model
     // which requires the paid Platinum tier).
     // Slow vehicles must avoid motorways and ferries by law.
-    final avoidFeatures = _graphHopperAvoidFor(vehicleType);
+    final avoidFeatures = _graphHopperAvoidFor(vehicleType, countryCode);
 
     // Build URI manually to handle repeated `point=` params correctly.
     final buffer = StringBuffer(
@@ -215,6 +226,7 @@ class RoutingService {
     required LatLng destination,
     required String vehicleType,
     required double userSpeedKmh,
+    required String countryCode,
   }) async {
     // OSRM public API does not support exclude parameters —
     // use bare routing without exclude flags.
@@ -276,8 +288,9 @@ class RoutingService {
     required LatLng destination,
     required String vehicleType,
     required double userSpeedKmh,
+    required String countryCode,
   }) async {
-    final constraints = _routingConstraintsFor(vehicleType);
+    final constraints = _routingConstraintsFor(vehicleType, countryCode);
     final apiKey = BackendConfig.openRouteServiceApiKey;
     if (apiKey.isEmpty) {
       throw const RoutingException(RoutingErrorCode.missingApiKey);
@@ -345,11 +358,17 @@ class RoutingService {
     required LatLng destination,
     required String vehicleType,
     required double userSpeedKmh,
+    required String countryCode,
   }) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
-    final costingOptions = _valhallaCostingOptionsFor(vehicleType);
-    // Override top_speed with the user's chosen speed
-    costingOptions['top_speed'] = userSpeedKmh.round();
+    final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+    final costingOptions = <String, dynamic>{
+      'top_speed': userSpeedKmh.round(),
+      'use_highways': profile.useHighways,
+      'use_tolls': profile.useTolls,
+      'use_ferry': profile.useFerry,
+      'shortest': false,
+    };
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
     final requestBody = jsonEncode({
@@ -524,50 +543,6 @@ class RoutingService {
   }
 }
 
-/// Valhalla costing options for slow vehicles.
-/// These settings ensure Valhalla routes correctly for Swedish EPA/A-traktor,
-/// Mopedbil, and Tractor vehicles.
-Map<String, dynamic> _valhallaCostingOptionsFor(String vehicleType) {
-  switch (vehicleType) {
-    case 'A-tractor':
-      // A-traktor: Max 30 km/h, no motorways, no ferries, no tolls
-      return {
-        'top_speed': 30,
-        'use_highways': 0.0, // Avoid motorways completely
-        'use_tolls': 0.0, // Avoid toll roads
-        'use_ferry': 0.0, // Avoid ferries (not allowed for EPA)
-        'shortest': false, // Optimize for time, not distance
-      };
-    case 'Moped car':
-      // Mopedbil: Max 45 km/h, no motorways, no ferries
-      return {
-        'top_speed': 45,
-        'use_highways': 0.0,
-        'use_tolls': 0.0,
-        'use_ferry': 0.0,
-        'shortest': false,
-      };
-    case 'Tractor':
-      // Tractor: Max 30 km/h, no motorways, ferries allowed
-      return {
-        'top_speed': 30,
-        'use_highways': 0.0,
-        'use_tolls': 0.5, // Some tolerance for toll roads
-        'use_ferry': 0.5, // Ferries allowed for tractors
-        'shortest': false,
-      };
-    default:
-      // Default to most restrictive (A-traktor settings)
-      return {
-        'top_speed': 30,
-        'use_highways': 0.0,
-        'use_tolls': 0.0,
-        'use_ferry': 0.0,
-        'shortest': false,
-      };
-  }
-}
-
 class _RoutingConstraints {
   const _RoutingConstraints({
     required this.osrmExclude,
@@ -578,68 +553,58 @@ class _RoutingConstraints {
   final List<String> openRouteServiceAvoidFeatures;
 }
 
-_RoutingConstraints _routingConstraintsFor(String vehicleType) {
-  switch (vehicleType) {
-    case 'A-tractor':
-      return const _RoutingConstraints(
-        osrmExclude: ['motorway', 'toll', 'ferry'],
-        openRouteServiceAvoidFeatures: ['highways', 'tollways', 'ferries'],
-      );
-    case 'Moped car':
-      return const _RoutingConstraints(
-        osrmExclude: ['motorway', 'toll', 'ferry'],
-        openRouteServiceAvoidFeatures: ['highways', 'tollways', 'ferries'],
-      );
-    case 'Tractor':
-      return const _RoutingConstraints(
-        osrmExclude: ['motorway', 'toll'],
-        openRouteServiceAvoidFeatures: ['highways', 'tollways'],
-      );
-    default:
-      return const _RoutingConstraints(
-        osrmExclude: ['motorway', 'toll', 'ferry'],
-        openRouteServiceAvoidFeatures: ['highways', 'tollways', 'ferries'],
-      );
+_RoutingConstraints _routingConstraintsFor(
+  String vehicleType,
+  String countryCode,
+) {
+  final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+  // Highways are always avoided for slow vehicles in every country.
+  // Ferry/toll avoidance depends on the country profile.
+  final avoidFeatures = <String>['highways'];
+  final osrmExclude = <String>['motorway'];
+
+  if (profile.useFerry < 0.3) {
+    avoidFeatures.add('ferries');
+    osrmExclude.add('ferry');
   }
+  if (profile.useTolls < 0.3) {
+    avoidFeatures.add('tollways');
+    osrmExclude.add('toll');
+  }
+
+  return _RoutingConstraints(
+    osrmExclude: osrmExclude,
+    openRouteServiceAvoidFeatures: avoidFeatures,
+  );
 }
 
 /// Returns the `avoid` features to pass to GraphHopper's free-tier GET API.
-/// Supported values: motorway, ferry, tunnel, ford, track, toll.
-List<String> _graphHopperAvoidFor(String vehicleType) {
-  switch (vehicleType) {
-    case 'Tractor':
-      // Tractors can use ferries but not motorways.
-      return ['motorway'];
-    default:
-      // A-tractor, Moped car — motorway, ferry and toll are illegal/unusable.
-      return ['motorway', 'ferry', 'toll'];
-  }
+List<String> _graphHopperAvoidFor(String vehicleType, String countryCode) {
+  final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+  final avoid = <String>['motorway'];
+  if (profile.useFerry < 0.3) avoid.add('ferry');
+  if (profile.useTolls < 0.3) avoid.add('toll');
+  return avoid;
 }
 
-double _maxAllowedAverageSpeedKmhFor(String vehicleType) {
-  // Swedish legal top speeds for slow vehicles.
-  switch (vehicleType) {
-    case 'A-tractor':
-      return 30; // max 30 km/h by law
-    case 'Moped car':
-      return 45; // max 45 km/h by law
-    case 'Tractor':
-      return 30; // typical road tractor max
-    default:
-      return 30;
-  }
+double _maxAllowedAverageSpeedKmhFor(String vehicleType, String countryCode) {
+  return CountryVehicleRules.maxLegalSpeedFor(countryCode, vehicleType);
 }
 
 void _validateRouteSpeed({
   required RouteResult route,
   required String vehicleType,
+  required String countryCode,
 }) {
   if (route.durationSeconds <= 0 || route.distanceMeters <= 0) {
     throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
   }
 
   final averageSpeedKmh = (route.distanceMeters / route.durationSeconds) * 3.6;
-  final maxAllowedAverageSpeedKmh = _maxAllowedAverageSpeedKmhFor(vehicleType);
+  final maxAllowedAverageSpeedKmh = _maxAllowedAverageSpeedKmhFor(
+    vehicleType,
+    countryCode,
+  );
 
   if (averageSpeedKmh > maxAllowedAverageSpeedKmh) {
     throw const RoutingException(RoutingErrorCode.routeTooFastForVehicle);

@@ -350,6 +350,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageSwedish => 'Swedish';
 
   @override
+  String get settingsLanguageFrench => 'French';
+
+  @override
+  String get settingsLanguageNorwegian => 'Norwegian';
+
+  @override
+  String get settingsLanguageDanish => 'Danish';
+
+  @override
+  String get settingsLanguageFinnish => 'Finnish';
+
+  @override
+  String get settingsCountryLabel => 'Country (traffic rules)';
+
+  @override
+  String get settingsCountrySweden => '🇸🇪 Sweden';
+
+  @override
+  String get settingsCountryNorway => '🇳🇴 Norway';
+
+  @override
+  String get settingsCountryDenmark => '🇩🇰 Denmark';
+
+  @override
+  String get settingsCountryFinland => '🇫🇮 Finland';
+
+  @override
+  String get settingsCountryFrance => '🇫🇷 France';
+
+  @override
+  String get settingsCountryHint => 'Speed limits and road rules adapt to the selected country.';
+
+  @override
   String settingsLanguageCurrentlyUsing(Object mode) {
     return 'Currently using: $mode';
   }
@@ -477,6 +510,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapRouteNotAllowedForVehicle => 'No legally compliant route found for this vehicle type.';
+
+  @override
+  String get routeBlockedTitle => 'Route not available';
+
+  @override
+  String routeBlockedBody(Object vehicleType) {
+    return 'No legal route was found to this destination for your $vehicleType. The destination may be on or only reachable via roads that are not allowed for this vehicle type (e.g. motorways).';
+  }
+
+  @override
+  String get routeBlockedOk => 'OK';
+
+  @override
+  String get routeBlockedTryOther => 'Try a different destination';
 
   @override
   String get mapModeLabel2d => '2D';
@@ -645,7 +692,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallSubtitle => 'No limits. No ads. Full access.';
 
   @override
-  String get paywallPrice => '3.49 \$ / month';
+  String get paywallPrice => '39 kr / month';
 
   @override
   String get paywallUpgradeButton => 'Upgrade to Pro';

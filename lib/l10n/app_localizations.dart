@@ -5,7 +5,11 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_da.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_fi.dart';
+import 'app_localizations_fr.dart';
+import 'app_localizations_nb.dart';
 import 'app_localizations_sv.dart';
 
 // ignore_for_file: type=lint
@@ -91,7 +95,11 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('da'),
     Locale('en'),
+    Locale('fi'),
+    Locale('fr'),
+    Locale('nb'),
     Locale('sv')
   ];
 
@@ -761,6 +769,72 @@ abstract class AppLocalizations {
   /// **'Swedish'**
   String get settingsLanguageSwedish;
 
+  /// No description provided for @settingsLanguageFrench.
+  ///
+  /// In en, this message translates to:
+  /// **'French'**
+  String get settingsLanguageFrench;
+
+  /// No description provided for @settingsLanguageNorwegian.
+  ///
+  /// In en, this message translates to:
+  /// **'Norwegian'**
+  String get settingsLanguageNorwegian;
+
+  /// No description provided for @settingsLanguageDanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Danish'**
+  String get settingsLanguageDanish;
+
+  /// No description provided for @settingsLanguageFinnish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finnish'**
+  String get settingsLanguageFinnish;
+
+  /// No description provided for @settingsCountryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country (traffic rules)'**
+  String get settingsCountryLabel;
+
+  /// No description provided for @settingsCountrySweden.
+  ///
+  /// In en, this message translates to:
+  /// **'🇸🇪 Sweden'**
+  String get settingsCountrySweden;
+
+  /// No description provided for @settingsCountryNorway.
+  ///
+  /// In en, this message translates to:
+  /// **'🇳🇴 Norway'**
+  String get settingsCountryNorway;
+
+  /// No description provided for @settingsCountryDenmark.
+  ///
+  /// In en, this message translates to:
+  /// **'🇩🇰 Denmark'**
+  String get settingsCountryDenmark;
+
+  /// No description provided for @settingsCountryFinland.
+  ///
+  /// In en, this message translates to:
+  /// **'🇫🇮 Finland'**
+  String get settingsCountryFinland;
+
+  /// No description provided for @settingsCountryFrance.
+  ///
+  /// In en, this message translates to:
+  /// **'🇫🇷 France'**
+  String get settingsCountryFrance;
+
+  /// No description provided for @settingsCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed limits and road rules adapt to the selected country.'**
+  String get settingsCountryHint;
+
   /// No description provided for @settingsLanguageCurrentlyUsing.
   ///
   /// In en, this message translates to:
@@ -1006,6 +1080,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No legally compliant route found for this vehicle type.'**
   String get mapRouteNotAllowedForVehicle;
+
+  /// No description provided for @routeBlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route not available'**
+  String get routeBlockedTitle;
+
+  /// No description provided for @routeBlockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No legal route was found to this destination for your {vehicleType}. The destination may be on or only reachable via roads that are not allowed for this vehicle type (e.g. motorways).'**
+  String routeBlockedBody(Object vehicleType);
+
+  /// No description provided for @routeBlockedOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get routeBlockedOk;
+
+  /// No description provided for @routeBlockedTryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different destination'**
+  String get routeBlockedTryOther;
 
   /// No description provided for @mapModeLabel2d.
   ///
@@ -1298,7 +1396,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPrice.
   ///
   /// In en, this message translates to:
-  /// **'3.49 \$ / month'**
+  /// **'39 kr / month'**
   String get paywallPrice;
 
   /// No description provided for @paywallUpgradeButton.
@@ -2013,7 +2111,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['en', 'sv'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2024,7 +2122,11 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'da': return AppLocalizationsDa();
     case 'en': return AppLocalizationsEn();
+    case 'fi': return AppLocalizationsFi();
+    case 'fr': return AppLocalizationsFr();
+    case 'nb': return AppLocalizationsNb();
     case 'sv': return AppLocalizationsSv();
   }
 

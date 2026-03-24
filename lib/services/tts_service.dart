@@ -14,7 +14,14 @@ class TtsService {
   SharedPreferences? _prefs;
   bool _initialized = false;
 
-  static const Map<String, String> _langMap = {'sv': 'sv-SE', 'en': 'en-US'};
+  static const Map<String, String> _langMap = {
+    'sv': 'sv-SE',
+    'en': 'en-US',
+    'fr': 'fr-FR',
+    'nb': 'nb-NO',
+    'da': 'da-DK',
+    'fi': 'fi-FI',
+  };
 
   Future<void> initialize() async {
     if (_initialized) return;

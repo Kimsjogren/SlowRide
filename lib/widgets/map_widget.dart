@@ -399,9 +399,10 @@ class _MapWidgetState extends State<MapWidget>
     _curLat += dLat * turnPosAlpha;
     _curLng += dLng * turnPosAlpha;
     _curHdg = _wrap360(_curHdg + diff * turnHdgAlpha);
-    // Keep arrow in sync with the smoothed camera heading — ValueNotifier
-    // notifies only the tiny _LocationDot subtree, zero setState cost.
-    _arrowHdg.value = _curHdg;
+    // Arrow shows the offset between where the camera faces and where the
+    // route actually goes. This way the arrow always points along the road
+    // even while the camera is smoothly catching up to turns.
+    _arrowHdg.value = _angleDiff(_curHdg, _filteredTgtHdg);
     final zoomAlpha = (dtSec * 2.8).clamp(0.04, 0.25);
     _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
     final zoom = _curZoom;
@@ -735,7 +736,7 @@ class _MapWidgetState extends State<MapWidget>
                         : Alignment.center,
                     child: _LocationDot(
                       headingNotifier: _arrowHdg,
-                      lockNorthUp: true,
+                      lockNorthUp: false,
                     ),
                   ),
                 ),
