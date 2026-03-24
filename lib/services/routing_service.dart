@@ -61,65 +61,116 @@ class RoutingService {
   static const String _providerGraphHopper = 'graphhopper';
   static const String _providerValhalla = 'valhalla';
 
+  /// Which provider actually served the last successful route.
+  /// UI can read this to show a subtle indicator when fallback is active.
+  String? lastUsedProvider;
+
+  /// Fallback chain: Valhalla → GraphHopper → OSRM public.
+  /// Always tries Valhalla first (best quality for slow vehicles).
+  /// Falls back automatically on timeout, HTTP errors, or connection failures.
+  static const _fallbackChain = [
+    _providerValhalla,
+    _providerGraphHopper,
+    _providerOsrmPublic,
+  ];
+
   Future<RouteResult> getRoute({
     required LatLng origin,
     required LatLng destination,
     required String vehicleType,
   }) async {
-    final provider = BackendConfig.routingProvider;
-    // Use the user's chosen speed (they may have adjusted it from the default).
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
-    late final RouteResult route;
 
-    if (provider == _providerGraphHopper) {
-      route = await _getRouteFromGraphHopper(
+    final configuredProvider = BackendConfig.routingProvider;
+
+    // Build provider order: configured provider first, then fallback chain.
+    final providers = <String>[configuredProvider];
+    for (final p in _fallbackChain) {
+      if (!providers.contains(p)) providers.add(p);
+    }
+
+    Object? lastError;
+    for (final provider in providers) {
+      try {
+        final route = await _routeWith(
+          provider: provider,
+          origin: origin,
+          destination: destination,
+          vehicleType: vehicleType,
+          userSpeedKmh: userSpeed,
+          countryCode: country,
+        );
+        lastUsedProvider = provider;
+        return route;
+      } on RoutingException catch (e) {
+        // Only retry on provider-level failures, not on "no route found" etc.
+        if (e.code == RoutingErrorCode.providerUnavailable) {
+          lastError = e;
+          continue;
+        }
+        rethrow;
+      } catch (e) {
+        // Network errors, timeouts, JSON parse failures → try next provider.
+        lastError = e;
+        continue;
+      }
+    }
+
+    // All providers failed.
+    if (lastError is RoutingException) throw lastError;
+    throw const RoutingException(RoutingErrorCode.providerUnavailable);
+  }
+
+  Future<RouteResult> _routeWith({
+    required String provider,
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required double userSpeedKmh,
+    required String countryCode,
+  }) async {
+    if (provider == _providerValhalla) {
+      return _getRouteFromValhalla(
         origin: origin,
         destination: destination,
         vehicleType: vehicleType,
-        userSpeedKmh: userSpeed,
-        countryCode: country,
+        userSpeedKmh: userSpeedKmh,
+        countryCode: countryCode,
+      );
+    } else if (provider == _providerGraphHopper) {
+      return _getRouteFromGraphHopper(
+        origin: origin,
+        destination: destination,
+        vehicleType: vehicleType,
+        userSpeedKmh: userSpeedKmh,
+        countryCode: countryCode,
       );
     } else if (provider == _providerOpenRouteService) {
-      route = await _getRouteFromOpenRouteService(
+      final route = await _getRouteFromOpenRouteService(
         origin: origin,
         destination: destination,
         vehicleType: vehicleType,
-        userSpeedKmh: userSpeed,
-        countryCode: country,
+        userSpeedKmh: userSpeedKmh,
+        countryCode: countryCode,
       );
-      // Only validate speed for ORS — it returns actual vehicle travel times.
       _validateRouteSpeed(
         route: route,
         vehicleType: vehicleType,
-        countryCode: country,
+        countryCode: countryCode,
       );
+      return route;
     } else if (provider == _providerOsrmSelfHosted ||
         provider == _providerOsrmPublic) {
-      route = await _getRouteFromOsrm(
+      return _getRouteFromOsrm(
         origin: origin,
         destination: destination,
         vehicleType: vehicleType,
-        userSpeedKmh: userSpeed,
-        countryCode: country,
+        userSpeedKmh: userSpeedKmh,
+        countryCode: countryCode,
       );
-      // OSRM calculates car travel times, not slow-vehicle times —
-      // skip speed validation to avoid false positives.
-    } else if (provider == _providerValhalla) {
-      route = await _getRouteFromValhalla(
-        origin: origin,
-        destination: destination,
-        vehicleType: vehicleType,
-        userSpeedKmh: userSpeed,
-        countryCode: country,
-      );
-      // Valhalla uses our custom costing options with correct max speeds,
-      // so duration is already accurate for slow vehicles.
-    } else {
-      throw const RoutingException(RoutingErrorCode.unknownProvider);
     }
-
-    return route;
+    throw const RoutingException(RoutingErrorCode.unknownProvider);
   }
 
   Future<RouteResult> _getRouteFromGraphHopper({
@@ -384,11 +435,13 @@ class RoutingService {
     });
 
     final url = Uri.parse('$baseUrl/route');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: requestBody,
-    );
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: requestBody,
+        )
+        .timeout(const Duration(seconds: 8));
 
     if (response.statusCode != 200) {
       throw const RoutingException(RoutingErrorCode.providerUnavailable);
