@@ -80,7 +80,7 @@ class CountryVehicleRules {
     // A-traktor: motorväg & motortrafikled förbjudet, max 30 km/h.
     'SE_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.0,
@@ -88,7 +88,7 @@ class CountryVehicleRules {
     // Mopedbil: motorväg & motortrafikled förbjudet, max 45 km/h.
     'SE_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.0,
@@ -96,7 +96,7 @@ class CountryVehicleRules {
     // Traktor: motorväg förbjudet, färja tillåten.
     'SE_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.5,
@@ -107,14 +107,14 @@ class CountryVehicleRules {
     // Ferries are common in Norway and generally accessible to slow vehicles.
     'NO_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
     ),
     'NO_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
@@ -122,7 +122,7 @@ class CountryVehicleRules {
     // Traktor: ferries very common and allowed in Norway.
     'NO_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.7,
@@ -132,21 +132,21 @@ class CountryVehicleRules {
     // EPA-traktor: motorvej & motortrafikvej forbudt, max 30 km/h.
     'DK_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'DK_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'DK_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.5,
@@ -157,7 +157,7 @@ class CountryVehicleRules {
     // driven in Finland it remains construction-limited to 30 km/h.
     'FI_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 30,
+      maxLegalSpeedKmh: 35,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -165,7 +165,7 @@ class CountryVehicleRules {
     // Mopoauto: 45 km/h as in all EU countries.
     'FI_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -173,7 +173,7 @@ class CountryVehicleRules {
     // Traktori: up to 40 km/h in Finland.
     'FI_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 40,
-      maxLegalSpeedKmh: 40,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
@@ -184,14 +184,14 @@ class CountryVehicleRules {
     // Autoroute & voie express forbidden, max 45 km/h.
     'FR_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'FR_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 50,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,

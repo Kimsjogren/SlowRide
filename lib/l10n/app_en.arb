@@ -446,5 +446,17 @@
   "mfaRecommendTitle": "Protect your account",
   "mfaRecommendBody": "We recommend enabling two-factor authentication to protect your account. You can use an authenticator app like Google Authenticator or Authy.",
   "mfaRecommendSetup": "Enable now",
-  "mfaRecommendLater": "Later"
+  "mfaRecommendLater": "Later",
+  "favHome": "Home",
+  "favSchool": "School",
+  "favWork": "Work",
+  "favAddTitle": "Save place",
+  "favLabelHint": "Name (e.g. Friend)",
+  "favSaved": "Place saved",
+  "favDeleted": "Place removed",
+  "favDeleteConfirm": "Remove {name}?",
+  "favSetAs": "Save as {type}",
+  "favCustom": "Other favorite",
+  "ttsVoiceHint": "Tip: Download better voices in Settings → Accessibility → Spoken Content → Voices",
+  "ttsVoiceHintDismiss": "OK"
 }

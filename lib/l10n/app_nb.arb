@@ -446,5 +446,17 @@
   "mfaRecommendTitle": "Beskytt kontoen din",
   "mfaRecommendBody": "Vi anbefaler å aktivere tofaktorautentisering for å beskytte kontoen din. Du kan bruke en autentiseringsapp som Google Authenticator eller Authy.",
   "mfaRecommendSetup": "Aktiver nå",
-  "mfaRecommendLater": "Senere"
+  "mfaRecommendLater": "Senere",
+  "favHome": "Hjem",
+  "favSchool": "Skole",
+  "favWork": "Jobb",
+  "favAddTitle": "Lagre sted",
+  "favLabelHint": "Navn (f.eks. Kompis)",
+  "favSaved": "Sted lagret",
+  "favDeleted": "Sted fjernet",
+  "favDeleteConfirm": "Fjerne {name}?",
+  "favSetAs": "Lagre som {type}",
+  "favCustom": "Annen favoritt",
+  "ttsVoiceHint": "Tips: Last ned bedre stemmer i Innstillinger → Tilgjengelighet → Opplest innhold → Stemmer",
+  "ttsVoiceHintDismiss": "OK"
 }

@@ -1062,4 +1062,44 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get mfaRecommendLater => 'Myöhemmin';
+
+  @override
+  String get favHome => 'Koti';
+
+  @override
+  String get favSchool => 'Koulu';
+
+  @override
+  String get favWork => 'Työ';
+
+  @override
+  String get favAddTitle => 'Tallenna paikka';
+
+  @override
+  String get favLabelHint => 'Nimi (esim. Kaveri)';
+
+  @override
+  String get favSaved => 'Paikka tallennettu';
+
+  @override
+  String get favDeleted => 'Paikka poistettu';
+
+  @override
+  String favDeleteConfirm(Object name) {
+    return 'Poista $name?';
+  }
+
+  @override
+  String favSetAs(Object type) {
+    return 'Tallenna kohteeksi $type';
+  }
+
+  @override
+  String get favCustom => 'Muu suosikki';
+
+  @override
+  String get ttsVoiceHint => 'Vinkki: Lataa parempia ääniä kohdasta Asetukset → Esteettömyys → Puhuttu sisältö → Äänet';
+
+  @override
+  String get ttsVoiceHintDismiss => 'OK';
 }

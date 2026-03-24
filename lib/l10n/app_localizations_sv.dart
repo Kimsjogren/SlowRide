@@ -1062,4 +1062,44 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get mfaRecommendLater => 'Senare';
+
+  @override
+  String get favHome => 'Hem';
+
+  @override
+  String get favSchool => 'Skola';
+
+  @override
+  String get favWork => 'Jobb';
+
+  @override
+  String get favAddTitle => 'Spara plats';
+
+  @override
+  String get favLabelHint => 'Namn (t.ex. Kompis)';
+
+  @override
+  String get favSaved => 'Plats sparad';
+
+  @override
+  String get favDeleted => 'Plats borttagen';
+
+  @override
+  String favDeleteConfirm(Object name) {
+    return 'Ta bort $name?';
+  }
+
+  @override
+  String favSetAs(Object type) {
+    return 'Spara som $type';
+  }
+
+  @override
+  String get favCustom => 'Annan favorit';
+
+  @override
+  String get ttsVoiceHint => 'Tips: Ladda ner bättre röster i Inställningar → Hjälpmedel → Uppläsning och tal → Röster';
+
+  @override
+  String get ttsVoiceHintDismiss => 'OK';
 }

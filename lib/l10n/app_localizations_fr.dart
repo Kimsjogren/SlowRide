@@ -1062,4 +1062,44 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get mfaRecommendLater => 'Plus tard';
+
+  @override
+  String get favHome => 'Domicile';
+
+  @override
+  String get favSchool => 'École';
+
+  @override
+  String get favWork => 'Travail';
+
+  @override
+  String get favAddTitle => 'Enregistrer le lieu';
+
+  @override
+  String get favLabelHint => 'Nom (ex. Ami)';
+
+  @override
+  String get favSaved => 'Lieu enregistré';
+
+  @override
+  String get favDeleted => 'Lieu supprimé';
+
+  @override
+  String favDeleteConfirm(Object name) {
+    return 'Supprimer $name ?';
+  }
+
+  @override
+  String favSetAs(Object type) {
+    return 'Enregistrer comme $type';
+  }
+
+  @override
+  String get favCustom => 'Autre favori';
+
+  @override
+  String get ttsVoiceHint => 'Astuce : Téléchargez de meilleures voix dans Réglages → Accessibilité → Contenu énoncé → Voix';
+
+  @override
+  String get ttsVoiceHintDismiss => 'OK';
 }

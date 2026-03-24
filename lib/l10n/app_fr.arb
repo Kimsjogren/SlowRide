@@ -446,5 +446,17 @@
   "mfaRecommendTitle": "Protégez votre compte",
   "mfaRecommendBody": "Nous vous recommandons d'activer l'authentification à deux facteurs pour protéger votre compte. Vous pouvez utiliser une application comme Google Authenticator ou Authy.",
   "mfaRecommendSetup": "Activer maintenant",
-  "mfaRecommendLater": "Plus tard"
+  "mfaRecommendLater": "Plus tard",
+  "favHome": "Domicile",
+  "favSchool": "École",
+  "favWork": "Travail",
+  "favAddTitle": "Enregistrer le lieu",
+  "favLabelHint": "Nom (ex. Ami)",
+  "favSaved": "Lieu enregistré",
+  "favDeleted": "Lieu supprimé",
+  "favDeleteConfirm": "Supprimer {name} ?",
+  "favSetAs": "Enregistrer comme {type}",
+  "favCustom": "Autre favori",
+  "ttsVoiceHint": "Astuce : Téléchargez de meilleures voix dans Réglages → Accessibilité → Contenu énoncé → Voix",
+  "ttsVoiceHintDismiss": "OK"
 }

@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/models/alert_model.dart';
@@ -861,28 +862,348 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     });
   }
 
-  Future<void> _fetchSuggestions(String query) async {
-    try {
-      final codes = CountryVehicleRules.supportedCountries.join(',');
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': query,
-        'format': 'jsonv2',
-        'addressdetails': '1',
-        'limit': '6',
-        'countrycodes': codes,
-      });
-      final response = await http.get(
-        uri,
+  String _normalizeSearchText(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll('å', 'a')
+        .replaceAll('ä', 'a')
+        .replaceAll('ö', 'o')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _normalizeHouseNumber(String input) {
+    return input.toUpperCase().replaceAll(RegExp(r'\s+'), '');
+  }
+
+  String _mapboxLanguageCode() {
+    final appLang = UserPreferencesService.instance.languageCode.value;
+    const map = {
+      'sv': 'sv',
+      'en': 'en',
+      'fr': 'fr',
+      'nb': 'no',
+      'da': 'da',
+      'fi': 'fi',
+    };
+    return map[appLang] ?? 'sv';
+  }
+
+  String _mapboxContextValue(List<dynamic> context, List<String> prefixes) {
+    for (final c in context) {
+      if (c is! Map) continue;
+      final id = (c['id'] ?? '').toString();
+      if (prefixes.any((p) => id.startsWith(p))) {
+        final text = (c['text'] ?? c['name'] ?? '').toString().trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '';
+  }
+
+  Map<String, dynamic>? _mapboxFeatureToResult(Map<String, dynamic> feature) {
+    final center = feature['center'];
+    if (center is! List || center.length < 2) return null;
+    final lon = (center[0]).toString();
+    final lat = (center[1]).toString();
+
+    final context = (feature['context'] is List)
+        ? (feature['context'] as List)
+        : const [];
+    final placeTypes = (feature['place_type'] is List)
+        ? (feature['place_type'] as List)
+        : const [];
+    final placeType = placeTypes.isNotEmpty ? placeTypes.first.toString() : '';
+    final properties = (feature['properties'] is Map)
+        ? (feature['properties'] as Map)
+        : const {};
+
+    final featureText = (feature['text'] ?? '').toString().trim();
+    final road = placeType == 'poi'
+        ? _mapboxContextValue(context, ['address.'])
+        : (feature['text'] ?? feature['place_name'] ?? '').toString().trim();
+    final houseNumber = (properties['address'] ?? '').toString().trim();
+    final city = _mapboxContextValue(context, ['place.', 'locality.']);
+    final suburb = _mapboxContextValue(context, ['neighborhood.', 'district.']);
+    final municipality = _mapboxContextValue(context, ['region.']);
+    final country = _mapboxContextValue(context, ['country.']);
+
+    final address = <String, String>{
+      if (road.isNotEmpty) 'road': road,
+      if (houseNumber.isNotEmpty) 'house_number': houseNumber,
+      if (suburb.isNotEmpty) 'suburb': suburb,
+      if (city.isNotEmpty) 'city': city,
+      if (municipality.isNotEmpty) 'municipality': municipality,
+      if (country.isNotEmpty) 'country': country,
+    };
+
+    final title = placeType == 'poi' && featureText.isNotEmpty
+        ? featureText
+        : road.isNotEmpty
+        ? (houseNumber.isNotEmpty ? '$road $houseNumber' : road)
+        : featureText;
+
+    return {
+      'lat': lat,
+      'lon': lon,
+      'place_id': feature['id']?.toString() ?? '$lat,$lon',
+      'importance': feature['relevance'] ?? 0.0,
+      'name': title,
+      'display_name': (feature['place_name'] ?? feature['text'] ?? title)
+          .toString(),
+      'address': address,
+      '_mapbox_place_type': placeType,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchMapboxResults(
+    String query, {
+    int limit = 12,
+  }) async {
+    final token = BackendConfig.mapboxAccessToken.trim();
+    if (token.isEmpty) return const [];
+
+    final countries = CountryVehicleRules.supportedCountries
+        .map((c) => c.toLowerCase())
+        .join(',');
+    final path =
+        '/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json';
+    final params = <String, String>{
+      'access_token': token,
+      'autocomplete': 'true',
+      'limit': '$limit',
+      'country': countries,
+      'language': _mapboxLanguageCode(),
+      'types': 'poi,address,street,place,locality,neighborhood',
+    };
+
+    if (_myLocation != null) {
+      params['proximity'] =
+          '${_myLocation!.longitude},${_myLocation!.latitude}';
+    }
+
+    final uri = Uri.https('api.mapbox.com', path, params);
+    final response = await http.get(
+      uri,
+      headers: const {
+        'User-Agent': 'CruizX/1.0 (mapbox-search)',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode != 200) return const [];
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map || decoded['features'] is! List) return const [];
+    final features = (decoded['features'] as List)
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final converted = <Map<String, dynamic>>[];
+    for (final f in features) {
+      final mapped = _mapboxFeatureToResult(f);
+      if (mapped != null) converted.add(mapped);
+    }
+    return converted;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchNominatimResults(
+    String query, {
+    int limit = 20,
+  }) async {
+    final codes = CountryVehicleRules.supportedCountries
+        .join(',')
+        .toLowerCase();
+    final baseParams = <String, String>{
+      'q': query,
+      'format': 'jsonv2',
+      'addressdetails': '1',
+      'limit': '$limit',
+      'dedupe': '1',
+      'countrycodes': codes,
+    };
+
+    final hnMatch = RegExp(
+      r'^\s*(.+?)\s+(\d+\s*[A-Za-z]?)\s*$',
+    ).firstMatch(query);
+    final structuredParams = <String, String>{...baseParams};
+    if (hnMatch != null) {
+      structuredParams['street'] = '${hnMatch.group(1)} ${hnMatch.group(2)}';
+      structuredParams.remove('q');
+    }
+
+    if (_myLocation != null) {
+      final lat = _myLocation!.latitude;
+      final lon = _myLocation!.longitude;
+      baseParams['viewbox'] =
+          '${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}';
+      structuredParams['viewbox'] = baseParams['viewbox']!;
+    }
+
+    final response = await http.get(
+      Uri.https('nominatim.openstreetmap.org', '/search', baseParams),
+      headers: const {
+        'User-Agent': 'CruizX/1.0 (address-search)',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode != 200) return const [];
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return const [];
+    var raw = decoded.whereType<Map<String, dynamic>>().toList();
+
+    if (hnMatch != null) {
+      final structuredResponse = await http.get(
+        Uri.https('nominatim.openstreetmap.org', '/search', structuredParams),
         headers: const {
           'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );
-      if (response.statusCode != 200 || !mounted) return;
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List) return;
+      if (structuredResponse.statusCode == 200) {
+        final structuredDecoded = jsonDecode(structuredResponse.body);
+        if (structuredDecoded is List) {
+          raw = [
+            ...raw,
+            ...structuredDecoded.whereType<Map<String, dynamic>>(),
+          ];
+        }
+      }
+    }
+
+    return raw;
+  }
+
+  String _roadFromResult(Map<String, dynamic> result) {
+    final address = result['address'];
+    if (address is Map) {
+      String getPart(String key) => (address[key] ?? '').toString().trim();
+      return [
+        getPart('road'),
+        getPart('pedestrian'),
+        getPart('residential'),
+        getPart('street'),
+        getPart('footway'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+    }
+    return '';
+  }
+
+  String _houseNumberFromResult(Map<String, dynamic> result) {
+    final address = result['address'];
+    if (address is Map) {
+      final hn = (address['house_number'] ?? '').toString().trim();
+      if (hn.isNotEmpty) return hn;
+    }
+    final display = (result['display_name']?.toString() ?? '').trim();
+    if (display.isNotEmpty) {
+      final first = display.split(',').first.trim();
+      if (RegExp(r'^\d+[A-Za-z]?$').hasMatch(first)) return first;
+    }
+    return '';
+  }
+
+  double _scoreSuggestion(
+    Map<String, dynamic> result,
+    String query,
+    RegExpMatch? hnMatch,
+  ) {
+    final queryNorm = _normalizeSearchText(query);
+    final titleNorm = _normalizeSearchText(_addressTitleFromResult(result));
+    final subtitleNorm = _normalizeSearchText(
+      _addressSubtitleFromResult(result),
+    );
+    final roadNorm = _normalizeSearchText(_roadFromResult(result));
+    final houseNorm = _normalizeHouseNumber(_houseNumberFromResult(result));
+    final importance =
+        double.tryParse(result['importance']?.toString() ?? '') ?? 0.0;
+
+    double score = importance * 50;
+    if (titleNorm == queryNorm) score += 400;
+    if (titleNorm.startsWith(queryNorm)) score += 240;
+    if (titleNorm.contains(queryNorm)) score += 120;
+    if ('$titleNorm $subtitleNorm'.contains(queryNorm)) score += 80;
+
+    if (hnMatch != null) {
+      final queryRoad = _normalizeSearchText(hnMatch.group(1) ?? '');
+      final queryHouse = _normalizeHouseNumber(hnMatch.group(2) ?? '');
+      final roadHit =
+          roadNorm == queryRoad ||
+          roadNorm.startsWith(queryRoad) ||
+          queryRoad.startsWith(roadNorm);
+      final houseHit = houseNorm == queryHouse;
+      if (roadHit) score += 250;
+      if (houseHit) score += 400;
+      if (roadHit && houseHit) score += 450;
+      if (roadHit && !houseHit && houseNorm.isNotEmpty) score -= 220;
+      if (roadHit && houseNorm.isEmpty) score -= 300;
+    }
+
+    final lat = double.tryParse(result['lat']?.toString() ?? '');
+    final lon = double.tryParse(result['lon']?.toString() ?? '');
+    if (_myLocation != null && lat != null && lon != null) {
+      final m = Geolocator.distanceBetween(
+        _myLocation!.latitude,
+        _myLocation!.longitude,
+        lat,
+        lon,
+      );
+      score += math.max(0, 180 - (m / 1000) * 20);
+    }
+
+    return score;
+  }
+
+  List<Map<String, dynamic>> _rankAndDedupeSuggestions(
+    List<Map<String, dynamic>> raw,
+    String query,
+  ) {
+    final hnMatch = RegExp(
+      r'^\s*(.+?)\s+(\d+\s*[A-Za-z]?)\s*$',
+    ).firstMatch(query);
+    var candidates = raw;
+
+    if (hnMatch != null) {
+      final qRoad = _normalizeSearchText(hnMatch.group(1) ?? '');
+      final qHouse = _normalizeHouseNumber(hnMatch.group(2) ?? '');
+
+      final strict = raw.where((r) {
+        final road = _normalizeSearchText(_roadFromResult(r));
+        final house = _normalizeHouseNumber(_houseNumberFromResult(r));
+        final roadHit =
+            road == qRoad || road.startsWith(qRoad) || qRoad.startsWith(road);
+        return roadHit && house == qHouse;
+      }).toList();
+
+      if (strict.isNotEmpty) candidates = strict;
+    }
+
+    final scored =
+        candidates
+            .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
+            .toList()
+          ..sort((a, b) => b.score.compareTo(a.score));
+
+    final seen = <String>{};
+    final deduped = <Map<String, dynamic>>[];
+    for (final s in scored) {
+      final title = _normalizeSearchText(_addressTitleFromResult(s.item));
+      final subtitle = _normalizeSearchText(_addressSubtitleFromResult(s.item));
+      final key = '$title|$subtitle';
+      if (seen.add(key)) deduped.add(s.item);
+      if (deduped.length >= 6) break;
+    }
+    return deduped;
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    try {
+      var raw = await _fetchMapboxResults(query, limit: 12);
+      if (raw.isEmpty) {
+        raw = await _fetchNominatimResults(query, limit: 20);
+      }
+      if (!mounted) return;
+      final ranked = _rankAndDedupeSuggestions(raw, query);
       setState(() {
-        _suggestions = decoded.whereType<Map<String, dynamic>>().toList();
+        _suggestions = ranked;
         _showSuggestions = _suggestions.isNotEmpty;
       });
     } catch (_) {}
@@ -894,32 +1215,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     if (query.isEmpty) return;
     setState(() => _showSuggestions = false);
     try {
-      final codes = CountryVehicleRules.supportedCountries.join(',');
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': query,
-        'format': 'jsonv2',
-        'addressdetails': '1',
-        'limit': '1',
-        'countrycodes': codes,
-      });
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'CruizX/1.0 (address-search)',
-          'Accept': 'application/json',
-        },
-      );
-      if (response.statusCode != 200) throw StateError('lookup_failed');
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List || decoded.isEmpty) {
+      var raw = await _fetchMapboxResults(query, limit: 12);
+      if (raw.isEmpty) {
+        raw = await _fetchNominatimResults(query, limit: 20);
+      }
+      if (raw.isEmpty) {
         if (!mounted) return;
         setState(() {
           _routingStatus = l10n.mapAddressNotFound;
         });
         return;
       }
-      final first = decoded.first;
-      if (first is! Map<String, dynamic>) throw StateError('lookup_failed');
+      final ranked = _rankAndDedupeSuggestions(raw, query);
+      if (ranked.isEmpty) throw StateError('lookup_failed');
+      final first = ranked.first;
       final lat = double.tryParse(first['lat']?.toString() ?? '');
       final lon = double.tryParse(first['lon']?.toString() ?? '');
       if (lat == null || lon == null) throw StateError('lookup_failed');

@@ -2100,6 +2100,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Later'**
   String get mfaRecommendLater;
+
+  /// No description provided for @favHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get favHome;
+
+  /// No description provided for @favSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'School'**
+  String get favSchool;
+
+  /// No description provided for @favWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get favWork;
+
+  /// No description provided for @favAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save place'**
+  String get favAddTitle;
+
+  /// No description provided for @favLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (e.g. Friend)'**
+  String get favLabelHint;
+
+  /// No description provided for @favSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Place saved'**
+  String get favSaved;
+
+  /// No description provided for @favDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Place removed'**
+  String get favDeleted;
+
+  /// No description provided for @favDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String favDeleteConfirm(Object name);
+
+  /// No description provided for @favSetAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as {type}'**
+  String favSetAs(Object type);
+
+  /// No description provided for @favCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Other favorite'**
+  String get favCustom;
+
+  /// No description provided for @ttsVoiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: Download better voices in Settings → Accessibility → Spoken Content → Voices'**
+  String get ttsVoiceHint;
+
+  /// No description provided for @ttsVoiceHintDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ttsVoiceHintDismiss;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

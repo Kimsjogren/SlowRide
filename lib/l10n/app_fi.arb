@@ -446,5 +446,17 @@
   "mfaRecommendTitle": "Suojaa tilisi",
   "mfaRecommendBody": "Suosittelemme kaksivaiheisen tunnistautumisen käyttöönottoa tilisi suojaamiseksi. Voit käyttää tunnistautumissovellusta, kuten Google Authenticator tai Authy.",
   "mfaRecommendSetup": "Ota käyttöön nyt",
-  "mfaRecommendLater": "Myöhemmin"
+  "mfaRecommendLater": "Myöhemmin",
+  "favHome": "Koti",
+  "favSchool": "Koulu",
+  "favWork": "Työ",
+  "favAddTitle": "Tallenna paikka",
+  "favLabelHint": "Nimi (esim. Kaveri)",
+  "favSaved": "Paikka tallennettu",
+  "favDeleted": "Paikka poistettu",
+  "favDeleteConfirm": "Poista {name}?",
+  "favSetAs": "Tallenna kohteeksi {type}",
+  "favCustom": "Muu suosikki",
+  "ttsVoiceHint": "Vinkki: Lataa parempia ääniä kohdasta Asetukset → Esteettömyys → Puhuttu sisältö → Äänet",
+  "ttsVoiceHintDismiss": "OK"
 }

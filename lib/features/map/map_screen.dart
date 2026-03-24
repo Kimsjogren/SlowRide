@@ -7,11 +7,13 @@ import 'package:slowride/l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/services/favorite_places_service.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/models/alert_model.dart';
@@ -119,6 +121,7 @@ class _MapScreenState extends State<MapScreen> {
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Lazy-load prefs for speed calibration (fire-and-forget).
     SpeedCalibrationService.instance.initialize();
+    FavoritePlacesService.instance.initialize();
     // Start community alerts polling (immediate + every 30 s).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadAlerts();
@@ -268,28 +271,363 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
-  Future<void> _fetchSuggestions(String query) async {
-    try {
-      final codes = CountryVehicleRules.supportedCountries.join(',');
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': query,
-        'format': 'jsonv2',
-        'addressdetails': '1',
-        'limit': '6',
-        'countrycodes': codes,
-      });
-      final response = await http.get(
-        uri,
+  String _normalizeSearchText(String input) {
+    return input
+        .toLowerCase()
+        .replaceAll('å', 'a')
+        .replaceAll('ä', 'a')
+        .replaceAll('ö', 'o')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _normalizeHouseNumber(String input) {
+    return input.toUpperCase().replaceAll(RegExp(r'\s+'), '');
+  }
+
+  String _mapboxLanguageCode() {
+    final appLang = UserPreferencesService.instance.languageCode.value;
+    const map = {
+      'sv': 'sv',
+      'en': 'en',
+      'fr': 'fr',
+      'nb': 'no',
+      'da': 'da',
+      'fi': 'fi',
+    };
+    return map[appLang] ?? 'sv';
+  }
+
+  String _mapboxContextValue(List<dynamic> context, List<String> prefixes) {
+    for (final c in context) {
+      if (c is! Map) continue;
+      final id = (c['id'] ?? '').toString();
+      if (prefixes.any((p) => id.startsWith(p))) {
+        final text = (c['text'] ?? c['name'] ?? '').toString().trim();
+        if (text.isNotEmpty) return text;
+      }
+    }
+    return '';
+  }
+
+  Map<String, dynamic>? _mapboxFeatureToResult(Map<String, dynamic> feature) {
+    final center = feature['center'];
+    if (center is! List || center.length < 2) return null;
+    final lon = (center[0]).toString();
+    final lat = (center[1]).toString();
+
+    final context = (feature['context'] is List)
+        ? (feature['context'] as List)
+        : const [];
+    final placeTypes = (feature['place_type'] is List)
+        ? (feature['place_type'] as List)
+        : const [];
+    final placeType = placeTypes.isNotEmpty ? placeTypes.first.toString() : '';
+    final properties = (feature['properties'] is Map)
+        ? (feature['properties'] as Map)
+        : const {};
+
+    final featureText = (feature['text'] ?? '').toString().trim();
+    final road = placeType == 'poi'
+        ? _mapboxContextValue(context, ['address.'])
+        : (feature['text'] ?? feature['place_name'] ?? '').toString().trim();
+    final houseNumber = (properties['address'] ?? '').toString().trim();
+    final city = _mapboxContextValue(context, ['place.', 'locality.']);
+    final suburb = _mapboxContextValue(context, ['neighborhood.', 'district.']);
+    final municipality = _mapboxContextValue(context, ['region.']);
+    final country = _mapboxContextValue(context, ['country.']);
+
+    final address = <String, String>{
+      if (road.isNotEmpty) 'road': road,
+      if (houseNumber.isNotEmpty) 'house_number': houseNumber,
+      if (suburb.isNotEmpty) 'suburb': suburb,
+      if (city.isNotEmpty) 'city': city,
+      if (municipality.isNotEmpty) 'municipality': municipality,
+      if (country.isNotEmpty) 'country': country,
+    };
+
+    final title = placeType == 'poi' && featureText.isNotEmpty
+        ? featureText
+        : road.isNotEmpty
+        ? (houseNumber.isNotEmpty ? '$road $houseNumber' : road)
+        : featureText;
+
+    return {
+      'lat': lat,
+      'lon': lon,
+      'place_id': feature['id']?.toString() ?? '$lat,$lon',
+      'importance': feature['relevance'] ?? 0.0,
+      'name': title,
+      'display_name': (feature['place_name'] ?? feature['text'] ?? title)
+          .toString(),
+      'address': address,
+      '_mapbox_place_type': placeType,
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchMapboxResults(
+    String query, {
+    int limit = 10,
+  }) async {
+    final token = BackendConfig.mapboxAccessToken.trim();
+    if (token.isEmpty) return const [];
+
+    final countries = CountryVehicleRules.supportedCountries
+        .map((c) => c.toLowerCase())
+        .join(',');
+    final path =
+        '/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json';
+    final params = <String, String>{
+      'access_token': token,
+      'autocomplete': 'true',
+      'limit': '$limit',
+      'country': countries,
+      'language': _mapboxLanguageCode(),
+      'types': 'poi,address,street,place,locality,neighborhood',
+    };
+
+    if (_currentLocation != null) {
+      params['proximity'] =
+          '${_currentLocation!.longitude},${_currentLocation!.latitude}';
+    }
+
+    final uri = Uri.https('api.mapbox.com', path, params);
+    final response = await http.get(
+      uri,
+      headers: const {
+        'User-Agent': 'CruizX/1.0 (mapbox-search)',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode != 200) return const [];
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map || decoded['features'] is! List) return const [];
+    final features = (decoded['features'] as List)
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final converted = <Map<String, dynamic>>[];
+    for (final f in features) {
+      final mapped = _mapboxFeatureToResult(f);
+      if (mapped != null) converted.add(mapped);
+    }
+    return converted;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
+    String query, {
+    int limit = 15,
+  }) async {
+    var raw = await _fetchMapboxResults(query, limit: limit);
+    if (raw.isEmpty) {
+      raw = await _fetchNominatimResults(query, limit: math.max(limit, 25));
+    }
+    return raw;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchNominatimResults(
+    String query, {
+    int limit = 25,
+  }) async {
+    final codes = CountryVehicleRules.supportedCountries
+        .join(',')
+        .toLowerCase();
+    final baseParams = <String, String>{
+      'format': 'jsonv2',
+      'addressdetails': '1',
+      'limit': '$limit',
+      'dedupe': '1',
+      'countrycodes': codes,
+      'q': query,
+    };
+
+    final hnMatch = RegExp(
+      r'^\s*(.+?)\s+(\d+\s*[A-Za-z]?)\s*$',
+    ).firstMatch(query);
+    final structuredParams = <String, String>{...baseParams};
+    if (hnMatch != null) {
+      structuredParams['street'] = '${hnMatch.group(1)} ${hnMatch.group(2)}';
+      structuredParams.remove('q');
+    }
+
+    if (_currentLocation != null) {
+      final lat = _currentLocation!.latitude;
+      final lon = _currentLocation!.longitude;
+      baseParams['viewbox'] =
+          '${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}';
+      structuredParams['viewbox'] = baseParams['viewbox']!;
+    }
+
+    final response = await http.get(
+      Uri.https('nominatim.openstreetmap.org', '/search', baseParams),
+      headers: const {
+        'User-Agent': 'CruizX/1.0 (address-search)',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode != 200) return const [];
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return const [];
+    var raw = decoded.whereType<Map<String, dynamic>>().toList();
+
+    if (hnMatch != null) {
+      final structuredResponse = await http.get(
+        Uri.https('nominatim.openstreetmap.org', '/search', structuredParams),
         headers: const {
           'User-Agent': 'CruizX/1.0 (address-search)',
           'Accept': 'application/json',
         },
       );
-      if (response.statusCode != 200 || !mounted) return;
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List) return;
+      if (structuredResponse.statusCode == 200) {
+        final structuredDecoded = jsonDecode(structuredResponse.body);
+        if (structuredDecoded is List) {
+          raw = [
+            ...raw,
+            ...structuredDecoded.whereType<Map<String, dynamic>>(),
+          ];
+        }
+      }
+    }
+
+    return raw;
+  }
+
+  String _roadFromResult(Map<String, dynamic> result) {
+    final address = result['address'];
+    if (address is Map) {
+      String getPart(String key) => (address[key] ?? '').toString().trim();
+      return [
+        getPart('road'),
+        getPart('pedestrian'),
+        getPart('residential'),
+        getPart('street'),
+        getPart('footway'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+    }
+    return '';
+  }
+
+  String _houseNumberFromResult(Map<String, dynamic> result) {
+    final address = result['address'];
+    if (address is Map) {
+      final hn = (address['house_number'] ?? '').toString().trim();
+      if (hn.isNotEmpty) return hn;
+    }
+    final display = (result['display_name']?.toString() ?? '').trim();
+    if (display.isNotEmpty) {
+      final first = display.split(',').first.trim();
+      if (RegExp(r'^\d+[A-Za-z]?$').hasMatch(first)) return first;
+    }
+    return '';
+  }
+
+  double _scoreSuggestion(
+    Map<String, dynamic> result,
+    String query,
+    RegExpMatch? hnMatch,
+  ) {
+    final queryNorm = _normalizeSearchText(query);
+    final titleNorm = _normalizeSearchText(_addressTitleFromResult(result));
+    final subtitleNorm = _normalizeSearchText(
+      _addressSubtitleFromResult(result),
+    );
+    final roadNorm = _normalizeSearchText(_roadFromResult(result));
+    final houseNorm = _normalizeHouseNumber(_houseNumberFromResult(result));
+    final importance =
+        double.tryParse(result['importance']?.toString() ?? '') ?? 0.0;
+
+    double score = importance * 50;
+
+    if (titleNorm == queryNorm) score += 400;
+    if (titleNorm.startsWith(queryNorm)) score += 240;
+    if (titleNorm.contains(queryNorm)) score += 120;
+    if ('$titleNorm $subtitleNorm'.contains(queryNorm)) score += 80;
+
+    if (hnMatch != null) {
+      final queryRoad = _normalizeSearchText(hnMatch.group(1) ?? '');
+      final queryHouse = _normalizeHouseNumber(hnMatch.group(2) ?? '');
+      final roadHit =
+          roadNorm == queryRoad ||
+          roadNorm.startsWith(queryRoad) ||
+          queryRoad.startsWith(roadNorm);
+      final houseHit = houseNorm == queryHouse;
+
+      if (roadHit) score += 250;
+      if (houseHit) score += 400;
+      if (roadHit && houseHit) score += 450;
+      if (roadHit && !houseHit && houseNorm.isNotEmpty) score -= 220;
+      if (roadHit && houseNorm.isEmpty) score -= 300;
+    }
+
+    final lat = double.tryParse(result['lat']?.toString() ?? '');
+    final lon = double.tryParse(result['lon']?.toString() ?? '');
+    if (_currentLocation != null && lat != null && lon != null) {
+      final m = Geolocator.distanceBetween(
+        _currentLocation!.latitude,
+        _currentLocation!.longitude,
+        lat,
+        lon,
+      );
+      // Favor nearby candidates heavily for autocomplete.
+      score += math.max(0, 180 - (m / 1000) * 20);
+    }
+
+    return score;
+  }
+
+  List<Map<String, dynamic>> _rankAndDedupeSuggestions(
+    List<Map<String, dynamic>> raw,
+    String query,
+  ) {
+    final hnMatch = RegExp(
+      r'^\s*(.+?)\s+(\d+\s*[A-Za-z]?)\s*$',
+    ).firstMatch(query);
+    var candidates = raw;
+
+    if (hnMatch != null) {
+      final qRoad = _normalizeSearchText(hnMatch.group(1) ?? '');
+      final qHouse = _normalizeHouseNumber(hnMatch.group(2) ?? '');
+
+      final strict = raw.where((r) {
+        final road = _normalizeSearchText(_roadFromResult(r));
+        final house = _normalizeHouseNumber(_houseNumberFromResult(r));
+        final roadHit =
+            road == qRoad || road.startsWith(qRoad) || qRoad.startsWith(road);
+        return roadHit && house == qHouse;
+      }).toList();
+
+      if (strict.isNotEmpty) {
+        candidates = strict;
+      }
+    }
+
+    final scored =
+        candidates
+            .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
+            .toList()
+          ..sort((a, b) => b.score.compareTo(a.score));
+
+    final seen = <String>{};
+    final deduped = <Map<String, dynamic>>[];
+    for (final s in scored) {
+      final title = _normalizeSearchText(_addressTitleFromResult(s.item));
+      final subtitle = _normalizeSearchText(_addressSubtitleFromResult(s.item));
+      // Collapse repeated road-segment hits into one visible suggestion.
+      final key = '$title|$subtitle';
+      if (seen.add(key)) deduped.add(s.item);
+      if (deduped.length >= 5) break;
+    }
+    return deduped;
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    try {
+      final raw = await _fetchPrimaryGeocodingResults(query, limit: 15);
+      if (!mounted) return;
+      final ranked = _rankAndDedupeSuggestions(raw, query);
       setState(() {
-        _suggestions = decoded.whereType<Map<String, dynamic>>().toList();
+        _suggestions = ranked;
         _showSuggestions = _suggestions.isNotEmpty;
       });
     } catch (_) {}
@@ -324,27 +662,8 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
-        'q': query,
-        'format': 'jsonv2',
-        'addressdetails': '1',
-        'limit': '1',
-      });
-
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'CruizX/1.0 (address-search)',
-          'Accept': 'application/json',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw StateError('address_lookup_failed');
-      }
-
-      final decoded = jsonDecode(response.body);
-      if (decoded is! List || decoded.isEmpty) {
+      final raw = await _fetchPrimaryGeocodingResults(query, limit: 15);
+      if (raw.isEmpty) {
         if (!mounted) {
           return;
         }
@@ -354,11 +673,11 @@ class _MapScreenState extends State<MapScreen> {
         });
         return;
       }
-
-      final first = decoded.first;
-      if (first is! Map<String, dynamic>) {
+      final ranked = _rankAndDedupeSuggestions(raw, query);
+      if (ranked.isEmpty) {
         throw StateError('address_lookup_failed');
       }
+      final first = ranked.first;
 
       final lat = double.tryParse(first['lat']?.toString() ?? '');
       final lon = double.tryParse(first['lon']?.toString() ?? '');
@@ -451,11 +770,20 @@ class _MapScreenState extends State<MapScreen> {
     Map<String, dynamic> result, {
     String fallback = '',
   }) {
-    // Show business / POI name when available
     final name = (result['name']?.toString() ?? '').trim();
-    if (name.isNotEmpty) return name;
+    final category = (result['category']?.toString() ?? '').trim();
+    final mapboxPlaceType = (result['_mapbox_place_type']?.toString() ?? '')
+        .trim();
+    final isPoi =
+        mapboxPlaceType == 'poi' ||
+        (category.isNotEmpty && category != 'highway');
+
+    if (isPoi && name.isNotEmpty) {
+      return name;
+    }
 
     final address = result['address'];
+    // Always prefer road + house_number when we have both.
     if (address is Map) {
       String getPart(String key) => (address[key] ?? '').toString().trim();
       final road = [
@@ -466,10 +794,24 @@ class _MapScreenState extends State<MapScreen> {
         getPart('footway'),
       ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
       final houseNumber = getPart('house_number');
+      if (road.isNotEmpty && houseNumber.isNotEmpty) {
+        return '$road $houseNumber';
+      }
       if (road.isNotEmpty) {
-        return houseNumber.isNotEmpty ? '$road $houseNumber' : road;
+        // house_number may be absent from address object — try display_name
+        final display = (result['display_name']?.toString() ?? '').trim();
+        if (display.isNotEmpty) {
+          final firstPart = display.split(',').first.trim();
+          if (RegExp(r'^\d+[A-Za-z]?$').hasMatch(firstPart)) {
+            return '$road $firstPart';
+          }
+        }
+        return road;
       }
     }
+
+    // Fall back to POI / place name
+    if (name.isNotEmpty) return name;
 
     final display = (result['display_name']?.toString() ?? fallback).trim();
     if (display.isEmpty) return fallback.trim();
@@ -490,32 +832,31 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _addressSubtitleFromResult(Map<String, dynamic> result) {
-    // When result has a POI name, show the street as subtitle
-    final name = (result['name']?.toString() ?? '').trim();
-    if (name.isNotEmpty) {
-      final address = result['address'];
-      if (address is Map) {
-        String getPart(String key) => (address[key] ?? '').toString().trim();
-        final road = [
-          getPart('road'),
-          getPart('pedestrian'),
-          getPart('residential'),
-          getPart('street'),
-          getPart('footway'),
-        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
-        final houseNumber = getPart('house_number');
-        final city = [
-          getPart('city'),
-          getPart('town'),
-          getPart('village'),
-        ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
-        final parts = <String>[
-          if (road.isNotEmpty)
-            houseNumber.isNotEmpty ? '$road $houseNumber' : road,
-          if (city.isNotEmpty) city,
-        ];
-        if (parts.isNotEmpty) return parts.join(', ');
-      }
+    final address = result['address'];
+    if (address is Map) {
+      String getPart(String key) => (address[key] ?? '').toString().trim();
+      final road = [
+        getPart('road'),
+        getPart('pedestrian'),
+        getPart('residential'),
+        getPart('street'),
+        getPart('footway'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+      final houseNumber = getPart('house_number');
+      final city = [
+        getPart('city'),
+        getPart('town'),
+        getPart('village'),
+        getPart('municipality'),
+      ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
+      final suburb = getPart('suburb');
+      final parts = <String>[
+        if (road.isNotEmpty)
+          houseNumber.isNotEmpty ? '$road $houseNumber' : road,
+        if (suburb.isNotEmpty) suburb,
+        if (city.isNotEmpty) city,
+      ];
+      if (parts.isNotEmpty) return parts.join(', ');
     }
     final display = (result['display_name']?.toString() ?? '').trim();
     if (display.isEmpty) return '';
@@ -560,6 +901,297 @@ class _MapScreenState extends State<MapScreen> {
           ],
         ),
         child: Center(child: child),
+      ),
+    );
+  }
+
+  // ── Favorite places helpers ───────────────────────────────────────
+  Widget _favChip({
+    required IconData icon,
+    required String label,
+    required bool hasValue,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+    bool compact = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: hasValue ? const Color(0xEE0A1F63) : const Color(0x880A1F63),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasValue ? const Color(0xFF3AA8FF) : const Color(0x553AA8FF),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.white70),
+            if (!compact) ...[
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: hasValue ? Colors.white : Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToFavorite(FavoritePlace fav) {
+    _addressController.text = fav.label;
+    _destinationLabel = fav.label;
+    _searchFocus.unfocus();
+    _handleMapTap(LatLng(fav.lat, fav.lon));
+  }
+
+  void _promptSetFavorite(String iconKey, String defaultLabel) {
+    if (_destination == null) {
+      // No destination set — ask user to first search for an address
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.mapAddressFieldHint),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _searchFocus.requestFocus();
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final dest = _destination!;
+    final label = _destinationLabel.isNotEmpty
+        ? _destinationLabel
+        : defaultLabel;
+    FavoritePlacesService.instance.add(
+      FavoritePlace(
+        id: '${iconKey}_${DateTime.now().millisecondsSinceEpoch}',
+        label: label,
+        icon: iconKey,
+        lat: dest.latitude,
+        lon: dest.longitude,
+        address: _destinationLabel,
+      ),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.favSaved),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _promptAddCustomFavorite() {
+    if (_destination == null) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final dest = _destination!;
+    final nameCtrl = TextEditingController(text: _destinationLabel);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A1F63),
+        title: Text(
+          l10n.favAddTitle,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: TextField(
+          controller: nameCtrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: l10n.favLabelHint,
+            hintStyle: const TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              MaterialLocalizations.of(ctx).cancelButtonLabel,
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              FavoritePlacesService.instance.add(
+                FavoritePlace(
+                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                  label: name,
+                  lat: dest.latitude,
+                  lon: dest.longitude,
+                  address: _destinationLabel,
+                ),
+              );
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.favSaved),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Text(
+              l10n.favAddTitle,
+              style: const TextStyle(color: Color(0xFF3AA8FF)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFavoriteOptions(FavoritePlace fav) {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.navigation, color: Colors.white70),
+              title: Text(
+                fav.label,
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                fav.address,
+                style: const TextStyle(color: Colors.white54),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _navigateToFavorite(fav);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.redAccent),
+              title: Text(
+                l10n.favDeleteConfirm(fav.label),
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                FavoritePlacesService.instance.remove(fav.id);
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.favDeleted),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSaveFavoriteSheet() {
+    if (_destination == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final dest = _destination!;
+    final address = _destinationLabel;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (FavoritePlacesService.instance.findByIcon('home') == null)
+              ListTile(
+                leading: const Icon(Icons.home, color: Colors.white70),
+                title: Text(
+                  l10n.favSetAs(l10n.favHome),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  _saveFav(ctx, 'home', l10n.favHome, dest, address);
+                },
+              ),
+            if (FavoritePlacesService.instance.findByIcon('school') == null)
+              ListTile(
+                leading: const Icon(Icons.school, color: Colors.white70),
+                title: Text(
+                  l10n.favSetAs(l10n.favSchool),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  _saveFav(ctx, 'school', l10n.favSchool, dest, address);
+                },
+              ),
+            if (FavoritePlacesService.instance.findByIcon('work') == null)
+              ListTile(
+                leading: const Icon(Icons.work, color: Colors.white70),
+                title: Text(
+                  l10n.favSetAs(l10n.favWork),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  _saveFav(ctx, 'work', l10n.favWork, dest, address);
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.star, color: Color(0xFFFFB800)),
+              title: Text(
+                l10n.favCustom,
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _promptAddCustomFavorite();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _saveFav(
+    BuildContext ctx,
+    String iconKey,
+    String label,
+    LatLng dest,
+    String address,
+  ) {
+    FavoritePlacesService.instance.add(
+      FavoritePlace(
+        id: '${iconKey}_${DateTime.now().millisecondsSinceEpoch}',
+        label: label,
+        icon: iconKey,
+        lat: dest.latitude,
+        lon: dest.longitude,
+        address: address,
+      ),
+    );
+    Navigator.pop(ctx);
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.favSaved),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -1304,6 +1936,79 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ),
                     ),
+                  // ── Favorite places chips ─────────────────────────────
+                  ValueListenableBuilder<List<FavoritePlace>>(
+                    valueListenable: FavoritePlacesService.instance.places,
+                    builder: (context, favs, _) {
+                      if (_showSuggestions && _suggestions.isNotEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      final presets = <_FavPreset>[
+                        _FavPreset('home', Icons.home, l10n.favHome),
+                        _FavPreset('school', Icons.school, l10n.favSchool),
+                        _FavPreset('work', Icons.work, l10n.favWork),
+                      ];
+                      final custom = favs
+                          .where(
+                            (f) =>
+                                f.icon != 'home' &&
+                                f.icon != 'school' &&
+                                f.icon != 'work',
+                          )
+                          .toList();
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              ...presets.map((p) {
+                                final fav = FavoritePlacesService.instance
+                                    .findByIcon(p.key);
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: p.icon,
+                                    label: fav?.label ?? p.label,
+                                    hasValue: fav != null,
+                                    onTap: () {
+                                      if (fav != null) {
+                                        _navigateToFavorite(fav);
+                                      } else {
+                                        _promptSetFavorite(p.key, p.label);
+                                      }
+                                    },
+                                    onLongPress: fav != null
+                                        ? () => _showFavoriteOptions(fav)
+                                        : null,
+                                  ),
+                                );
+                              }),
+                              ...custom.map(
+                                (f) => Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.star,
+                                    label: f.label,
+                                    hasValue: true,
+                                    onTap: () => _navigateToFavorite(f),
+                                    onLongPress: () => _showFavoriteOptions(f),
+                                  ),
+                                ),
+                              ),
+                              _favChip(
+                                icon: Icons.add,
+                                label: '+',
+                                hasValue: false,
+                                onTap: _promptAddCustomFavorite,
+                                compact: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   TextField(
                     controller: _addressController,
                     focusNode: _searchFocus,
@@ -1550,10 +2255,7 @@ class _MapScreenState extends State<MapScreen> {
           // Right-side floating buttons
           Positioned(
             right: 14,
-            bottom:
-                (_destination != null || _routePoints.isNotEmpty || _isRouting)
-                ? 155
-                : 24,
+            bottom: 155,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1588,7 +2290,25 @@ class _MapScreenState extends State<MapScreen> {
                   valueListenable: TtsService.instance.enabled,
                   builder: (context, ttsOn, _) {
                     return _mapCircleButton(
-                      onTap: () => TtsService.instance.enabled.value = !ttsOn,
+                      onTap: () {
+                        final wasOff = !ttsOn;
+                        TtsService.instance.enabled.value = !ttsOn;
+                        if (wasOff && TtsService.instance.consumeVoiceHint()) {
+                          final l10n = AppLocalizations.of(context)!;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.ttsVoiceHint),
+                              duration: const Duration(seconds: 8),
+                              action: SnackBarAction(
+                                label: l10n.ttsVoiceHintDismiss,
+                                onPressed: () => ScaffoldMessenger.of(
+                                  context,
+                                ).hideCurrentSnackBar(),
+                              ),
+                            ),
+                          );
+                        }
+                      },
                       child: Icon(
                         ttsOn ? Icons.volume_up : Icons.volume_off,
                         color: Colors.white70,
@@ -1808,16 +2528,41 @@ class _MapScreenState extends State<MapScreen> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           if (_destinationLabel.isNotEmpty) ...[
-                                            Text(
-                                              _destinationLabel,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                height: 1.2,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    _destinationLabel,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      height: 1.2,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (!_isNavigating)
+                                                  GestureDetector(
+                                                    onTap:
+                                                        _showSaveFavoriteSheet,
+                                                    child: const Padding(
+                                                      padding: EdgeInsets.only(
+                                                        left: 6,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.star_border,
+                                                        color: Color(
+                                                          0xFFFFB800,
+                                                        ),
+                                                        size: 22,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                             const SizedBox(height: 2),
                                           ],
@@ -2162,4 +2907,11 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
       ),
     );
   }
+}
+
+class _FavPreset {
+  final String key;
+  final IconData icon;
+  final String label;
+  const _FavPreset(this.key, this.icon, this.label);
 }

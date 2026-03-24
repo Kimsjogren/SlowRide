@@ -11,6 +11,7 @@ class TtsService {
   final ValueNotifier<bool> enabled = ValueNotifier<bool>(false);
 
   static const String _enabledKey = 'tts_enabled';
+  static const String _hintShownKey = 'tts_voice_hint_shown';
   SharedPreferences? _prefs;
   bool _initialized = false;
 
@@ -51,6 +52,40 @@ class TtsService {
     final code = UserPreferencesService.instance.languageCode.value;
     final lang = _langMap[code] ?? 'sv-SE';
     await _tts.setLanguage(lang);
+
+    // Try to pick the best available voice (premium > enhanced > default)
+    try {
+      final voices = await _tts.getVoices;
+      if (voices is List) {
+        final matching = voices
+            .whereType<Map>()
+            .where(
+              (v) =>
+                  v['locale']?.toString().toLowerCase() == lang.toLowerCase(),
+            )
+            .toList();
+
+        if (matching.isNotEmpty) {
+          // Score voices: premium = 2, enhanced = 1, default = 0
+          int score(Map v) {
+            final name = (v['name'] ?? '').toString().toLowerCase();
+            if (name.contains('premium')) return 2;
+            if (name.contains('enhanced')) return 1;
+            return 0;
+          }
+
+          matching.sort((a, b) => score(b).compareTo(score(a)));
+          final best = matching.first;
+          await _tts.setVoice({
+            'name': best['name'].toString(),
+            'locale': best['locale'].toString(),
+          });
+          debugPrint('TTS voice selected: ${best['name']} (${best['locale']})');
+        }
+      }
+    } catch (e) {
+      debugPrint('TTS voice selection failed, using default: $e');
+    }
   }
 
   void _onLanguageChanged() => _applyLanguage();
@@ -67,5 +102,12 @@ class TtsService {
 
   void _persistEnabled() {
     _prefs?.setBool(_enabledKey, enabled.value);
+  }
+
+  /// Returns true the first time TTS is enabled (for showing a voice hint).
+  bool consumeVoiceHint() {
+    if (_prefs?.getBool(_hintShownKey) ?? false) return false;
+    _prefs?.setBool(_hintShownKey, true);
+    return true;
   }
 }

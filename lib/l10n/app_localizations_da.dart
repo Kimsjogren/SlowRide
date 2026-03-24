@@ -1062,4 +1062,44 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get mfaRecommendLater => 'Senere';
+
+  @override
+  String get favHome => 'Hjem';
+
+  @override
+  String get favSchool => 'Skole';
+
+  @override
+  String get favWork => 'Arbejde';
+
+  @override
+  String get favAddTitle => 'Gem sted';
+
+  @override
+  String get favLabelHint => 'Navn (f.eks. Ven)';
+
+  @override
+  String get favSaved => 'Sted gemt';
+
+  @override
+  String get favDeleted => 'Sted fjernet';
+
+  @override
+  String favDeleteConfirm(Object name) {
+    return 'Fjern $name?';
+  }
+
+  @override
+  String favSetAs(Object type) {
+    return 'Gem som $type';
+  }
+
+  @override
+  String get favCustom => 'Anden favorit';
+
+  @override
+  String get ttsVoiceHint => 'Tip: Download bedre stemmer i Indstillinger → Tilgængelighed → Oplæst indhold → Stemmer';
+
+  @override
+  String get ttsVoiceHintDismiss => 'OK';
 }

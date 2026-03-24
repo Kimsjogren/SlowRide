@@ -446,5 +446,17 @@
   "mfaRecommendTitle": "Skydda ditt konto",
   "mfaRecommendBody": "Vi rekommenderar att du aktiverar tvåfaktorsautentisering för att skydda ditt konto. Du kan använda en autentiseringsapp som Google Authenticator eller Authy.",
   "mfaRecommendSetup": "Aktivera nu",
-  "mfaRecommendLater": "Senare"
+  "mfaRecommendLater": "Senare",
+  "favHome": "Hem",
+  "favSchool": "Skola",
+  "favWork": "Jobb",
+  "favAddTitle": "Spara plats",
+  "favLabelHint": "Namn (t.ex. Kompis)",
+  "favSaved": "Plats sparad",
+  "favDeleted": "Plats borttagen",
+  "favDeleteConfirm": "Ta bort {name}?",
+  "favSetAs": "Spara som {type}",
+  "favCustom": "Annan favorit",
+  "ttsVoiceHint": "Tips: Ladda ner bättre röster i Inställningar → Hjälpmedel → Uppläsning och tal → Röster",
+  "ttsVoiceHintDismiss": "OK"
 }

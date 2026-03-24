@@ -95,16 +95,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
               ),
             ),
 
-            // Close button
-            Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white54),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-            ),
-
             // Main content
             SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -323,6 +313,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
                           ),
                   ),
                 ],
+              ),
+            ),
+
+            // Close button — on top of scroll content so always tappable
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54, size: 28),
+                onPressed: () => Navigator.of(context).pop(false),
               ),
             ),
           ],
