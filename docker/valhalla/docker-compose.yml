@@ -2,9 +2,11 @@
 # Self-hosted routing for A-traktor, Mopedbil and Tractor navigation
 #
 # Quick start:
-#   1. Run: docker-compose up -d
-#   2. Wait for tiles to build (first run takes several hours with all countries)
-#   3. Test: curl http://localhost:8002/status
+#   1. Download PBF files from Geofabrik into ./data/
+#   2. Run: docker-compose up -d
+#   3. The merge step combines all PBFs into one (avoids multi-extract crash)
+#   4. Wait for tiles to build (first run takes several hours)
+#   5. Test: curl http://localhost:8002/status
 #
 # Download maps from Geofabrik:
 #   Sweden:  https://download.geofabrik.de/europe/sweden-latest.osm.pbf
@@ -12,20 +14,39 @@
 #   Denmark: https://download.geofabrik.de/europe/denmark-latest.osm.pbf
 #   Finland: https://download.geofabrik.de/europe/finland-latest.osm.pbf
 #   France:  https://download.geofabrik.de/europe/france-latest.osm.pbf
+#
+# To update maps: download new PBFs, then:
+#   docker-compose down
+#   docker-compose up -d
+#   (merge_pbf detects newer files and re-merges automatically)
 
 version: '3.8'
 
 services:
+  # Step 1: Merge all country PBFs into a single file.
+  # This prevents the known Valhalla crash with multi-extract builds.
+  merge:
+    image: stefda/osmium-tool
+    container_name: slowride-merge
+    volumes:
+      - ./data:/custom_files
+      - ./merge_pbf.sh:/merge_pbf.sh:ro
+    entrypoint: ["/bin/bash", "/merge_pbf.sh", "/custom_files"]
+
+  # Step 2: Build tiles and serve routes from the merged file.
   valhalla:
     image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
     container_name: slowride-valhalla
     restart: unless-stopped
+    depends_on:
+      merge:
+        condition: service_completed_successfully
     ports:
       - "8002:8002"
     volumes:
       - ./data:/custom_files
     environment:
-      - "tile_urls=https://download.geofabrik.de/europe/sweden-latest.osm.pbf https://download.geofabrik.de/europe/norway-latest.osm.pbf https://download.geofabrik.de/europe/denmark-latest.osm.pbf https://download.geofabrik.de/europe/finland-latest.osm.pbf https://download.geofabrik.de/europe/france-latest.osm.pbf"
+      # Single merged file — no more multi-extract warnings or crashes.
       - use_tiles_ignore_pbf=False
       - force_rebuild=False
       - serve_tiles=True
