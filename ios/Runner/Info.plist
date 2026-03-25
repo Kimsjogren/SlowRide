@@ -218,6 +218,12 @@
 	<string>CruizX uses location data for speedometer and map navigation.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>CruizX uses location data for live map and convoy tracking.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>CruizX needs camera access so you can take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CruizX needs photo library access so you can choose a profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>CruizX may save captured profile photos to your photo library.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>

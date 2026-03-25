@@ -2747,6 +2747,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           speedKmh: maxSpeedKmh,
                                                           unit: speedUnit,
                                                         );
+                                                final speedRatio =
+                                                    limitDisplay > 0
+                                                    ? (speedDisplay /
+                                                              limitDisplay)
+                                                          .clamp(0.0, 1.25)
+                                                    : 0.0;
                                                 final eta = _isNavigating
                                                     ? _formatEta()
                                                     : '';
@@ -2783,43 +2789,80 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                 MainAxisSize
                                                                     .min,
                                                             children: [
-                                                              Container(
-                                                                width: 52,
-                                                                height: 52,
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors
-                                                                      .black,
-                                                                  shape: BoxShape
-                                                                      .circle,
-                                                                  border: Border.all(
-                                                                    color: over
-                                                                        ? Colors
-                                                                              .red
-                                                                        : Colors
-                                                                              .white24,
-                                                                    width: 2,
-                                                                  ),
-                                                                ),
-                                                                child: Center(
-                                                                  child: Text(
-                                                                    speedDisplay
-                                                                        .toStringAsFixed(
-                                                                          0,
-                                                                        ),
-                                                                    style: TextStyle(
-                                                                      color:
-                                                                          over
-                                                                          ? Colors.redAccent
-                                                                          : Colors.white,
-                                                                      fontSize:
-                                                                          20,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      height:
-                                                                          1.0,
+                                                              SizedBox(
+                                                                width: 58,
+                                                                height: 58,
+                                                                child: Stack(
+                                                                  alignment:
+                                                                      Alignment
+                                                                          .center,
+                                                                  children: [
+                                                                    CustomPaint(
+                                                                      size:
+                                                                          const Size(
+                                                                            58,
+                                                                            58,
+                                                                          ),
+                                                                      painter: _ConvoySpeedBarsPainter(
+                                                                        ratio:
+                                                                            speedRatio,
+                                                                        activeColor:
+                                                                            over
+                                                                            ? const Color(
+                                                                                0xFFFF5A5F,
+                                                                              )
+                                                                            : const Color(
+                                                                                0xFFFF9A2F,
+                                                                              ),
+                                                                        inactiveColor:
+                                                                            const Color(
+                                                                              0x40FFFFFF,
+                                                                            ),
+                                                                        strokeWidth:
+                                                                            2.6,
+                                                                        segments:
+                                                                            28,
+                                                                      ),
                                                                     ),
-                                                                  ),
+                                                                    Container(
+                                                                      width: 52,
+                                                                      height:
+                                                                          52,
+                                                                      decoration: BoxDecoration(
+                                                                        color: Colors
+                                                                            .black,
+                                                                        shape: BoxShape
+                                                                            .circle,
+                                                                        border: Border.all(
+                                                                          color:
+                                                                              over
+                                                                              ? Colors.red
+                                                                              : Colors.white24,
+                                                                          width:
+                                                                              2,
+                                                                        ),
+                                                                      ),
+                                                                      child: Center(
+                                                                        child: Text(
+                                                                          speedDisplay.toStringAsFixed(
+                                                                            0,
+                                                                          ),
+                                                                          style: TextStyle(
+                                                                            color:
+                                                                                over
+                                                                                ? Colors.redAccent
+                                                                                : Colors.white,
+                                                                            fontSize:
+                                                                                20,
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            height:
+                                                                                1.0,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
                                                                 ),
                                                               ),
                                                               const SizedBox(
@@ -3334,6 +3377,55 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         ),
       ),
     );
+  }
+}
+
+class _ConvoySpeedBarsPainter extends CustomPainter {
+  final double ratio;
+  final Color activeColor;
+  final Color inactiveColor;
+  final double strokeWidth;
+  final int segments;
+
+  const _ConvoySpeedBarsPainter({
+    required this.ratio,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.strokeWidth,
+    required this.segments,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (math.min(size.width, size.height) / 2) - strokeWidth;
+    if (radius <= 0 || segments <= 0) return;
+
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final totalSweep = math.pi * 2;
+    final start = -math.pi / 2;
+    const gap = 0.06;
+    final segSweep = (totalSweep - (segments - 1) * gap) / segments;
+    final activeCount = (ratio.clamp(0.0, 1.0) * segments).round();
+
+    for (int i = 0; i < segments; i++) {
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..color = i < activeCount ? activeColor : inactiveColor;
+      final segStart = start + i * (segSweep + gap);
+      canvas.drawArc(rect, segStart, segSweep, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConvoySpeedBarsPainter oldDelegate) {
+    return oldDelegate.ratio != ratio ||
+        oldDelegate.activeColor != activeColor ||
+        oldDelegate.inactiveColor != inactiveColor ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.segments != segments;
   }
 }
 

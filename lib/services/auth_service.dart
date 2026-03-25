@@ -306,12 +306,17 @@ class AuthService {
   /// Uploads avatar image and returns the public URL.
   Future<String?> updateAvatar(Uint8List bytes, String fileName) async {
     if (!SupabaseService.instance.isEnabled) {
-      // Local mode: can't store avatars without backend.
-      return null;
+      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
+      avatarUrl.value = localDataUrl;
+      return localDataUrl;
     }
 
     final uid = userId.value;
-    if (uid == null) return null;
+    if (uid == null) {
+      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
+      avatarUrl.value = localDataUrl;
+      return localDataUrl;
+    }
 
     final ext = fileName.split('.').last.toLowerCase();
     final path = 'avatars/$uid.$ext';
@@ -342,7 +347,9 @@ class AuthService {
     } catch (e, st) {
       debugPrint('Avatar upload failed: $e');
       debugPrint('Stack: $st');
-      return null;
+      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
+      avatarUrl.value = localDataUrl;
+      return localDataUrl;
     }
   }
 
@@ -353,6 +360,19 @@ class AuthService {
     final atIndex = email.indexOf('@');
     if (atIndex <= 0) return email;
     return email.substring(0, atIndex);
+  }
+
+  String _buildAvatarDataUrl(Uint8List bytes, String fileName) {
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : 'jpg';
+    final mime = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final encoded = base64Encode(bytes);
+    return 'data:$mime;base64,$encoded';
   }
 
   Map<String, Map<String, String>> _loadLocalAccounts() {

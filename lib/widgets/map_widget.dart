@@ -77,6 +77,7 @@ class _MapWidgetState extends State<MapWidget>
   double _curLat = 0, _curLng = 0, _curHdg = 0;
   double _tgtLat = 0, _tgtLng = 0, _tgtHdg = 0;
   double _filteredTgtHdg = 0;
+  double _curArrowRelHdg = 0;
   double _rawCompassHdg = 0;
   double _gpsSpeedMps = 0;
   DateTime? _lastGpsAt;
@@ -274,6 +275,8 @@ class _MapWidgetState extends State<MapWidget>
         _curLng = _tgtLng = loc.longitude;
         _filteredTgtHdg = _rawCompassHdg;
         _tgtHdg = _rawCompassHdg;
+        _curArrowRelHdg = 0;
+        _arrowHdg.value = 0;
         _lastLocForBearing = loc;
         _lastGpsAt = DateTime.now();
         _curZoom = _tgtZoom = _computeNavZoom();
@@ -402,7 +405,11 @@ class _MapWidgetState extends State<MapWidget>
     // Arrow shows the offset between where the camera faces and where the
     // route actually goes. This way the arrow always points along the road
     // even while the camera is smoothly catching up to turns.
-    _arrowHdg.value = _angleDiff(_curHdg, _filteredTgtHdg);
+    final desiredArrowRel = _angleDiff(_curHdg, _filteredTgtHdg);
+    final arrowDiff = _angleDiff(_curArrowRelHdg, desiredArrowRel);
+    final arrowAlpha = (dtSec * 8.0).clamp(0.10, 0.55);
+    _curArrowRelHdg = _wrap360(_curArrowRelHdg + arrowDiff * arrowAlpha);
+    _arrowHdg.value = _curArrowRelHdg;
     final zoomAlpha = (dtSec * 2.8).clamp(0.04, 0.25);
     _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
     final zoom = _curZoom;
@@ -462,7 +469,8 @@ class _MapWidgetState extends State<MapWidget>
         _curLat = _tgtLat = loc.latitude;
         _curLng = _tgtLng = loc.longitude;
         _curHdg = _tgtHdg = _filteredTgtHdg = hdg;
-        _arrowHdg.value = hdg;
+        _curArrowRelHdg = 0;
+        _arrowHdg.value = 0;
         _navInitialized = true;
         final zoom = _computeNavZoom();
         _curZoom = _tgtZoom = zoom;

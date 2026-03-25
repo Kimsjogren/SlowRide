@@ -9,6 +9,8 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/widgets/app_background.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,6 +22,16 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _picker = ImagePicker();
   bool _isUploadingAvatar = false;
+
+  Uint8List? _decodeDataUrlImage(String dataUrl) {
+    final comma = dataUrl.indexOf(',');
+    if (comma <= 0) return null;
+    try {
+      return base64Decode(dataUrl.substring(comma + 1));
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> _pickAndUploadAvatar() async {
     final l10n = AppLocalizations.of(context)!;
@@ -146,21 +158,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           );
                         } else if (hasAvatar) {
-                          avatarContent = ClipOval(
-                            child: Image.network(
-                              avatarUrl,
-                              width: 90,
-                              height: 90,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stack) => Icon(
+                          if (avatarUrl.startsWith('data:image/')) {
+                            final bytes = _decodeDataUrlImage(avatarUrl);
+                            if (bytes != null) {
+                              avatarContent = ClipOval(
+                                child: Image.memory(
+                                  bytes,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                ),
+                              );
+                            } else {
+                              avatarContent = Icon(
                                 isLoggedIn
                                     ? Icons.person
                                     : Icons.person_outline,
                                 size: 48,
                                 color: Colors.white70,
+                              );
+                            }
+                          } else {
+                            avatarContent = ClipOval(
+                              child: Image.network(
+                                avatarUrl,
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stack) => Icon(
+                                  isLoggedIn
+                                      ? Icons.person
+                                      : Icons.person_outline,
+                                  size: 48,
+                                  color: Colors.white70,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         } else {
                           avatarContent = Icon(
                             isLoggedIn ? Icons.person : Icons.person_outline,

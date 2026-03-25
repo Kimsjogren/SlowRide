@@ -1764,6 +1764,9 @@ class _MapScreenState extends State<MapScreen> {
                         speedKmh: maxSpeedKmh,
                         unit: speedUnit,
                       );
+                      final speedRatio = limitDisplay > 0
+                          ? (speedDisplay / limitDisplay).clamp(0.0, 1.25)
+                          : 0.0;
                       final unitLabel = speedUnit == SpeedUnit.kmh
                           ? l10n.settingsSpeedUnitKmh
                           : l10n.settingsSpeedUnitMph;
@@ -1771,46 +1774,67 @@ class _MapScreenState extends State<MapScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           // Current speed circle
-                          Container(
-                            width: 58,
-                            height: 58,
-                            decoration: BoxDecoration(
-                              color: over
-                                  ? const Color(0xFFD32F2F)
-                                  : const Color(0xEE0A1F63),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: over
-                                    ? Colors.red.shade300
-                                    : const Color(0x883AA8FF),
-                                width: 1.5,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black45,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          SizedBox(
+                            width: 64,
+                            height: 64,
+                            child: Stack(
+                              alignment: Alignment.center,
                               children: [
-                                Text(
-                                  speedDisplay.toStringAsFixed(0),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    height: 1.0,
+                                CustomPaint(
+                                  size: const Size(64, 64),
+                                  painter: _SpeedBarsPainter(
+                                    ratio: speedRatio,
+                                    activeColor: over
+                                        ? const Color(0xFFFF5A5F)
+                                        : const Color(0xFFFF9A2F),
+                                    inactiveColor: const Color(0x40FFFFFF),
+                                    strokeWidth: 2.6,
+                                    segments: 30,
                                   ),
                                 ),
-                                Text(
-                                  unitLabel,
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 9,
-                                    height: 1.2,
+                                Container(
+                                  width: 58,
+                                  height: 58,
+                                  decoration: BoxDecoration(
+                                    color: over
+                                        ? const Color(0xFFD32F2F)
+                                        : const Color(0xEE0A1F63),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: over
+                                          ? Colors.red.shade300
+                                          : const Color(0x883AA8FF),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black45,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        speedDisplay.toStringAsFixed(0),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                          height: 1.0,
+                                        ),
+                                      ),
+                                      Text(
+                                        unitLabel,
+                                        style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 9,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -2442,6 +2466,9 @@ class _MapScreenState extends State<MapScreen> {
                               speedKmh: maxSpeedKmh,
                               unit: speedUnit,
                             );
+                            final speedRatio = limitDisplay > 0
+                                ? (speedDisplay / limitDisplay).clamp(0.0, 1.25)
+                                : 0.0;
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -2464,31 +2491,60 @@ class _MapScreenState extends State<MapScreen> {
                                       Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Container(
-                                            width: 52,
-                                            height: 52,
-                                            decoration: BoxDecoration(
-                                              color: Colors.black,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: over
-                                                    ? Colors.red
-                                                    : Colors.white24,
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                speedDisplay.toStringAsFixed(0),
-                                                style: TextStyle(
-                                                  color: over
-                                                      ? Colors.redAccent
-                                                      : Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  height: 1.0,
+                                          SizedBox(
+                                            width: 58,
+                                            height: 58,
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                CustomPaint(
+                                                  size: const Size(58, 58),
+                                                  painter: _SpeedBarsPainter(
+                                                    ratio: speedRatio,
+                                                    activeColor: over
+                                                        ? const Color(
+                                                            0xFFFF5A5F,
+                                                          )
+                                                        : const Color(
+                                                            0xFFFF9A2F,
+                                                          ),
+                                                    inactiveColor: const Color(
+                                                      0x40FFFFFF,
+                                                    ),
+                                                    strokeWidth: 2.6,
+                                                    segments: 28,
+                                                  ),
                                                 ),
-                                              ),
+                                                Container(
+                                                  width: 52,
+                                                  height: 52,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: over
+                                                          ? Colors.red
+                                                          : Colors.white24,
+                                                      width: 2,
+                                                    ),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      speedDisplay
+                                                          .toStringAsFixed(0),
+                                                      style: TextStyle(
+                                                        color: over
+                                                            ? Colors.redAccent
+                                                            : Colors.white,
+                                                        fontSize: 20,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        height: 1.0,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                           const SizedBox(height: 5),
@@ -2914,4 +2970,53 @@ class _FavPreset {
   final IconData icon;
   final String label;
   const _FavPreset(this.key, this.icon, this.label);
+}
+
+class _SpeedBarsPainter extends CustomPainter {
+  final double ratio;
+  final Color activeColor;
+  final Color inactiveColor;
+  final double strokeWidth;
+  final int segments;
+
+  const _SpeedBarsPainter({
+    required this.ratio,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.strokeWidth,
+    required this.segments,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (math.min(size.width, size.height) / 2) - strokeWidth;
+    if (radius <= 0 || segments <= 0) return;
+
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final totalSweep = math.pi * 2;
+    final start = -math.pi / 2;
+    const gap = 0.06;
+    final segSweep = (totalSweep - (segments - 1) * gap) / segments;
+    final activeCount = (ratio.clamp(0.0, 1.0) * segments).round();
+
+    for (int i = 0; i < segments; i++) {
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..color = i < activeCount ? activeColor : inactiveColor;
+      final segStart = start + i * (segSweep + gap);
+      canvas.drawArc(rect, segStart, segSweep, false, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeedBarsPainter oldDelegate) {
+    return oldDelegate.ratio != ratio ||
+        oldDelegate.activeColor != activeColor ||
+        oldDelegate.inactiveColor != inactiveColor ||
+        oldDelegate.strokeWidth != strokeWidth ||
+        oldDelegate.segments != segments;
+  }
 }
