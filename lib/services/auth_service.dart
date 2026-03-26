@@ -305,16 +305,16 @@ class AuthService {
 
   /// Uploads avatar image and returns the public URL.
   Future<String?> updateAvatar(Uint8List bytes, String fileName) async {
+    final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
+    // Show the new avatar immediately so the UI does not flicker back.
+    avatarUrl.value = localDataUrl;
+
     if (!SupabaseService.instance.isEnabled) {
-      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
-      avatarUrl.value = localDataUrl;
       return localDataUrl;
     }
 
     final uid = userId.value;
     if (uid == null) {
-      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
-      avatarUrl.value = localDataUrl;
       return localDataUrl;
     }
 
@@ -331,24 +331,29 @@ class AuthService {
             fileOptions: const FileOptions(upsert: true),
           );
 
-      // Get public URL with cache-busting timestamp.
-      final baseUrl = SupabaseService.instance.client.storage
-          .from('avatars')
-          .getPublicUrl(path);
-      final publicUrl = '$baseUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      final bucket = SupabaseService.instance.client.storage.from('avatars');
+      final cacheBust = DateTime.now().millisecondsSinceEpoch;
+
+      // Prefer signed URL since bucket may be private.
+      String remoteUrl;
+      try {
+        final signed = await bucket.createSignedUrl(path, 60 * 60 * 24 * 30);
+        remoteUrl = '$signed&t=$cacheBust';
+      } catch (_) {
+        final baseUrl = bucket.getPublicUrl(path);
+        remoteUrl = '$baseUrl?t=$cacheBust';
+      }
 
       // Save to user metadata.
       await SupabaseService.instance.client.auth.updateUser(
-        UserAttributes(data: {'avatar_url': publicUrl}),
+        UserAttributes(data: {'avatar_url': remoteUrl}),
       );
 
-      avatarUrl.value = publicUrl;
-      return publicUrl;
+      avatarUrl.value = remoteUrl;
+      return remoteUrl;
     } catch (e, st) {
       debugPrint('Avatar upload failed: $e');
       debugPrint('Stack: $st');
-      final localDataUrl = _buildAvatarDataUrl(bytes, fileName);
-      avatarUrl.value = localDataUrl;
       return localDataUrl;
     }
   }
