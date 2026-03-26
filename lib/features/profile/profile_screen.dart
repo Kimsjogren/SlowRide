@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/features/auth/mfa_setup_screen.dart';
@@ -22,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _picker = ImagePicker();
   bool _isUploadingAvatar = false;
+  String? _pendingAvatarPath;
 
   Uint8List? _decodeDataUrlImage(String dataUrl) {
     final comma = dataUrl.indexOf(',');
@@ -83,18 +86,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (source == null) return;
 
     try {
-      final image = await _picker.pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
+      final image = await _picker.pickImage(source: source, imageQuality: 95);
       if (image == null) return;
 
-      setState(() => _isUploadingAvatar = true);
+      final cropped = await ImageCropper().cropImage(
+        sourcePath: image.path,
+        maxWidth: 512,
+        maxHeight: 512,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: l10n.profileChangePhoto,
+            toolbarColor: const Color(0xFF0A2A9F),
+            toolbarWidgetColor: Colors.white,
+            backgroundColor: const Color(0xFF070F2B),
+            activeControlsWidgetColor: const Color(0xFF3AA8FF),
+            dimmedLayerColor: Colors.black.withValues(alpha: 0.7),
+            cropFrameColor: const Color(0xFF3AA8FF),
+            cropGridColor: Colors.white.withValues(alpha: 0.25),
+            showCropGrid: false,
+            hideBottomControls: true,
+            lockAspectRatio: true,
+            cropStyle: CropStyle.circle,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+            initAspectRatio: CropAspectRatioPreset.square,
+          ),
+          IOSUiSettings(
+            title: l10n.profileChangePhoto,
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            rotateButtonsHidden: true,
+            aspectRatioPickerButtonHidden: true,
+            doneButtonTitle: 'Klar',
+            cancelButtonTitle: 'Avbryt',
+            cropStyle: CropStyle.circle,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+      if (cropped == null) return;
 
-      final bytes = await image.readAsBytes();
-      final url = await AuthService.instance.updateAvatar(bytes, image.name);
+      setState(() {
+        _isUploadingAvatar = true;
+        _pendingAvatarPath = cropped.path;
+      });
+
+      final bytes = await File(cropped.path).readAsBytes();
+      final fileName = cropped.path.split('/').last;
+      final url = await AuthService.instance.updateAvatar(bytes, fileName);
 
       if (url == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +154,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isUploadingAvatar = false);
+      if (mounted) {
+        setState(() {
+          _isUploadingAvatar = false;
+          _pendingAvatarPath = null;
+        });
+      }
     }
   }
 
@@ -144,11 +189,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ValueListenableBuilder<String?>(
                       valueListenable: authService.avatarUrl,
                       builder: (context, avatarUrl, _) {
+                        final hasPendingAvatar =
+                            _pendingAvatarPath != null &&
+                            _pendingAvatarPath!.isNotEmpty;
                         final hasAvatar =
                             avatarUrl != null && avatarUrl.isNotEmpty;
 
                         Widget avatarContent;
-                        if (_isUploadingAvatar) {
+                        if (hasPendingAvatar) {
+                          avatarContent = ClipOval(
+                            child: Image.file(
+                              File(_pendingAvatarPath!),
+                              width: 90,
+                              height: 90,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stack) => Icon(
+                                isLoggedIn
+                                    ? Icons.person
+                                    : Icons.person_outline,
+                                size: 48,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          );
+                        } else if (_isUploadingAvatar) {
                           avatarContent = const SizedBox(
                             width: 36,
                             height: 36,

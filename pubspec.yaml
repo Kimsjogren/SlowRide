@@ -49,6 +49,7 @@ dependencies:
   app_tracking_transparency: any
   url_launcher: any
   image_picker: any
+  image_cropper: any
   share_plus: any
   flutter_tts: ^4.2.5
   flutter_svg: any

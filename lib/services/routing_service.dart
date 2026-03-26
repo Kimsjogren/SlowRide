@@ -484,7 +484,7 @@ class RoutingService {
             sign: _valhallaTypeToGraphHopperSign(m['type'] as int? ?? 0),
             text: m['instruction'] as String? ?? '',
             distanceMeters: ((m['length'] as num?)?.toDouble() ?? 0) * 1000,
-            pointIndex: allPoints.length > 0
+            pointIndex: allPoints.isNotEmpty
                 ? (m['begin_shape_index'] as int? ?? 0)
                 : 0,
             streetName: streetName,

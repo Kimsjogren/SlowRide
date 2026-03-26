@@ -431,7 +431,7 @@ class SettingsScreen extends StatelessWidget {
                               : Colors.white38,
                         ),
                         value: ttsEnabled,
-                        activeColor: const Color(0xFF00C8FF),
+                        activeThumbColor: const Color(0xFF00C8FF),
                         onChanged: (v) => TtsService.instance.enabled.value = v,
                       );
                     },

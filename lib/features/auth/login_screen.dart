@@ -78,12 +78,21 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppBackground(
+        showLogo: false,
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: Column(
               children: [
-                const SizedBox(height: 12),
+                Transform.translate(
+                  offset: const Offset(0, -10),
+                  child: Image.asset(
+                    'assets/logga_nobg.png',
+                    width: 290,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   l10n.signIn,
                   style: const TextStyle(
