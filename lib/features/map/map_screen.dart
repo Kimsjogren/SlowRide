@@ -84,6 +84,12 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _alertsTimer;
   // Nearest alert within 400 m while navigating (for proximity warning).
   AlertModel? _nearbyAlert;
+  double? _roadSpeedLimitKmh;
+  LatLng? _lastRoadLimitLookupPos;
+  DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _roadLimitLookupInFlight = false;
+  static const Duration _roadLimitLookupInterval = Duration(seconds: 10);
+  static const double _roadLimitLookupMinMoveMeters = 55;
 
   // ── GPS simulation (test-only, visible in debug builds) ──────────────
   bool _isSimulating = false;
@@ -146,6 +152,149 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       setState(() => _alerts = result);
     } catch (_) {}
+  }
+
+  Future<void> _maybeRefreshRoadSpeedLimit(LatLng pos) async {
+    if (_roadLimitLookupInFlight) return;
+
+    final now = DateTime.now();
+    if (now.difference(_lastRoadLimitLookupAt) < _roadLimitLookupInterval) {
+      return;
+    }
+
+    final lastPos = _lastRoadLimitLookupPos;
+    if (lastPos != null &&
+        _segDist(lastPos, pos) < _roadLimitLookupMinMoveMeters) {
+      return;
+    }
+
+    _roadLimitLookupInFlight = true;
+    _lastRoadLimitLookupAt = now;
+    final fetched = await _fetchRoadSpeedLimitKmh(pos);
+    _roadLimitLookupInFlight = false;
+    _lastRoadLimitLookupPos = pos;
+
+    if (!mounted || fetched == null) return;
+    if (_roadSpeedLimitKmh != null &&
+        (fetched - _roadSpeedLimitKmh!).abs() < 1.0) {
+      return;
+    }
+
+    setState(() {
+      _roadSpeedLimitKmh = fetched;
+    });
+  }
+
+  Future<double?> _fetchRoadSpeedLimitKmh(LatLng pos) async {
+    final countryCode = UserPreferencesService.instance.countryCode.value
+        .trim()
+        .toUpperCase();
+    final query =
+        '[out:json][timeout:8];way(around:35,${pos.latitude},${pos.longitude})["highway"]["maxspeed"];out tags;';
+
+    try {
+      final response = await http
+          .post(
+            Uri.https('overpass-api.de', '/api/interpreter'),
+            headers: {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+            },
+            body: {'data': query},
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final elements =
+          (decoded['elements'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          const <Map<String, dynamic>>[];
+
+      final counts = <int, int>{};
+      for (final element in elements) {
+        final tags = element['tags'] as Map<String, dynamic>?;
+        final raw = tags?['maxspeed']?.toString();
+        if (raw == null || raw.trim().isEmpty) continue;
+
+        final parsed = _parseRoadSpeedLimitKmh(raw, countryCode: countryCode);
+        if (parsed == null) continue;
+
+        final rounded = parsed.round();
+        counts[rounded] = (counts[rounded] ?? 0) + 1;
+      }
+
+      if (counts.isEmpty) return null;
+
+      final sorted = counts.entries.toList()
+        ..sort((a, b) {
+          final byCount = b.value.compareTo(a.value);
+          if (byCount != 0) return byCount;
+          return a.key.compareTo(b.key);
+        });
+
+      return sorted.first.key.toDouble();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  double? _parseRoadSpeedLimitKmh(String raw, {required String countryCode}) {
+    final value = raw.trim().toLowerCase();
+    if (value.isEmpty ||
+        value == 'none' ||
+        value == 'signals' ||
+        value == 'variable') {
+      return null;
+    }
+
+    if (value.contains(':')) {
+      final symbolic = _symbolicRoadLimitKmh(value, countryCode: countryCode);
+      if (symbolic != null) return symbolic;
+    }
+
+    final match = RegExp(r'(\d+(?:[\.,]\d+)?)').firstMatch(value);
+    if (match == null) return null;
+
+    final numberRaw = match.group(1)!.replaceAll(',', '.');
+    final number = double.tryParse(numberRaw);
+    if (number == null) return null;
+
+    final kmh = value.contains('mph') ? number * 1.60934 : number;
+    if (kmh < 5 || kmh > 200) return null;
+    return kmh;
+  }
+
+  double? _symbolicRoadLimitKmh(String value, {required String countryCode}) {
+    final cc = countryCode.toUpperCase();
+    if (value.endsWith('urban')) {
+      return 50;
+    }
+    if (value.endsWith('rural')) {
+      switch (cc) {
+        case 'SE':
+          return 70;
+        default:
+          return 80;
+      }
+    }
+    if (value.endsWith('motorway')) {
+      switch (cc) {
+        case 'DK':
+        case 'FR':
+          return 130;
+        case 'FI':
+          return 120;
+        default:
+          return 110;
+      }
+    }
+    if (value.contains('living_street') || value.contains('walk')) {
+      return 7;
+    }
+    return null;
   }
 
   Future<void> _showReportAlertSheet() async {
@@ -1615,6 +1764,8 @@ class _MapScreenState extends State<MapScreen> {
                 : best,
           );
     });
+
+    unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
   }
 
   // ── GPS simulation ────────────────────────────────────────────────────────
@@ -1755,21 +1906,33 @@ class _MapScreenState extends State<MapScreen> {
                   return ValueListenableBuilder<double>(
                     valueListenable: preferences.maxSpeedKmh,
                     builder: (context, maxSpeedKmh, _) {
-                      final over = _speedKmh > maxSpeedKmh;
+                      final roadLimitKmh = _roadSpeedLimitKmh;
+                      final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
+                      final over = _speedKmh > effectiveLimitKmh;
                       final speedDisplay = preferences.toDisplaySpeed(
                         speedKmh: _speedKmh,
                         unit: speedUnit,
                       );
-                      final limitDisplay = preferences.toDisplaySpeed(
-                        speedKmh: maxSpeedKmh,
+                      final effectiveLimitDisplay = preferences.toDisplaySpeed(
+                        speedKmh: effectiveLimitKmh,
                         unit: speedUnit,
                       );
-                      final speedRatio = limitDisplay > 0
-                          ? (speedDisplay / limitDisplay).clamp(0.0, 1.25)
+                      final roadLimitDisplay = roadLimitKmh == null
+                          ? null
+                          : preferences.toDisplaySpeed(
+                              speedKmh: roadLimitKmh,
+                              unit: speedUnit,
+                            );
+                      final speedRatio = effectiveLimitDisplay > 0
+                          ? (speedDisplay / effectiveLimitDisplay).clamp(
+                              0.0,
+                              1.25,
+                            )
                           : 0.0;
                       final unitLabel = speedUnit == SpeedUnit.kmh
                           ? l10n.settingsSpeedUnitKmh
                           : l10n.settingsSpeedUnitMph;
+                      final hasRoadLimit = roadLimitDisplay != null;
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1788,7 +1951,7 @@ class _MapScreenState extends State<MapScreen> {
                                         ? const Color(0xFFFF5A5F)
                                         : const Color(0xFFFF9A2F),
                                     inactiveColor: const Color(0x40FFFFFF),
-                                    strokeWidth: 2.6,
+                                    strokeWidth: 4.0,
                                     segments: 30,
                                   ),
                                 ),
@@ -1849,7 +2012,9 @@ class _MapScreenState extends State<MapScreen> {
                               color: Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: Colors.red.shade700,
+                                color: hasRoadLimit
+                                    ? Colors.red.shade700
+                                    : Colors.grey.shade500,
                                 width: 3,
                               ),
                               boxShadow: const [
@@ -1862,9 +2027,13 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                             child: Center(
                               child: Text(
-                                limitDisplay.toStringAsFixed(0),
-                                style: const TextStyle(
-                                  color: Colors.black,
+                                hasRoadLimit
+                                    ? roadLimitDisplay.toStringAsFixed(0)
+                                    : '--',
+                                style: TextStyle(
+                                  color: hasRoadLimit
+                                      ? Colors.black
+                                      : Colors.black45,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   height: 1.0,
@@ -2457,18 +2626,32 @@ class _MapScreenState extends State<MapScreen> {
                         return ValueListenableBuilder<double>(
                           valueListenable: preferences.maxSpeedKmh,
                           builder: (context, maxSpeedKmh, _) {
-                            final over = _speedKmh > maxSpeedKmh;
+                            final roadLimitKmh = _roadSpeedLimitKmh;
+                            final effectiveLimitKmh =
+                                roadLimitKmh ?? maxSpeedKmh;
+                            final over = _speedKmh > effectiveLimitKmh;
                             final speedDisplay = preferences.toDisplaySpeed(
                               speedKmh: _speedKmh,
                               unit: speedUnit,
                             );
-                            final limitDisplay = preferences.toDisplaySpeed(
-                              speedKmh: maxSpeedKmh,
-                              unit: speedUnit,
-                            );
-                            final speedRatio = limitDisplay > 0
-                                ? (speedDisplay / limitDisplay).clamp(0.0, 1.25)
+                            final effectiveLimitDisplay = preferences
+                                .toDisplaySpeed(
+                                  speedKmh: effectiveLimitKmh,
+                                  unit: speedUnit,
+                                );
+                            final roadLimitDisplay = roadLimitKmh == null
+                                ? null
+                                : preferences.toDisplaySpeed(
+                                    speedKmh: roadLimitKmh,
+                                    unit: speedUnit,
+                                  );
+                            final speedRatio = effectiveLimitDisplay > 0
+                                ? (speedDisplay / effectiveLimitDisplay).clamp(
+                                    0.0,
+                                    1.25,
+                                  )
                                 : 0.0;
+                            final hasRoadLimit = roadLimitDisplay != null;
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -2511,7 +2694,7 @@ class _MapScreenState extends State<MapScreen> {
                                                     inactiveColor: const Color(
                                                       0x40FFFFFF,
                                                     ),
-                                                    strokeWidth: 2.6,
+                                                    strokeWidth: 3.6,
                                                     segments: 28,
                                                   ),
                                                 ),
@@ -2556,15 +2739,22 @@ class _MapScreenState extends State<MapScreen> {
                                               color: Colors.white,
                                               shape: BoxShape.circle,
                                               border: Border.all(
-                                                color: Colors.red.shade700,
+                                                color: hasRoadLimit
+                                                    ? Colors.red.shade700
+                                                    : Colors.grey.shade500,
                                                 width: 3.5,
                                               ),
                                             ),
                                             child: Center(
                                               child: Text(
-                                                limitDisplay.toStringAsFixed(0),
-                                                style: const TextStyle(
-                                                  color: Colors.black,
+                                                hasRoadLimit
+                                                    ? roadLimitDisplay
+                                                          .toStringAsFixed(0)
+                                                    : '--',
+                                                style: TextStyle(
+                                                  color: hasRoadLimit
+                                                      ? Colors.black
+                                                      : Colors.black45,
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.bold,
                                                   height: 1.0,
@@ -2995,10 +3185,12 @@ class _SpeedBarsPainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: center, radius: radius);
     final totalSweep = math.pi * 2;
-    final start = -math.pi / 2;
+    // Start at the right side (3 o'clock), then fill clockwise.
+    const start = 0.0;
+    final normalized = ratio.clamp(0.0, 1.0);
     const gap = 0.06;
     final segSweep = (totalSweep - (segments - 1) * gap) / segments;
-    final activeCount = (ratio.clamp(0.0, 1.0) * segments).round();
+    final activeCount = (normalized * segments).round();
 
     for (int i = 0; i < segments; i++) {
       final paint = Paint()

@@ -1,4 +1,4 @@
-package com.example.slowride
+package com.cruizx.slowride
 
 import io.flutter.embedding.android.FlutterActivity
 
