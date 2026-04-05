@@ -51,6 +51,18 @@
   "authNoAccountPrompt": "Ei tiliä? ",
   "authAlreadyHaveAccountPrompt": "Onko sinulla jo tili? ",
   "authCancel": "Peruuta",
+  "authForgotPasswordLink": "Unohditko salasanan?",
+  "authForgotPasswordTitle": "Palauta salasana",
+  "authForgotPasswordDescription": "Syötä sähköpostiosoitteesi, niin lähetämme sinulle linkin salasanan palauttamiseksi.",
+  "authForgotPasswordButton": "Lähetä palautuslinkki",
+  "authForgotPasswordSuccess": "Jos tili on olemassa, lähetimme palautuslinkin sähköpostiisi.",
+  "authResetPasswordTitle": "Uusi salasana",
+  "authResetPasswordDescription": "Syötä uusi salasanasi alle.",
+  "authNewPasswordLabel": "Uusi salasana",
+  "authConfirmPasswordLabel": "Vahvista salasana",
+  "authPasswordsDoNotMatch": "Salasanat eivät täsmää.",
+  "authResetPasswordButton": "Tallenna salasana",
+  "authResetPasswordSuccess": "Salasanasi on vaihdettu.",
   "authErrorAllFieldsRequired": "Kaikki kentät ovat pakollisia.",
   "authErrorPasswordTooShort": "Salasanan on oltava vähintään 6 merkkiä.",
   "authErrorConfirmEmail": "Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.",
@@ -65,6 +77,18 @@
   "convoyJoinButton": "Liity",
   "convoyLeaveButton": "Poistu",
   "convoyJoinFirstHint": "Liity ensin saattueeseen ja avaa sitten chat ja kartta napauttamalla.",
+  "convoyJoinByCodeTitle": "Liity saattueeseen",
+  "convoyJoinByCodeHint": "Syötä saamasi saattueen koodi",
+  "convoyJoinWithCodeButton": "Liity",
+  "convoyJoinByCodeNotFound": "Saattuetta ei löytynyt tällä koodilla.",
+  "convoyJoinByCodeSuccess": "Liityit saattueeseen {name}!",
+  "@convoyJoinByCodeSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "convoyInviteButton": "Kutsu",
   "convoyTabMap": "Kartta",
   "convoyTabChat": "Chat",

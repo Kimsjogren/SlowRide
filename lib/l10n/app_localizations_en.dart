@@ -144,7 +144,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authConfirmPasswordRequired => 'Confirm your password';
 
   @override
-  String get authPasswordsDoNotMatch => 'Passwords do not match';
+  String get authPasswordsDoNotMatch => 'Passwords do not match.';
 
   @override
   String get authDisplayNameLabel => 'Display name';
@@ -160,6 +160,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authCancel => 'Cancel';
+
+  @override
+  String get authForgotPasswordLink => 'Forgot password?';
+
+  @override
+  String get authForgotPasswordTitle => 'Reset password';
+
+  @override
+  String get authForgotPasswordDescription => 'Enter your email address and we\'ll send you a link to reset your password.';
+
+  @override
+  String get authForgotPasswordButton => 'Send reset link';
+
+  @override
+  String get authForgotPasswordSuccess => 'If the account exists, we\'ve sent a reset link to your email.';
+
+  @override
+  String get authResetPasswordTitle => 'New password';
+
+  @override
+  String get authResetPasswordDescription => 'Enter your new password below.';
+
+  @override
+  String get authNewPasswordLabel => 'New password';
+
+  @override
+  String get authResetPasswordButton => 'Save password';
+
+  @override
+  String get authResetPasswordSuccess => 'Your password has been changed.';
 
   @override
   String get authErrorAllFieldsRequired => 'All fields are required.';
@@ -202,6 +232,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get convoyJoinFirstHint => 'Join the convoy first, then tap it to open chat and map.';
+
+  @override
+  String get convoyJoinByCodeTitle => 'Join convoy';
+
+  @override
+  String get convoyJoinByCodeHint => 'Enter the convoy code you received';
+
+  @override
+  String get convoyJoinWithCodeButton => 'Join';
+
+  @override
+  String get convoyJoinByCodeNotFound => 'No convoy found with that code.';
+
+  @override
+  String convoyJoinByCodeSuccess(String name) {
+    return 'You joined $name!';
+  }
 
   @override
   String get convoyInviteButton => 'Invite';

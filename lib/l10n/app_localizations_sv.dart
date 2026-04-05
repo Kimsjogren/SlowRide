@@ -144,7 +144,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authConfirmPasswordRequired => 'Bekräfta lösenordet';
 
   @override
-  String get authPasswordsDoNotMatch => 'Lösenorden matchar inte';
+  String get authPasswordsDoNotMatch => 'Lösenorden matchar inte.';
 
   @override
   String get authDisplayNameLabel => 'Visningsnamn';
@@ -160,6 +160,36 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get authCancel => 'Avbryt';
+
+  @override
+  String get authForgotPasswordLink => 'Glömt lösenord?';
+
+  @override
+  String get authForgotPasswordTitle => 'Återställ lösenord';
+
+  @override
+  String get authForgotPasswordDescription => 'Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.';
+
+  @override
+  String get authForgotPasswordButton => 'Skicka återställningslänk';
+
+  @override
+  String get authForgotPasswordSuccess => 'Om kontot finns har vi skickat en återställningslänk till din e-post.';
+
+  @override
+  String get authResetPasswordTitle => 'Nytt lösenord';
+
+  @override
+  String get authResetPasswordDescription => 'Ange ditt nya lösenord nedan.';
+
+  @override
+  String get authNewPasswordLabel => 'Nytt lösenord';
+
+  @override
+  String get authResetPasswordButton => 'Spara lösenord';
+
+  @override
+  String get authResetPasswordSuccess => 'Ditt lösenord har ändrats.';
 
   @override
   String get authErrorAllFieldsRequired => 'Fyll i alla fält.';
@@ -202,6 +232,23 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get convoyJoinFirstHint => 'Gå med i konvojen först och tryck sedan för att öppna chat och karta.';
+
+  @override
+  String get convoyJoinByCodeTitle => 'Gå med i konvoj';
+
+  @override
+  String get convoyJoinByCodeHint => 'Ange konvojkoden du fått';
+
+  @override
+  String get convoyJoinWithCodeButton => 'Gå med';
+
+  @override
+  String get convoyJoinByCodeNotFound => 'Ingen konvoj hittades med den koden.';
+
+  @override
+  String convoyJoinByCodeSuccess(String name) {
+    return 'Du gick med i $name!';
+  }
 
   @override
   String get convoyInviteButton => 'Bjud in';

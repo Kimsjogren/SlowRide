@@ -51,6 +51,18 @@
   "authNoAccountPrompt": "Ingen konto? ",
   "authAlreadyHaveAccountPrompt": "Har du allerede en konto? ",
   "authCancel": "Avbryt",
+  "authForgotPasswordLink": "Glemt passord?",
+  "authForgotPasswordTitle": "Tilbakestill passord",
+  "authForgotPasswordDescription": "Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.",
+  "authForgotPasswordButton": "Send tilbakestillingslenke",
+  "authForgotPasswordSuccess": "Hvis kontoen finnes, har vi sendt en tilbakestillingslenke til e-posten din.",
+  "authResetPasswordTitle": "Nytt passord",
+  "authResetPasswordDescription": "Skriv inn ditt nye passord nedenfor.",
+  "authNewPasswordLabel": "Nytt passord",
+  "authConfirmPasswordLabel": "Bekreft passord",
+  "authPasswordsDoNotMatch": "Passordene stemmer ikke overens.",
+  "authResetPasswordButton": "Lagre passord",
+  "authResetPasswordSuccess": "Passordet ditt har blitt endret.",
   "authErrorAllFieldsRequired": "Alle felt er påkrevd.",
   "authErrorPasswordTooShort": "Passordet må være minst 6 tegn.",
   "authErrorConfirmEmail": "Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.",
@@ -65,6 +77,18 @@
   "convoyJoinButton": "Bli med",
   "convoyLeaveButton": "Forlat",
   "convoyJoinFirstHint": "Bli med i kolonnen først, trykk deretter for å åpne chat og kart.",
+  "convoyJoinByCodeTitle": "Bli med i kolonne",
+  "convoyJoinByCodeHint": "Skriv inn kolonnekoden du har mottatt",
+  "convoyJoinWithCodeButton": "Bli med",
+  "convoyJoinByCodeNotFound": "Ingen kolonne funnet med den koden.",
+  "convoyJoinByCodeSuccess": "Du ble med i {name}!",
+  "@convoyJoinByCodeSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "convoyInviteButton": "Inviter",
   "convoyTabMap": "Kart",
   "convoyTabChat": "Chat",

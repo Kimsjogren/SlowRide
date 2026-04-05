@@ -175,6 +175,29 @@ class AuthService {
     isLoggedIn.value = true;
   }
 
+  // ── Password reset (Supabase only) ────────────────────────────────────────
+
+  Future<void> resetPassword({required String email}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    final normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail.isEmpty) return;
+    await SupabaseService.instance.client.auth.resetPasswordForEmail(
+      normalizedEmail,
+      redirectTo: 'com.cruizx.mobile://reset-password',
+    );
+  }
+
+  Future<void> updatePassword({required String newPassword}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    await SupabaseService.instance.client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
   // ── OTP (Supabase only) ───────────────────────────────────────────────────
 
   Future<void> requestOtp({required String email}) async {

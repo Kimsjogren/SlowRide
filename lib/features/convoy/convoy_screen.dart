@@ -25,13 +25,14 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _signInEmailController = TextEditingController();
   final TextEditingController _signInCodeController = TextEditingController();
-  bool _showOnlyMyConvoys = false;
+  final TextEditingController _joinCodeController = TextEditingController();
   int _streamKey = 0;
   int _joinedConvoyCount = 0;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _joinCodeController.dispose();
     _signInEmailController.dispose();
     _signInCodeController.dispose();
     _controller.dispose();
@@ -172,6 +173,161 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
+    );
+  }
+
+  Future<void> _showJoinByCodeDialog(AppLocalizations l10n) async {
+    _joinCodeController.text = '';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1B2E),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.vpn_key,
+                      color: Color(0xFF3AA8FF),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      l10n.convoyJoinByCodeTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.convoyJoinByCodeHint,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _joinCodeController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.characters,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'XXXXXXXX',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      letterSpacing: 3,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.08),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF1E6BFF)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: Text(
+                        l10n.convoyCreateCancel,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E6BFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: () async {
+                        final code = _joinCodeController.text.trim();
+                        if (code.isEmpty) return;
+                        Navigator.of(ctx).pop();
+                        final convoy = await _controller.joinByCode(code);
+                        if (!mounted) return;
+                        if (convoy == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.convoyJoinByCodeNotFound),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => _streamKey++);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.convoyJoinByCodeSuccess(convoy.name),
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                      child: Text(l10n.convoyJoinButton),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -357,36 +513,34 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                   icon: const Icon(Icons.add),
                                   label: Text(l10n.convoyCreateButton),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Container(
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.13),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                _FilterTab(
-                                  label: l10n.convoyFilterAll,
-                                  selected: !_showOnlyMyConvoys,
-                                  onTap: () => setState(
-                                    () => _showOnlyMyConvoys = false,
+                                const SizedBox(height: 10),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    final sub = SubscriptionService.instance;
+                                    if (!sub.canCreateOrJoinConvoy(
+                                      _joinedConvoyCount,
+                                    )) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute<bool>(
+                                          builder: (_) => const PaywallScreen(
+                                            reason: PaywallReason.convoyLimit,
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    _showJoinByCodeDialog(l10n);
+                                  },
+                                  icon: const Icon(Icons.vpn_key, size: 18),
+                                  label: Text(l10n.convoyJoinWithCodeButton),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    side: BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                _FilterTab(
-                                  label: l10n.convoyFilterMine,
-                                  selected: _showOnlyMyConvoys,
-                                  onTap: () =>
-                                      setState(() => _showOnlyMyConvoys = true),
                                 ),
                               ],
                             ),
@@ -410,9 +564,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                             stream: _controller.watchConvoys(),
                             builder: (context, snapshot) {
                               final allConvoys = snapshot.data ?? const [];
-                              final joinedCount = allConvoys
-                                  .where((c) => c.isJoined)
-                                  .length;
+                              final joinedCount = allConvoys.length;
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 if (mounted &&
                                     _joinedConvoyCount != joinedCount) {
@@ -421,18 +573,12 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                   );
                                 }
                               });
-                              final convoys = _showOnlyMyConvoys
-                                  ? allConvoys
-                                        .where((convoy) => convoy.isJoined)
-                                        .toList(growable: false)
-                                  : allConvoys;
+                              final convoys = allConvoys;
 
                               if (convoys.isEmpty) {
                                 return Center(
                                   child: Text(
-                                    _showOnlyMyConvoys
-                                        ? l10n.convoyListEmptyMine
-                                        : l10n.convoyListEmpty,
+                                    l10n.convoyListEmptyMine,
                                     style: const TextStyle(
                                       color: Colors.white70,
                                     ),
@@ -463,22 +609,14 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                       14,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: convoy.isJoined
-                                          ? const Color(
-                                              0xFF1E6BFF,
-                                            ).withValues(alpha: 0.18)
-                                          : Colors.white.withValues(
-                                              alpha: 0.08,
-                                            ),
+                                      color: const Color(
+                                        0xFF1E6BFF,
+                                      ).withValues(alpha: 0.18),
                                       borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
-                                        color: convoy.isJoined
-                                            ? const Color(
-                                                0xFF3AA8FF,
-                                              ).withValues(alpha: 0.45)
-                                            : Colors.white.withValues(
-                                                alpha: 0.13,
-                                              ),
+                                        color: const Color(
+                                          0xFF3AA8FF,
+                                        ).withValues(alpha: 0.45),
                                       ),
                                     ),
                                     child: Column(
@@ -499,12 +637,8 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                                     BorderRadius.circular(10),
                                               ),
                                               child: Icon(
-                                                convoy.isJoined
-                                                    ? Icons.groups
-                                                    : Icons.groups_outlined,
-                                                color: convoy.isJoined
-                                                    ? const Color(0xFF3AA8FF)
-                                                    : Colors.white60,
+                                                Icons.groups,
+                                                color: const Color(0xFF3AA8FF),
                                                 size: 22,
                                               ),
                                             ),
@@ -597,176 +731,88 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                           mainAxisAlignment:
                                               MainAxisAlignment.end,
                                           children: [
-                                            if (convoy.isJoined)
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                  right: 4,
-                                                ),
-                                                child: OutlinedButton.icon(
-                                                  onPressed: () =>
-                                                      _shareConvoy(convoy),
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor:
-                                                        const Color(0xFF3AA8FF),
-                                                    side: const BorderSide(
-                                                      color: Color(0xFF3AA8FF),
-                                                      width: 1,
-                                                    ),
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 0,
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 4,
+                                              ),
+                                              child: OutlinedButton.icon(
+                                                onPressed: () =>
+                                                    _shareConvoy(convoy),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor: const Color(
+                                                    0xFF3AA8FF,
+                                                  ),
+                                                  side: const BorderSide(
+                                                    color: Color(0xFF3AA8FF),
+                                                    width: 1,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 0,
+                                                      ),
+                                                  minimumSize: const Size(
+                                                    0,
+                                                    32,
+                                                  ),
+                                                  tapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
                                                         ),
-                                                    minimumSize: const Size(
-                                                      0,
-                                                      32,
-                                                    ),
-                                                    tapTargetSize:
-                                                        MaterialTapTargetSize
-                                                            .shrinkWrap,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
                                                   ),
-                                                  icon: const Icon(
-                                                    Icons.person_add_alt_1,
-                                                    size: 14,
-                                                  ),
-                                                  label: Text(
-                                                    l10n.convoyInviteButton,
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                    ),
+                                                ),
+                                                icon: const Icon(
+                                                  Icons.person_add_alt_1,
+                                                  size: 14,
+                                                ),
+                                                label: Text(
+                                                  l10n.convoyInviteButton,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
                                                   ),
                                                 ),
                                               ),
+                                            ),
                                             const SizedBox(width: 4),
                                             SizedBox(
                                               height: 36,
-                                              child: convoy.isJoined
-                                                  ? FilledButton(
-                                                      onPressed: () {
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
-                                                          MaterialPageRoute<
-                                                            void
-                                                          >(
-                                                            builder: (_) =>
-                                                                ConvoyRoomScreen(
-                                                                  convoy:
-                                                                      convoy,
-                                                                ),
+                                              child: FilledButton(
+                                                onPressed: () {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute<void>(
+                                                      builder: (_) =>
+                                                          ConvoyRoomScreen(
+                                                            convoy: convoy,
                                                           ),
-                                                        );
-                                                      },
-                                                      style: FilledButton.styleFrom(
-                                                        backgroundColor:
-                                                            const Color(
-                                                              0xFF1E6BFF,
-                                                            ),
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 14,
-                                                            ),
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        l10n.convoyOpenButton,
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : OutlinedButton(
-                                                      onPressed: () async {
-                                                        final sub =
-                                                            SubscriptionService
-                                                                .instance;
-                                                        if (!sub
-                                                            .canCreateOrJoinConvoy(
-                                                              joinedCount,
-                                                            )) {
-                                                          await Navigator.of(
-                                                            context,
-                                                          ).push(
-                                                            MaterialPageRoute<
-                                                              bool
-                                                            >(
-                                                              builder: (_) =>
-                                                                  const PaywallScreen(
-                                                                    reason: PaywallReason
-                                                                        .convoyLimit,
-                                                                  ),
-                                                            ),
-                                                          );
-                                                          return;
-                                                        }
-                                                        if (!sub
-                                                            .canJoinConvoyWithMemberCount(
-                                                              convoy
-                                                                  .memberCount,
-                                                            )) {
-                                                          await Navigator.of(
-                                                            context,
-                                                          ).push(
-                                                            MaterialPageRoute<
-                                                              bool
-                                                            >(
-                                                              builder: (_) =>
-                                                                  const PaywallScreen(
-                                                                    reason: PaywallReason
-                                                                        .memberLimit,
-                                                                  ),
-                                                            ),
-                                                          );
-                                                          return;
-                                                        }
-                                                        await _controller
-                                                            .joinConvoy(
-                                                              convoy: convoy,
-                                                            );
-                                                        if (mounted) {
-                                                          setState(
-                                                            () => _streamKey++,
-                                                          );
-                                                        }
-                                                      },
-                                                      style: OutlinedButton.styleFrom(
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        side: BorderSide(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.3,
-                                                              ),
-                                                        ),
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 14,
-                                                            ),
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                10,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        l10n.convoyJoinButton,
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                        ),
-                                                      ),
                                                     ),
+                                                  );
+                                                },
+                                                style: FilledButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFF1E6BFF,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 14,
+                                                      ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  l10n.convoyOpenButton,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -788,43 +834,6 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _FilterTab extends StatelessWidget {
-  const _FilterTab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFF1E6BFF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(7),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : Colors.white54,
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

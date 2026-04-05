@@ -19,6 +19,8 @@ import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/services/favorite_places_service.dart';
+import 'package:slowride/services/convoy_favorite_places_service.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/convoy_member_location.dart';
@@ -148,6 +150,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _addressSearchController.addListener(() => setState(() {}));
     _myUserId = AuthService.instance.userId.value;
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    ConvoyFavoritePlacesService.instance.initialize();
     // Delay GPS request until after first frame (avoids InheritedWidget issue)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startLocationSync();
@@ -1524,6 +1527,212 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
+  Widget _favChip({
+    required IconData icon,
+    required String label,
+    required bool hasValue,
+    required VoidCallback onTap,
+    VoidCallback? onLongPress,
+    bool compact = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: hasValue ? const Color(0xEE0A1F63) : const Color(0x880A1F63),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: hasValue ? const Color(0xFF3AA8FF) : const Color(0x553AA8FF),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.white70),
+            if (!compact) ...[
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: hasValue ? Colors.white : Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToFavorite(FavoritePlace fav) {
+    _addressSearchController.text = fav.label;
+    _destinationLabel = fav.label;
+    _searchFocus.unfocus();
+    _routeToDestination(LatLng(fav.lat, fav.lon));
+  }
+
+  Future<void> _promptSetFavorite(String iconKey, String defaultLabel) async {
+    if (_routeDestination == null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.mapAddressFieldHint),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _searchFocus.requestFocus();
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context)!;
+    final dest = _routeDestination!;
+    final label = _destinationLabel.isNotEmpty
+        ? _destinationLabel
+        : defaultLabel;
+    await ConvoyFavoritePlacesService.instance.initialize();
+    await ConvoyFavoritePlacesService.instance.add(
+      FavoritePlace(
+        id: '${iconKey}_${DateTime.now().millisecondsSinceEpoch}',
+        label: label,
+        icon: iconKey,
+        lat: dest.latitude,
+        lon: dest.longitude,
+        address: _destinationLabel,
+      ),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.favSaved),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _promptAddCustomFavorite() {
+    if (_routeDestination == null) {
+      _searchFocus.requestFocus();
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final dest = _routeDestination!;
+    final nameCtrl = TextEditingController(text: _destinationLabel);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0A1F63),
+        title: Text(
+          l10n.favAddTitle,
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: TextField(
+          controller: nameCtrl,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: l10n.favLabelHint,
+            hintStyle: const TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              MaterialLocalizations.of(ctx).cancelButtonLabel,
+              style: const TextStyle(color: Colors.white54),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              await ConvoyFavoritePlacesService.instance.initialize();
+              await ConvoyFavoritePlacesService.instance.add(
+                FavoritePlace(
+                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                  label: name,
+                  lat: dest.latitude,
+                  lon: dest.longitude,
+                  address: _destinationLabel,
+                ),
+              );
+              if (!ctx.mounted) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.favSaved),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Text(
+              l10n.favAddTitle,
+              style: const TextStyle(color: Color(0xFF3AA8FF)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFavoriteOptions(FavoritePlace fav) {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.navigation, color: Colors.white70),
+              title: Text(
+                fav.label,
+                style: const TextStyle(color: Colors.white),
+              ),
+              subtitle: Text(
+                fav.address,
+                style: const TextStyle(color: Colors.white54),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _navigateToFavorite(fav);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.redAccent),
+              title: Text(
+                l10n.favDeleteConfirm(fav.label),
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                await ConvoyFavoritePlacesService.instance.initialize();
+                await ConvoyFavoritePlacesService.instance.remove(fav.id);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.favDeleted),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _fitAllMembers(List<ConvoyMemberLocation> locations) {
     final points = [...locations.map((m) => m.position), ?_myLocation];
     if (points.isEmpty) return;
@@ -2388,11 +2597,219 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           if (!_isNavigating)
                             Positioned(
                               left: 16,
-                              top: 16,
-                              right: 72,
+                              right: 16,
+                              bottom: (_routeDestination != null || _isRouting)
+                                  ? 110
+                                  : 24,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
+                                  if (_showSuggestions &&
+                                      _suggestions.isNotEmpty)
+                                    Container(
+                                      margin: const EdgeInsets.only(bottom: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xF0071739),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: const Color(0x553AA8FF),
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: ConstrainedBox(
+                                          constraints: const BoxConstraints(
+                                            maxHeight: 220,
+                                          ),
+                                          child: SingleChildScrollView(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: _suggestions.take(5).map((
+                                                s,
+                                              ) {
+                                                final title =
+                                                    _addressTitleFromResult(s);
+                                                final subtitle =
+                                                    _addressSubtitleFromResult(
+                                                      s,
+                                                    );
+                                                return InkWell(
+                                                  onTap: () =>
+                                                      _selectSuggestion(s),
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                          vertical: 9,
+                                                        ),
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.location_on,
+                                                          size: 16,
+                                                          color: Colors.white54,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Expanded(
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Text(
+                                                                title,
+                                                                style: const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 13,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                ),
+                                                                maxLines: 1,
+                                                                overflow:
+                                                                    TextOverflow
+                                                                        .ellipsis,
+                                                              ),
+                                                              if (subtitle
+                                                                  .isNotEmpty)
+                                                                Text(
+                                                                  subtitle,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white38,
+                                                                    fontSize:
+                                                                        11,
+                                                                  ),
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ValueListenableBuilder<List<FavoritePlace>>(
+                                    valueListenable: ConvoyFavoritePlacesService
+                                        .instance
+                                        .places,
+                                    builder: (context, favs, _) {
+                                      if (_showSuggestions &&
+                                          _suggestions.isNotEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      final presets = <_ConvoyFavPreset>[
+                                        _ConvoyFavPreset(
+                                          'home',
+                                          Icons.home,
+                                          l10n.favHome,
+                                        ),
+                                        _ConvoyFavPreset(
+                                          'school',
+                                          Icons.school,
+                                          l10n.favSchool,
+                                        ),
+                                        _ConvoyFavPreset(
+                                          'work',
+                                          Icons.work,
+                                          l10n.favWork,
+                                        ),
+                                      ];
+                                      final custom = favs
+                                          .where(
+                                            (f) =>
+                                                f.icon != 'home' &&
+                                                f.icon != 'school' &&
+                                                f.icon != 'work',
+                                          )
+                                          .toList();
+                                      return Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 6,
+                                        ),
+                                        child: SingleChildScrollView(
+                                          scrollDirection: Axis.horizontal,
+                                          child: Row(
+                                            children: [
+                                              ...presets.map((p) {
+                                                final fav =
+                                                    ConvoyFavoritePlacesService
+                                                        .instance
+                                                        .findByIcon(p.key);
+                                                return Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        right: 6,
+                                                      ),
+                                                  child: _favChip(
+                                                    icon: p.icon,
+                                                    label:
+                                                        fav?.label ?? p.label,
+                                                    hasValue: fav != null,
+                                                    onTap: () {
+                                                      if (fav != null) {
+                                                        _navigateToFavorite(
+                                                          fav,
+                                                        );
+                                                      } else {
+                                                        _promptSetFavorite(
+                                                          p.key,
+                                                          p.label,
+                                                        );
+                                                      }
+                                                    },
+                                                    onLongPress: fav != null
+                                                        ? () =>
+                                                              _showFavoriteOptions(
+                                                                fav,
+                                                              )
+                                                        : null,
+                                                  ),
+                                                );
+                                              }),
+                                              ...custom.map(
+                                                (f) => Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        right: 6,
+                                                      ),
+                                                  child: _favChip(
+                                                    icon: Icons.star,
+                                                    label: f.label,
+                                                    hasValue: true,
+                                                    onTap: () =>
+                                                        _navigateToFavorite(f),
+                                                    onLongPress: () =>
+                                                        _showFavoriteOptions(f),
+                                                  ),
+                                                ),
+                                              ),
+                                              _favChip(
+                                                icon: Icons.add,
+                                                label: '+',
+                                                hasValue: false,
+                                                onTap: _promptAddCustomFavorite,
+                                                compact: true,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
                                   SizedBox(
                                     height: 44,
                                     child: TextField(
@@ -2475,91 +2892,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ),
                                     ),
                                   ),
-                                  if (_showSuggestions &&
-                                      _suggestions.isNotEmpty)
-                                    Container(
-                                      margin: const EdgeInsets.only(top: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xF0071739),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: const Color(0x553AA8FF),
-                                        ),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: _suggestions.map((s) {
-                                            final title =
-                                                _addressTitleFromResult(s);
-                                            final subtitle =
-                                                _addressSubtitleFromResult(s);
-                                            return InkWell(
-                                              onTap: () => _selectSuggestion(s),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 9,
-                                                    ),
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.location_on,
-                                                      size: 16,
-                                                      color: Colors.white54,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            title,
-                                                            style:
-                                                                const TextStyle(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontSize: 13,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                          ),
-                                                          if (subtitle
-                                                              .isNotEmpty)
-                                                            Text(
-                                                              subtitle,
-                                                              style:
-                                                                  const TextStyle(
-                                                                    color: Colors
-                                                                        .white38,
-                                                                    fontSize:
-                                                                        11,
-                                                                  ),
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                            ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
-                                      ),
-                                    ),
                                 ],
                               ),
                             ),
@@ -2793,16 +3125,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           // ── Current street name pill ─────────────────────
                           if (_isNavigating && _currentStreetName.isNotEmpty)
                             Positioned(
-                              left: 16,
-                              right: 62,
+                              left: 0,
+                              right: 0,
                               bottom: (_routeDestination != null || _isRouting)
-                                  ? 170
+                                  ? 165
                                   : 100,
                               child: Center(
                                 child: Container(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 260,
-                                  ),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 8,
@@ -2827,8 +3156,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
                                   ),
                                 ),
                               ),
@@ -2857,10 +3184,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   top: false,
                                   child: Padding(
                                     padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      14,
-                                      16,
                                       12,
+                                      8,
+                                      12,
+                                      6,
                                     ),
                                     child: ValueListenableBuilder<double>(
                                       valueListenable: _speedNotifier,
@@ -2931,11 +3258,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                     // Drag handle
                                                     Center(
                                                       child: Container(
-                                                        width: 40,
-                                                        height: 4,
+                                                        width: 34,
+                                                        height: 3,
                                                         margin:
                                                             const EdgeInsets.only(
-                                                              bottom: 14,
+                                                              bottom: 8,
                                                             ),
                                                         decoration: BoxDecoration(
                                                           color: Colors.white24,
@@ -2958,8 +3285,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                     .min,
                                                             children: [
                                                               SizedBox(
-                                                                width: 58,
-                                                                height: 58,
+                                                                width: 50,
+                                                                height: 50,
                                                                 child: Stack(
                                                                   alignment:
                                                                       Alignment
@@ -2968,8 +3295,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                     CustomPaint(
                                                                       size:
                                                                           const Size(
-                                                                            58,
-                                                                            58,
+                                                                            50,
+                                                                            50,
                                                                           ),
                                                                       painter: _ConvoySpeedBarsPainter(
                                                                         ratio:
@@ -2993,9 +3320,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                       ),
                                                                     ),
                                                                     Container(
-                                                                      width: 52,
+                                                                      width: 44,
                                                                       height:
-                                                                          52,
+                                                                          44,
                                                                       decoration: BoxDecoration(
                                                                         color: Colors
                                                                             .black,
@@ -3021,7 +3348,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                                 ? Colors.redAccent
                                                                                 : Colors.white,
                                                                             fontSize:
-                                                                                20,
+                                                                                16,
                                                                             fontWeight:
                                                                                 FontWeight.bold,
                                                                             height:
@@ -3034,12 +3361,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                 ),
                                                               ),
                                                               const SizedBox(
-                                                                height: 5,
+                                                                height: 4,
                                                               ),
                                                               // EU speed limit sign
                                                               Container(
-                                                                width: 42,
-                                                                height: 42,
+                                                                width: 34,
+                                                                height: 34,
                                                                 decoration: BoxDecoration(
                                                                   color: Colors
                                                                       .white,
@@ -3104,7 +3431,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                     color: Colors
                                                                         .white,
                                                                     fontSize:
-                                                                        18,
+                                                                        16,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -3148,7 +3475,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                         color: Colors
                                                                             .white70,
                                                                         fontSize:
-                                                                            14,
+                                                                            13,
                                                                       ),
                                                                       maxLines:
                                                                           2,
@@ -3198,9 +3525,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                       child: Container(
                                                                         padding: const EdgeInsets.symmetric(
                                                                           horizontal:
-                                                                              18,
+                                                                              12,
                                                                           vertical:
-                                                                              13,
+                                                                              9,
                                                                         ),
                                                                         decoration: BoxDecoration(
                                                                           color: const Color(
@@ -3218,7 +3545,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                             fontWeight:
                                                                                 FontWeight.bold,
                                                                             fontSize:
-                                                                                15,
+                                                                                13,
                                                                           ),
                                                                         ),
                                                                       ),
@@ -3298,8 +3625,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           Positioned(
                             right: 14,
                             bottom: _routeDestination != null || _isRouting
-                                ? 165
-                                : 24,
+                                ? 214
+                                : 84,
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.end,
@@ -3579,7 +3906,7 @@ class _ConvoySpeedBarsPainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: center, radius: radius);
     final totalSweep = math.pi * 2;
-    const start = 0.0;
+    const start = -math.pi / 2;
     const gap = 0.06;
     final segSweep = (totalSweep - (segments - 1) * gap) / segments;
     final activeCount = (ratio.clamp(0.0, 1.0) * segments).round();
@@ -3603,6 +3930,13 @@ class _ConvoySpeedBarsPainter extends CustomPainter {
         oldDelegate.strokeWidth != strokeWidth ||
         oldDelegate.segments != segments;
   }
+}
+
+class _ConvoyFavPreset {
+  final String key;
+  final IconData icon;
+  final String label;
+  const _ConvoyFavPreset(this.key, this.icon, this.label);
 }
 
 // ── Alert marker (replicates MapWidget's _AlertMarker) ───────────────────────

@@ -51,6 +51,18 @@
   "authNoAccountPrompt": "Pas de compte ? ",
   "authAlreadyHaveAccountPrompt": "Vous avez déjà un compte ? ",
   "authCancel": "Annuler",
+  "authForgotPasswordLink": "Mot de passe oublié ?",
+  "authForgotPasswordTitle": "Réinitialiser le mot de passe",
+  "authForgotPasswordDescription": "Entrez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.",
+  "authForgotPasswordButton": "Envoyer le lien",
+  "authForgotPasswordSuccess": "Si le compte existe, nous avons envoyé un lien de réinitialisation à votre e-mail.",
+  "authResetPasswordTitle": "Nouveau mot de passe",
+  "authResetPasswordDescription": "Entrez votre nouveau mot de passe ci-dessous.",
+  "authNewPasswordLabel": "Nouveau mot de passe",
+  "authConfirmPasswordLabel": "Confirmer le mot de passe",
+  "authPasswordsDoNotMatch": "Les mots de passe ne correspondent pas.",
+  "authResetPasswordButton": "Enregistrer le mot de passe",
+  "authResetPasswordSuccess": "Votre mot de passe a été modifié.",
   "authErrorAllFieldsRequired": "Tous les champs sont obligatoires.",
   "authErrorPasswordTooShort": "Le mot de passe doit contenir au moins 6 caractères.",
   "authErrorConfirmEmail": "Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.",
@@ -65,6 +77,18 @@
   "convoyJoinButton": "Rejoindre",
   "convoyLeaveButton": "Quitter",
   "convoyJoinFirstHint": "Rejoignez d'abord le convoi, puis appuyez pour ouvrir le chat et la carte.",
+  "convoyJoinByCodeTitle": "Rejoindre un convoi",
+  "convoyJoinByCodeHint": "Entrez le code du convoi reçu",
+  "convoyJoinWithCodeButton": "Rejoindre",
+  "convoyJoinByCodeNotFound": "Aucun convoi trouvé avec ce code.",
+  "convoyJoinByCodeSuccess": "Vous avez rejoint {name} !",
+  "@convoyJoinByCodeSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "convoyInviteButton": "Inviter",
   "convoyTabMap": "Carte",
   "convoyTabChat": "Chat",

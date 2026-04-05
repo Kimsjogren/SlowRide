@@ -51,6 +51,18 @@
   "authNoAccountPrompt": "Ingen konto? ",
   "authAlreadyHaveAccountPrompt": "Har du allerede en konto? ",
   "authCancel": "Annuller",
+  "authForgotPasswordLink": "Glemt adgangskode?",
+  "authForgotPasswordTitle": "Nulstil adgangskode",
+  "authForgotPasswordDescription": "Indtast din e-mailadresse, så sender vi dig et link til at nulstille din adgangskode.",
+  "authForgotPasswordButton": "Send nulstillingslink",
+  "authForgotPasswordSuccess": "Hvis kontoen findes, har vi sendt et nulstillingslink til din e-mail.",
+  "authResetPasswordTitle": "Ny adgangskode",
+  "authResetPasswordDescription": "Indtast din nye adgangskode nedenfor.",
+  "authNewPasswordLabel": "Ny adgangskode",
+  "authConfirmPasswordLabel": "Bekræft adgangskode",
+  "authPasswordsDoNotMatch": "Adgangskoderne stemmer ikke overens.",
+  "authResetPasswordButton": "Gem adgangskode",
+  "authResetPasswordSuccess": "Din adgangskode er blevet ændret.",
   "authErrorAllFieldsRequired": "Alle felter er påkrævet.",
   "authErrorPasswordTooShort": "Adgangskoden skal være mindst 6 tegn.",
   "authErrorConfirmEmail": "Tjek din e-mail for at bekræfte din konto, og log derefter ind.",
@@ -65,6 +77,18 @@
   "convoyJoinButton": "Deltag",
   "convoyLeaveButton": "Forlad",
   "convoyJoinFirstHint": "Deltag i konvojen først, og tryk derefter for at åbne chat og kort.",
+  "convoyJoinByCodeTitle": "Deltag i konvoj",
+  "convoyJoinByCodeHint": "Indtast den konvojkode du har modtaget",
+  "convoyJoinWithCodeButton": "Deltag",
+  "convoyJoinByCodeNotFound": "Ingen konvoj fundet med den kode.",
+  "convoyJoinByCodeSuccess": "Du deltog i {name}!",
+  "@convoyJoinByCodeSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "convoyInviteButton": "Invitér",
   "convoyTabMap": "Kort",
   "convoyTabChat": "Chat",

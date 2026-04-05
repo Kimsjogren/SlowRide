@@ -20,11 +20,66 @@ class ConvoyController {
       return _localStreamController.stream;
     }
 
+    // Only show convoys the current user is a member of (private by default).
     return SupabaseService.instance.client
         .from('convoys')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .asyncMap(_withMembershipState);
+        .asyncMap(_withMembershipState)
+        .map((list) => list.where((c) => c.isJoined).toList(growable: false));
+  }
+
+  /// Join a convoy by its invite code (first segment of the UUID, case-insensitive).
+  /// Returns the matched [ConvoyModel] on success, or `null` if not found.
+  Future<ConvoyModel?> joinByCode(String code) async {
+    final trimmed = code.trim().toLowerCase();
+    if (trimmed.isEmpty) return null;
+
+    if (!SupabaseService.instance.isEnabled) {
+      // Local fallback: scan in-memory convoys.
+      final match = _localConvoys.cast<ConvoyModel?>().firstWhere(
+        (c) => c!.id.split('-').first.toLowerCase() == trimmed,
+        orElse: () => null,
+      );
+      if (match != null) {
+        await joinConvoy(convoy: match);
+      }
+      return match;
+    }
+
+    // Fetch all convoys and find the one whose id starts with the code prefix.
+    final rows = await SupabaseService.instance.client
+        .from('convoys')
+        .select()
+        .order('created_at', ascending: false);
+
+    final matchRow = (rows as List).cast<Map<String, dynamic>>().firstWhere(
+      (row) => row['id'].toString().split('-').first.toLowerCase() == trimmed,
+      orElse: () => <String, dynamic>{},
+    );
+    if (matchRow.isEmpty || matchRow['id'] == null) return null;
+
+    final convoyId = matchRow['id'].toString();
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return null;
+
+    // Join the convoy.
+    await SupabaseService.instance.client.from('convoy_members').upsert({
+      'convoy_id': convoyId,
+      'user_id': userId,
+    }, onConflict: 'convoy_id,user_id');
+
+    // Return a model so the screen can navigate to it.
+    return ConvoyModel(
+      id: convoyId,
+      name: matchRow['name']?.toString() ?? '',
+      leaderId: matchRow['leader_id']?.toString() ?? '',
+      memberCount: 0, // will be refreshed by the stream
+      createdAt:
+          DateTime.tryParse(matchRow['created_at']?.toString() ?? '') ??
+          DateTime.now(),
+      isJoined: true,
+    );
   }
 
   List<ConvoyModel> _buildLocalConvoysForCurrentUser() {

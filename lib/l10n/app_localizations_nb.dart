@@ -144,7 +144,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authConfirmPasswordRequired => 'Bekreft passordet ditt';
 
   @override
-  String get authPasswordsDoNotMatch => 'Passordene stemmer ikke overens';
+  String get authPasswordsDoNotMatch => 'Passordene stemmer ikke overens.';
 
   @override
   String get authDisplayNameLabel => 'Visningsnavn';
@@ -160,6 +160,36 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get authCancel => 'Avbryt';
+
+  @override
+  String get authForgotPasswordLink => 'Glemt passord?';
+
+  @override
+  String get authForgotPasswordTitle => 'Tilbakestill passord';
+
+  @override
+  String get authForgotPasswordDescription => 'Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.';
+
+  @override
+  String get authForgotPasswordButton => 'Send tilbakestillingslenke';
+
+  @override
+  String get authForgotPasswordSuccess => 'Hvis kontoen finnes, har vi sendt en tilbakestillingslenke til e-posten din.';
+
+  @override
+  String get authResetPasswordTitle => 'Nytt passord';
+
+  @override
+  String get authResetPasswordDescription => 'Skriv inn ditt nye passord nedenfor.';
+
+  @override
+  String get authNewPasswordLabel => 'Nytt passord';
+
+  @override
+  String get authResetPasswordButton => 'Lagre passord';
+
+  @override
+  String get authResetPasswordSuccess => 'Passordet ditt har blitt endret.';
 
   @override
   String get authErrorAllFieldsRequired => 'Alle felt er påkrevd.';
@@ -202,6 +232,23 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get convoyJoinFirstHint => 'Bli med i kolonnen først, trykk deretter for å åpne chat og kart.';
+
+  @override
+  String get convoyJoinByCodeTitle => 'Bli med i kolonne';
+
+  @override
+  String get convoyJoinByCodeHint => 'Skriv inn kolonnekoden du har mottatt';
+
+  @override
+  String get convoyJoinWithCodeButton => 'Bli med';
+
+  @override
+  String get convoyJoinByCodeNotFound => 'Ingen kolonne funnet med den koden.';
+
+  @override
+  String convoyJoinByCodeSuccess(String name) {
+    return 'Du ble med i $name!';
+  }
 
   @override
   String get convoyInviteButton => 'Inviter';

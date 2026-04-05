@@ -144,7 +144,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authConfirmPasswordRequired => 'Vahvista salasanasi';
 
   @override
-  String get authPasswordsDoNotMatch => 'Salasanat eivät täsmää';
+  String get authPasswordsDoNotMatch => 'Salasanat eivät täsmää.';
 
   @override
   String get authDisplayNameLabel => 'Näyttönimi';
@@ -160,6 +160,36 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get authCancel => 'Peruuta';
+
+  @override
+  String get authForgotPasswordLink => 'Unohditko salasanan?';
+
+  @override
+  String get authForgotPasswordTitle => 'Palauta salasana';
+
+  @override
+  String get authForgotPasswordDescription => 'Syötä sähköpostiosoitteesi, niin lähetämme sinulle linkin salasanan palauttamiseksi.';
+
+  @override
+  String get authForgotPasswordButton => 'Lähetä palautuslinkki';
+
+  @override
+  String get authForgotPasswordSuccess => 'Jos tili on olemassa, lähetimme palautuslinkin sähköpostiisi.';
+
+  @override
+  String get authResetPasswordTitle => 'Uusi salasana';
+
+  @override
+  String get authResetPasswordDescription => 'Syötä uusi salasanasi alle.';
+
+  @override
+  String get authNewPasswordLabel => 'Uusi salasana';
+
+  @override
+  String get authResetPasswordButton => 'Tallenna salasana';
+
+  @override
+  String get authResetPasswordSuccess => 'Salasanasi on vaihdettu.';
 
   @override
   String get authErrorAllFieldsRequired => 'Kaikki kentät ovat pakollisia.';
@@ -202,6 +232,23 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get convoyJoinFirstHint => 'Liity ensin saattueeseen ja avaa sitten chat ja kartta napauttamalla.';
+
+  @override
+  String get convoyJoinByCodeTitle => 'Liity saattueeseen';
+
+  @override
+  String get convoyJoinByCodeHint => 'Syötä saamasi saattueen koodi';
+
+  @override
+  String get convoyJoinWithCodeButton => 'Liity';
+
+  @override
+  String get convoyJoinByCodeNotFound => 'Saattuetta ei löytynyt tällä koodilla.';
+
+  @override
+  String convoyJoinByCodeSuccess(String name) {
+    return 'Liityit saattueeseen $name!';
+  }
 
   @override
   String get convoyInviteButton => 'Kutsu';

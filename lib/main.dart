@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
+import 'package:slowride/features/auth/reset_password_screen.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
 import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
@@ -13,17 +15,62 @@ import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
     await UserPreferencesService.instance.initialize();
   } catch (_) {}
+  try {
+    await SupabaseService.instance.initialize();
+  } catch (_) {}
   runApp(const CruizXApp());
 }
 
-class CruizXApp extends StatelessWidget {
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+class CruizXApp extends StatefulWidget {
   const CruizXApp({super.key});
+
+  @override
+  State<CruizXApp> createState() => _CruizXAppState();
+}
+
+class _CruizXAppState extends State<CruizXApp> {
+  StreamSubscription<AuthState>? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAuthListener();
+  }
+
+  void _startAuthListener() {
+    if (!SupabaseService.instance.isEnabled) return;
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            final nav = navigatorKey.currentState;
+            if (nav != null) {
+              nav.push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ResetPasswordScreen(),
+                ),
+              );
+            }
+          } catch (_) {}
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +80,7 @@ class CruizXApp extends StatelessWidget {
       valueListenable: preferences.languageCode,
       builder: (context, _, child) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.dark(),
@@ -98,9 +146,7 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     } catch (_) {}
     await _setProgress(28);
 
-    try {
-      await SupabaseService.instance.initialize();
-    } catch (_) {}
+    // Supabase already initialized in main() before runApp().
     await _setProgress(38);
 
     _updateStartupStatus(l10n.splashInitializingAccountSession);

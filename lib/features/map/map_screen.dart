@@ -3185,8 +3185,8 @@ class _SpeedBarsPainter extends CustomPainter {
 
     final rect = Rect.fromCircle(center: center, radius: radius);
     final totalSweep = math.pi * 2;
-    // Start at the right side (3 o'clock), then fill clockwise.
-    const start = 0.0;
+    // Start at the top (12 o'clock), then fill clockwise.
+    const start = -math.pi / 2;
     final normalized = ratio.clamp(0.0, 1.0);
     const gap = 0.06;
     final segSweep = (totalSweep - (segments - 1) * gap) / segments;

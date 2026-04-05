@@ -72,6 +72,141 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    final resetEmailController = TextEditingController(
+      text: _emailController.text,
+    );
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0A1A3A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        bool sending = false;
+        String? resultMessage;
+        bool success = false;
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                24 + MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.authForgotPasswordTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.authForgotPasswordDescription,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _GlassField(
+                    controller: resetEmailController,
+                    label: l10n.authEmailLabel,
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    validator: null,
+                  ),
+                  if (resultMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      resultMessage!,
+                      style: TextStyle(
+                        color: success
+                            ? const Color(0xFF3AA8FF)
+                            : Colors.redAccent,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 46,
+                    child: FilledButton(
+                      onPressed: sending
+                          ? null
+                          : () async {
+                              final email = resetEmailController.text.trim();
+                              if (email.isEmpty || !email.contains('@')) {
+                                setSheetState(() {
+                                  resultMessage = l10n.authEmailInvalid;
+                                  success = false;
+                                });
+                                return;
+                              }
+                              setSheetState(() => sending = true);
+                              try {
+                                await AuthService.instance.resetPassword(
+                                  email: email,
+                                );
+                                setSheetState(() {
+                                  resultMessage =
+                                      l10n.authForgotPasswordSuccess;
+                                  success = true;
+                                });
+                              } catch (_) {
+                                setSheetState(() {
+                                  resultMessage =
+                                      l10n.authForgotPasswordSuccess;
+                                  success = true;
+                                });
+                              } finally {
+                                setSheetState(() => sending = false);
+                              }
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E6BFF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: sending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              l10n.authForgotPasswordButton,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    resetEmailController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -169,6 +304,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             }
                             return null;
                           },
+                        ),
+
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _showForgotPasswordDialog,
+                            child: Text(
+                              l10n.authForgotPasswordLink,
+                              style: const TextStyle(
+                                color: Color(0xFF3AA8FF),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
                         ),
 
                         // Felmeddelande

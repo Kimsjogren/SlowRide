@@ -51,6 +51,18 @@
   "authNoAccountPrompt": "Inget konto? ",
   "authAlreadyHaveAccountPrompt": "Har du redan ett konto? ",
   "authCancel": "Avbryt",
+  "authForgotPasswordLink": "Glömt lösenord?",
+  "authForgotPasswordTitle": "Återställ lösenord",
+  "authForgotPasswordDescription": "Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.",
+  "authForgotPasswordButton": "Skicka återställningslänk",
+  "authForgotPasswordSuccess": "Om kontot finns har vi skickat en återställningslänk till din e-post.",
+  "authResetPasswordTitle": "Nytt lösenord",
+  "authResetPasswordDescription": "Ange ditt nya lösenord nedan.",
+  "authNewPasswordLabel": "Nytt lösenord",
+  "authConfirmPasswordLabel": "Bekräfta lösenord",
+  "authPasswordsDoNotMatch": "Lösenorden matchar inte.",
+  "authResetPasswordButton": "Spara lösenord",
+  "authResetPasswordSuccess": "Ditt lösenord har ändrats.",
   "authErrorAllFieldsRequired": "Fyll i alla fält.",
   "authErrorPasswordTooShort": "Lösenordet måste vara minst 6 tecken.",
   "authErrorConfirmEmail": "Kolla din e-post och bekräfta kontot, logga sedan in.",
@@ -65,6 +77,18 @@
   "convoyJoinButton": "Gå med",
   "convoyLeaveButton": "Lämna",
   "convoyJoinFirstHint": "Gå med i konvojen först och tryck sedan för att öppna chat och karta.",
+  "convoyJoinByCodeTitle": "Gå med i konvoj",
+  "convoyJoinByCodeHint": "Ange konvojkoden du fått",
+  "convoyJoinWithCodeButton": "Gå med",
+  "convoyJoinByCodeNotFound": "Ingen konvoj hittades med den koden.",
+  "convoyJoinByCodeSuccess": "Du gick med i {name}!",
+  "@convoyJoinByCodeSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "convoyInviteButton": "Bjud in",
   "convoyTabMap": "Karta",
   "convoyTabChat": "Chat",

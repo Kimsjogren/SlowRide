@@ -144,7 +144,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authConfirmPasswordRequired => 'Confirmez votre mot de passe';
 
   @override
-  String get authPasswordsDoNotMatch => 'Les mots de passe ne correspondent pas';
+  String get authPasswordsDoNotMatch => 'Les mots de passe ne correspondent pas.';
 
   @override
   String get authDisplayNameLabel => 'Nom d\'affichage';
@@ -160,6 +160,36 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authCancel => 'Annuler';
+
+  @override
+  String get authForgotPasswordLink => 'Mot de passe oublié ?';
+
+  @override
+  String get authForgotPasswordTitle => 'Réinitialiser le mot de passe';
+
+  @override
+  String get authForgotPasswordDescription => 'Entrez votre adresse e-mail et nous vous enverrons un lien pour réinitialiser votre mot de passe.';
+
+  @override
+  String get authForgotPasswordButton => 'Envoyer le lien';
+
+  @override
+  String get authForgotPasswordSuccess => 'Si le compte existe, nous avons envoyé un lien de réinitialisation à votre e-mail.';
+
+  @override
+  String get authResetPasswordTitle => 'Nouveau mot de passe';
+
+  @override
+  String get authResetPasswordDescription => 'Entrez votre nouveau mot de passe ci-dessous.';
+
+  @override
+  String get authNewPasswordLabel => 'Nouveau mot de passe';
+
+  @override
+  String get authResetPasswordButton => 'Enregistrer le mot de passe';
+
+  @override
+  String get authResetPasswordSuccess => 'Votre mot de passe a été modifié.';
 
   @override
   String get authErrorAllFieldsRequired => 'Tous les champs sont obligatoires.';
@@ -202,6 +232,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get convoyJoinFirstHint => 'Rejoignez d\'abord le convoi, puis appuyez pour ouvrir le chat et la carte.';
+
+  @override
+  String get convoyJoinByCodeTitle => 'Rejoindre un convoi';
+
+  @override
+  String get convoyJoinByCodeHint => 'Entrez le code du convoi reçu';
+
+  @override
+  String get convoyJoinWithCodeButton => 'Rejoindre';
+
+  @override
+  String get convoyJoinByCodeNotFound => 'Aucun convoi trouvé avec ce code.';
+
+  @override
+  String convoyJoinByCodeSuccess(String name) {
+    return 'Vous avez rejoint $name !';
+  }
 
   @override
   String get convoyInviteButton => 'Inviter';

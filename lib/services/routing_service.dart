@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -81,6 +82,7 @@ class RoutingService {
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
+    final profile = CountryVehicleRules.getProfile(country, vehicleType);
 
     final configuredProvider = BackendConfig.routingProvider;
 
@@ -90,8 +92,22 @@ class RoutingService {
       if (!providers.contains(p)) providers.add(p);
     }
 
+    // Slow-vehicle legal rules must never be weakened by provider fallback.
+    // OSRM fallback can not reliably enforce the same avoid rules.
+    final requiresStrictAvoids =
+        profile.useHighways < 0.3 ||
+        profile.useFerry < 0.3 ||
+        profile.useTolls < 0.3;
+    final eligibleProviders = requiresStrictAvoids
+        ? providers
+              .where(
+                (p) => p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
+              )
+              .toList(growable: false)
+        : providers;
+
     Object? lastError;
-    for (final provider in providers) {
+    for (final provider in eligibleProviders) {
       try {
         final route = await _routeWith(
           provider: provider,
@@ -104,8 +120,14 @@ class RoutingService {
         lastUsedProvider = provider;
         return route;
       } on RoutingException catch (e) {
-        // Only retry on provider-level failures, not on "no route found" etc.
-        if (e.code == RoutingErrorCode.providerUnavailable) {
+        // Retry with next provider on provider outages.
+        // Also allow fallback if Valhalla reports no-route for a request,
+        // since data freshness can differ between providers.
+        final canFallback =
+            e.code == RoutingErrorCode.providerUnavailable ||
+            (provider == _providerValhalla &&
+                e.code == RoutingErrorCode.noRouteFound);
+        if (canFallback) {
           lastError = e;
           continue;
         }
@@ -435,13 +457,27 @@ class RoutingService {
     });
 
     final url = Uri.parse('$baseUrl/route');
-    final response = await http
-        .post(
-          url,
-          headers: {'Content-Type': 'application/json'},
-          body: requestBody,
-        )
-        .timeout(const Duration(seconds: 8));
+    http.Response? response;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await http
+            .post(
+              url,
+              headers: {'Content-Type': 'application/json'},
+              body: requestBody,
+            )
+            .timeout(const Duration(seconds: 10));
+        break;
+      } on TimeoutException {
+        if (attempt == 1) {
+          throw const RoutingException(RoutingErrorCode.providerUnavailable);
+        }
+      }
+    }
+
+    if (response == null) {
+      throw const RoutingException(RoutingErrorCode.providerUnavailable);
+    }
 
     if (response.statusCode != 200) {
       throw const RoutingException(RoutingErrorCode.providerUnavailable);

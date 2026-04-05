@@ -376,7 +376,7 @@ abstract class AppLocalizations {
   /// No description provided for @authPasswordsDoNotMatch.
   ///
   /// In en, this message translates to:
-  /// **'Passwords do not match'**
+  /// **'Passwords do not match.'**
   String get authPasswordsDoNotMatch;
 
   /// No description provided for @authDisplayNameLabel.
@@ -408,6 +408,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get authCancel;
+
+  /// No description provided for @authForgotPasswordLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get authForgotPasswordLink;
+
+  /// No description provided for @authForgotPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get authForgotPasswordTitle;
+
+  /// No description provided for @authForgotPasswordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email address and we\'ll send you a link to reset your password.'**
+  String get authForgotPasswordDescription;
+
+  /// No description provided for @authForgotPasswordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset link'**
+  String get authForgotPasswordButton;
+
+  /// No description provided for @authForgotPasswordSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'If the account exists, we\'ve sent a reset link to your email.'**
+  String get authForgotPasswordSuccess;
+
+  /// No description provided for @authResetPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get authResetPasswordTitle;
+
+  /// No description provided for @authResetPasswordDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your new password below.'**
+  String get authResetPasswordDescription;
+
+  /// No description provided for @authNewPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get authNewPasswordLabel;
+
+  /// No description provided for @authResetPasswordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save password'**
+  String get authResetPasswordButton;
+
+  /// No description provided for @authResetPasswordSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been changed.'**
+  String get authResetPasswordSuccess;
 
   /// No description provided for @authErrorAllFieldsRequired.
   ///
@@ -492,6 +552,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Join the convoy first, then tap it to open chat and map.'**
   String get convoyJoinFirstHint;
+
+  /// No description provided for @convoyJoinByCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join convoy'**
+  String get convoyJoinByCodeTitle;
+
+  /// No description provided for @convoyJoinByCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the convoy code you received'**
+  String get convoyJoinByCodeHint;
+
+  /// No description provided for @convoyJoinWithCodeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get convoyJoinWithCodeButton;
+
+  /// No description provided for @convoyJoinByCodeNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No convoy found with that code.'**
+  String get convoyJoinByCodeNotFound;
+
+  /// No description provided for @convoyJoinByCodeSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'You joined {name}!'**
+  String convoyJoinByCodeSuccess(String name);
 
   /// No description provided for @convoyInviteButton.
   ///
