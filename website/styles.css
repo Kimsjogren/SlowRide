@@ -95,8 +95,9 @@ main,
 .header-controls {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.85rem;
+  flex: 1;
 }
 
 .language-switch {
@@ -145,6 +146,7 @@ main,
 
 .site-nav {
   display: inline-flex;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.65rem;
   border: 1px solid var(--border-soft);
