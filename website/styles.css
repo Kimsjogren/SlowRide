@@ -86,7 +86,7 @@ main,
 }
 
 .brand img {
-  height: 152px;
+  height: 168px;
   width: auto;
   display: block;
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.32));
@@ -219,8 +219,9 @@ main {
 }
 
 .hero h1 {
-  max-width: 10ch;
-  font-size: clamp(2.35rem, 4.9vw, 4.7rem);
+  max-width: 11ch;
+  font-size: clamp(2rem, 3.9vw, 3.9rem);
+  line-height: 0.98;
 }
 
 .hero-text,
@@ -232,21 +233,21 @@ main {
 }
 
 .hero-text {
-  max-width: 40rem;
-  margin: 1.2rem 0 0;
-  line-height: 1.7;
-  font-size: 1.05rem;
+  max-width: 34rem;
+  margin: 1rem 0 0;
+  line-height: 1.6;
+  font-size: 0.98rem;
 }
 
 .hero-text-secondary {
-  margin-top: 1rem;
+  margin-top: 0.8rem;
 }
 
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.9rem;
-  margin-top: 1.8rem;
+  margin-top: 1.4rem;
 }
 
 .button {
@@ -606,6 +607,7 @@ main {
 
   .hero h1 {
     max-width: 12ch;
+    font-size: clamp(2.25rem, 6.5vw, 4rem);
   }
 
   .feature-grid {
