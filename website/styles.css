@@ -576,7 +576,7 @@ main {
   .site-nav {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.45rem;
     padding: 0.55rem;
   }
@@ -584,8 +584,8 @@ main {
   .site-nav a {
     width: 100%;
     text-align: center;
-    padding: 0.95rem 0.5rem;
-    font-size: 0.95rem;
+    padding: 0.95rem 0.35rem;
+    font-size: 0.82rem;
   }
 
   main {
