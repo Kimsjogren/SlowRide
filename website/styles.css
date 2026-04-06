@@ -72,7 +72,7 @@ main,
 .site-header {
   width: min(calc(100% - 2rem), var(--max-width));
   margin: 0 auto;
-  padding: 1.1rem 0 0;
+  padding: 1.4rem 0 0.4rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -82,12 +82,14 @@ main,
 .brand {
   display: inline-flex;
   align-items: center;
+  padding-left: 0.15rem;
 }
 
 .brand img {
-  height: 76px;
+  height: 118px;
   width: auto;
   display: block;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.32));
 }
 
 .site-nav {
@@ -183,6 +185,10 @@ main {
   margin: 1.2rem 0 0;
   line-height: 1.7;
   font-size: 1.05rem;
+}
+
+.hero-text-secondary {
+  margin-top: 1rem;
 }
 
 .hero-actions {
@@ -611,7 +617,7 @@ main {
   }
 
   .brand img {
-    height: 62px;
+    height: 110px;
   }
 
   .device-screen {
