@@ -98,10 +98,11 @@ main,
   align-items: center;
   gap: 0.85rem;
   flex: 1;
+  width: 100%;
 }
 
 .language-switch {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.65rem;
   padding: 0.65rem 0.85rem;
@@ -112,6 +113,7 @@ main,
   color: var(--text-main);
   box-shadow: var(--shadow);
   font-size: 0.9rem;
+  align-self: flex-end;
 }
 
 .language-switch span {
@@ -120,28 +122,24 @@ main,
   color: rgba(255, 255, 255, 0.92);
 }
 
-.language-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.language-buttons button {
-  min-width: 2.4rem;
-  height: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+.language-switch select {
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(8, 18, 39, 0.92);
   color: var(--text-main);
-  font-size: 0.78rem;
+  padding: 0.42rem 0.6rem;
+  outline: none;
   font-weight: 700;
-  cursor: pointer;
 }
 
-.language-buttons button.is-active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+.language-switch select:focus-visible {
   border-color: rgba(58, 168, 255, 0.9);
-  box-shadow: 0 6px 18px rgba(30, 107, 255, 0.35);
+  box-shadow: 0 0 0 3px rgba(30, 107, 255, 0.24);
+}
+
+.language-switch select option {
+  background: #0b1b3f;
+  color: #ffffff;
 }
 
 .site-nav {
@@ -633,7 +631,8 @@ main {
 
   .language-switch {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
+    align-self: center;
   }
 
   .site-nav {

@@ -1,6 +1,6 @@
 const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
-const languageButtons = document.querySelectorAll("[data-lang]");
+const languageSelect = document.querySelector("#language-select");
 
 const translations = {
   en: {
@@ -428,10 +428,7 @@ function applyLanguage(lang) {
     if (value) node.setAttribute("aria-label", value);
   });
 
-  languageButtons.forEach((button) => {
-    const isActive = button.getAttribute("data-lang") === activeLang;
-    button.classList.toggle("is-active", isActive);
-  });
+  if (languageSelect) languageSelect.value = activeLang;
   localStorage.setItem("cruizx_site_lang", activeLang);
 }
 
@@ -448,12 +445,11 @@ const initial = supportedLanguages.includes(saved)
     : "en";
 applyLanguage(initial);
 
-languageButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const lang = button.getAttribute("data-lang");
-    applyLanguage(lang);
+if (languageSelect) {
+  languageSelect.addEventListener("change", (event) => {
+    applyLanguage(event.target.value);
   });
-});
+}
 
 const observer = new IntersectionObserver(
   (entries) => {

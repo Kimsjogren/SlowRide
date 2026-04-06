@@ -21,17 +21,17 @@
         </a>
 
         <div class="header-controls">
-          <div class="language-switch" role="group" aria-label="Language">
+          <label class="language-switch" for="language-select">
             <span data-i18n="languageLabel">Language</span>
-            <div class="language-buttons">
-              <button type="button" data-lang="en">EN</button>
-              <button type="button" data-lang="sv">SV</button>
-              <button type="button" data-lang="nb">NB</button>
-              <button type="button" data-lang="da">DA</button>
-              <button type="button" data-lang="fi">FI</button>
-              <button type="button" data-lang="fr">FR</button>
-            </div>
-          </div>
+            <select id="language-select" aria-label="Select language">
+              <option value="en">EN</option>
+              <option value="sv">SV</option>
+              <option value="nb">NB</option>
+              <option value="da">DA</option>
+              <option value="fi">FI</option>
+              <option value="fr">FR</option>
+            </select>
+          </label>
 
           <nav class="site-nav">
             <a href="#features" data-i18n="navFeatures">Features</a>
