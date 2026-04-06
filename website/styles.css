@@ -86,7 +86,7 @@ main,
 }
 
 .brand img {
-  height: 118px;
+  height: 152px;
   width: auto;
   display: block;
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.32));
@@ -100,30 +100,47 @@ main,
 }
 
 .language-switch {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.6rem 0.75rem;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
   border: 1px solid var(--border-soft);
   border-radius: 16px;
-  background: rgba(8, 18, 39, 0.52);
+  background: rgba(8, 18, 39, 0.72);
   backdrop-filter: blur(16px);
-  color: var(--text-muted);
+  color: var(--text-main);
   box-shadow: var(--shadow);
-  font-size: 0.88rem;
+  font-size: 0.9rem;
 }
 
 .language-switch span {
   white-space: nowrap;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-.language-switch select {
-  border: 1px solid var(--border-soft);
+.language-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.language-buttons button {
+  min-width: 2.4rem;
+  height: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-main);
-  padding: 0.42rem 0.6rem;
-  outline: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.language-buttons button.is-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+  border-color: rgba(58, 168, 255, 0.9);
+  box-shadow: 0 6px 18px rgba(30, 107, 255, 0.35);
 }
 
 .site-nav {
@@ -203,7 +220,7 @@ main {
 
 .hero h1 {
   max-width: 10ch;
-  font-size: clamp(3.2rem, 8.6vw, 6.6rem);
+  font-size: clamp(2.35rem, 4.9vw, 4.7rem);
 }
 
 .hero-text,
@@ -614,7 +631,7 @@ main {
 
   .language-switch {
     width: 100%;
-    justify-content: center;
+    justify-content: space-between;
   }
 
   .site-nav {

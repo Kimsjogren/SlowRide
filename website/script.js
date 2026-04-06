@@ -1,6 +1,6 @@
 const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
-const languageSelect = document.querySelector("#language-select");
+const languageButtons = document.querySelectorAll("[data-lang]");
 
 const translations = {
   en: {
@@ -70,69 +70,69 @@ const translations = {
     footerTagline: "Driven by the ride.",
   },
   sv: {
-    languageLabel: "Sprak",
+    languageLabel: "Språk",
     navFeatures: "Funktioner",
     navExperience: "Upplevelse",
     navLaunch: "Lansering",
-    heroEyebrow: "Byggd for fordonskulturen",
-    heroTitle: "Inte for alla. Byggd for dessa fordon.",
+    heroEyebrow: "Byggd för fordonskulturen",
+    heroTitle: "Inte för alla. Byggd för dessa fordon.",
     heroBody:
-      "CruizX ar inte en app for alla. Den ar byggd for personer som lever i den har fordonskulturen och vill ha en upplevelse som forstar hur de kor, motes, kommunicerar och ror sig tillsammans.",
+      "CruizX är inte en app för alla. Den är byggd för personer som lever i den här fordonskulturen och vill ha en upplevelse som förstår hur de kör, möts, kommunicerar och rör sig tillsammans.",
     heroBodySecondary:
-      "Fran forsta motesplats till sista bilen i ledet ar CruizX designad for konvojrorelse, gemensam narvaro och en korkultur som generiska kartappar inte forstar.",
-    heroPrimaryCta: "Kom igang",
+      "Från första mötesplats till sista bilen i ledet är CruizX designad för konvojrörelse, gemensam närvaro och en körkultur som generiska kartappar inte förstår.",
+    heroPrimaryCta: "Kom igång",
     heroSecondaryCta: "Se mer",
     heroStatOneTitle: "Unik",
-    heroStatOneBody: "byggd for en nisch, inte massmarknad",
+    heroStatOneBody: "byggd för en nisch, inte massmarknad",
     heroStatTwoTitle: "Fordon",
-    heroStatTwoBody: "designad for denna typ av korning",
+    heroStatTwoBody: "designad för denna typ av körning",
     heroStatThreeTitle: "Konvoj",
-    heroStatThreeBody: "byggd for grupprorelse och livekoordinering",
+    heroStatThreeBody: "byggd för grupprörelse och livekoordinering",
     screenPill: "CruizX live",
     routeLabel: "Konvojfokus",
-    routeTitle: "Byggd for fordonen. Byggd for konvojen.",
+    routeTitle: "Byggd för fordonen. Byggd för konvojen.",
     routeBody:
-      "CruizX ar designad efter beteendet, energin och behoven i denna scen, med starkare fokus pa konvojflode, liveoversikt och att rora sig tillsammans.",
+      "CruizX är designad efter beteendet, energin och behoven i denna scen, med starkare fokus på konvojflöde, liveöversikt och att röra sig tillsammans.",
     signalOneLabel: "Fordon",
     signalOneValue: "Specialbyggd",
     signalTwoLabel: "Konvoj",
     signalTwoValue: "Livekoordinering",
     signalThreeLabel: "Community",
-    signalThreeValue: "Byggd for kulturen",
-    stripOne: "Byggd for scenen",
-    stripTwo: "Inte for alla fordon",
-    stripThree: "Konvoj forst",
+    signalThreeValue: "Byggd för kulturen",
+    stripOne: "Byggd för scenen",
+    stripTwo: "Inte för alla fordon",
+    stripThree: "Konvoj först",
     stripFour: "Livekoordinering",
     stripFive: "Communityfokus",
     featuresEyebrow: "Funktioner",
     featuresTitle:
-      "CruizX ska kannas sjalvklar for ratt forare och ointressant for fel publik.",
-    featureOneTitle: "Byggd for ratt typ av fordon",
+      "CruizX ska kännas självklar för rätt förare och ointressant för fel publik.",
+    featureOneTitle: "Byggd för rätt typ av fordon",
     featureOneBody:
-      "Hela upplevelsen ska visa att CruizX inte ar en allman app, utan nagot byggt for denna specifika fordonsgrupp.",
+      "Hela upplevelsen ska visa att CruizX inte är en allmän app, utan något byggt för denna specifika fordonsgrupp.",
     featureTwoTitle: "Byggd runt konvojbeteende",
     featureTwoBody:
-      "CruizX ar utformad efter hur konvojer faktiskt ror sig: halla kontakt, halla formation, hitta varandra och dela liveoversikt pa vagen.",
-    featureThreeTitle: "Byggd for konvojkultur, inte bara funktion",
+      "CruizX är utformad efter hur konvojer faktiskt rör sig: hålla kontakt, hålla formation, hitta varandra och dela liveöversikt på vägen.",
+    featureThreeTitle: "Byggd för konvojkultur, inte bara funktion",
     featureThreeBody:
-      "CruizX saljer inte bara verktyg. Den saljer tillhorighet, stil och kanslan av att produkten faktiskt forstar anvandarna.",
+      "CruizX säljer inte bara verktyg. Den säljer tillhörighet, stil och känslan av att produkten faktiskt förstår användarna.",
     experienceEyebrow: "Upplevelse",
     experienceTitle:
-      "Budskapet ska vara tydligt direkt: detta ar en unik produkt for en specifik fordonsvarld.",
+      "Budskapet ska vara tydligt direkt: detta är en unik produkt för en specifik fordonsvärld.",
     experienceBody:
-      "Darfor lutar sidan hardare mot identitet, community och specialisering. Malet ar inte att vara bred. Malet ar att kanna helt ratt for dem den faktiskt ar byggd for.",
+      "Därför lutar sidan hårdare mot identitet, community och specialisering. Målet är inte att vara bred. Målet är att kännas helt rätt för dem den faktiskt är byggd för.",
     experienceListOneLabel: "Positionering",
-    experienceListOneValue: "Byggd for ratt nisch",
+    experienceListOneValue: "Byggd för rätt nisch",
     experienceListTwoLabel: "Fordon",
-    experienceListTwoValue: "Byggd for specifika fordonstyper",
+    experienceListTwoValue: "Byggd för specifika fordonstyper",
     experienceListThreeLabel: "Konvoj",
-    experienceListThreeValue: "Designad for att rora sig tillsammans",
+    experienceListThreeValue: "Designad för att röra sig tillsammans",
     launchEyebrow: "Lansering",
-    launchTitle: "Visa direkt att CruizX ar byggd for dessa fordon.",
+    launchTitle: "Visa direkt att CruizX är byggd för dessa fordon.",
     launchBody:
-      "Sidan ska locka ratt personer genom att vara tydlig med vilka den ar till for, varfor konvoj spelar roll och varfor CruizX skiljer sig fran allt annat.",
+      "Sidan ska locka rätt personer genom att vara tydlig med vilka den är till för, varför konvoj spelar roll och varför CruizX skiljer sig från allt annat.",
     emailPlaceholder: "Din e-post",
-    launchCta: "Ga med i lanseringen",
+    launchCta: "Gå med i lanseringen",
     footerTagline: "Driven by the ride.",
   },
   nb: {
@@ -428,7 +428,10 @@ function applyLanguage(lang) {
     if (value) node.setAttribute("aria-label", value);
   });
 
-  if (languageSelect) languageSelect.value = activeLang;
+  languageButtons.forEach((button) => {
+    const isActive = button.getAttribute("data-lang") === activeLang;
+    button.classList.toggle("is-active", isActive);
+  });
   localStorage.setItem("cruizx_site_lang", activeLang);
 }
 
@@ -436,19 +439,21 @@ if (yearNode) {
   yearNode.textContent = new Date().getFullYear();
 }
 
-if (languageSelect) {
-  const saved = localStorage.getItem("cruizx_site_lang");
-  const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
-  const initial = supportedLanguages.includes(saved)
-    ? saved
-    : supportedLanguages.includes(browserLang)
-      ? browserLang
-      : "en";
-  applyLanguage(initial);
-  languageSelect.addEventListener("change", (event) => {
-    applyLanguage(event.target.value);
+const saved = localStorage.getItem("cruizx_site_lang");
+const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
+const initial = supportedLanguages.includes(saved)
+  ? saved
+  : supportedLanguages.includes(browserLang)
+    ? browserLang
+    : "en";
+applyLanguage(initial);
+
+languageButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const lang = button.getAttribute("data-lang");
+    applyLanguage(lang);
   });
-}
+});
 
 const observer = new IntersectionObserver(
   (entries) => {
