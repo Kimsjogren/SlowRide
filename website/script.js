@@ -1,8 +1,453 @@
 const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
+const languageSelect = document.querySelector("#language-select");
+
+const translations = {
+  en: {
+    languageLabel: "Language",
+    navFeatures: "Features",
+    navExperience: "Experience",
+    navLaunch: "Launch",
+    heroEyebrow: "Built for vehicle culture",
+    heroTitle: "Not made for everyone. Built for these vehicles.",
+    heroBody:
+      "CruizX is not another app trying to fit everyone. It is built for people who live in this vehicle culture and want an experience that actually understands how they drive, meet, communicate, and move together.",
+    heroBodySecondary:
+      "From the first meetup point to the last car in the line, CruizX is designed around convoy movement, shared presence, and the kind of driving culture generic map apps never get right.",
+    heroPrimaryCta: "Get started",
+    heroSecondaryCta: "See more",
+    heroStatOneTitle: "Unique",
+    heroStatOneBody: "built for a niche, not the mass market",
+    heroStatTwoTitle: "Vehicles",
+    heroStatTwoBody: "designed for this specific kind of driving",
+    heroStatThreeTitle: "Convoy",
+    heroStatThreeBody: "built around group movement and live coordination",
+    screenPill: "CruizX live",
+    routeLabel: "Convoy focused",
+    routeTitle: "Built for the vehicles. Built for the convoy.",
+    routeBody:
+      "CruizX is designed around the behavior, energy, and needs of this scene, with a stronger focus on convoy flow, live group awareness, and moving together.",
+    signalOneLabel: "Vehicles",
+    signalOneValue: "Purpose-built",
+    signalTwoLabel: "Convoy",
+    signalTwoValue: "Live coordination",
+    signalThreeLabel: "Community",
+    signalThreeValue: "Built for the culture",
+    stripOne: "Built for the scene",
+    stripTwo: "Not for every vehicle",
+    stripThree: "Convoy first",
+    stripFour: "Live coordination",
+    stripFive: "Community focused",
+    featuresEyebrow: "Features",
+    featuresTitle:
+      "CruizX should feel obvious to the right drivers and irrelevant to the wrong audience.",
+    featureOneTitle: "Built for the right kind of vehicles",
+    featureOneBody:
+      "The entire experience should signal that CruizX is not a general purpose app, but something made for this specific vehicle group.",
+    featureTwoTitle: "Built around convoy behavior",
+    featureTwoBody:
+      "CruizX is shaped around how convoys actually move: staying connected, keeping formation, finding each other, and sharing live awareness on the road.",
+    featureThreeTitle: "Built for convoy culture, not just utility",
+    featureThreeBody:
+      "CruizX does not just sell tools. It sells belonging, style, and the feeling that the product actually understands its users and the way they roll together.",
+    experienceEyebrow: "Experience",
+    experienceTitle:
+      "The message should be obvious immediately: this is a unique product for a specific vehicle world.",
+    experienceBody:
+      "That is why the site now leans harder into identity, community, and specialization. The goal is not to feel broad. The goal is to feel exactly right for the people it is actually built for, especially those who drive, gather, and cruise as a convoy.",
+    experienceListOneLabel: "Positioning",
+    experienceListOneValue: "Built for the right niche",
+    experienceListTwoLabel: "Vehicles",
+    experienceListTwoValue: "Built for specific vehicle types",
+    experienceListThreeLabel: "Convoy",
+    experienceListThreeValue: "Designed for moving together",
+    launchEyebrow: "Launch",
+    launchTitle: "Show immediately that CruizX is built for these vehicles.",
+    launchBody:
+      "The site should attract the right people by being clear about who it is for, why convoy matters, and why CruizX feels different from everything else.",
+    emailPlaceholder: "Your email",
+    launchCta: "Join the launch",
+    footerTagline: "Driven by the ride.",
+  },
+  sv: {
+    languageLabel: "Sprak",
+    navFeatures: "Funktioner",
+    navExperience: "Upplevelse",
+    navLaunch: "Lansering",
+    heroEyebrow: "Byggd for fordonskulturen",
+    heroTitle: "Inte for alla. Byggd for dessa fordon.",
+    heroBody:
+      "CruizX ar inte en app for alla. Den ar byggd for personer som lever i den har fordonskulturen och vill ha en upplevelse som forstar hur de kor, motes, kommunicerar och ror sig tillsammans.",
+    heroBodySecondary:
+      "Fran forsta motesplats till sista bilen i ledet ar CruizX designad for konvojrorelse, gemensam narvaro och en korkultur som generiska kartappar inte forstar.",
+    heroPrimaryCta: "Kom igang",
+    heroSecondaryCta: "Se mer",
+    heroStatOneTitle: "Unik",
+    heroStatOneBody: "byggd for en nisch, inte massmarknad",
+    heroStatTwoTitle: "Fordon",
+    heroStatTwoBody: "designad for denna typ av korning",
+    heroStatThreeTitle: "Konvoj",
+    heroStatThreeBody: "byggd for grupprorelse och livekoordinering",
+    screenPill: "CruizX live",
+    routeLabel: "Konvojfokus",
+    routeTitle: "Byggd for fordonen. Byggd for konvojen.",
+    routeBody:
+      "CruizX ar designad efter beteendet, energin och behoven i denna scen, med starkare fokus pa konvojflode, liveoversikt och att rora sig tillsammans.",
+    signalOneLabel: "Fordon",
+    signalOneValue: "Specialbyggd",
+    signalTwoLabel: "Konvoj",
+    signalTwoValue: "Livekoordinering",
+    signalThreeLabel: "Community",
+    signalThreeValue: "Byggd for kulturen",
+    stripOne: "Byggd for scenen",
+    stripTwo: "Inte for alla fordon",
+    stripThree: "Konvoj forst",
+    stripFour: "Livekoordinering",
+    stripFive: "Communityfokus",
+    featuresEyebrow: "Funktioner",
+    featuresTitle:
+      "CruizX ska kannas sjalvklar for ratt forare och ointressant for fel publik.",
+    featureOneTitle: "Byggd for ratt typ av fordon",
+    featureOneBody:
+      "Hela upplevelsen ska visa att CruizX inte ar en allman app, utan nagot byggt for denna specifika fordonsgrupp.",
+    featureTwoTitle: "Byggd runt konvojbeteende",
+    featureTwoBody:
+      "CruizX ar utformad efter hur konvojer faktiskt ror sig: halla kontakt, halla formation, hitta varandra och dela liveoversikt pa vagen.",
+    featureThreeTitle: "Byggd for konvojkultur, inte bara funktion",
+    featureThreeBody:
+      "CruizX saljer inte bara verktyg. Den saljer tillhorighet, stil och kanslan av att produkten faktiskt forstar anvandarna.",
+    experienceEyebrow: "Upplevelse",
+    experienceTitle:
+      "Budskapet ska vara tydligt direkt: detta ar en unik produkt for en specifik fordonsvarld.",
+    experienceBody:
+      "Darfor lutar sidan hardare mot identitet, community och specialisering. Malet ar inte att vara bred. Malet ar att kanna helt ratt for dem den faktiskt ar byggd for.",
+    experienceListOneLabel: "Positionering",
+    experienceListOneValue: "Byggd for ratt nisch",
+    experienceListTwoLabel: "Fordon",
+    experienceListTwoValue: "Byggd for specifika fordonstyper",
+    experienceListThreeLabel: "Konvoj",
+    experienceListThreeValue: "Designad for att rora sig tillsammans",
+    launchEyebrow: "Lansering",
+    launchTitle: "Visa direkt att CruizX ar byggd for dessa fordon.",
+    launchBody:
+      "Sidan ska locka ratt personer genom att vara tydlig med vilka den ar till for, varfor konvoj spelar roll och varfor CruizX skiljer sig fran allt annat.",
+    emailPlaceholder: "Din e-post",
+    launchCta: "Ga med i lanseringen",
+    footerTagline: "Driven by the ride.",
+  },
+  nb: {
+    languageLabel: "Sprak",
+    navFeatures: "Funksjoner",
+    navExperience: "Opplevelse",
+    navLaunch: "Lansering",
+    heroEyebrow: "Bygget for bilkulturen",
+    heroTitle: "Ikke laget for alle. Bygget for disse kjoretoyene.",
+    heroBody:
+      "CruizX er ikke en app for alle. Den er bygget for folk som lever i denne bilkulturen og vil ha en opplevelse som forstar hvordan de kjorer, motes, kommuniserer og beveger seg sammen.",
+    heroBodySecondary:
+      "Fra forste motepunkt til siste bil i rekken er CruizX designet rundt konvoibevegelse, delt tilstedevaerelse og en kjorekultur vanlige kartapper ikke forstar.",
+    heroPrimaryCta: "Kom i gang",
+    heroSecondaryCta: "Se mer",
+    heroStatOneTitle: "Unik",
+    heroStatOneBody: "bygget for en nisje, ikke massemarked",
+    heroStatTwoTitle: "Kjoretoy",
+    heroStatTwoBody: "designet for denne typen kjoring",
+    heroStatThreeTitle: "Konvoi",
+    heroStatThreeBody: "bygget rundt gruppebevegelse og livekoordinering",
+    screenPill: "CruizX live",
+    routeLabel: "Konvoifokus",
+    routeTitle: "Bygget for kjoretoyene. Bygget for konvoien.",
+    routeBody:
+      "CruizX er designet rundt adferden, energien og behovene i dette miljot, med sterkere fokus pa konvoiflyt, liveoversikt og det a bevege seg sammen.",
+    signalOneLabel: "Kjoretoy",
+    signalOneValue: "Spesialbygget",
+    signalTwoLabel: "Konvoi",
+    signalTwoValue: "Livekoordinering",
+    signalThreeLabel: "Community",
+    signalThreeValue: "Bygget for kulturen",
+    stripOne: "Bygget for miljot",
+    stripTwo: "Ikke for alle kjoretoy",
+    stripThree: "Konvoi forst",
+    stripFour: "Livekoordinering",
+    stripFive: "Communityfokus",
+    featuresEyebrow: "Funksjoner",
+    featuresTitle:
+      "CruizX skal kjennes opplagt for riktige forere og uinteressant for feil publikum.",
+    featureOneTitle: "Bygget for riktig type kjoretoy",
+    featureOneBody:
+      "Hele opplevelsen skal vise at CruizX ikke er en generell app, men noe laget for denne spesifikke kjoretoygruppen.",
+    featureTwoTitle: "Bygget rundt konvoiadferd",
+    featureTwoBody:
+      "CruizX er formet rundt hvordan konvoier faktisk beveger seg: holde kontakt, holde formasjon, finne hverandre og dele liveoversikt pa veien.",
+    featureThreeTitle: "Bygget for konvoikultur, ikke bare nytte",
+    featureThreeBody:
+      "CruizX selger ikke bare verktoy. Den selger tilhorighet, stil og folelsen av at produktet faktisk forstar brukerne.",
+    experienceEyebrow: "Opplevelse",
+    experienceTitle:
+      "Budskapet skal vaere tydelig med en gang: dette er et unikt produkt for en spesifikk bilverden.",
+    experienceBody:
+      "Derfor lener siden seg hardere mot identitet, community og spesialisering. Malet er ikke a virke bred. Malet er a treffe helt riktig for dem den faktisk er bygget for.",
+    experienceListOneLabel: "Posisjonering",
+    experienceListOneValue: "Bygget for riktig nisje",
+    experienceListTwoLabel: "Kjoretoy",
+    experienceListTwoValue: "Bygget for spesifikke kjoretoytyper",
+    experienceListThreeLabel: "Konvoi",
+    experienceListThreeValue: "Designet for a bevege seg sammen",
+    launchEyebrow: "Lansering",
+    launchTitle: "Vis umiddelbart at CruizX er bygget for disse kjoretoyene.",
+    launchBody:
+      "Siden skal tiltrekke riktige folk ved a vaere tydelig pa hvem den er for, hvorfor konvoi betyr noe og hvorfor CruizX skiller seg ut.",
+    emailPlaceholder: "Din e-post",
+    launchCta: "Bli med pa lanseringen",
+    footerTagline: "Driven by the ride.",
+  },
+  da: {
+    languageLabel: "Sprog",
+    navFeatures: "Funktioner",
+    navExperience: "Oplevelse",
+    navLaunch: "Lancering",
+    heroEyebrow: "Bygget til bilkulturen",
+    heroTitle: "Ikke lavet til alle. Bygget til disse koretojer.",
+    heroBody:
+      "CruizX er ikke en app til alle. Den er bygget til folk, der lever i denne bilkultur og vil have en oplevelse, som forstar hvordan de korer, modes, kommunikerer og bevaeger sig sammen.",
+    heroBodySecondary:
+      "Fra det forste modepunkt til den sidste bil i raekken er CruizX designet omkring konvojbevaegelse, faelles tilstedevaerelse og en korekultur som generiske kortapps ikke forstar.",
+    heroPrimaryCta: "Kom i gang",
+    heroSecondaryCta: "Se mere",
+    heroStatOneTitle: "Unik",
+    heroStatOneBody: "bygget til en niche, ikke massemarkedet",
+    heroStatTwoTitle: "Koretojer",
+    heroStatTwoBody: "designet til denne type koring",
+    heroStatThreeTitle: "Konvoj",
+    heroStatThreeBody: "bygget omkring gruppebevaegelse og livekoordinering",
+    screenPill: "CruizX live",
+    routeLabel: "Konvojfokus",
+    routeTitle: "Bygget til koretojerne. Bygget til konvojen.",
+    routeBody:
+      "CruizX er designet omkring adfaerd, energi og behov i dette miljo, med storre fokus pa konvojflow, liveoverblik og at bevaege sig sammen.",
+    signalOneLabel: "Koretojer",
+    signalOneValue: "Specialbygget",
+    signalTwoLabel: "Konvoj",
+    signalTwoValue: "Livekoordinering",
+    signalThreeLabel: "Community",
+    signalThreeValue: "Bygget til kulturen",
+    stripOne: "Bygget til scenen",
+    stripTwo: "Ikke til alle koretojer",
+    stripThree: "Konvoj forst",
+    stripFour: "Livekoordinering",
+    stripFive: "Communityfokus",
+    featuresEyebrow: "Funktioner",
+    featuresTitle:
+      "CruizX skal foles oplagt for de rigtige forere og irrelevant for den forkerte malgruppe.",
+    featureOneTitle: "Bygget til den rigtige type koretojer",
+    featureOneBody:
+      "Hele oplevelsen skal vise, at CruizX ikke er en generel app, men noget bygget til denne specifikke koretojsgruppe.",
+    featureTwoTitle: "Bygget omkring konvojadfaerd",
+    featureTwoBody:
+      "CruizX er formet efter hvordan konvojer faktisk bevaeger sig: holde kontakt, holde formation, finde hinanden og dele liveoverblik pa vejen.",
+    featureThreeTitle: "Bygget til konvojkultur, ikke kun nytte",
+    featureThreeBody:
+      "CruizX saelger ikke kun vaerktojer. Den saelger tilhor, stil og folsen af at produktet faktisk forstar brugerne.",
+    experienceEyebrow: "Oplevelse",
+    experienceTitle:
+      "Budskabet skal vaere tydeligt med det samme: dette er et unikt produkt til en specifik bilverden.",
+    experienceBody:
+      "Derfor laener siden sig mere ind i identitet, community og specialisering. Malet er ikke at virke bredt. Malet er at ramme helt rigtigt for dem den faktisk er bygget til.",
+    experienceListOneLabel: "Positionering",
+    experienceListOneValue: "Bygget til den rigtige niche",
+    experienceListTwoLabel: "Koretojer",
+    experienceListTwoValue: "Bygget til specifikke koretojstyper",
+    experienceListThreeLabel: "Konvoj",
+    experienceListThreeValue: "Designet til at bevaege sig sammen",
+    launchEyebrow: "Lancering",
+    launchTitle: "Vis med det samme at CruizX er bygget til disse koretojer.",
+    launchBody:
+      "Siden skal tiltraekke de rigtige mennesker ved at vaere tydelig om hvem den er til, hvorfor konvoj betyder noget, og hvorfor CruizX skiller sig ud.",
+    emailPlaceholder: "Din e-mail",
+    launchCta: "Join launch",
+    footerTagline: "Driven by the ride.",
+  },
+  fi: {
+    languageLabel: "Kieli",
+    navFeatures: "Ominaisuudet",
+    navExperience: "Kokemus",
+    navLaunch: "Julkaisu",
+    heroEyebrow: "Rakennettu ajoneuvokulttuuriin",
+    heroTitle: "Ei kaikille. Rakennettu nille ajoneuvoille.",
+    heroBody:
+      "CruizX ei ole sovellus kaikille. Se on rakennettu ihmisille, jotka elavat tassa ajoneuvokulttuurissa ja haluavat kokemuksen, joka ymmartaa miten he ajavat, kohtaavat, viestivat ja liikkuvat yhdessa.",
+    heroBodySecondary:
+      "Ensimmisesta kohtaamispisteesta viimeiseen autoon asti CruizX on suunniteltu konvojiliikkeeseen, yhteiseen lasnaoloon ja ajokulttuuriin, jota yleiset karttasovellukset eivat ymmarra.",
+    heroPrimaryCta: "Aloita",
+    heroSecondaryCta: "Lue lisaa",
+    heroStatOneTitle: "Ainutlaatuinen",
+    heroStatOneBody: "rakennettu nichelle, ei massamarkkinaan",
+    heroStatTwoTitle: "Ajoneuvot",
+    heroStatTwoBody: "suunniteltu juuri tahan ajotyyliin",
+    heroStatThreeTitle: "Konvoji",
+    heroStatThreeBody: "rakennettu ryhmaliikkeeseen ja livekoordinointiin",
+    screenPill: "CruizX live",
+    routeLabel: "Konvojifokus",
+    routeTitle: "Rakennettu ajoneuvoille. Rakennettu konvojille.",
+    routeBody:
+      "CruizX on suunniteltu taman skenen kayttaytymisen, energian ja tarpeiden mukaan, painottaen konvojin virtausta, live-tilannekuvaa ja yhdessa liikkumista.",
+    signalOneLabel: "Ajoneuvot",
+    signalOneValue: "Tarkoitukseen rakennettu",
+    signalTwoLabel: "Konvoji",
+    signalTwoValue: "Livekoordinointi",
+    signalThreeLabel: "Yhteiso",
+    signalThreeValue: "Rakennettu kulttuurille",
+    stripOne: "Rakennettu skenelle",
+    stripTwo: "Ei kaikille ajoneuvoille",
+    stripThree: "Konvoji ensin",
+    stripFour: "Livekoordinointi",
+    stripFive: "Yhteisokeskeinen",
+    featuresEyebrow: "Ominaisuudet",
+    featuresTitle:
+      "CruizXin pitaisi tuntua oikeille kuljettajille ilmeiselta ja vaaralle yleisolle eparelevantilta.",
+    featureOneTitle: "Rakennettu oikealle ajoneuvoluokalle",
+    featureOneBody:
+      "Koko kokemuksen pitaisi viestia, etta CruizX ei ole yleissovellus vaan taman tietyn ajoneuvoryhman ratkaisu.",
+    featureTwoTitle: "Rakennettu konvojikayttaytymisen ymparille",
+    featureTwoBody:
+      "CruizX on muotoiltu sen mukaan miten konvojit oikeasti liikkuvat: pysy yhteydessa, pida muodostelma, loyda toisensa ja jaa live-tilannekuvaa.",
+    featureThreeTitle: "Rakennettu konvojikulttuurille, ei vain utiliteetille",
+    featureThreeBody:
+      "CruizX ei myy vain tyokaluja. Se myy yhteenkuuluvuutta, tyyli ja tunnetta siita, etta tuote ymmartaa kayttajansa.",
+    experienceEyebrow: "Kokemus",
+    experienceTitle:
+      "Viestin tulee olla heti selva: tama on ainutlaatuinen tuote tiettyyn ajoneuvomaailmaan.",
+    experienceBody:
+      "Siksi sivu nojaa vahvemmin identiteettiin, yhteisoon ja erikoistumiseen. Tavoite ei ole olla laaja. Tavoite on tuntua taysin oikealta niille, joille se on rakennettu.",
+    experienceListOneLabel: "Positiointi",
+    experienceListOneValue: "Rakennettu oikeaan nicheen",
+    experienceListTwoLabel: "Ajoneuvot",
+    experienceListTwoValue: "Rakennettu tietyille ajoneuvotyypeille",
+    experienceListThreeLabel: "Konvoji",
+    experienceListThreeValue: "Suunniteltu liikkumaan yhdessa",
+    launchEyebrow: "Julkaisu",
+    launchTitle: "Nayta heti, etta CruizX on rakennettu nille ajoneuvoille.",
+    launchBody:
+      "Sivun tulee houkutella oikeat ihmiset olemalla selkea kenelle se on, miksi konvojit ovat tarkeita ja miksi CruizX erottuu kaikesta muusta.",
+    emailPlaceholder: "Sahkopostisi",
+    launchCta: "Liity julkaisuun",
+    footerTagline: "Driven by the ride.",
+  },
+  fr: {
+    languageLabel: "Langue",
+    navFeatures: "Fonctionnalites",
+    navExperience: "Experience",
+    navLaunch: "Lancement",
+    heroEyebrow: "Concu pour la culture automobile",
+    heroTitle: "Pas fait pour tout le monde. Concu pour ces vehicules.",
+    heroBody:
+      "CruizX n est pas une application pour tout le monde. Elle est concue pour les personnes qui vivent cette culture auto et veulent une experience qui comprend vraiment comment elles roulent, se retrouvent, communiquent et se deplacent ensemble.",
+    heroBodySecondary:
+      "Du premier point de rendez-vous a la derniere voiture de la file, CruizX est concu autour du mouvement en convoi, de la presence partagee et d une culture de conduite que les applis de carte generiques ne comprennent pas.",
+    heroPrimaryCta: "Commencer",
+    heroSecondaryCta: "Voir plus",
+    heroStatOneTitle: "Unique",
+    heroStatOneBody: "concu pour une niche, pas pour le marche de masse",
+    heroStatTwoTitle: "Vehicules",
+    heroStatTwoBody: "concu pour ce type de conduite specifique",
+    heroStatThreeTitle: "Convoi",
+    heroStatThreeBody: "concu pour le mouvement de groupe et la coordination live",
+    screenPill: "CruizX live",
+    routeLabel: "Focus convoi",
+    routeTitle: "Concu pour les vehicules. Concu pour le convoi.",
+    routeBody:
+      "CruizX est concu autour du comportement, de l energie et des besoins de cette scene, avec un focus plus fort sur le flux de convoi, la vision live du groupe et le fait de bouger ensemble.",
+    signalOneLabel: "Vehicules",
+    signalOneValue: "Concu sur mesure",
+    signalTwoLabel: "Convoi",
+    signalTwoValue: "Coordination live",
+    signalThreeLabel: "Communaute",
+    signalThreeValue: "Concu pour la culture",
+    stripOne: "Concu pour la scene",
+    stripTwo: "Pas pour tous les vehicules",
+    stripThree: "Convoi d abord",
+    stripFour: "Coordination live",
+    stripFive: "Focus communaute",
+    featuresEyebrow: "Fonctionnalites",
+    featuresTitle:
+      "CruizX doit sembler evident pour les bons conducteurs et sans interet pour le mauvais public.",
+    featureOneTitle: "Concu pour le bon type de vehicules",
+    featureOneBody:
+      "Toute l experience doit montrer que CruizX n est pas une application generaliste, mais quelque chose concu pour ce groupe de vehicules specifique.",
+    featureTwoTitle: "Concu autour du comportement en convoi",
+    featureTwoBody:
+      "CruizX est faconne selon la facon dont les convois se deplacent vraiment: rester connectes, garder la formation, se retrouver et partager une vision live de la route.",
+    featureThreeTitle: "Concu pour la culture convoi, pas seulement l utilite",
+    featureThreeBody:
+      "CruizX ne vend pas seulement des outils. Il vend l appartenance, le style et le sentiment que le produit comprend vraiment ses utilisateurs.",
+    experienceEyebrow: "Experience",
+    experienceTitle:
+      "Le message doit etre evident immediatement: c est un produit unique pour un monde vehicule specifique.",
+    experienceBody:
+      "C est pourquoi le site s appuie plus fortement sur l identite, la communaute et la specialisation. L objectif n est pas d etre large. L objectif est d etre parfaitement juste pour ceux pour qui il est construit.",
+    experienceListOneLabel: "Positionnement",
+    experienceListOneValue: "Concu pour la bonne niche",
+    experienceListTwoLabel: "Vehicules",
+    experienceListTwoValue: "Concu pour des types de vehicules specifiques",
+    experienceListThreeLabel: "Convoi",
+    experienceListThreeValue: "Concu pour bouger ensemble",
+    launchEyebrow: "Lancement",
+    launchTitle: "Montrez tout de suite que CruizX est concu pour ces vehicules.",
+    launchBody:
+      "Le site doit attirer les bonnes personnes en etant clair sur qui il vise, pourquoi le convoi compte et pourquoi CruizX est different du reste.",
+    emailPlaceholder: "Votre e-mail",
+    launchCta: "Rejoindre le lancement",
+    footerTagline: "Driven by the ride.",
+  },
+};
+
+const supportedLanguages = ["da", "en", "fi", "fr", "nb", "sv"];
+
+function applyLanguage(lang) {
+  const activeLang = supportedLanguages.includes(lang) ? lang : "en";
+  const localeText = translations[activeLang] ?? translations.en;
+  const fallbackText = translations.en;
+
+  document.documentElement.lang = activeLang;
+
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    const key = node.getAttribute("data-i18n");
+    const value = localeText[key] ?? fallbackText[key];
+    if (value) node.textContent = value;
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    const key = node.getAttribute("data-i18n-placeholder");
+    const value = localeText[key] ?? fallbackText[key];
+    if (value) node.setAttribute("placeholder", value);
+  });
+
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
+    const key = node.getAttribute("data-i18n-aria-label");
+    const value = localeText[key] ?? fallbackText[key];
+    if (value) node.setAttribute("aria-label", value);
+  });
+
+  if (languageSelect) languageSelect.value = activeLang;
+  localStorage.setItem("cruizx_site_lang", activeLang);
+}
 
 if (yearNode) {
   yearNode.textContent = new Date().getFullYear();
+}
+
+if (languageSelect) {
+  const saved = localStorage.getItem("cruizx_site_lang");
+  const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
+  const initial = supportedLanguages.includes(saved)
+    ? saved
+    : supportedLanguages.includes(browserLang)
+      ? browserLang
+      : "en";
+  applyLanguage(initial);
+  languageSelect.addEventListener("change", (event) => {
+    applyLanguage(event.target.value);
+  });
 }
 
 const observer = new IntersectionObserver(
@@ -13,9 +458,7 @@ const observer = new IntersectionObserver(
       }
     });
   },
-  {
-    threshold: 0.2,
-  }
+  { threshold: 0.2 }
 );
 
 revealItems.forEach((item, index) => {

@@ -20,50 +20,64 @@
           <img src="./assets/logga_nobg.png" alt="CruizX" />
         </a>
 
-        <nav class="site-nav">
-          <a href="#features">Features</a>
-          <a href="#experience">Experience</a>
-          <a href="#launch">Launch</a>
+        <div class="header-controls">
+          <label class="language-switch" for="language-select">
+            <span data-i18n="languageLabel">Language</span>
+            <select id="language-select" aria-label="Select language">
+              <option value="en">EN</option>
+              <option value="sv">SV</option>
+              <option value="nb">NB</option>
+              <option value="da">DA</option>
+              <option value="fi">FI</option>
+              <option value="fr">FR</option>
+            </select>
+          </label>
+
+          <nav class="site-nav">
+            <a href="#features" data-i18n="navFeatures">Features</a>
+            <a href="#experience" data-i18n="navExperience">Experience</a>
+            <a href="#launch" data-i18n="navLaunch">Launch</a>
           <a href="https://kimtechtool.se" target="_blank" rel="noreferrer">
             KimTechTool
           </a>
-        </nav>
+          </nav>
+        </div>
       </header>
 
       <main id="top">
         <section class="hero">
           <div class="hero-copy reveal">
-            <p class="eyebrow">Built for vehicle culture</p>
-            <h1>Not made for everyone. Built for these vehicles.</h1>
-            <p class="hero-text">
+            <p class="eyebrow" data-i18n="heroEyebrow">Built for vehicle culture</p>
+            <h1 data-i18n="heroTitle">Not made for everyone. Built for these vehicles.</h1>
+            <p class="hero-text" data-i18n="heroBody">
               CruizX is not another app trying to fit everyone. It is built for
               people who live in this vehicle culture and want an experience
               that actually understands how they drive, meet, communicate, and
               move together.
             </p>
-            <p class="hero-text hero-text-secondary">
+            <p class="hero-text hero-text-secondary" data-i18n="heroBodySecondary">
               From the first meetup point to the last car in the line, CruizX
               is designed around convoy movement, shared presence, and the kind
               of driving culture generic map apps never get right.
             </p>
 
             <div class="hero-actions">
-              <a class="button button-primary" href="#launch">Get started</a>
-              <a class="button button-secondary" href="#features">See more</a>
+              <a class="button button-primary" href="#launch" data-i18n="heroPrimaryCta">Get started</a>
+              <a class="button button-secondary" href="#features" data-i18n="heroSecondaryCta">See more</a>
             </div>
 
             <ul class="hero-stats">
               <li>
-                <strong>Unique</strong>
-                <span>built for a niche, not the mass market</span>
+                <strong data-i18n="heroStatOneTitle">Unique</strong>
+                <span data-i18n="heroStatOneBody">built for a niche, not the mass market</span>
               </li>
               <li>
-                <strong>Vehicles</strong>
-                <span>designed for this specific kind of driving</span>
+                <strong data-i18n="heroStatTwoTitle">Vehicles</strong>
+                <span data-i18n="heroStatTwoBody">designed for this specific kind of driving</span>
               </li>
               <li>
-                <strong>Convoy</strong>
-                <span>built around group movement and live coordination</span>
+                <strong data-i18n="heroStatThreeTitle">Convoy</strong>
+                <span data-i18n="heroStatThreeBody">built around group movement and live coordination</span>
               </li>
             </ul>
           </div>
@@ -72,14 +86,14 @@
             <div class="device-frame">
               <div class="device-screen">
                 <div class="screen-top">
-                  <span class="screen-pill">CruizX live</span>
+                  <span class="screen-pill" data-i18n="screenPill">CruizX live</span>
                   <span class="screen-time">22:48</span>
                 </div>
 
                 <div class="route-card">
-                  <p class="route-label">Convoy focused</p>
-                  <h2>Built for the vehicles. Built for the convoy.</h2>
-                  <p>
+                  <p class="route-label" data-i18n="routeLabel">Convoy focused</p>
+                  <h2 data-i18n="routeTitle">Built for the vehicles. Built for the convoy.</h2>
+                  <p data-i18n="routeBody">
                     CruizX is designed around the behavior, energy, and needs
                     of this scene, with a stronger focus on convoy flow,
                     live group awareness, and moving together.
@@ -88,16 +102,16 @@
 
                 <div class="signal-grid">
                   <article>
-                    <span>Vehicles</span>
-                    <strong>Purpose-built</strong>
+                    <span data-i18n="signalOneLabel">Vehicles</span>
+                    <strong data-i18n="signalOneValue">Purpose-built</strong>
                   </article>
                   <article>
-                    <span>Convoy</span>
-                    <strong>Live coordination</strong>
+                    <span data-i18n="signalTwoLabel">Convoy</span>
+                    <strong data-i18n="signalTwoValue">Live coordination</strong>
                   </article>
                   <article>
-                    <span>Community</span>
-                    <strong>Built for the culture</strong>
+                    <span data-i18n="signalThreeLabel">Community</span>
+                    <strong data-i18n="signalThreeValue">Built for the culture</strong>
                   </article>
                 </div>
 
@@ -112,24 +126,24 @@
         </section>
 
         <section class="feature-strip reveal">
-          <p>Built for the scene</p>
-          <p>Not for every vehicle</p>
-          <p>Convoy first</p>
-          <p>Live coordination</p>
-          <p>Community focused</p>
+          <p data-i18n="stripOne">Built for the scene</p>
+          <p data-i18n="stripTwo">Not for every vehicle</p>
+          <p data-i18n="stripThree">Convoy first</p>
+          <p data-i18n="stripFour">Live coordination</p>
+          <p data-i18n="stripFive">Community focused</p>
         </section>
 
         <section class="features" id="features">
           <div class="section-heading reveal">
-            <p class="eyebrow">Features</p>
-            <h2>CruizX should feel obvious to the right drivers and irrelevant to the wrong audience.</h2>
+            <p class="eyebrow" data-i18n="featuresEyebrow">Features</p>
+            <h2 data-i18n="featuresTitle">CruizX should feel obvious to the right drivers and irrelevant to the wrong audience.</h2>
           </div>
 
           <div class="feature-grid">
             <article class="feature-card reveal">
               <span class="feature-index">01</span>
-              <h3>Built for the right kind of vehicles</h3>
-              <p>
+              <h3 data-i18n="featureOneTitle">Built for the right kind of vehicles</h3>
+              <p data-i18n="featureOneBody">
                 The entire experience should signal that CruizX is not a general
                 purpose app, but something made for this specific vehicle group.
               </p>
@@ -137,8 +151,8 @@
 
             <article class="feature-card reveal">
               <span class="feature-index">02</span>
-              <h3>Built around convoy behavior</h3>
-              <p>
+              <h3 data-i18n="featureTwoTitle">Built around convoy behavior</h3>
+              <p data-i18n="featureTwoBody">
                 CruizX is shaped around how convoys actually move: staying
                 connected, keeping formation, finding each other, and sharing
                 live awareness on the road.
@@ -147,8 +161,8 @@
 
             <article class="feature-card reveal">
               <span class="feature-index">03</span>
-              <h3>Built for convoy culture, not just utility</h3>
-              <p>
+              <h3 data-i18n="featureThreeTitle">Built for convoy culture, not just utility</h3>
+              <p data-i18n="featureThreeBody">
                 CruizX does not just sell tools. It sells belonging, style, and
                 the feeling that the product actually understands its users and
                 the way they roll together.
@@ -160,9 +174,9 @@
         <section class="experience" id="experience">
           <div class="experience-panel reveal">
             <div class="experience-copy">
-              <p class="eyebrow">Experience</p>
-              <h2>The message should be obvious immediately: this is a unique product for a specific vehicle world.</h2>
-              <p>
+              <p class="eyebrow" data-i18n="experienceEyebrow">Experience</p>
+              <h2 data-i18n="experienceTitle">The message should be obvious immediately: this is a unique product for a specific vehicle world.</h2>
+              <p data-i18n="experienceBody">
                 That is why the site now leans harder into identity, community,
                 and specialization. The goal is not to feel broad. The goal is
                 to feel exactly right for the people it is actually built for,
@@ -172,16 +186,16 @@
 
             <div class="experience-list">
               <div>
-                <span>Positioning</span>
-                <strong>Built for the right niche</strong>
+                <span data-i18n="experienceListOneLabel">Positioning</span>
+                <strong data-i18n="experienceListOneValue">Built for the right niche</strong>
               </div>
               <div>
-                <span>Vehicles</span>
-                <strong>Built for specific vehicle types</strong>
+                <span data-i18n="experienceListTwoLabel">Vehicles</span>
+                <strong data-i18n="experienceListTwoValue">Built for specific vehicle types</strong>
               </div>
               <div>
-                <span>Convoy</span>
-                <strong>Designed for moving together</strong>
+                <span data-i18n="experienceListThreeLabel">Convoy</span>
+                <strong data-i18n="experienceListThreeValue">Designed for moving together</strong>
               </div>
             </div>
           </div>
@@ -189,9 +203,9 @@
 
         <section class="launch" id="launch">
           <div class="launch-card reveal">
-            <p class="eyebrow">Launch</p>
-            <h2>Show immediately that CruizX is built for these vehicles.</h2>
-            <p>
+            <p class="eyebrow" data-i18n="launchEyebrow">Launch</p>
+            <h2 data-i18n="launchTitle">Show immediately that CruizX is built for these vehicles.</h2>
+            <p data-i18n="launchBody">
               The site should attract the right people by being clear about who
               it is for, why convoy matters, and why CruizX feels different
               from everything else.
@@ -202,8 +216,10 @@
                 type="email"
                 placeholder="Your email"
                 aria-label="Your email"
+                data-i18n-placeholder="emailPlaceholder"
+                data-i18n-aria-label="emailPlaceholder"
               />
-              <button type="button">Join the launch</button>
+              <button type="button" data-i18n="launchCta">Join the launch</button>
             </form>
           </div>
         </section>
@@ -211,7 +227,7 @@
 
       <footer class="site-footer">
         <p>CruizX</p>
-        <p>Driven by the ride.</p>
+        <p data-i18n="footerTagline">Driven by the ride.</p>
         <p>&copy; <span id="year"></span></p>
       </footer>
     </div>
