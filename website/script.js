@@ -8,6 +8,7 @@ const cookieNecessaryBtn = document.querySelector("#cookie-necessary");
 const footerPrivacyLink = document.querySelector("#footer-privacy-link");
 const footerCookiesLink = document.querySelector("#footer-cookies-link");
 const footerTermsLink = document.querySelector("#footer-terms-link");
+const footerSupportLink = document.querySelector("#footer-support-link");
 const cookiePolicyLink = document.querySelector("#cookie-policy-link");
 
 const translations = {
@@ -81,6 +82,7 @@ const translations = {
     footerPrivacy: "Privacy",
     footerCookies: "Cookies",
     footerTerms: "Terms",
+    footerSupport: "Support",
     cookieTitle: "Cookies on CruizX",
     cookieBody:
       "We use cookies and similar storage to remember language, improve the website, and support core functionality.",
@@ -158,6 +160,7 @@ const translations = {
     footerPrivacy: "Integritet",
     footerCookies: "Cookies",
     footerTerms: "Villkor",
+    footerSupport: "Support",
     cookieTitle: "Cookies på CruizX",
     cookieBody:
       "Vi använder cookies och liknande lagring för att komma ihåg språk, förbättra webbplatsen och stödja grundläggande funktioner.",
@@ -235,6 +238,7 @@ const translations = {
     footerPrivacy: "Personvern",
     footerCookies: "Cookies",
     footerTerms: "Vilkår",
+    footerSupport: "Support",
     cookieTitle: "Cookies på CruizX",
     cookieBody:
       "Vi bruker cookies og lignende lagring for å huske språk, forbedre nettsiden og støtte kjernefunksjoner.",
@@ -312,6 +316,7 @@ const translations = {
     footerPrivacy: "Privatliv",
     footerCookies: "Cookies",
     footerTerms: "Vilkår",
+    footerSupport: "Support",
     cookieTitle: "Cookies på CruizX",
     cookieBody:
       "Vi bruger cookies og lignende lagring for at huske sprog, forbedre websitet og understøtte kernefunktioner.",
@@ -389,6 +394,7 @@ const translations = {
     footerPrivacy: "Tietosuoja",
     footerCookies: "Evasteet",
     footerTerms: "Ehdot",
+    footerSupport: "Tuki",
     cookieTitle: "Evasteet CruizXissa",
     cookieBody:
       "Kaytamme evasteita ja vastaavaa tallennusta kielen muistamiseen, sivuston parantamiseen ja ydintoimintojen tukemiseen.",
@@ -466,6 +472,7 @@ const translations = {
     footerPrivacy: "Confidentialite",
     footerCookies: "Cookies",
     footerTerms: "Conditions",
+    footerSupport: "Support",
     cookieTitle: "Cookies sur CruizX",
     cookieBody:
       "Nous utilisons des cookies et un stockage similaire pour memoriser la langue, ameliorer le site et assurer les fonctions essentielles.",
@@ -513,6 +520,7 @@ function updateLegalLinks(lang) {
   if (footerPrivacyLink) footerPrivacyLink.href = `./privacy.html${query}`;
   if (footerCookiesLink) footerCookiesLink.href = `./cookies.html${query}`;
   if (footerTermsLink) footerTermsLink.href = `./terms.html${query}`;
+  if (footerSupportLink) footerSupportLink.href = `./support.html${query}`;
   if (cookiePolicyLink) cookiePolicyLink.href = `./cookies.html${query}`;
 }
 
