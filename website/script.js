@@ -42,7 +42,7 @@ const translations = {
     stripFive: "Community focused",
     featuresEyebrow: "Features",
     featuresTitle:
-      "CruizX should feel obvious to the right drivers and irrelevant to the wrong audience.",
+      "CruizX should feel obvious to the right drivers and clearly focused on the right audience.",
     featureOneTitle: "Built for the right kind of vehicles",
     featureOneBody:
       "The entire experience should signal that CruizX is not a general purpose app, but something made for this specific vehicle group.",
@@ -109,7 +109,7 @@ const translations = {
     stripFive: "Communityfokus",
     featuresEyebrow: "Funktioner",
     featuresTitle:
-      "CruizX ska kännas självklar för rätt förare och ointressant för fel publik.",
+      "CruizX ska kännas självklar för rätt förare och tydligt fokuserad på rätt målgrupp.",
     featureOneTitle: "Byggd för rätt typ av fordon",
     featureOneBody:
       "Hela upplevelsen ska visa att CruizX inte är en allmän app, utan något byggt för denna specifika fordonsgrupp.",
@@ -176,7 +176,7 @@ const translations = {
     stripFive: "Communityfokus",
     featuresEyebrow: "Funksjoner",
     featuresTitle:
-      "CruizX skal kjennes opplagt for riktige forere og uinteressant for feil publikum.",
+      "CruizX skal kjennes opplagt for riktige forere og tydelig fokusert pa riktig malgruppe.",
     featureOneTitle: "Bygget for riktig type kjoretoy",
     featureOneBody:
       "Hele opplevelsen skal vise at CruizX ikke er en generell app, men noe laget for denne spesifikke kjoretoygruppen.",
@@ -243,7 +243,7 @@ const translations = {
     stripFive: "Communityfokus",
     featuresEyebrow: "Funktioner",
     featuresTitle:
-      "CruizX skal foles oplagt for de rigtige forere og irrelevant for den forkerte malgruppe.",
+      "CruizX skal foles oplagt for de rigtige forere og tydeligt fokuseret pa den rigtige malgruppe.",
     featureOneTitle: "Bygget til den rigtige type koretojer",
     featureOneBody:
       "Hele oplevelsen skal vise, at CruizX ikke er en generel app, men noget bygget til denne specifikke koretojsgruppe.",
@@ -310,7 +310,7 @@ const translations = {
     stripFive: "Yhteisokeskeinen",
     featuresEyebrow: "Ominaisuudet",
     featuresTitle:
-      "CruizXin pitaisi tuntua oikeille kuljettajille ilmeiselta ja vaaralle yleisolle eparelevantilta.",
+      "CruizXin pitaisi tuntua oikeille kuljettajille ilmeiselta ja selkeasti oikeaan kohderyhmaan kohdistetulta.",
     featureOneTitle: "Rakennettu oikealle ajoneuvoluokalle",
     featureOneBody:
       "Koko kokemuksen pitaisi viestia, etta CruizX ei ole yleissovellus vaan taman tietyn ajoneuvoryhman ratkaisu.",
@@ -377,7 +377,7 @@ const translations = {
     stripFive: "Focus communaute",
     featuresEyebrow: "Fonctionnalites",
     featuresTitle:
-      "CruizX doit sembler evident pour les bons conducteurs et sans interet pour le mauvais public.",
+      "CruizX doit sembler evident pour les bons conducteurs et clairement axe sur le bon public.",
     featureOneTitle: "Concu pour le bon type de vehicules",
     featureOneBody:
       "Toute l experience doit montrer que CruizX n est pas une application generaliste, mais quelque chose concu pour ce groupe de vehicules specifique.",
