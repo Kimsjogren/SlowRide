@@ -67,6 +67,7 @@ const translations = {
     launchTitle: "Join CruizX and drive with people who match your vehicle culture.",
     launchBody:
       "Get launch updates, convoy invites, and early access features made for your kind of driving.",
+    launchPlatforms: "Coming soon on iOS & Android.",
     emailPlaceholder: "Your email",
     launchCta: "Get early access",
     footerTagline: "Driven by the ride.",
@@ -134,6 +135,7 @@ const translations = {
     launchTitle: "Gå med i CruizX och kör med personer som passar din fordonskultur.",
     launchBody:
       "Få lanseringsuppdateringar, konvojinbjudningar och tidig tillgång till funktioner byggda för din typ av körning.",
+    launchPlatforms: "Släpps snart för iOS & Android.",
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidig tillgång",
     footerTagline: "Driven by the ride.",
@@ -201,6 +203,7 @@ const translations = {
     launchTitle: "Vis umiddelbart at CruizX er bygget for disse kjoretoyene.",
     launchBody:
       "Siden skal tiltrekke riktige folk ved a vaere tydelig pa hvem den er for, hvorfor konvoi betyr noe og hvorfor CruizX skiller seg ut.",
+    launchPlatforms: "Kommer snart for iOS og Android.",
     emailPlaceholder: "Din e-post",
     launchCta: "Bli med pa lanseringen",
     footerTagline: "Driven by the ride.",
@@ -268,6 +271,7 @@ const translations = {
     launchTitle: "Vis med det samme at CruizX er bygget til disse koretojer.",
     launchBody:
       "Siden skal tiltraekke de rigtige mennesker ved at vaere tydelig om hvem den er til, hvorfor konvoj betyder noget, og hvorfor CruizX skiller sig ud.",
+    launchPlatforms: "Kommer snart til iOS og Android.",
     emailPlaceholder: "Din e-mail",
     launchCta: "Join launch",
     footerTagline: "Driven by the ride.",
@@ -335,6 +339,7 @@ const translations = {
     launchTitle: "Nayta heti, etta CruizX on rakennettu nille ajoneuvoille.",
     launchBody:
       "Sivun tulee houkutella oikeat ihmiset olemalla selkea kenelle se on, miksi konvojit ovat tarkeita ja miksi CruizX erottuu kaikesta muusta.",
+    launchPlatforms: "Tulossa pian iOS:lle ja Androidille.",
     emailPlaceholder: "Sahkopostisi",
     launchCta: "Liity julkaisuun",
     footerTagline: "Driven by the ride.",
@@ -402,6 +407,7 @@ const translations = {
     launchTitle: "Montrez tout de suite que CruizX est concu pour ces vehicules.",
     launchBody:
       "Le site doit attirer les bonnes personnes en etant clair sur qui il vise, pourquoi le convoi compte et pourquoi CruizX est different du reste.",
+    launchPlatforms: "Bientot disponible sur iOS et Android.",
     emailPlaceholder: "Votre e-mail",
     launchCta: "Rejoindre le lancement",
     footerTagline: "Driven by the ride.",

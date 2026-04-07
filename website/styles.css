@@ -551,6 +551,13 @@ main {
   gap: 0.8rem;
 }
 
+.launch-platforms {
+  margin: -0.4rem 0 0.7rem;
+  color: rgba(99, 215, 255, 0.92);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .launch-form input {
   flex: 1 1 18rem;
   min-height: 3.35rem;
