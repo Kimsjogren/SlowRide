@@ -2,6 +2,9 @@ const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
 const languageSelect = document.querySelector("#language-select");
 const liveClockNode = document.querySelector(".screen-time");
+const cookieBanner = document.querySelector("#cookie-banner");
+const cookieAcceptBtn = document.querySelector("#cookie-accept");
+const cookieNecessaryBtn = document.querySelector("#cookie-necessary");
 
 const translations = {
   en: {
@@ -74,6 +77,12 @@ const translations = {
     footerPrivacy: "Privacy",
     footerCookies: "Cookies",
     footerTerms: "Terms",
+    cookieTitle: "Cookies on CruizX",
+    cookieBody:
+      "We use cookies and similar storage to remember language, improve the website, and support core functionality.",
+    cookieReadMore: "Read Cookie Policy",
+    cookieNecessary: "Only necessary",
+    cookieAccept: "Accept all",
   },
   sv: {
     languageLabel: "Språk",
@@ -145,6 +154,12 @@ const translations = {
     footerPrivacy: "Integritet",
     footerCookies: "Cookies",
     footerTerms: "Villkor",
+    cookieTitle: "Cookies på CruizX",
+    cookieBody:
+      "Vi använder cookies och liknande lagring för att komma ihåg språk, förbättra webbplatsen och stödja grundläggande funktioner.",
+    cookieReadMore: "Läs Cookie Policy",
+    cookieNecessary: "Endast nödvändiga",
+    cookieAccept: "Acceptera alla",
   },
   nb: {
     languageLabel: "Sprak",
@@ -216,6 +231,12 @@ const translations = {
     footerPrivacy: "Personvern",
     footerCookies: "Cookies",
     footerTerms: "Vilkår",
+    cookieTitle: "Cookies på CruizX",
+    cookieBody:
+      "Vi bruker cookies og lignende lagring for å huske språk, forbedre nettsiden og støtte kjernefunksjoner.",
+    cookieReadMore: "Les Cookie Policy",
+    cookieNecessary: "Kun nødvendige",
+    cookieAccept: "Godta alle",
   },
   da: {
     languageLabel: "Sprog",
@@ -287,6 +308,12 @@ const translations = {
     footerPrivacy: "Privatliv",
     footerCookies: "Cookies",
     footerTerms: "Vilkår",
+    cookieTitle: "Cookies på CruizX",
+    cookieBody:
+      "Vi bruger cookies og lignende lagring for at huske sprog, forbedre websitet og understøtte kernefunktioner.",
+    cookieReadMore: "Læs Cookie Policy",
+    cookieNecessary: "Kun nødvendige",
+    cookieAccept: "Accepter alle",
   },
   fi: {
     languageLabel: "Kieli",
@@ -358,6 +385,12 @@ const translations = {
     footerPrivacy: "Tietosuoja",
     footerCookies: "Evasteet",
     footerTerms: "Ehdot",
+    cookieTitle: "Evasteet CruizXissa",
+    cookieBody:
+      "Kaytamme evasteita ja vastaavaa tallennusta kielen muistamiseen, sivuston parantamiseen ja ydintoimintojen tukemiseen.",
+    cookieReadMore: "Lue Cookie Policy",
+    cookieNecessary: "Vain valttamattomat",
+    cookieAccept: "Hyvaksy kaikki",
   },
   fr: {
     languageLabel: "Langue",
@@ -429,10 +462,17 @@ const translations = {
     footerPrivacy: "Confidentialite",
     footerCookies: "Cookies",
     footerTerms: "Conditions",
+    cookieTitle: "Cookies sur CruizX",
+    cookieBody:
+      "Nous utilisons des cookies et un stockage similaire pour memoriser la langue, ameliorer le site et assurer les fonctions essentielles.",
+    cookieReadMore: "Lire la Cookie Policy",
+    cookieNecessary: "Seulement necessaires",
+    cookieAccept: "Tout accepter",
   },
 };
 
 const supportedLanguages = ["da", "en", "fi", "fr", "nb", "sv"];
+const COOKIE_CONSENT_KEY = "cruizx_cookie_consent";
 
 function applyLanguage(lang) {
   const activeLang = supportedLanguages.includes(lang) ? lang : "en";
@@ -490,6 +530,32 @@ applyLanguage(initial);
 if (languageSelect) {
   languageSelect.addEventListener("change", (event) => {
     applyLanguage(event.target.value);
+  });
+}
+
+function hideCookieBanner() {
+  if (cookieBanner) cookieBanner.classList.add("hidden");
+}
+
+function saveCookieConsent(value) {
+  localStorage.setItem(COOKIE_CONSENT_KEY, value);
+  hideCookieBanner();
+}
+
+const savedCookieConsent = localStorage.getItem(COOKIE_CONSENT_KEY);
+if (savedCookieConsent === "all" || savedCookieConsent === "necessary") {
+  hideCookieBanner();
+}
+
+if (cookieAcceptBtn) {
+  cookieAcceptBtn.addEventListener("click", () => {
+    saveCookieConsent("all");
+  });
+}
+
+if (cookieNecessaryBtn) {
+  cookieNecessaryBtn.addEventListener("click", () => {
+    saveCookieConsent("necessary");
   });
 }
 
