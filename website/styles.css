@@ -641,23 +641,23 @@ main {
     justify-content: flex-end;
     align-self: flex-end;
     margin: 0 0.1rem 0.3rem 0;
-    padding: 0.38rem 0.5rem;
-    font-size: 0.78rem;
-    border-radius: 12px;
-    gap: 0.45rem;
+    padding: 0.3rem 0.42rem;
+    font-size: 0.72rem;
+    border-radius: 10px;
+    gap: 0.35rem;
   }
 
   .language-switch select {
-    padding: 0.3rem 0.45rem;
-    font-size: 0.76rem;
-    border-radius: 8px;
+    padding: 0.24rem 0.36rem;
+    font-size: 0.72rem;
+    border-radius: 7px;
   }
 
   .site-nav {
     order: 2;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 1fr 1fr 1fr 1.38fr;
     gap: 0.45rem;
     padding: 0.55rem;
   }
@@ -665,15 +665,9 @@ main {
   .site-nav a {
     width: 100%;
     text-align: center;
-    padding: 0.9rem 0.2rem;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .site-nav a:last-child {
+    padding: 0.9rem 0.12rem;
     font-size: 0.74rem;
+    white-space: nowrap;
   }
 
   main {
@@ -722,7 +716,7 @@ main {
   }
 
   .brand img {
-    height: 138px;
+    height: 156px;
   }
 
   .device-screen {
