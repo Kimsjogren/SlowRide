@@ -1015,6 +1015,12 @@ abstract class AppLocalizations {
   /// **'Terms of Use (EULA)'**
   String get settingsTermsOfUseLabel;
 
+  /// No description provided for @settingsSupportLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get settingsSupportLabel;
+
   /// No description provided for @settingsLinkOpenFailed.
   ///
   /// In en, this message translates to:

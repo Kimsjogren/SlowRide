@@ -479,6 +479,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsTermsOfUseLabel => 'Bruksvilkår (EULA)';
 
   @override
+  String get settingsSupportLabel => 'Support';
+
+  @override
   String get settingsLinkOpenFailed => 'Kunne ikke åpne lenken akkurat nå.';
 
   @override

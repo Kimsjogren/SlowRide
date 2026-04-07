@@ -18,6 +18,7 @@ class SettingsScreen extends StatelessWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(LegalLinks.privacyPolicy);
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
+  static final Uri _supportUri = Uri.parse(LegalLinks.support);
 
   Future<void> _openExternalLink(BuildContext context, Uri uri) async {
     final l10n = AppLocalizations.of(context)!;
@@ -627,6 +628,11 @@ class SettingsScreen extends StatelessWidget {
                                 onPressed: () =>
                                     _openExternalLink(context, _termsOfUseUri),
                                 child: Text(l10n.settingsTermsOfUseLabel),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    _openExternalLink(context, _supportUri),
+                                child: Text(l10n.settingsSupportLabel),
                               ),
                             ],
                           ),

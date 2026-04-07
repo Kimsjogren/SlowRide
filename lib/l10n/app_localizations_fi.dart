@@ -479,6 +479,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsTermsOfUseLabel => 'Käyttöehdot (EULA)';
 
   @override
+  String get settingsSupportLabel => 'Tuki';
+
+  @override
   String get settingsLinkOpenFailed => 'Linkkiä ei voitu avata juuri nyt.';
 
   @override

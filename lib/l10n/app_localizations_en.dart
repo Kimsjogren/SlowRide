@@ -479,6 +479,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTermsOfUseLabel => 'Terms of Use (EULA)';
 
   @override
+  String get settingsSupportLabel => 'Support';
+
+  @override
   String get settingsLinkOpenFailed => 'Could not open the link right now.';
 
   @override
