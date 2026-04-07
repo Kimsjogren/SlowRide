@@ -146,7 +146,7 @@ main,
 }
 
 .brand img {
-  height: 168px;
+  height: 182px;
   width: auto;
   display: block;
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.32));
@@ -861,7 +861,7 @@ main {
   }
 
   .brand img {
-    height: 172px;
+    height: 186px;
   }
 
   .device-screen {
