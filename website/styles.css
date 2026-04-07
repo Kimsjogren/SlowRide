@@ -618,6 +618,32 @@ main {
   letter-spacing: 0.02em;
 }
 
+.store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  margin: -0.1rem 0 0.9rem;
+}
+
+.store-badge-link {
+  display: inline-flex;
+  border-radius: 10px;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.store-badge-link:hover,
+.store-badge-link:focus-visible {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.store-badge {
+  display: block;
+  height: 44px;
+  width: auto;
+}
+
 .launch-form input {
   flex: 1 1 18rem;
   min-height: 3.35rem;
@@ -835,6 +861,10 @@ main {
   .hero-actions,
   .launch-form {
     flex-direction: column;
+  }
+
+  .store-badge {
+    height: 40px;
   }
 
   .signal-grid {
