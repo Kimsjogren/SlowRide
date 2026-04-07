@@ -633,13 +633,14 @@ main {
 
   .header-controls {
     width: 100%;
-    align-items: center;
+    align-items: flex-end;
   }
 
   .language-switch {
-    width: 100%;
-    justify-content: center;
-    align-self: center;
+    width: auto;
+    justify-content: flex-end;
+    align-self: flex-end;
+    margin-right: 0.1rem;
   }
 
   .site-nav {
@@ -653,8 +654,15 @@ main {
   .site-nav a {
     width: 100%;
     text-align: center;
-    padding: 0.95rem 0.35rem;
-    font-size: 0.82rem;
+    padding: 0.9rem 0.2rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site-nav a:last-child {
+    font-size: 0.74rem;
   }
 
   main {
