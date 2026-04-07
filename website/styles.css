@@ -693,6 +693,16 @@ main {
     line-height: 1.02;
   }
 
+  .launch-card h2 {
+    font-size: clamp(1.4rem, 6.2vw, 1.95rem);
+    line-height: 1.08;
+  }
+
+  .launch-card p {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
   .hero-text {
     font-size: 0.9rem;
     line-height: 1.5;
@@ -729,6 +739,11 @@ main {
   .launch-form button,
   .launch-form input {
     width: 100%;
+  }
+
+  .launch-form input {
+    flex: 0 0 auto;
+    min-height: 3.1rem;
   }
 
   .brand {
