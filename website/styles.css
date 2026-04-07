@@ -685,7 +685,25 @@ main {
   }
 
   .hero h1 {
-    font-size: clamp(2.2rem, 10vw, 3.2rem);
+    font-size: clamp(1.85rem, 8.6vw, 2.65rem);
+  }
+
+  .hero-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+  }
+
+  .hero-stats strong {
+    font-size: 1.03rem;
+  }
+
+  .hero-stats span {
+    font-size: 0.86rem;
   }
 
   .hero-stats {
@@ -716,7 +734,7 @@ main {
   }
 
   .brand img {
-    height: 156px;
+    height: 172px;
   }
 
   .device-screen {
