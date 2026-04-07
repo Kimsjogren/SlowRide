@@ -688,6 +688,8 @@ main {
   .hero h1 {
     font-size: clamp(1.35rem, 6.1vw, 1.95rem);
     line-height: 1.1;
+    max-width: none;
+    width: 100%;
   }
 
   .route-card h2 {
