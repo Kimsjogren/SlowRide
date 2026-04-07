@@ -654,15 +654,24 @@ main {
   margin: 0 auto;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.4rem;
   padding: 2rem 0 2.6rem;
   color: var(--text-muted);
   font-size: 0.92rem;
 }
 
-.site-footer p {
+.site-footer p,
+.footer-main {
   margin: 0;
+}
+
+.footer-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
 }
 
 .legal-links {
@@ -861,5 +870,11 @@ main {
 
   .legal-links {
     justify-content: center;
+    font-size: 0.95rem;
+  }
+
+  .footer-main {
+    gap: 0.6rem;
+    font-size: 0.98rem;
   }
 }
