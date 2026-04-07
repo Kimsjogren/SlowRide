@@ -63,11 +63,11 @@ const translations = {
     experienceListThreeLabel: "Convoy",
     experienceListThreeValue: "Designed for moving together",
     launchEyebrow: "Launch",
-    launchTitle: "Show immediately that CruizX is built for these vehicles.",
+    launchTitle: "Join CruizX and drive with people who match your vehicle culture.",
     launchBody:
-      "The site should attract the right people by being clear about who it is for, why convoy matters, and why CruizX feels different from everything else.",
+      "Get launch updates, convoy invites, and early access features made for your kind of driving.",
     emailPlaceholder: "Your email",
-    launchCta: "Join the launch",
+    launchCta: "Get early access",
     footerTagline: "Driven by the ride.",
   },
   sv: {
@@ -129,11 +129,11 @@ const translations = {
     experienceListThreeLabel: "Konvoj",
     experienceListThreeValue: "Designad för att röra sig tillsammans",
     launchEyebrow: "Lansering",
-    launchTitle: "Visa direkt att CruizX är byggd för dessa fordon.",
+    launchTitle: "Gå med i CruizX och kör med personer som passar din fordonskultur.",
     launchBody:
-      "Sidan ska locka rätt personer genom att vara tydlig med vilka den är till för, varför konvoj spelar roll och varför CruizX skiljer sig från allt annat.",
+      "Få lanseringsuppdateringar, konvojinbjudningar och tidig tillgång till funktioner byggda för din typ av körning.",
     emailPlaceholder: "Din e-post",
-    launchCta: "Gå med i lanseringen",
+    launchCta: "Få tidig tillgång",
     footerTagline: "Driven by the ride.",
   },
   nb: {

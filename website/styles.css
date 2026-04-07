@@ -383,16 +383,19 @@ main {
 }
 
 .signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
   margin-top: 0.7rem;
 }
 
 .signal-grid article {
-  flex: 1;
+  min-width: 0;
   padding: 0.95rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-soft);
   background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
 }
 
 .signal-grid span {
@@ -677,9 +680,13 @@ main {
   }
 
   .hero-actions,
-  .signal-grid,
   .launch-form {
     flex-direction: column;
+  }
+
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .button,
