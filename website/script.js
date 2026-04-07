@@ -5,6 +5,10 @@ const liveClockNode = document.querySelector(".screen-time");
 const cookieBanner = document.querySelector("#cookie-banner");
 const cookieAcceptBtn = document.querySelector("#cookie-accept");
 const cookieNecessaryBtn = document.querySelector("#cookie-necessary");
+const footerPrivacyLink = document.querySelector("#footer-privacy-link");
+const footerCookiesLink = document.querySelector("#footer-cookies-link");
+const footerTermsLink = document.querySelector("#footer-terms-link");
+const cookiePolicyLink = document.querySelector("#cookie-policy-link");
 
 const translations = {
   en: {
@@ -501,6 +505,15 @@ function applyLanguage(lang) {
 
   if (languageSelect) languageSelect.value = activeLang;
   localStorage.setItem("cruizx_site_lang", activeLang);
+  updateLegalLinks(activeLang);
+}
+
+function updateLegalLinks(lang) {
+  const query = `?lang=${lang}`;
+  if (footerPrivacyLink) footerPrivacyLink.href = `./privacy.html${query}`;
+  if (footerCookiesLink) footerCookiesLink.href = `./cookies.html${query}`;
+  if (footerTermsLink) footerTermsLink.href = `./terms.html${query}`;
+  if (cookiePolicyLink) cookiePolicyLink.href = `./cookies.html${query}`;
 }
 
 if (yearNode) {

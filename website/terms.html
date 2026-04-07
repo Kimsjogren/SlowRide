@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CruizX Terms</title>
+    <meta name="description" content="CruizX Terms" />
+    <style>
+      :root {
+        --panel: rgba(10, 24, 58, 0.86);
+        --line: rgba(255, 255, 255, 0.16);
+        --text: #eef5ff;
+        --muted: rgba(238, 245, 255, 0.8);
+        --accent: #4bb4ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: var(--text);
+        background: linear-gradient(rgba(5, 14, 33, 0.7), rgba(5, 14, 33, 0.86)), url("./assets/background.png") center/cover fixed no-repeat;
+      }
+      .topbar, main { width: min(960px, calc(100% - 2rem)); margin: 1rem auto 0; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+      .back { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 10px; padding: 0.48rem 0.72rem; background: rgba(255, 255, 255, 0.06); }
+      .date { color: var(--accent); font-size: 0.92rem; }
+      main { margin-bottom: 2rem; padding: 1.3rem; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); }
+      h1 { margin: 0 0 0.7rem; font-size: clamp(1.7rem, 3.8vw, 2.2rem); }
+      h2 { margin: 1rem 0 0.55rem; font-size: clamp(1.08rem, 2.2vw, 1.34rem); }
+      p, li { color: var(--muted); line-height: 1.6; }
+      ul { padding-left: 1.2rem; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <a class="back" id="back-link" href="./index.html">Back to CruizX</a>
+      <span class="date" id="updated"></span>
+    </div>
+    <main id="content"></main>
+    <script>
+      const supported = ["da", "en", "fi", "fr", "nb", "sv"];
+      const queryLang = new URLSearchParams(window.location.search).get("lang");
+      const savedLang = localStorage.getItem("cruizx_site_lang");
+      const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
+      const lang = supported.includes(queryLang)
+        ? queryLang
+        : supported.includes(savedLang)
+          ? savedLang
+          : supported.includes(browserLang)
+            ? browserLang
+            : "en";
+
+      const copy = {
+        en: { back: "Back to CruizX", updated: "Last updated: April 7, 2026", html: `<h1>Terms & Conditions</h1><p>These terms apply to use of the CruizX website and app experiences.</p><h2>Use of service</h2><p>You are responsible for using CruizX lawfully and safely. Always follow traffic laws and local regulations.</p><h2>User content</h2><p>You are responsible for content you submit, including convoy information, chat content and alert reports.</p><h2>Availability</h2><p>Features may change during launch and early access. We may update or remove features to improve safety and reliability.</p><h2>Contact</h2><p>For legal or support questions, visit <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+        sv: { back: "Tillbaka till CruizX", updated: "Senast uppdaterad: 7 april 2026", html: `<h1>Villkor</h1><p>Dessa villkor gäller användning av CruizX webbplats och appupplevelser.</p><h2>Användning av tjänsten</h2><p>Du ansvarar för att använda CruizX lagligt och säkert. Följ alltid trafikregler och lokala bestämmelser.</p><h2>Användarinnehåll</h2><p>Du ansvarar för innehåll som du skickar in, inklusive konvojinformation, chattinnehåll och varningsrapporter.</p><h2>Tillgänglighet</h2><p>Funktioner kan ändras under lansering och tidig tillgång. Vi kan uppdatera eller ta bort funktioner för att förbättra säkerhet och stabilitet.</p><h2>Kontakt</h2><p>För juridiska frågor eller support, besök <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+        nb: { back: "Tilbake til CruizX", updated: "Sist oppdatert: 7. april 2026", html: `<h1>Vilkår</h1><p>Disse vilkårene gjelder bruk av CruizX-nettsiden og appopplevelsene.</p><h2>Bruk av tjenesten</h2><p>Du er ansvarlig for å bruke CruizX lovlig og trygt. Følg alltid trafikkregler og lokale krav.</p><h2>Brukerinnhold</h2><p>Du er ansvarlig for innhold du sender inn, inkludert konvoiinformasjon, chat-innhold og varselrapporter.</p><h2>Tilgjengelighet</h2><p>Funksjoner kan endres under lansering og tidlig tilgang. Vi kan oppdatere eller fjerne funksjoner for bedre sikkerhet og stabilitet.</p><h2>Kontakt</h2><p>For juridiske spørsmål eller support, besøk <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+        da: { back: "Tilbage til CruizX", updated: "Senest opdateret: 7. april 2026", html: `<h1>Vilkår</h1><p>Disse vilkår gælder brug af CruizX-websitet og appoplevelserne.</p><h2>Brug af tjenesten</h2><p>Du er ansvarlig for at bruge CruizX lovligt og sikkert. Følg altid færdselsregler og lokale krav.</p><h2>Brugerindhold</h2><p>Du er ansvarlig for indhold du indsender, inkl. konvojinformation, chatindhold og varslingsrapporter.</p><h2>Tilgængelighed</h2><p>Funktioner kan ændres under lancering og tidlig adgang. Vi kan opdatere eller fjerne funktioner for bedre sikkerhed og stabilitet.</p><h2>Kontakt</h2><p>For juridiske spørgsmål eller support, besøg <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+        fi: { back: "Takaisin CruizXiin", updated: "Päivitetty: 7. huhtikuuta 2026", html: `<h1>Käyttöehdot</h1><p>Nämä ehdot koskevat CruizX-verkkosivuston ja sovelluskokemusten käyttöä.</p><h2>Palvelun käyttö</h2><p>Olet vastuussa CruizX:n laillisesta ja turvallisesta käytöstä. Noudata aina liikennesääntöjä ja paikallisia määräyksiä.</p><h2>Käyttäjäsisältö</h2><p>Olet vastuussa lähettämästäsi sisällöstä, mukaan lukien konvojitiedot, chat-sisältö ja hälytysraportit.</p><h2>Saatavuus</h2><p>Toiminnot voivat muuttua julkaisun ja varhaisen käytön aikana. Voimme päivittää tai poistaa toimintoja turvallisuuden ja vakauden parantamiseksi.</p><h2>Yhteys</h2><p>Lakisääteiset ja tukikysymykset: <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+        fr: { back: "Retour à CruizX", updated: "Dernière mise à jour : 7 avril 2026", html: `<h1>Conditions</h1><p>Ces conditions s'appliquent à l'utilisation du site CruizX et des expériences de l'application.</p><h2>Utilisation du service</h2><p>Vous êtes responsable d'utiliser CruizX de manière légale et sûre. Respectez toujours le code de la route et les règles locales.</p><h2>Contenu utilisateur</h2><p>Vous êtes responsable du contenu soumis, y compris les informations de convoi, le chat et les signalements d'alerte.</p><h2>Disponibilité</h2><p>Les fonctionnalités peuvent évoluer pendant le lancement et l'accès anticipé. Nous pouvons modifier ou retirer des fonctions pour améliorer sécurité et fiabilité.</p><h2>Contact</h2><p>Pour les questions juridiques ou le support, visitez <a href="https://cruizx.com" target="_blank" rel="noreferrer">cruizx.com</a>.</p>` },
+      };
+
+      const text = copy[lang] || copy.en;
+      document.documentElement.lang = lang;
+      document.getElementById("back-link").textContent = text.back;
+      document.getElementById("back-link").href = `./index.html?lang=${lang}`;
+      document.getElementById("updated").textContent = text.updated;
+      document.getElementById("content").innerHTML = text.html;
+    </script>
+  </body>
+</html>

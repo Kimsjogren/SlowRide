@@ -3,164 +3,68 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CruizX Cookie Policy</title>
-    <meta
-      name="description"
-      content="Cookie Policy for CruizX website and related local storage."
-    />
+    <title>CruizX Cookies</title>
+    <meta name="description" content="CruizX Cookie Policy" />
     <style>
       :root {
-        --bg: #07122a;
-        --panel: rgba(10, 24, 58, 0.8);
-        --line: rgba(255, 255, 255, 0.15);
+        --panel: rgba(10, 24, 58, 0.86);
+        --line: rgba(255, 255, 255, 0.16);
         --text: #eef5ff;
-        --muted: rgba(238, 245, 255, 0.76);
+        --muted: rgba(238, 245, 255, 0.8);
         --accent: #4bb4ff;
       }
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Segoe UI", Arial, sans-serif;
         color: var(--text);
-        background:
-          linear-gradient(rgba(4, 12, 28, 0.7), rgba(4, 12, 28, 0.85)),
-          url("./assets/background.png") center/cover fixed no-repeat;
+        background: linear-gradient(rgba(5, 14, 33, 0.7), rgba(5, 14, 33, 0.86)), url("./assets/background.png") center/cover fixed no-repeat;
       }
-      main {
-        width: min(920px, calc(100% - 2rem));
-        margin: 1.2rem auto 2rem;
-        padding: 1.4rem;
-        border: 1px solid var(--line);
-        border-radius: 20px;
-        background: var(--panel);
-      }
-      h1,
-      h2 {
-        margin: 0 0 0.8rem;
-      }
-      h1 {
-        font-size: clamp(1.7rem, 4vw, 2.3rem);
-      }
-      h2 {
-        margin-top: 1.35rem;
-        font-size: clamp(1.1rem, 2.3vw, 1.45rem);
-      }
-      p,
-      li {
-        color: var(--muted);
-        line-height: 1.6;
-      }
-      ul {
-        padding-left: 1.2rem;
-      }
-      .topbar {
-        width: min(920px, calc(100% - 2rem));
-        margin: 1.2rem auto 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .back {
-        color: var(--text);
-        text-decoration: none;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 0.45rem 0.7rem;
-        background: rgba(255, 255, 255, 0.06);
-      }
-      .date {
-        font-size: 0.92rem;
-        color: var(--accent);
-      }
-      a {
-        color: var(--accent);
-      }
+      .topbar, main { width: min(960px, calc(100% - 2rem)); margin: 1rem auto 0; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+      .back { color: var(--text); text-decoration: none; border: 1px solid var(--line); border-radius: 10px; padding: 0.48rem 0.72rem; background: rgba(255, 255, 255, 0.06); }
+      .date { color: var(--accent); font-size: 0.92rem; }
+      main { margin-bottom: 2rem; padding: 1.3rem; border-radius: 20px; border: 1px solid var(--line); background: var(--panel); }
+      h1 { margin: 0 0 0.7rem; font-size: clamp(1.7rem, 3.8vw, 2.2rem); }
+      h2 { margin: 1rem 0 0.55rem; font-size: clamp(1.08rem, 2.2vw, 1.34rem); }
+      p, li { color: var(--muted); line-height: 1.6; }
+      ul { padding-left: 1.2rem; }
     </style>
   </head>
   <body>
     <div class="topbar">
-      <a class="back" href="./index.html">← Back to CruizX</a>
-      <span class="date">Last updated: April 7, 2026</span>
+      <a class="back" id="back-link" href="./index.html">Back to CruizX</a>
+      <span class="date" id="updated"></span>
     </div>
-    <main>
-      <h1>Cookie Policy</h1>
-      <p>
-        This Cookie Policy describes how CruizX uses cookies and similar
-        technologies on the website and related local storage mechanisms.
-      </p>
+    <main id="content"></main>
+    <script>
+      const supported = ["da", "en", "fi", "fr", "nb", "sv"];
+      const queryLang = new URLSearchParams(window.location.search).get("lang");
+      const savedLang = localStorage.getItem("cruizx_site_lang");
+      const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
+      const lang = supported.includes(queryLang)
+        ? queryLang
+        : supported.includes(savedLang)
+          ? savedLang
+          : supported.includes(browserLang)
+            ? browserLang
+            : "en";
 
-      <h2>1. What We Use</h2>
-      <ul>
-        <li>
-          Website storage (for example local storage) to remember language and
-          basic UI preferences.
-        </li>
-        <li>
-          Essential technical storage to keep pages working correctly across
-          sessions.
-        </li>
-        <li>
-          Third-party technology that may set or access identifiers when ad or
-          platform services are used.
-        </li>
-      </ul>
+      const copy = {
+        en: { back: "Back to CruizX", updated: "Last updated: April 7, 2026", html: `<h1>Cookie Policy</h1><p>CruizX uses cookies and similar storage technologies on this website.</p><h2>What we use</h2><ul><li>Necessary storage for language and consent preferences.</li><li>Basic website functionality and security-related storage.</li><li>Optional analytics or advertising technologies if enabled in future updates.</li></ul><h2>Why we use cookies</h2><p>To keep the website working, remember your selected language, and improve the experience.</p><h2>Your choice</h2><p>You can accept all cookies or keep only necessary cookies from the consent banner.</p>` },
+        sv: { back: "Tillbaka till CruizX", updated: "Senast uppdaterad: 7 april 2026", html: `<h1>Cookiepolicy</h1><p>CruizX använder cookies och liknande lagringstekniker på den här webbplatsen.</p><h2>Vad vi använder</h2><ul><li>Nödvändig lagring för språk- och samtyckesinställningar.</li><li>Grundläggande webbplatsfunktioner och säkerhetsrelaterad lagring.</li><li>Valfria analys- eller annonstekniker om det aktiveras i framtida uppdateringar.</li></ul><h2>Varför vi använder cookies</h2><p>För att webbplatsen ska fungera, komma ihåg valt språk och förbättra upplevelsen.</p><h2>Ditt val</h2><p>Du kan acceptera alla cookies eller endast använda nödvändiga cookies via samtyckesrutan.</p>` },
+        nb: { back: "Tilbake til CruizX", updated: "Sist oppdatert: 7. april 2026", html: `<h1>Cookiepolicy</h1><p>CruizX bruker cookies og lignende lagringsteknologi på dette nettstedet.</p><h2>Hva vi bruker</h2><ul><li>Nødvendig lagring for språk- og samtykkevalg.</li><li>Grunnleggende nettstedfunksjoner og sikkerhetsrelatert lagring.</li><li>Valgfri analyse- eller annonseteknologi hvis dette aktiveres senere.</li></ul><h2>Hvorfor vi bruker cookies</h2><p>For å holde nettstedet i drift, huske valgt språk og forbedre opplevelsen.</p><h2>Ditt valg</h2><p>Du kan godta alle cookies eller bare nødvendige cookies via samtykkebanneret.</p>` },
+        da: { back: "Tilbage til CruizX", updated: "Senest opdateret: 7. april 2026", html: `<h1>Cookiepolitik</h1><p>CruizX bruger cookies og lignende lagringsteknologier på dette website.</p><h2>Hvad vi bruger</h2><ul><li>Nødvendig lagring til sprog- og samtykkevalg.</li><li>Grundlæggende websitefunktioner og sikkerhedsrelateret lagring.</li><li>Valgfri analyse- eller annonceteknologi hvis det aktiveres senere.</li></ul><h2>Hvorfor vi bruger cookies</h2><p>For at holde websitet kørende, huske valgt sprog og forbedre oplevelsen.</p><h2>Dine valg</h2><p>Du kan acceptere alle cookies eller kun nødvendige cookies i samtykkebanneret.</p>` },
+        fi: { back: "Takaisin CruizXiin", updated: "Päivitetty: 7. huhtikuuta 2026", html: `<h1>Evästekäytäntö</h1><p>CruizX käyttää evästeitä ja vastaavia tallennustekniikoita tällä verkkosivulla.</p><h2>Mitä käytämme</h2><ul><li>Välttämätön tallennus kieli- ja suostumusvalintoja varten.</li><li>Perustoiminnot ja turvallisuuteen liittyvä tallennus.</li><li>Valinnainen analytiikka- tai mainontateknologia, jos se otetaan käyttöön myöhemmin.</li></ul><h2>Miksi käytämme evästeitä</h2><p>Jotta sivusto toimii, muistaa valitun kielen ja parantaa käyttökokemusta.</p><h2>Valintasi</h2><p>Voit hyväksyä kaikki evästeet tai käyttää vain välttämättömiä evästeitä suostumusbannerissa.</p>` },
+        fr: { back: "Retour à CruizX", updated: "Dernière mise à jour : 7 avril 2026", html: `<h1>Politique de cookies</h1><p>CruizX utilise des cookies et des technologies de stockage similaires sur ce site web.</p><h2>Ce que nous utilisons</h2><ul><li>Stockage nécessaire pour la langue et les préférences de consentement.</li><li>Fonctionnalité de base du site et stockage lié à la sécurité.</li><li>Technologies d'analyse ou publicitaires optionnelles si activées plus tard.</li></ul><h2>Pourquoi nous utilisons des cookies</h2><p>Pour assurer le fonctionnement du site, mémoriser la langue choisie et améliorer l'expérience.</p><h2>Votre choix</h2><p>Vous pouvez accepter tous les cookies ou uniquement les cookies nécessaires via la bannière.</p>` },
+      };
 
-      <h2>2. Why We Use It</h2>
-      <ul>
-        <li>To provide core website functionality and a stable experience.</li>
-        <li>To remember your selected language and similar preferences.</li>
-        <li>
-          To support services connected to app distribution, subscriptions, and
-          ads where relevant.
-        </li>
-      </ul>
-
-      <h2>3. App-Related Device Storage</h2>
-      <p>
-        In the mobile app, local device storage may be used for account state,
-        settings, and feature preferences. This helps the app function
-        correctly, including language, vehicle settings, and user experience
-        options.
-      </p>
-
-      <h2>4. Managing Cookies and Local Storage</h2>
-      <ul>
-        <li>
-          You can clear cookies/local storage in your browser settings at any
-          time.
-        </li>
-        <li>
-          You can control app permissions and tracking settings in iOS/Android
-          system settings.
-        </li>
-        <li>
-          Blocking certain storage features may reduce website or app
-          functionality.
-        </li>
-      </ul>
-
-      <h2>5. Third-Party Services</h2>
-      <p>
-        Where CruizX relies on third-party providers (for example ad and backend
-        services), their technologies and policies may also apply.
-      </p>
-
-      <h2>6. Changes</h2>
-      <p>
-        We may update this Cookie Policy over time. Material updates are shown
-        by the date at the top of this page.
-      </p>
-
-      <h2>7. Contact</h2>
-      <p>
-        For cookie-related questions, contact us through CruizX support channels
-        and
-        <a href="https://cruizx.se" target="_blank" rel="noreferrer"
-          >cruizx.se</a
-        >.
-      </p>
-    </main>
+      const text = copy[lang] || copy.en;
+      document.documentElement.lang = lang;
+      document.getElementById("back-link").textContent = text.back;
+      document.getElementById("back-link").href = `./index.html?lang=${lang}`;
+      document.getElementById("updated").textContent = text.updated;
+      document.getElementById("content").innerHTML = text.html;
+    </script>
   </body>
 </html>
