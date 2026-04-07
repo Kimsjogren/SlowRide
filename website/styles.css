@@ -220,8 +220,8 @@ main {
 
 .hero h1 {
   max-width: 11ch;
-  font-size: clamp(2rem, 3.9vw, 3.9rem);
-  line-height: 0.98;
+  font-size: clamp(1.55rem, 2.35vw, 2.65rem);
+  line-height: 1.03;
 }
 
 .hero-text,
@@ -329,7 +329,7 @@ main {
 .device-screen {
   position: relative;
   overflow: hidden;
-  min-height: 41rem;
+  min-height: 36rem;
   padding: 1.1rem;
   border-radius: 24px;
   background:
@@ -363,7 +363,7 @@ main {
 }
 
 .route-card {
-  margin-top: 6.8rem;
+  margin-top: 4.2rem;
   padding: 1.25rem;
   border-radius: 20px;
   border: 1px solid var(--border-soft);
@@ -373,7 +373,7 @@ main {
 
 .route-card h2 {
   margin: 0.45rem 0 0.8rem;
-  font-size: clamp(2.2rem, 5vw, 3rem);
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
 }
 
 .route-card p {
@@ -384,7 +384,7 @@ main {
 
 .signal-grid {
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 0.7rem;
 }
 
 .signal-grid article {
@@ -410,7 +410,8 @@ main {
 .map-lines {
   position: absolute;
   inset: auto 0 0;
-  height: 40%;
+  height: 22%;
+  opacity: 0.5;
 }
 
 .line {
@@ -470,7 +471,8 @@ main {
 .section-heading h2,
 .experience-copy h2,
 .launch-card h2 {
-  font-size: clamp(2.1rem, 4.8vw, 4.1rem);
+  font-size: clamp(1.4rem, 2.1vw, 2.1rem);
+  line-height: 1.08;
 }
 
 .feature-grid {
@@ -607,7 +609,7 @@ main {
 
   .hero h1 {
     max-width: 12ch;
-    font-size: clamp(2.25rem, 6.5vw, 4rem);
+    font-size: clamp(1.85rem, 4.6vw, 2.8rem);
   }
 
   .feature-grid {
@@ -667,7 +669,7 @@ main {
   }
 
   .hero h1 {
-    font-size: clamp(2.9rem, 13vw, 4.5rem);
+    font-size: clamp(2.2rem, 10vw, 3.2rem);
   }
 
   .hero-stats {

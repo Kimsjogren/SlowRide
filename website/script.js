@@ -1,6 +1,7 @@
 const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
 const languageSelect = document.querySelector("#language-select");
+const liveClockNode = document.querySelector(".screen-time");
 
 const translations = {
   en: {
@@ -435,6 +436,17 @@ function applyLanguage(lang) {
 if (yearNode) {
   yearNode.textContent = new Date().getFullYear();
 }
+
+function renderLiveClock() {
+  if (!liveClockNode) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  liveClockNode.textContent = `${hh}:${mm}`;
+}
+
+renderLiveClock();
+setInterval(renderLiveClock, 60 * 1000);
 
 const saved = localStorage.getItem("cruizx_site_lang");
 const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();
