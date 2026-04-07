@@ -599,6 +599,17 @@ main {
   font-size: 0.92rem;
 }
 
+.legal-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.legal-links a {
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(30px);
@@ -770,5 +781,9 @@ main {
 
   .device-screen {
     min-height: 35rem;
+  }
+
+  .legal-links {
+    justify-content: center;
   }
 }

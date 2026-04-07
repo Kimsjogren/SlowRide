@@ -71,6 +71,9 @@ const translations = {
     emailPlaceholder: "Your email",
     launchCta: "Get early access",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Privacy",
+    footerCookies: "Cookies",
+    footerTerms: "Terms",
   },
   sv: {
     languageLabel: "Språk",
@@ -139,6 +142,9 @@ const translations = {
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidig tillgång",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Integritet",
+    footerCookies: "Cookies",
+    footerTerms: "Villkor",
   },
   nb: {
     languageLabel: "Sprak",
@@ -207,6 +213,9 @@ const translations = {
     emailPlaceholder: "Din e-post",
     launchCta: "Bli med pa lanseringen",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Personvern",
+    footerCookies: "Cookies",
+    footerTerms: "Vilkår",
   },
   da: {
     languageLabel: "Sprog",
@@ -275,6 +284,9 @@ const translations = {
     emailPlaceholder: "Din e-mail",
     launchCta: "Join launch",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Privatliv",
+    footerCookies: "Cookies",
+    footerTerms: "Vilkår",
   },
   fi: {
     languageLabel: "Kieli",
@@ -343,6 +355,9 @@ const translations = {
     emailPlaceholder: "Sahkopostisi",
     launchCta: "Liity julkaisuun",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Tietosuoja",
+    footerCookies: "Evasteet",
+    footerTerms: "Ehdot",
   },
   fr: {
     languageLabel: "Langue",
@@ -411,6 +426,9 @@ const translations = {
     emailPlaceholder: "Votre e-mail",
     launchCta: "Rejoindre le lancement",
     footerTagline: "Driven by the ride.",
+    footerPrivacy: "Confidentialite",
+    footerCookies: "Cookies",
+    footerTerms: "Conditions",
   },
 };
 
