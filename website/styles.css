@@ -627,23 +627,34 @@ main {
   }
 
   .site-header {
-    align-items: center;
+    align-items: stretch;
     gap: 0.8rem;
   }
 
   .header-controls {
-    width: 100%;
-    align-items: flex-end;
+    display: contents;
   }
 
   .language-switch {
+    order: 0;
     width: auto;
     justify-content: flex-end;
     align-self: flex-end;
-    margin-right: 0.1rem;
+    margin: 0 0.1rem 0.3rem 0;
+    padding: 0.38rem 0.5rem;
+    font-size: 0.78rem;
+    border-radius: 12px;
+    gap: 0.45rem;
+  }
+
+  .language-switch select {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.76rem;
+    border-radius: 8px;
   }
 
   .site-nav {
+    order: 2;
     width: 100%;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -704,6 +715,7 @@ main {
   }
 
   .brand {
+    order: 1;
     justify-content: center;
     width: 100%;
     padding-left: 0;
