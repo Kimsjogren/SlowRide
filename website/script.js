@@ -9,8 +9,9 @@ const translations = {
     navFeatures: "Features",
     navExperience: "Experience",
     navLaunch: "Launch",
-    heroEyebrow: "Built for vehicle culture",
-    heroTitle: "Not made for everyone. Built for these vehicles.",
+    heroEyebrow: "For slow vehicles",
+    heroTitle:
+      "Built for slow vehicles: navigation, convoy, and live road alerts in one app.",
     heroBody:
       "CruizX is not another app trying to fit everyone. It is built for people who live in this vehicle culture and want an experience that actually understands how they drive, meet, communicate, and move together.",
     heroBodySecondary:
@@ -75,8 +76,9 @@ const translations = {
     navFeatures: "Funktioner",
     navExperience: "Upplevelse",
     navLaunch: "Lansering",
-    heroEyebrow: "Byggd för fordonskulturen",
-    heroTitle: "Inte för alla. Byggd för dessa fordon.",
+    heroEyebrow: "För långsamma fordon",
+    heroTitle:
+      "Byggd för långsamma fordon: navigation, konvoj och live vägvarningar i en app.",
     heroBody:
       "CruizX är inte en app för alla. Den är byggd för personer som lever i den här fordonskulturen och vill ha en upplevelse som förstår hur de kör, möts, kommunicerar och rör sig tillsammans.",
     heroBodySecondary:
@@ -141,8 +143,9 @@ const translations = {
     navFeatures: "Funksjoner",
     navExperience: "Opplevelse",
     navLaunch: "Lansering",
-    heroEyebrow: "Bygget for bilkulturen",
-    heroTitle: "Ikke laget for alle. Bygget for disse kjoretoyene.",
+    heroEyebrow: "For langsomme kjoretoy",
+    heroTitle:
+      "Bygget for langsomme kjoretoy: navigasjon, konvoi og live veivarsler i en app.",
     heroBody:
       "CruizX er ikke en app for alle. Den er bygget for folk som lever i denne bilkulturen og vil ha en opplevelse som forstar hvordan de kjorer, motes, kommuniserer og beveger seg sammen.",
     heroBodySecondary:
@@ -207,8 +210,9 @@ const translations = {
     navFeatures: "Funktioner",
     navExperience: "Oplevelse",
     navLaunch: "Lancering",
-    heroEyebrow: "Bygget til bilkulturen",
-    heroTitle: "Ikke lavet til alle. Bygget til disse koretojer.",
+    heroEyebrow: "Til langsomme koretojer",
+    heroTitle:
+      "Bygget til langsomme koretojer: navigation, konvoj og live vejvarsler i en app.",
     heroBody:
       "CruizX er ikke en app til alle. Den er bygget til folk, der lever i denne bilkultur og vil have en oplevelse, som forstar hvordan de korer, modes, kommunikerer og bevaeger sig sammen.",
     heroBodySecondary:
@@ -273,8 +277,9 @@ const translations = {
     navFeatures: "Ominaisuudet",
     navExperience: "Kokemus",
     navLaunch: "Julkaisu",
-    heroEyebrow: "Rakennettu ajoneuvokulttuuriin",
-    heroTitle: "Ei kaikille. Rakennettu nille ajoneuvoille.",
+    heroEyebrow: "Hitaille ajoneuvoille",
+    heroTitle:
+      "Rakennettu hitaille ajoneuvoille: navigointi, konvoji ja live tievaroitukset samassa sovelluksessa.",
     heroBody:
       "CruizX ei ole sovellus kaikille. Se on rakennettu ihmisille, jotka elavat tassa ajoneuvokulttuurissa ja haluavat kokemuksen, joka ymmartaa miten he ajavat, kohtaavat, viestivat ja liikkuvat yhdessa.",
     heroBodySecondary:
@@ -339,8 +344,9 @@ const translations = {
     navFeatures: "Fonctionnalites",
     navExperience: "Experience",
     navLaunch: "Lancement",
-    heroEyebrow: "Concu pour la culture automobile",
-    heroTitle: "Pas fait pour tout le monde. Concu pour ces vehicules.",
+    heroEyebrow: "Pour les vehicules lents",
+    heroTitle:
+      "Concu pour les vehicules lents: navigation, convoi et alertes route en direct dans une seule application.",
     heroBody:
       "CruizX n est pas une application pour tout le monde. Elle est concue pour les personnes qui vivent cette culture auto et veulent une experience qui comprend vraiment comment elles roulent, se retrouvent, communiquent et se deplacent ensemble.",
     heroBodySecondary:
