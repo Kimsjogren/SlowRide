@@ -10,27 +10,16 @@ class AdService {
   static final AdService instance = AdService._();
 
   // ── Ad unit IDs ──────────────────────────────────────────────────────────
-  // 🔧 TEST MODE: using Google's test IDs until AdMob account is activated.
-  // TODO: swap these back to real IDs when https://admob.google.com shows "Active"
-  //
-  // Real IDs (restore when AdMob account is approved):
-  //   _interstitialConvoyId   = 'ca-app-pub-8409578758600641/2936933028'
-  //   _interstitialNavId      = 'ca-app-pub-8409578758600641/3991359355'
-  //   _bannerSettingsId       = 'ca-app-pub-8409578758600641/9243686032'
-  //   _bannerConvoyId         = 'ca-app-pub-8409578758600641/2783187067'
   static const String _interstitialConvoyId =
-      'ca-app-pub-3940256099942544/4411468910'; // Google test interstitial (iOS)
-  static const String _interstitialNavigationId =
-      'ca-app-pub-3940256099942544/4411468910'; // Google test interstitial (iOS)
+      'ca-app-pub-8409578758600641/2936933028';
   static const String _bannerSettingsId =
-      'ca-app-pub-3940256099942544/2934735716'; // Google test banner (iOS)
+      'ca-app-pub-8409578758600641/9243686032';
   static const String _bannerConvoyId =
-      'ca-app-pub-3940256099942544/2934735716'; // Google test banner (iOS)
+      'ca-app-pub-8409578758600641/2783187067';
 
   // Public getters so widgets can use them
   String get bannerSettingsUnitId => _bannerSettingsId;
   String get bannerConvoyUnitId => _bannerConvoyId;
-  String get interstitialNavigationUnitId => _interstitialNavigationId;
 
   /// Google sample ad units should always be allowed during QA, even if the
   /// local account is marked as Pro.

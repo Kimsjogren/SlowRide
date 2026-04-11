@@ -473,6 +473,26 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Lås alle funktioner op med CruizX Pro.';
 
   @override
+  String get settingsProFeatureRoutes => 'Ubegrænsede ruter';
+
+  @override
+  String get settingsProFeatureConvoy => 'Ubegrænset antal konvojmedlemmer';
+
+  @override
+  String get settingsProFeatureAds => 'Ingen reklame';
+
+  @override
+  String get settingsProFeatureSupport => 'Prioriteret support';
+
+  @override
+  String get settingsProSubscriptionNote => 'Abonnement: CruizX Pro Månedlig (1 måned). Betaling opkræves dit Apple-ID og fornyes automatisk, medmindre det annulleres mindst 24 timer før periodens udløb.';
+
+  @override
+  String settingsProPricePerMonth(Object price) {
+    return '$price / måned';
+  }
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Privatlivspolitik';
 
   @override
@@ -760,7 +780,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallFeatureRoutes => 'Ruter per dag';
 
   @override
-  String get paywallFreeRouteLimit => '2 ruter';
+  String get paywallFreeRouteLimit => '4 ruter';
 
   @override
   String get paywallProRouteLimit => 'Ubegrænset';
@@ -787,7 +807,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Daglig rutegrænse nået';
 
   @override
-  String get paywallRouteLimitBody => 'Gratisbrugere kan beregne 2 ruter per dag. Opgrader til Pro for ubegrænset navigation.';
+  String get paywallRouteLimitBody => 'Gratisbrugere kan beregne 4 ruter per dag. Opgrader til Pro for ubegrænset navigation.';
 
   @override
   String get paywallConvoyLimitTitle => 'Konvojgrænse nået';

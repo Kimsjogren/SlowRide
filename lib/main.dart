@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
@@ -19,12 +20,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('FlutterError: ${details.exceptionAsString()}');
+    debugPrint('Stack: ${details.stack}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('PlatformDispatcher error: $error\n$stack');
+    return false;
+  };
+
   try {
     await UserPreferencesService.instance.initialize();
-  } catch (_) {}
+  } catch (e, st) {
+    debugPrint('UserPreferences init error: $e\n$st');
+  }
   try {
     await SupabaseService.instance.initialize();
-  } catch (_) {}
+  } catch (e, st) {
+    debugPrint('Supabase init error: $e\n$st');
+  }
   runApp(const CruizXApp());
 }
 
@@ -39,6 +56,7 @@ class CruizXApp extends StatefulWidget {
 
 class _CruizXAppState extends State<CruizXApp> {
   StreamSubscription<AuthState>? _authSub;
+  bool _pendingPasswordRecovery = false;
 
   @override
   void initState() {
@@ -48,21 +66,61 @@ class _CruizXAppState extends State<CruizXApp> {
 
   void _startAuthListener() {
     if (!SupabaseService.instance.isEnabled) return;
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      if (data.event == AuthChangeEvent.passwordRecovery) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            final nav = navigatorKey.currentState;
-            if (nav != null) {
-              nav.push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ResetPasswordScreen(),
-                ),
-              );
-            }
-          } catch (_) {}
-        });
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        debugPrint(
+          'Auth event: ${data.event}, session: ${data.session != null}',
+        );
+        if (data.event == AuthChangeEvent.passwordRecovery) {
+          _pendingPasswordRecovery = true;
+          _tryNavigateToReset();
+        }
+      },
+      onError: (Object e, StackTrace st) {
+        debugPrint('Auth stream error: $e\n$st');
+        _showErrorDialog('Auth-fel: $e');
+      },
+    );
+  }
+
+  void _tryNavigateToReset() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_pendingPasswordRecovery) return;
+      final nav = navigatorKey.currentState;
+      if (nav == null) {
+        debugPrint('Auth: navigatorKey null, retrying in 200ms…');
+        Future.delayed(const Duration(milliseconds: 200), _tryNavigateToReset);
+        return;
       }
+      _pendingPasswordRecovery = false;
+      try {
+        nav.push(
+          MaterialPageRoute<void>(builder: (_) => const ResetPasswordScreen()),
+        );
+      } catch (e, st) {
+        debugPrint('Auth navigation error: $e\n$st');
+        _showErrorDialog('Navigationsfel: $e');
+      }
+    });
+  }
+
+  void _showErrorDialog(String message) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      showDialog<void>(
+        context: ctx,
+        builder: (_) => AlertDialog(
+          title: const Text('Debug Error'),
+          content: SelectableText(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     });
   }
 

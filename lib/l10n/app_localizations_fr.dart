@@ -473,6 +473,26 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Débloquez toutes les fonctionnalités avec CruizX Pro.';
 
   @override
+  String get settingsProFeatureRoutes => 'Itinéraires illimités';
+
+  @override
+  String get settingsProFeatureConvoy => 'Membres de convoi illimités';
+
+  @override
+  String get settingsProFeatureAds => 'Aucune publicité';
+
+  @override
+  String get settingsProFeatureSupport => 'Support prioritaire';
+
+  @override
+  String get settingsProSubscriptionNote => 'Abonnement : CruizX Pro Mensuel (1 mois). Le paiement est facturé sur votre identifiant Apple et se renouvelle automatiquement sauf annulation au moins 24 heures avant la fin de la période.';
+
+  @override
+  String settingsProPricePerMonth(Object price) {
+    return '$price / mois';
+  }
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Politique de confidentialité';
 
   @override
@@ -760,7 +780,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paywallFeatureRoutes => 'Itinéraires par jour';
 
   @override
-  String get paywallFreeRouteLimit => '2 itinéraires';
+  String get paywallFreeRouteLimit => '4 itinéraires';
 
   @override
   String get paywallProRouteLimit => 'Illimité';
@@ -787,7 +807,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Limite d\'itinéraires atteinte';
 
   @override
-  String get paywallRouteLimitBody => 'Les utilisateurs gratuits peuvent calculer 2 itinéraires par jour. Passez à Pro pour une navigation illimitée.';
+  String get paywallRouteLimitBody => 'Les utilisateurs gratuits peuvent calculer 4 itinéraires par jour. Passez à Pro pour une navigation illimitée.';
 
   @override
   String get paywallConvoyLimitTitle => 'Limite de convoi atteinte';

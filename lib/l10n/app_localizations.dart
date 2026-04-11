@@ -1003,6 +1003,42 @@ abstract class AppLocalizations {
   /// **'Unlock all features with CruizX Pro.'**
   String get settingsProDescriptionInactive;
 
+  /// No description provided for @settingsProFeatureRoutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited routes'**
+  String get settingsProFeatureRoutes;
+
+  /// No description provided for @settingsProFeatureConvoy.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited convoy members'**
+  String get settingsProFeatureConvoy;
+
+  /// No description provided for @settingsProFeatureAds.
+  ///
+  /// In en, this message translates to:
+  /// **'No ads'**
+  String get settingsProFeatureAds;
+
+  /// No description provided for @settingsProFeatureSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority support'**
+  String get settingsProFeatureSupport;
+
+  /// No description provided for @settingsProSubscriptionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription: CruizX Pro Monthly (1 month). Payment is charged to your Apple ID and renews automatically unless canceled at least 24 hours before the end of the current period.'**
+  String get settingsProSubscriptionNote;
+
+  /// No description provided for @settingsProPricePerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} / month'**
+  String settingsProPricePerMonth(Object price);
+
   /// No description provided for @settingsPrivacyPolicyLabel.
   ///
   /// In en, this message translates to:
@@ -1528,7 +1564,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallFreeRouteLimit.
   ///
   /// In en, this message translates to:
-  /// **'2 routes'**
+  /// **'4 routes'**
   String get paywallFreeRouteLimit;
 
   /// No description provided for @paywallProRouteLimit.
@@ -1582,7 +1618,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallRouteLimitBody.
   ///
   /// In en, this message translates to:
-  /// **'Free users can calculate 2 routes per day. Upgrade to Pro for unlimited navigation.'**
+  /// **'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.'**
   String get paywallRouteLimitBody;
 
   /// No description provided for @paywallConvoyLimitTitle.

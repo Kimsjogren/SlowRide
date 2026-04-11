@@ -154,7 +154,9 @@ class _MapWidgetState extends State<MapWidget>
 
   double _bearingDeg(LatLng from, LatLng to) {
     final dLat = to.latitude - from.latitude;
-    final dLng = to.longitude - from.longitude;
+    final dLng =
+        (to.longitude - from.longitude) *
+        math.cos(from.latitude * math.pi / 180.0);
     return _wrap360(math.atan2(dLng, dLat) * 180 / math.pi);
   }
 

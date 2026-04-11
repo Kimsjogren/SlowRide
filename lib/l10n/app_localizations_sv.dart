@@ -467,25 +467,45 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsProStatusInactive => 'Inte aktiv';
 
   @override
-  String get settingsProDescriptionActive => 'Du har tillgang till alla Pro-funktioner.';
+  String get settingsProDescriptionActive => 'Du har tillgång till alla Pro-funktioner.';
 
   @override
-  String get settingsProDescriptionInactive => 'Lasa upp alla funktioner med CruizX Pro.';
+  String get settingsProDescriptionInactive => 'Låsa upp alla funktioner med CruizX Pro.';
+
+  @override
+  String get settingsProFeatureRoutes => 'Obegränsade rutter';
+
+  @override
+  String get settingsProFeatureConvoy => 'Obegränsat antal konvojmedlemmar';
+
+  @override
+  String get settingsProFeatureAds => 'Ingen reklam';
+
+  @override
+  String get settingsProFeatureSupport => 'Prioriterad support';
+
+  @override
+  String get settingsProSubscriptionNote => 'Prenumeration: CruizX Pro Månad (1 månad). Betalning debiteras ditt Apple-ID och förnyas automatiskt om den inte avbryts minst 24 timmar före periodens slut.';
+
+  @override
+  String settingsProPricePerMonth(Object price) {
+    return '$price / månad';
+  }
 
   @override
   String get settingsPrivacyPolicyLabel => 'Integritetspolicy';
 
   @override
-  String get settingsTermsOfUseLabel => 'Anvandarvillkor (EULA)';
+  String get settingsTermsOfUseLabel => 'Användarvillkor (EULA)';
 
   @override
   String get settingsSupportLabel => 'Support';
 
   @override
-  String get settingsLinkOpenFailed => 'Kunde inte oppna lanken just nu.';
+  String get settingsLinkOpenFailed => 'Kunde inte öppna länken just nu.';
 
   @override
-  String get settingsRestorePurchaseFailed => 'Kunde inte aterstalla kop.';
+  String get settingsRestorePurchaseFailed => 'Kunde inte återställa köp.';
 
   @override
   String get navigationTitle => 'Sväng-för-sväng-navigering';
@@ -760,7 +780,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallFeatureRoutes => 'Rutter per dag';
 
   @override
-  String get paywallFreeRouteLimit => '2 rutter';
+  String get paywallFreeRouteLimit => '4 rutter';
 
   @override
   String get paywallProRouteLimit => 'Obegränsat';
@@ -784,10 +804,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallProAds => 'Ingen';
 
   @override
-  String get paywallRouteLimitTitle => 'Dagsgransen nådd';
+  String get paywallRouteLimitTitle => 'Dagsgränsen nådd';
 
   @override
-  String get paywallRouteLimitBody => 'Free-användare kan beräkna 2 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
+  String get paywallRouteLimitBody => 'Free-användare kan beräkna 4 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
 
   @override
   String get paywallConvoyLimitTitle => 'Konvojgräns nådd';

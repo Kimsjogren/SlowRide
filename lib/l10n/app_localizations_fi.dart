@@ -473,6 +473,26 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Avaa kaikki ominaisuudet CruizX Prolla.';
 
   @override
+  String get settingsProFeatureRoutes => 'Rajattomat reitit';
+
+  @override
+  String get settingsProFeatureConvoy => 'Rajaton saattue';
+
+  @override
+  String get settingsProFeatureAds => 'Ei mainoksia';
+
+  @override
+  String get settingsProFeatureSupport => 'Ensisijainen tuki';
+
+  @override
+  String get settingsProSubscriptionNote => 'Tilaus: CruizX Pro Kuukausittain (1 kuukausi). Maksu veloitetaan Apple ID:ltäsi ja uusitaan automaattisesti, ellei sitä peruuteta vähintään 24 tuntia ennen jakson päättymistä.';
+
+  @override
+  String settingsProPricePerMonth(Object price) {
+    return '$price / kuukausi';
+  }
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Tietosuojakäytäntö';
 
   @override
@@ -760,7 +780,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallFeatureRoutes => 'Reittejä päivässä';
 
   @override
-  String get paywallFreeRouteLimit => '2 reittiä';
+  String get paywallFreeRouteLimit => '4 reittiä';
 
   @override
   String get paywallProRouteLimit => 'Rajaton';
@@ -787,7 +807,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Päivittäinen reittirajaus saavutettu';
 
   @override
-  String get paywallRouteLimitBody => 'Ilmaiskäyttäjät voivat laskea 2 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
+  String get paywallRouteLimitBody => 'Ilmaiskäyttäjät voivat laskea 4 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
 
   @override
   String get paywallConvoyLimitTitle => 'Saattueraja saavutettu';

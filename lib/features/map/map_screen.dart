@@ -887,7 +887,8 @@ class _MapScreenState extends State<MapScreen> {
 
   double _bearingDeg(LatLng a, LatLng b) {
     final dLat = b.latitude - a.latitude;
-    final dLng = b.longitude - a.longitude;
+    final dLng =
+        (b.longitude - a.longitude) * math.cos(a.latitude * math.pi / 180.0);
     return _normalizeDeg(math.atan2(dLng, dLat) * 180 / math.pi);
   }
 
@@ -2940,32 +2941,12 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
-                                            GestureDetector(
-                                              onTap: _startSimulation,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 7,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(
-                                                    0xFF7B2FBE,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                                child: Text(
-                                                  '▶ ${l10n.mapSimulateButton}',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                            // TODO: re-enable simulation button
+                                            // const SizedBox(height: 8),
+                                            // GestureDetector(
+                                            //   onTap: _startSimulation,
+                                            //   ...
+                                            // ),
                                           ],
                                         ],
                                       ),

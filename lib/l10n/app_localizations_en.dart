@@ -473,6 +473,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Unlock all features with CruizX Pro.';
 
   @override
+  String get settingsProFeatureRoutes => 'Unlimited routes';
+
+  @override
+  String get settingsProFeatureConvoy => 'Unlimited convoy members';
+
+  @override
+  String get settingsProFeatureAds => 'No ads';
+
+  @override
+  String get settingsProFeatureSupport => 'Priority support';
+
+  @override
+  String get settingsProSubscriptionNote => 'Subscription: CruizX Pro Monthly (1 month). Payment is charged to your Apple ID and renews automatically unless canceled at least 24 hours before the end of the current period.';
+
+  @override
+  String settingsProPricePerMonth(Object price) {
+    return '$price / month';
+  }
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Privacy Policy';
 
   @override
@@ -760,7 +780,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallFeatureRoutes => 'Routes per day';
 
   @override
-  String get paywallFreeRouteLimit => '2 routes';
+  String get paywallFreeRouteLimit => '4 routes';
 
   @override
   String get paywallProRouteLimit => 'Unlimited';
@@ -787,7 +807,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Route limit reached';
 
   @override
-  String get paywallRouteLimitBody => 'Free users can calculate 2 routes per day. Upgrade to Pro for unlimited navigation.';
+  String get paywallRouteLimitBody => 'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.';
 
   @override
   String get paywallConvoyLimitTitle => 'Convoy limit reached';

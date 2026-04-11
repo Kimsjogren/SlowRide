@@ -42,7 +42,6 @@ dependencies:
   http: any
   shared_preferences: any
   firebase_core: any
-  firebase_auth: any
   cloud_firestore: any
   supabase_flutter: any
   google_mobile_ads: any
@@ -53,6 +52,7 @@ dependencies:
   share_plus: any
   flutter_tts: ^4.2.5
   flutter_svg: any
+  in_app_purchase: any
 
 dev_dependencies:
   flutter_test:

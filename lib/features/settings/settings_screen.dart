@@ -20,6 +20,24 @@ class SettingsScreen extends StatelessWidget {
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
   static final Uri _supportUri = Uri.parse(LegalLinks.support);
 
+  static Widget _proFeatureRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFF4CD964), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openExternalLink(BuildContext context, Uri uri) async {
     final l10n = AppLocalizations.of(context)!;
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -526,6 +544,7 @@ class SettingsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // ── Title row ────────────────────────────
                           Row(
                             children: [
                               const Icon(
@@ -574,17 +593,55 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            isPro
-                                ? l10n.settingsProDescriptionActive
-                                : l10n.settingsProDescriptionInactive,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+
+                          // ── Price ────────────────────────────────
+                          if (!isPro)
+                            ValueListenableBuilder<String?>(
+                              valueListenable:
+                                  SubscriptionService.instance.localizedPrice,
+                              builder: (_, price, __) {
+                                if (price == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    l10n.settingsProPricePerMonth(price),
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          ),
-                          const SizedBox(height: 14),
+
+                          const SizedBox(height: 16),
+
+                          // ── Feature list ─────────────────────────
+                          if (!isPro) ...[
+                            _proFeatureRow(l10n.settingsProFeatureRoutes),
+                            _proFeatureRow(l10n.settingsProFeatureConvoy),
+                            _proFeatureRow(l10n.settingsProFeatureAds),
+                            _proFeatureRow(l10n.settingsProFeatureSupport),
+                            const SizedBox(height: 18),
+                          ],
+
+                          if (isPro)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Text(
+                                l10n.settingsProDescriptionActive,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+
+                          // ── Upgrade button ───────────────────────
                           if (!isPro)
                             SizedBox(
                               width: double.infinity,
@@ -600,6 +657,8 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                           const SizedBox(height: 8),
+
+                          // ── Restore button ───────────────────────
                           SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
@@ -612,7 +671,22 @@ class SettingsScreen extends StatelessWidget {
                               child: Text(l10n.paywallRestoreButton),
                             ),
                           ),
+
+                          // ── Subscription note ────────────────────
+                          if (!isPro) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              l10n.settingsProSubscriptionNote,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.35),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+
                           const SizedBox(height: 12),
+
+                          // ── Legal links ──────────────────────────
                           Wrap(
                             spacing: 8,
                             runSpacing: 0,

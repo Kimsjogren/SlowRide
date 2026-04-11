@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 
@@ -8,8 +9,11 @@ class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
-  static const int freeMaxDailyRoutes = 2;
+  static const int freeMaxDailyRoutes = 4;
   static const int freeMaxConvoyMembers = 2;
+
+  /// App Store Connect product ID for monthly subscription.
+  static const String _monthlyProductId = 'cruizx_pro_monthly';
 
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
@@ -17,6 +21,9 @@ class SubscriptionService {
 
   late SharedPreferences _prefs;
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
+
+  /// Localized price string from App Store (e.g. "39,00 kr", "3,49 $").
+  final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
@@ -31,6 +38,24 @@ class SubscriptionService {
     } else {
       // Normal: read from stored preferences
       isPro.value = _prefs.getBool(_isProKey) ?? false;
+    }
+
+    // Fetch localized price from App Store in the background.
+    _fetchLocalizedPrice();
+  }
+
+  Future<void> _fetchLocalizedPrice() async {
+    try {
+      final available = await InAppPurchase.instance.isAvailable();
+      if (!available) return;
+      final response = await InAppPurchase.instance.queryProductDetails({
+        _monthlyProductId,
+      });
+      if (response.productDetails.isNotEmpty) {
+        localizedPrice.value = response.productDetails.first.price;
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch IAP price: $e');
     }
   }
 
