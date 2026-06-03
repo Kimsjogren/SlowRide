@@ -138,6 +138,39 @@ async function handleClaim(request, env, origin) {
 
   const dHash = await deviceHash(request, deviceId, env);
 
+  // IP-spärr: max 1 kod per IP per 24h. Samma device får alltid tillbaka sin egen kod.
+  if (ip) {
+    try {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const checkUrl = `${env.SUPABASE_URL}/rest/v1/offer_codes` +
+        `?select=claimed_by_device,claimed_at` +
+        `&campaign=eq.${encodeURIComponent(campaign)}` +
+        `&claimed_by_ip=eq.${encodeURIComponent(ip)}` +
+        `&claimed_at=gte.${encodeURIComponent(since)}` +
+        `&limit=5`;
+      const checkRes = await fetch(checkUrl, {
+        headers: {
+          "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+          "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      });
+      if (checkRes.ok) {
+        const rows = await checkRes.json();
+        const otherDevice = Array.isArray(rows) &&
+          rows.some((r) => r.claimed_by_device && r.claimed_by_device !== dHash);
+        if (otherDevice) {
+          return json(
+            { error: "ip_rate_limited", message: "Den här nätverksanslutningen har redan hämtat en kod." },
+            { status: 429 },
+            origin
+          );
+        }
+      }
+    } catch {
+      // fail-open: om kollen kraschar, släpp igenom (DB-locket skyddar fortfarande mot dubbletter)
+    }
+  }
+
   let result;
   try {
     result = await supabaseRpc(env, "claim_offer_code", {

@@ -81,7 +81,16 @@ async function claimCode() {
     return;
   }
   if (res.status === 429) {
-    showError("För många försök. Vänta en stund och försök igen.");
+    let msg = "För många försök. Vänta en stund och försök igen.";
+    try {
+      const data = await res.clone().json();
+      if (data?.error === "ip_rate_limited") {
+        msg = "Den här anslutningen har redan hämtat en kod. Bara en kod per nätverk.";
+      } else if (data?.message) {
+        msg = data.message;
+      }
+    } catch { /* ignore */ }
+    showError(msg);
     return;
   }
   if (!res.ok) {
