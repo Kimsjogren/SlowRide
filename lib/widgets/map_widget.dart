@@ -16,6 +16,8 @@ class MapWidget extends StatefulWidget {
     this.destination,
     this.routePoints = const [],
     this.alerts = const [],
+    this.studdedTireBanZones = const [],
+    this.chargingStations = const [],
     this.onTap,
     this.followUser = false,
     this.onUserPanned,
@@ -33,6 +35,12 @@ class MapWidget extends StatefulWidget {
   final LatLng? destination;
   final List<LatLng> routePoints;
   final List<AlertModel> alerts;
+
+  /// Polygon zones where studded tires are banned. Rendered as red overlay.
+  final List<List<LatLng>> studdedTireBanZones;
+
+  /// EV charging station positions to show as green markers.
+  final List<LatLng> chargingStations;
   final ValueChanged<LatLng>? onTap;
   final bool followUser;
 
@@ -304,8 +312,21 @@ class _MapWidgetState extends State<MapWidget>
           final shouldMoveCameraTarget =
               _gpsSpeedMps > 2.0 || distToTarget > 2.0;
           if (shouldMoveCameraTarget) {
-            _tgtLat = loc.latitude;
-            _tgtLng = loc.longitude;
+            // Blend new GPS fix into the (possibly dead-reckoned) target
+            // instead of snapping. This avoids the visible "tick-tick" jump
+            // that comes from 1Hz GPS samples teleporting the target.
+            // The ticker handles smooth interpolation toward this point, and
+            // between GPS samples we extrapolate forward (see _onTick) so the
+            // marker keeps flowing instead of freezing for ~1s at a time.
+            if (_gpsSpeedMps > 3.0 && distToTarget < 25.0) {
+              const blend = 0.35; // 35% snap, 65% keep predicted heading
+              _tgtLat = _tgtLat * (1 - blend) + loc.latitude * blend;
+              _tgtLng = _tgtLng * (1 - blend) + loc.longitude * blend;
+            } else {
+              // Low speed, or large jump (lost fix, teleport) → snap.
+              _tgtLat = loc.latitude;
+              _tgtLng = loc.longitude;
+            }
           }
 
           // Movement bearing is primary target. Compass is only blended in
@@ -379,6 +400,24 @@ class _MapWidgetState extends State<MapWidget>
     final dtSec = (tickNow - lastTick).inMicroseconds / 1000000.0;
     if (dtSec <= 0) return;
 
+    // ── Dead reckoning ────────────────────────────────────────────────────
+    // GPS arrives at ~1Hz; without prediction the marker freezes for ~1s
+    // between samples and then jumps forward → visible "hackar fram" stutter.
+    // Extrapolate the target forward using last known speed + heading so the
+    // camera glides continuously. Only kick in when we're clearly moving and
+    // have a recent GPS fix (avoid runaway if GPS is lost).
+    final lastGps = _lastGpsAt;
+    if (_gpsSpeedMps > 1.5 &&
+        lastGps != null &&
+        DateTime.now().difference(lastGps).inMilliseconds < 2500) {
+      final hdgRad = _filteredTgtHdg * math.pi / 180.0;
+      final dM = _gpsSpeedMps * dtSec;
+      const lat2m = 111320.0;
+      final lng2m = 111320.0 * math.cos(_tgtLat * math.pi / 180.0);
+      _tgtLat += dM * math.cos(hdgRad) / lat2m;
+      _tgtLng += dM * math.sin(hdgRad) / lng2m;
+    }
+
     // Speed-adaptive smoothing: stable at low speed, responsive at higher speed.
     final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
     final posAlpha = (dtSec * (1.5 + speedN * 2.0)).clamp(0.02, 0.22);
@@ -416,36 +455,33 @@ class _MapWidgetState extends State<MapWidget>
     _curZoom += (_tgtZoom - _curZoom) * zoomAlpha;
     final zoom = _curZoom;
 
+    // Paint every tick (60fps) while actively moving — the 33ms throttle we
+    // had before produced visible 30fps stutter especially in 3D where the
+    // perspective magnifies translation. Tile rendering is GPU-cheap; the
+    // expensive part is tile fetch, which is independent of paint cadence.
+    // Only throttle when nearly stationary to save battery.
+    final moveDelta2 = dLat * dLat + dLng * dLng;
+    final lastCam = _lastCameraTickAt;
+    final isMoving =
+        _gpsSpeedMps > 1.0 || moveDelta2 > 1e-12 || diff.abs() > 0.05;
+    final shouldPaintCamera =
+        isMoving ||
+        lastCam == null ||
+        (tickNow - lastCam).inMilliseconds >= 100;
+    if (!shouldPaintCamera) return;
+    _lastCameraTickAt = tickNow;
+
     if (widget.use3D) {
       // Shift camera centre ahead of the user so the dot sits in the lower
-      // third. offsetDeg tuned for zoom 17.5 (~80 m offset at that zoom).
-      const offsetDeg = 0.00050;
-      final rad = _curHdg * 3.141592653589793 / 180.0;
+      // third. offsetDeg scales with zoom so the lead distance stays visually
+      // constant (deeper zoom = smaller deg offset for same on-screen offset).
+      final offsetDeg = 0.00050 * math.pow(2.0, 17.5 - zoom).toDouble();
+      final rad = _curHdg * math.pi / 180.0;
       final cLat = _curLat + offsetDeg * math.cos(rad);
       final cLng = _curLng + offsetDeg * math.sin(rad);
-      final moveDelta2 = dLat * dLat + dLng * dLng;
-      final lastCam = _lastCameraTickAt;
-      final shouldPaintCamera =
-          lastCam == null ||
-          (tickNow - lastCam).inMilliseconds >= 33 ||
-          diff.abs() > 0.8 ||
-          moveDelta2 > 1e-10;
-      if (shouldPaintCamera) {
-        _lastCameraTickAt = tickNow;
-        _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
-      }
+      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
     } else {
-      final moveDelta2 = dLat * dLat + dLng * dLng;
-      final lastCam = _lastCameraTickAt;
-      final shouldPaintCamera =
-          lastCam == null ||
-          (tickNow - lastCam).inMilliseconds >= 33 ||
-          diff.abs() > 0.8 ||
-          moveDelta2 > 1e-10;
-      if (shouldPaintCamera) {
-        _lastCameraTickAt = tickNow;
-        _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
-      }
+      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
     }
   }
 
@@ -479,8 +515,8 @@ class _MapWidgetState extends State<MapWidget>
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           if (widget.use3D) {
-            const offsetDeg = 0.00060;
-            final rad = _curHdg * 3.141592653589793 / 180.0;
+            final offsetDeg = 0.00050 * math.pow(2.0, 17.5 - zoom).toDouble();
+            final rad = _curHdg * math.pi / 180.0;
             final cLat = _curLat + offsetDeg * math.cos(rad);
             final cLng = _curLng + offsetDeg * math.sin(rad);
             _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -hdg);
@@ -618,6 +654,18 @@ class _MapWidgetState extends State<MapWidget>
                   panBuffer: 1,
                   tileDisplay: const TileDisplay.instantaneous(),
                 ),
+              if (widget.studdedTireBanZones.isNotEmpty)
+                PolygonLayer(
+                  polygons: [
+                    for (final zone in widget.studdedTireBanZones)
+                      Polygon(
+                        points: zone,
+                        color: const Color(0x33FF3B30),
+                        borderColor: const Color(0xCCFF3B30),
+                        borderStrokeWidth: 2,
+                      ),
+                  ],
+                ),
               if (widget.routePoints.isNotEmpty) ...[
                 PolylineLayer(
                   polylines: [
@@ -644,6 +692,14 @@ class _MapWidgetState extends State<MapWidget>
               ],
               MarkerLayer(
                 markers: [
+                  // EV charging station markers.
+                  for (final pos in widget.chargingStations)
+                    Marker(
+                      point: pos,
+                      width: 32,
+                      height: 32,
+                      child: const _ChargingMarker(),
+                    ),
                   // Alert markers — community reports.
                   for (final alert in widget.alerts)
                     Marker(
@@ -754,6 +810,25 @@ class _MapWidgetState extends State<MapWidget>
           );
         },
       ),
+    );
+  }
+}
+
+// ─── EV charging marker ──────────────────────────────────────────────────────
+
+class _ChargingMarker extends StatelessWidget {
+  const _ChargingMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF34C759),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black26)],
+      ),
+      child: const Icon(Icons.ev_station, color: Colors.white, size: 18),
     );
   }
 }

@@ -19,6 +19,8 @@ class UserPreferencesService {
     CountryVehicleRules.defaultCountry,
   );
   final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> isElectric = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> hasStuddedTires = ValueNotifier<bool>(false);
 
   static const String _vehicleTypeKey = 'user_vehicle_type';
   static const String _speedUnitKey = 'user_speed_unit';
@@ -26,8 +28,10 @@ class UserPreferencesService {
   static const String _languageCodeKey = 'user_language_code';
   static const String _countryCodeKey = 'user_country_code';
   static const String _use3DMapKey = 'user_use_3d_map';
+  static const String _isElectricKey = 'user_is_electric';
+  static const String _hasStuddedTiresKey = 'user_has_studded_tires';
 
-  /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_A-tractor'.
+  /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_SE_A-tractor'.
   static const String _vehicleSpeedPrefix = 'vehicle_speed_';
 
   SharedPreferences? _prefs;
@@ -49,6 +53,8 @@ class UserPreferencesService {
         _prefs!.getString(_countryCodeKey) ??
         CountryVehicleRules.defaultCountry;
     use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
+    isElectric.value = _prefs!.getBool(_isElectricKey) ?? false;
+    hasStuddedTires.value = _prefs!.getBool(_hasStuddedTiresKey) ?? false;
 
     if (!_listenersAttached) {
       vehicleType.addListener(_onVehicleTypeChanged);
@@ -59,34 +65,35 @@ class UserPreferencesService {
       countryCode.addListener(_onCountryChanged);
       countryCode.addListener(_persistCountryCode);
       use3DMap.addListener(_persist3DMap);
+      isElectric.addListener(_persistIsElectric);
+      hasStuddedTires.addListener(_persistHasStuddedTires);
       _listenersAttached = true;
     }
   }
 
   void _onVehicleTypeChanged() {
-    // Load the user's saved speed for this vehicle, or use the vehicle default.
+    // Load the user's saved speed for this country+vehicle, or use the default.
     final defaultSpeed = CountryVehicleRules.defaultSpeedFor(
       countryCode.value,
       vehicleType.value,
     );
     final savedSpeed = _prefs?.getDouble(
-      '$_vehicleSpeedPrefix${vehicleType.value}',
+      '$_vehicleSpeedPrefix${countryCode.value}_${vehicleType.value}',
     );
     maxSpeedKmh.value = savedSpeed ?? defaultSpeed;
   }
 
   void _onCountryChanged() {
-    // Country changed — update speed to the new country default unless the
-    // user has a saved speed for this vehicle.
-    final savedSpeed = _prefs?.getDouble(
-      '$_vehicleSpeedPrefix${vehicleType.value}',
+    // Country changed — always update speed to the saved or default for this
+    // country+vehicle combination.
+    final defaultSpeed = CountryVehicleRules.defaultSpeedFor(
+      countryCode.value,
+      vehicleType.value,
     );
-    if (savedSpeed == null) {
-      maxSpeedKmh.value = CountryVehicleRules.defaultSpeedFor(
-        countryCode.value,
-        vehicleType.value,
-      );
-    }
+    final savedSpeed = _prefs?.getDouble(
+      '$_vehicleSpeedPrefix${countryCode.value}_${vehicleType.value}',
+    );
+    maxSpeedKmh.value = savedSpeed ?? defaultSpeed;
   }
 
   Future<void> _persistVehicleType() async {
@@ -99,15 +106,23 @@ class UserPreferencesService {
 
   Future<void> _persistMaxSpeedKmh() async {
     await _prefs?.setDouble(_maxSpeedKmhKey, maxSpeedKmh.value);
-    // Also save per-vehicle so switching back restores the user's chosen speed.
+    // Also save per-country+vehicle so switching back restores the user's chosen speed.
     await _prefs?.setDouble(
-      '$_vehicleSpeedPrefix${vehicleType.value}',
+      '$_vehicleSpeedPrefix${countryCode.value}_${vehicleType.value}',
       maxSpeedKmh.value,
     );
   }
 
   Future<void> _persist3DMap() async {
     await _prefs?.setBool(_use3DMapKey, use3DMap.value);
+  }
+
+  Future<void> _persistIsElectric() async {
+    await _prefs?.setBool(_isElectricKey, isElectric.value);
+  }
+
+  Future<void> _persistHasStuddedTires() async {
+    await _prefs?.setBool(_hasStuddedTiresKey, hasStuddedTires.value);
   }
 
   Future<void> _persistLanguageCode() async {

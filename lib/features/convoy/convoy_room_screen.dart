@@ -1,3 +1,5 @@
+// ignore_for_file: duplicate_ignore, use_build_context_synchronously
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -65,6 +67,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Duration? _lastCamTick;
   bool _camInitialized = false;
   LatLng? _lastLocForBearing;
+  DateTime? _lastGpsAt;
 
   // Smooth arrow heading — ticker drives it when following, GPS otherwise.
   final ValueNotifier<double> _arrowHdg = ValueNotifier<double>(0);
@@ -515,6 +518,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 _rawCompassHdg = headingForArrow;
                 _gpsSpeedMps = rawSpeed;
                 _lastLocForBearing = point;
+                _lastGpsAt = DateTime.now();
                 _camInitialized = true;
                 final zoom = _targetZoom();
                 _curZoom = _tgtZoom = zoom;
@@ -524,10 +528,29 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                   _use3DMap ? -headingForArrow : 0,
                 );
               } else {
-                _tgtLat = point.latitude;
-                _tgtLng = point.longitude;
+                // Blend new GPS fix instead of snapping target → eliminates
+                // the 1Hz "tick-tick" jump. Dead reckoning in _onCamTick
+                // keeps moving the target forward between samples.
+                final distToTarget = math.sqrt(
+                  math.pow((_tgtLat - point.latitude) * 111320.0, 2) +
+                      math.pow(
+                        (_tgtLng - point.longitude) *
+                            111320.0 *
+                            math.cos(point.latitude * math.pi / 180.0),
+                        2,
+                      ),
+                );
+                if (rawSpeed > 3.0 && distToTarget < 25.0) {
+                  const blend = 0.35;
+                  _tgtLat = _tgtLat * (1 - blend) + point.latitude * blend;
+                  _tgtLng = _tgtLng * (1 - blend) + point.longitude * blend;
+                } else {
+                  _tgtLat = point.latitude;
+                  _tgtLng = point.longitude;
+                }
                 _rawCompassHdg = headingForArrow;
                 _gpsSpeedMps = rawSpeed;
+                _lastGpsAt = DateTime.now();
 
                 // When route-locked heading is active (headingForArrow came
                 // from the route), use it directly instead of blending with
@@ -950,6 +973,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final dtSec = (elapsed - last).inMicroseconds / 1000000.0;
     if (dtSec <= 0) return;
 
+    // Dead reckoning: extrapolate target forward between 1Hz GPS samples so
+    // the camera glides instead of freezing for ~1s and then jumping.
+    final lastGps = _lastGpsAt;
+    if (_gpsSpeedMps > 1.5 &&
+        lastGps != null &&
+        DateTime.now().difference(lastGps).inMilliseconds < 2500) {
+      final hdgRad = _filteredTgtHdg * math.pi / 180.0;
+      final dM = _gpsSpeedMps * dtSec;
+      const lat2m = 111320.0;
+      final lng2m = 111320.0 * math.cos(_tgtLat * math.pi / 180.0);
+      _tgtLat += dM * math.cos(hdgRad) / lat2m;
+      _tgtLng += dM * math.sin(hdgRad) / lng2m;
+    }
+
     final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
     final kPos = (dtSec * (2.3 + speedN * 2.9)).clamp(0.04, 0.35);
     final kHdg = (dtSec * (1.9 + speedN * 3.2)).clamp(0.03, 0.33);
@@ -976,22 +1013,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _arrowHdg.value = _angleDiff(_curHdg, _filteredTgtHdg);
     final zoom = _curZoom;
 
-    // Throttle GPU camera updates to ~30fps (same as MapWidget).
-    // The ticker still runs at 60fps for smooth interpolation of
-    // _curLat/_curLng/_curHdg, but we only push to the map controller
-    // when enough has changed or enough time has passed.
+    // Paint every tick (60fps) while actively moving. The previous 33ms
+    // throttle produced visible 30fps stutter especially in 3D where the
+    // perspective magnifies translation. Only throttle when stationary.
     final moveDelta2 = dLat * dLat + dLng * dLng;
     final lastCam = _lastCameraTickAt;
+    final isMoving =
+        _gpsSpeedMps > 1.0 || moveDelta2 > 1e-12 || diff.abs() > 0.05;
     final shouldPaintCamera =
+        isMoving ||
         lastCam == null ||
-        (elapsed - lastCam).inMilliseconds >= 33 ||
-        diff.abs() > 0.8 ||
-        moveDelta2 > 1e-10;
+        (elapsed - lastCam).inMilliseconds >= 100;
     if (!shouldPaintCamera) return;
     _lastCameraTickAt = elapsed;
 
     if (_use3DMap) {
-      const offsetDeg = 0.00045;
+      // Scale offset with zoom so on-screen lead stays constant.
+      final offsetDeg = 0.00045 * math.pow(2.0, 17.5 - zoom).toDouble();
       final rad = _curHdg * math.pi / 180.0;
       final cLat = _curLat + offsetDeg * math.cos(rad);
       final cLng = _curLng + offsetDeg * math.sin(rad);
@@ -1667,6 +1705,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               );
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
+              // ignore: use_build_context_synchronously
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(l10n.favSaved),

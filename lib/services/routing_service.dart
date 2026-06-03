@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
+import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
 enum RoutingErrorCode {
@@ -444,7 +445,7 @@ class RoutingService {
     };
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
-    final requestBody = jsonEncode({
+    final requestPayload = <String, dynamic>{
       'locations': [
         {'lat': origin.latitude, 'lon': origin.longitude},
         {'lat': destination.latitude, 'lon': destination.longitude},
@@ -454,7 +455,17 @@ class RoutingService {
       'directions_options': {'units': 'kilometers', 'language': 'sv-SE'},
       // Request shape as decoded coordinates for easier parsing
       'shape_format': 'polyline6',
-    });
+    };
+
+    // Avoid studded-tire ban zones when the user has studded tires equipped.
+    if (UserPreferencesService.instance.hasStuddedTires.value) {
+      final excludePolygons = StuddedTireZones.toValhallaExcludePolygons();
+      if (excludePolygons.isNotEmpty) {
+        requestPayload['exclude_polygons'] = excludePolygons;
+      }
+    }
+
+    final requestBody = jsonEncode(requestPayload);
 
     final url = Uri.parse('$baseUrl/route');
     http.Response? response;

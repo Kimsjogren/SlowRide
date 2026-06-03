@@ -45,7 +45,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get splashReady => 'Prêt';
 
   @override
-  String get splashVersionLine => 'v1.0.0 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.1 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Alertes communautaires';
@@ -382,6 +382,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileStatsSpeedViolations => 'Excès de vitesse';
 
   @override
+  String get profileVehicleTitle => 'Mon véhicule';
+
+  @override
+  String get profileVehicleElectric => 'Véhicule électrique';
+
+  @override
+  String get profileVehicleElectricSubtitle => 'Afficher les bornes de recharge sur la carte';
+
+  @override
+  String get profileVehicleStuddedTires => 'Pneus cloutés';
+
+  @override
+  String get profileVehicleStuddedTiresSubtitle => 'Éviter les rues interdites aux pneus cloutés';
+
+  @override
   String get settingsTitle => 'Paramètres';
 
   @override
@@ -409,6 +424,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsLanguageFinnish => 'Finnois';
 
   @override
+  String get settingsLanguageSpanish => 'Espagnol';
+
+  @override
   String get settingsCountryLabel => 'Pays (règles de circulation)';
 
   @override
@@ -425,6 +443,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsCountryFrance => '🇫🇷 France';
+
+  @override
+  String get settingsCountrySpain => '🇪🇸 Espagne';
 
   @override
   String get settingsCountryHint => 'Les limites de vitesse et règles routières s\'adaptent au pays sélectionné.';
@@ -771,6 +792,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paywallRestoreButton => 'Restaurer l\'achat';
 
   @override
+  String paywallDisclosure(Object price) {
+    return 'CruizX Pro · $price/mois · renouvellement automatique. Annulez à tout moment dans Réglages au moins 24 heures avant le renouvellement. Facturé sur votre compte Apple ID.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override
@@ -823,6 +849,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get paywallPurchaseSuccess => 'Vous êtes maintenant un utilisateur Pro !';
+
+  @override
+  String get paywallPurchaseFailed => 'L\'achat n\'a pas pu être finalisé. Vérifiez votre compte App Store et réessayez.';
 
   @override
   String get paywallRestoreSuccess => 'Achat restauré !';

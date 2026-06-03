@@ -38,6 +38,17 @@ sudo usermod -aG docker $USER
 
 ```bash
 cd docker/valhalla
+
+# Download map extracts (Nordics + France + Spain)
+cd data
+wget -N https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/norway-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/denmark-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/finland-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/france-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/spain-latest.osm.pbf
+
+cd ..
 docker-compose up -d
 ```
 
@@ -75,11 +86,16 @@ flutter build apk --dart-define=ROUTING_PROVIDER=valhalla \
 
 ## Adding More Countries
 
-Edit `docker-compose.yml` and add URLs to `tile_urls`:
+Add the country PBF in both places:
 
-```yaml
-environment:
-  - tile_urls=https://download.geofabrik.de/europe/sweden-latest.osm.pbf https://download.geofabrik.de/europe/norway-latest.osm.pbf
+1. Download the country file to `docker/valhalla/data`.
+2. Add `<country>-latest.osm.pbf` to `PBF_FILES` in `merge_pbf.sh`.
+
+Example (Spain):
+
+```bash
+cd docker/valhalla/data
+wget -N https://download.geofabrik.de/europe/spain-latest.osm.pbf
 ```
 
 Available maps: <https://download.geofabrik.de/>
@@ -165,5 +181,6 @@ Maps are updated monthly on Geofabrik. To update:
 cd docker/valhalla
 docker-compose down
 rm -rf data/valhalla_tiles  # Keep downloaded .pbf files
+rm -f data/merged.osm.pbf
 docker-compose up -d
 ```

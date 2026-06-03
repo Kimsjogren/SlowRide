@@ -10,12 +10,28 @@ class AdService {
   static final AdService instance = AdService._();
 
   // ── Ad unit IDs ──────────────────────────────────────────────────────────
-  static const String _interstitialConvoyId =
+  static const String _iosInterstitialConvoyId =
       'ca-app-pub-8409578758600641/2936933028';
-  static const String _bannerSettingsId =
+  static const String _iosBannerSettingsId =
       'ca-app-pub-8409578758600641/9243686032';
-  static const String _bannerConvoyId =
+  static const String _iosBannerConvoyId =
       'ca-app-pub-8409578758600641/2783187067';
+
+  static const String _androidInterstitialConvoyId =
+      'ca-app-pub-8409578758600641/7389190997';
+  static const String _androidBannerSettingsId =
+      'ca-app-pub-8409578758600641/8719270290';
+  static const String _androidBannerConvoyId =
+      'ca-app-pub-8409578758600641/4818867975';
+
+  String get _interstitialConvoyId =>
+      Platform.isIOS ? _iosInterstitialConvoyId : _androidInterstitialConvoyId;
+
+  String get _bannerSettingsId =>
+      Platform.isIOS ? _iosBannerSettingsId : _androidBannerSettingsId;
+
+  String get _bannerConvoyId =>
+      Platform.isIOS ? _iosBannerConvoyId : _androidBannerConvoyId;
 
   // Public getters so widgets can use them
   String get bannerSettingsUnitId => _bannerSettingsId;

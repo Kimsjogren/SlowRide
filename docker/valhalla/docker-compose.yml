@@ -14,6 +14,7 @@
 #   Denmark: https://download.geofabrik.de/europe/denmark-latest.osm.pbf
 #   Finland: https://download.geofabrik.de/europe/finland-latest.osm.pbf
 #   France:  https://download.geofabrik.de/europe/france-latest.osm.pbf
+#   Spain:   https://download.geofabrik.de/europe/spain-latest.osm.pbf
 #
 # To update maps: download new PBFs, then:
 #   docker-compose down

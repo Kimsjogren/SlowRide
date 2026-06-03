@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_da.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
 import 'app_localizations_fi.dart';
 import 'app_localizations_fr.dart';
 import 'app_localizations_nb.dart';
@@ -97,6 +98,7 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('da'),
     Locale('en'),
+    Locale('es'),
     Locale('fi'),
     Locale('fr'),
     Locale('nb'),
@@ -178,7 +180,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.0.0 | CruizX by KimTechTool'**
+  /// **'v1.0.1 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @alertsTitle.
@@ -829,6 +831,36 @@ abstract class AppLocalizations {
   /// **'Speed violations'**
   String get profileStatsSpeedViolations;
 
+  /// No description provided for @profileVehicleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My vehicle'**
+  String get profileVehicleTitle;
+
+  /// No description provided for @profileVehicleElectric.
+  ///
+  /// In en, this message translates to:
+  /// **'Electric vehicle'**
+  String get profileVehicleElectric;
+
+  /// No description provided for @profileVehicleElectricSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show charging stations on the map'**
+  String get profileVehicleElectricSubtitle;
+
+  /// No description provided for @profileVehicleStuddedTires.
+  ///
+  /// In en, this message translates to:
+  /// **'Studded tires'**
+  String get profileVehicleStuddedTires;
+
+  /// No description provided for @profileVehicleStuddedTiresSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Avoid streets with studded tire bans'**
+  String get profileVehicleStuddedTiresSubtitle;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -883,6 +915,12 @@ abstract class AppLocalizations {
   /// **'Finnish'**
   String get settingsLanguageFinnish;
 
+  /// No description provided for @settingsLanguageSpanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish'**
+  String get settingsLanguageSpanish;
+
   /// No description provided for @settingsCountryLabel.
   ///
   /// In en, this message translates to:
@@ -918,6 +956,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'🇫🇷 France'**
   String get settingsCountryFrance;
+
+  /// No description provided for @settingsCountrySpain.
+  ///
+  /// In en, this message translates to:
+  /// **'🇪🇸 Spain'**
+  String get settingsCountrySpain;
 
   /// No description provided for @settingsCountryHint.
   ///
@@ -1543,6 +1587,12 @@ abstract class AppLocalizations {
   /// **'Restore purchase'**
   String get paywallRestoreButton;
 
+  /// No description provided for @paywallDisclosure.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Pro · {price}/month · auto-renewing. Cancel anytime in Settings at least 24 hours before renewal. Charged to your Apple ID account.'**
+  String paywallDisclosure(Object price);
+
   /// No description provided for @paywallFreeLabel.
   ///
   /// In en, this message translates to:
@@ -1650,6 +1700,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You are now a Pro user!'**
   String get paywallPurchaseSuccess;
+
+  /// No description provided for @paywallPurchaseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase could not be completed. Please check your App Store account and try again.'**
+  String get paywallPurchaseFailed;
 
   /// No description provided for @paywallRestoreSuccess.
   ///
@@ -2315,7 +2371,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['da', 'en', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2328,6 +2384,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'da': return AppLocalizationsDa();
     case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
     case 'fi': return AppLocalizationsFi();
     case 'fr': return AppLocalizationsFr();
     case 'nb': return AppLocalizationsNb();

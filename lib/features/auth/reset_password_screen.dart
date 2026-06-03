@@ -1,3 +1,4 @@
+// ignore: unnecessary_import
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
@@ -397,8 +398,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
               ),
               validator: (v) {
-                if (v != _passwordController.text)
+                if (v != _passwordController.text) {
                   return l10n.authPasswordsDoNotMatch;
+                }
                 return null;
               },
             ),

@@ -180,7 +180,7 @@ class SettingsScreen extends StatelessWidget {
                             dropdownColor: const Color(0xFF0A1F63),
                             style: valueStyle,
                             iconEnabledColor: Colors.white70,
-                            initialValue: country,
+                            value: country,
                             decoration: InputDecoration(
                               labelText: l10n.settingsCountryLabel,
                               labelStyle: labelStyle,
@@ -212,6 +212,10 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'FR',
                                 child: Text(l10n.settingsCountryFrance),
                               ),
+                              DropdownMenuItem(
+                                value: 'ES',
+                                child: Text(l10n.settingsCountrySpain),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value != null) {
@@ -237,7 +241,7 @@ class SettingsScreen extends StatelessWidget {
                             dropdownColor: const Color(0xFF0A1F63),
                             style: valueStyle,
                             iconEnabledColor: Colors.white70,
-                            initialValue: languageCode ?? 'system',
+                            value: languageCode ?? 'system',
                             decoration: InputDecoration(
                               labelText: l10n.settingsLanguageLabel,
                               labelStyle: labelStyle,
@@ -277,6 +281,10 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'fi',
                                 child: Text(l10n.settingsLanguageFinnish),
                               ),
+                              DropdownMenuItem(
+                                value: 'es',
+                                child: Text(l10n.settingsLanguageSpanish),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value == null || value == 'system') {
@@ -284,6 +292,19 @@ class SettingsScreen extends StatelessWidget {
                                 return;
                               }
                               preferences.languageCode.value = value;
+                              // Sync country to match the selected language.
+                              final syncedCountry = switch (value) {
+                                'sv' => 'SE',
+                                'nb' => 'NO',
+                                'da' => 'DK',
+                                'fi' => 'FI',
+                                'fr' => 'FR',
+                                'es' => 'ES',
+                                _ => null,
+                              };
+                              if (syncedCountry != null) {
+                                preferences.countryCode.value = syncedCountry;
+                              }
                             },
                           );
                         },
@@ -299,6 +320,7 @@ class SettingsScreen extends StatelessWidget {
                             'nb' => l10n.settingsLanguageNorwegian,
                             'da' => l10n.settingsLanguageDanish,
                             'fi' => l10n.settingsLanguageFinnish,
+                            'es' => l10n.settingsLanguageSpanish,
                             _ => l10n.settingsLanguageSystem,
                           };
                           return Text(
@@ -347,20 +369,21 @@ class SettingsScreen extends StatelessWidget {
                                   final speedUnitLabel = unit == SpeedUnit.kmh
                                       ? l10n.settingsSpeedUnitKmh
                                       : l10n.settingsSpeedUnitMph;
-                                  // Slider max adapts to the country's legal
-                                  // max for the current vehicle type.
+                                  // Slider max = legal limit + 5 km/h so the
+                                  // user can fine-tune for their actual avg speed.
                                   final legalMax =
                                       CountryVehicleRules.maxLegalSpeedFor(
                                         country,
                                         preferences.vehicleType.value,
                                       );
+                                  final sliderMaxKmh = legalMax + 5.0;
                                   final minDisplay = unit == SpeedUnit.kmh
                                       ? 15.0
                                       : 9.0;
                                   final maxDisplay = unit == SpeedUnit.kmh
-                                      ? legalMax
+                                      ? sliderMaxKmh
                                       : preferences.toDisplaySpeed(
-                                          speedKmh: legalMax,
+                                          speedKmh: sliderMaxKmh,
                                           unit: unit,
                                         );
 
@@ -599,7 +622,7 @@ class SettingsScreen extends StatelessWidget {
                             ValueListenableBuilder<String?>(
                               valueListenable:
                                   SubscriptionService.instance.localizedPrice,
-                              builder: (_, price, __) {
+                              builder: (_, price, _) {
                                 if (price == null) {
                                   return const SizedBox.shrink();
                                 }

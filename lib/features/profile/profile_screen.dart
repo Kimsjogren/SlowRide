@@ -10,6 +10,7 @@ import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -373,6 +374,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _StatRow(
                           label: l10n.profileStatsSpeedViolations,
                           value: '—',
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Vehicle settings card
+                    _InfoCard(
+                      title: l10n.profileVehicleTitle,
+                      children: [
+                        // EV toggle — only for Moped car
+                        ValueListenableBuilder<String>(
+                          valueListenable:
+                              UserPreferencesService.instance.vehicleType,
+                          builder: (_, vehicleType, _) {
+                            if (vehicleType != 'Moped car') {
+                              return const SizedBox.shrink();
+                            }
+                            return ValueListenableBuilder<bool>(
+                              valueListenable:
+                                  UserPreferencesService.instance.isElectric,
+                              builder: (_, isEv, _) {
+                                return SwitchListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    l10n.profileVehicleElectric,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    l10n.profileVehicleElectricSubtitle,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.55,
+                                      ),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  secondary: Icon(
+                                    Icons.ev_station,
+                                    color: isEv
+                                        ? const Color(0xFF4CD964)
+                                        : Colors.white38,
+                                  ),
+                                  value: isEv,
+                                  activeThumbColor: const Color(0xFF4CD964),
+                                  onChanged: (v) =>
+                                      UserPreferencesService
+                                              .instance
+                                              .isElectric
+                                              .value =
+                                          v,
+                                );
+                              },
+                            );
+                          },
+                        ),
+                        // Studded tires toggle
+                        ValueListenableBuilder<bool>(
+                          valueListenable:
+                              UserPreferencesService.instance.hasStuddedTires,
+                          builder: (_, hasStudded, _) {
+                            return SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                l10n.profileVehicleStuddedTires,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              subtitle: Text(
+                                l10n.profileVehicleStuddedTiresSubtitle,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              secondary: Icon(
+                                Icons.tire_repair,
+                                color: hasStudded
+                                    ? const Color(0xFF00C8FF)
+                                    : Colors.white38,
+                              ),
+                              value: hasStudded,
+                              activeThumbColor: const Color(0xFF00C8FF),
+                              onChanged: (v) =>
+                                  UserPreferencesService
+                                          .instance
+                                          .hasStuddedTires
+                                          .value =
+                                      v,
+                            );
+                          },
                         ),
                       ],
                     ),

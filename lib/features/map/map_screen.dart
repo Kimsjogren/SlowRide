@@ -17,6 +17,8 @@ import 'package:slowride/services/favorite_places_service.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/models/studded_tire_zones.dart';
+import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/subscription_service.dart';
@@ -82,6 +84,8 @@ class _MapScreenState extends State<MapScreen> {
   final AlertsController _alertsController = AlertsController();
   List<AlertModel> _alerts = const [];
   Timer? _alertsTimer;
+  // EV charging stations (fetched when isElectric is on).
+  List<LatLng> _chargingStations = const [];
   // Nearest alert within 400 m while navigating (for proximity warning).
   AlertModel? _nearbyAlert;
   double? _roadSpeedLimitKmh;
@@ -134,6 +138,7 @@ class _MapScreenState extends State<MapScreen> {
     });
     _alertsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadAlerts();
+      if (mounted) _loadChargingStations();
     });
   }
 
@@ -151,6 +156,25 @@ class _MapScreenState extends State<MapScreen> {
       final result = await _alertsController.fetchNearby(center);
       if (!mounted) return;
       setState(() => _alerts = result);
+    } catch (_) {}
+  }
+
+  Future<void> _loadChargingStations() async {
+    if (!UserPreferencesService.instance.isElectric.value) {
+      if (_chargingStations.isNotEmpty) {
+        setState(() => _chargingStations = const []);
+      }
+      return;
+    }
+    final center = _currentLocation ?? const LatLng(59.3293, 18.0686);
+    try {
+      final stations = await ChargingStationService.instance.fetchNearby(
+        center,
+      );
+      if (!mounted) return;
+      setState(() {
+        _chargingStations = stations.map((s) => s.position).toList();
+      });
     } catch (_) {}
   }
 
@@ -1868,6 +1892,11 @@ class _MapScreenState extends State<MapScreen> {
                     headingNotifier: _headingNotifier,
                     destination: _destination,
                     routePoints: _routePoints,
+                    studdedTireBanZones:
+                        UserPreferencesService.instance.hasStuddedTires.value
+                        ? StuddedTireZones.all.map((z) => z.polygon).toList()
+                        : const [],
+                    chargingStations: _chargingStations,
                     nextManeuverDistanceMeters: _isNavigating
                         ? _distToNextManeuver
                         : null,
@@ -2941,12 +2970,17 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                               ),
                                             ),
-                                            // TODO: re-enable simulation button
-                                            // const SizedBox(height: 8),
-                                            // GestureDetector(
-                                            //   onTap: _startSimulation,
-                                            //   ...
-                                            // ),
+                                            const SizedBox(height: 8),
+                                            GestureDetector(
+                                              onTap: _startSimulation,
+                                              child: Text(
+                                                'Simulate',
+                                                style: TextStyle(
+                                                  color: Colors.white38,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
                                           ],
                                         ],
                                       ),

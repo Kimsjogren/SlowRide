@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/subscription_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaywallScreen extends StatefulWidget {
   const PaywallScreen({super.key, this.reason});
@@ -19,16 +21,32 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _loading = true);
     try {
-      // TODO: Replace with RevenueCat purchase flow
-      await SubscriptionService.instance.activatePro();
+      final purchased = await SubscriptionService.instance.purchaseProMonthly();
+      if (!mounted) return;
+      if (purchased) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.paywallPurchaseSuccess),
+            backgroundColor: const Color(0xFF00913F),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.paywallPurchaseFailed),
+            backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+          ),
+        );
+      }
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.paywallPurchaseSuccess),
-          backgroundColor: const Color(0xFF00913F),
+          content: Text(l10n.paywallPurchaseFailed),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
         ),
       );
-      Navigator.of(context).pop(true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -223,33 +241,44 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Price pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1E6BFF), Color(0xFF0045CC)],
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
+                  // Price pill (live Store price when available)
+                  ValueListenableBuilder<String?>(
+                    valueListenable:
+                        SubscriptionService.instance.localizedPrice,
+                    builder: (_, price, _) {
+                      final priceText = price != null
+                          ? l10n.settingsProPricePerMonth(price)
+                          : l10n.paywallPrice;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 10,
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      l10n.paywallPrice,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1E6BFF), Color(0xFF0045CC)],
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF1E6BFF,
+                              ).withValues(alpha: 0.4),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          priceText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 24),
@@ -311,6 +340,77 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               fontSize: 14,
                             ),
                           ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Required Apple subscription disclosure (Guideline 3.1.2c)
+                  ValueListenableBuilder<String?>(
+                    valueListenable:
+                        SubscriptionService.instance.localizedPrice,
+                    builder: (_, price, _) => Text(
+                      l10n.paywallDisclosure(price ?? '–'),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.35),
+                        fontSize: 11,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // Privacy Policy & Terms of Use links
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => launchUrl(
+                          Uri.parse(LegalLinks.privacyPolicy),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '  ·  ',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          fontSize: 11,
+                        ),
+                      ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => launchUrl(
+                          Uri.parse(LegalLinks.termsOfUse),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: Text(
+                          'Terms of Use',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

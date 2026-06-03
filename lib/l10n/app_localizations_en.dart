@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.0.0 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.1 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Community Alerts';
@@ -382,6 +382,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileStatsSpeedViolations => 'Speed violations';
 
   @override
+  String get profileVehicleTitle => 'My vehicle';
+
+  @override
+  String get profileVehicleElectric => 'Electric vehicle';
+
+  @override
+  String get profileVehicleElectricSubtitle => 'Show charging stations on the map';
+
+  @override
+  String get profileVehicleStuddedTires => 'Studded tires';
+
+  @override
+  String get profileVehicleStuddedTiresSubtitle => 'Avoid streets with studded tire bans';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -409,6 +424,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageFinnish => 'Finnish';
 
   @override
+  String get settingsLanguageSpanish => 'Spanish';
+
+  @override
   String get settingsCountryLabel => 'Country (traffic rules)';
 
   @override
@@ -425,6 +443,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCountryFrance => '🇫🇷 France';
+
+  @override
+  String get settingsCountrySpain => '🇪🇸 Spain';
 
   @override
   String get settingsCountryHint => 'Speed limits and road rules adapt to the selected country.';
@@ -771,6 +792,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallRestoreButton => 'Restore purchase';
 
   @override
+  String paywallDisclosure(Object price) {
+    return 'CruizX Pro · $price/month · auto-renewing. Cancel anytime in Settings at least 24 hours before renewal. Charged to your Apple ID account.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override
@@ -823,6 +849,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get paywallPurchaseSuccess => 'You are now a Pro user!';
+
+  @override
+  String get paywallPurchaseFailed => 'Purchase could not be completed. Please check your App Store account and try again.';
 
   @override
   String get paywallRestoreSuccess => 'Purchase restored!';

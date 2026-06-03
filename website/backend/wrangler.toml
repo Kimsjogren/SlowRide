@@ -1,0 +1,16 @@
+name = "cruizx-claim-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Routa /api/* till workern på din zon i Cloudflare.
+# Förutsätter att cruizx.com är en aktiv zon i samma Cloudflare-konto.
+[[routes]]
+pattern = "cruizx.com/api/*"
+zone_name = "cruizx.com"
+
+# Secrets sätts med:
+#   wrangler secret put SUPABASE_URL
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put DEVICE_SALT           # slumpmässig sträng, valfri längd
+#   wrangler secret put STATS_TOKEN           # för GET /api/stats
+#   wrangler secret put TURNSTILE_SECRET      # Cloudflare Turnstile secret key

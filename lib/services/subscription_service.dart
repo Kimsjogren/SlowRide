@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,19 +15,28 @@ class SubscriptionService {
   static const int freeMaxConvoyMembers = 2;
 
   /// App Store Connect product ID for monthly subscription.
-  static const String _monthlyProductId = 'cruizx_pro_monthly';
+  static const String _monthlyProductId = 'cruizx_pro_monthly_v2';
 
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
 
+  final InAppPurchase _iap = InAppPurchase.instance;
   late SharedPreferences _prefs;
+  bool _initialized = false;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
+  ProductDetails? _monthlyProduct;
+  Completer<bool>? _purchaseCompleter;
+  Completer<bool>? _restoreCompleter;
+
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
 
   /// Localized price string from App Store (e.g. "39,00 kr", "3,49 $").
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
   Future<void> initialize() async {
+    if (_initialized) return;
+
     _prefs = await SharedPreferences.getInstance();
 
     // FORCE_FREE clears saved Pro and sets free mode (for testing ads etc.)
@@ -40,22 +51,74 @@ class SubscriptionService {
       isPro.value = _prefs.getBool(_isProKey) ?? false;
     }
 
-    // Fetch localized price from App Store in the background.
-    _fetchLocalizedPrice();
+    await _startIap();
+    _initialized = true;
   }
 
-  Future<void> _fetchLocalizedPrice() async {
+  Future<void> _startIap() async {
     try {
-      final available = await InAppPurchase.instance.isAvailable();
+      final available = await _iap.isAvailable();
       if (!available) return;
-      final response = await InAppPurchase.instance.queryProductDetails({
-        _monthlyProductId,
-      });
-      if (response.productDetails.isNotEmpty) {
-        localizedPrice.value = response.productDetails.first.price;
-      }
+
+      await _purchaseSub?.cancel();
+      _purchaseSub = _iap.purchaseStream.listen(
+        _onPurchaseUpdates,
+        onError: (Object e) {
+          debugPrint('IAP purchase stream error: $e');
+        },
+      );
+
+      await _loadProductDetails();
     } catch (e) {
-      debugPrint('Failed to fetch IAP price: $e');
+      debugPrint('Failed to initialize IAP: $e');
+    }
+  }
+
+  Future<void> _loadProductDetails() async {
+    try {
+      final response = await _iap.queryProductDetails({_monthlyProductId});
+      if (response.productDetails.isEmpty) {
+        debugPrint('IAP product not found: $_monthlyProductId');
+        return;
+      }
+      _monthlyProduct = response.productDetails.first;
+      localizedPrice.value = _monthlyProduct!.price;
+    } catch (e) {
+      debugPrint('Failed to fetch IAP product details: $e');
+    }
+  }
+
+  Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
+    for (final purchase in updates) {
+      if (purchase.productID != _monthlyProductId) {
+        continue;
+      }
+
+      switch (purchase.status) {
+        case PurchaseStatus.pending:
+          break;
+        case PurchaseStatus.purchased:
+        case PurchaseStatus.restored:
+          await activatePro();
+          if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+            _purchaseCompleter!.complete(true);
+          }
+          if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+            _restoreCompleter!.complete(true);
+          }
+        case PurchaseStatus.error:
+        case PurchaseStatus.canceled:
+          if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+            _purchaseCompleter!.complete(false);
+          }
+          if (_restoreCompleter != null && !_restoreCompleter!.isCompleted) {
+            _restoreCompleter!.complete(false);
+          }
+      }
+
+      if (purchase.pendingCompletePurchase) {
+        await _iap.completePurchase(purchase);
+      }
     }
   }
 
@@ -94,16 +157,71 @@ class SubscriptionService {
 
   // ── Purchase ─────────────────────────────────────────────────────────────
 
-  /// Activates Pro (call after successful RevenueCat purchase).
+  /// Starts native store purchase flow for monthly Pro subscription.
+  Future<bool> purchaseProMonthly() async {
+    if (BackendConfig.forceFree) return false;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+
+    final available = await _iap.isAvailable();
+    if (!available) return false;
+
+    if (_monthlyProduct == null) {
+      await _loadProductDetails();
+      if (_monthlyProduct == null) return false;
+    }
+
+    final completer = Completer<bool>();
+    _purchaseCompleter = completer;
+
+    final started = await _iap.buyNonConsumable(
+      purchaseParam: PurchaseParam(productDetails: _monthlyProduct!),
+    );
+    if (!started) {
+      _purchaseCompleter = null;
+      return false;
+    }
+
+    final result = await completer.future.timeout(
+      const Duration(minutes: 2),
+      onTimeout: () => false,
+    );
+    if (identical(_purchaseCompleter, completer)) {
+      _purchaseCompleter = null;
+    }
+    return result;
+  }
+
+  /// Activates Pro after successful verified purchase.
   Future<void> activatePro() async {
     isPro.value = true;
     await _prefs.setBool(_isProKey, true);
   }
 
-  /// Restores purchase (stub — integrate RevenueCat here).
+  /// Restores previous store purchases and reapplies Pro entitlement.
   Future<bool> restorePurchase() async {
-    // TODO: RevenueCat restore
-    return false;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+
+    final available = await _iap.isAvailable();
+    if (!available) return false;
+
+    final completer = Completer<bool>();
+    _restoreCompleter = completer;
+    await _iap.restorePurchases();
+
+    final result = await completer.future.timeout(
+      const Duration(seconds: 45),
+      onTimeout: () => isPro.value,
+    );
+    if (identical(_restoreCompleter, completer)) {
+      _restoreCompleter = null;
+    }
+    return result;
   }
 
   /// Deactivates Pro (for testing / subscription lapse).

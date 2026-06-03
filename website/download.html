@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Hämta din gratis CruizX Pro-kod. 7 dagar gratis genom Flyer2026-kampanjen."
+    />
+    <meta name="theme-color" content="#06111f" />
+    <meta name="robots" content="noindex" />
+    <title>Hämta CruizX Pro gratis – 7 dagar</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+      .download-main {
+        width: min(calc(100% - 2rem), 720px);
+        margin: 0 auto;
+        padding: 2rem 0 3rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .download-card {
+        border: 1px solid var(--border-soft);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+          var(--bg-panel);
+        backdrop-filter: blur(16px);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius-xl);
+        padding: 2.2rem 1.8rem;
+        text-align: center;
+      }
+
+      .download-badge {
+        display: inline-block;
+        padding: 0.4rem 0.85rem;
+        border-radius: 999px;
+        background: rgba(58, 168, 255, 0.14);
+        border: 1px solid rgba(58, 168, 255, 0.3);
+        color: var(--accent-bright);
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 1.2rem;
+      }
+
+      .download-card h1 {
+        margin: 0 0 0.6rem;
+        font-size: clamp(1.7rem, 5vw, 2.4rem);
+        line-height: 1.15;
+      }
+
+      .download-card .lead {
+        margin: 0 auto 1.6rem;
+        max-width: 520px;
+        color: var(--text-muted);
+        font-size: 1.02rem;
+        line-height: 1.55;
+      }
+
+      .download-perks {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.7rem;
+        margin: 1.4rem 0 1.8rem;
+        text-align: left;
+      }
+
+      .download-perks li {
+        list-style: none;
+        padding: 0.85rem 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background: rgba(255, 255, 255, 0.04);
+        font-size: 0.92rem;
+        color: var(--text-muted);
+      }
+
+      .download-perks strong {
+        display: block;
+        color: var(--text-main);
+        margin-bottom: 0.15rem;
+      }
+
+      .download-cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-width: 240px;
+        min-height: 3.2rem;
+        padding: 0 1.6rem;
+        border-radius: 16px;
+        border: 0;
+        background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+        color: #fff;
+        font-weight: 800;
+        font-size: 1.05rem;
+        cursor: pointer;
+        box-shadow: 0 16px 38px rgba(30, 107, 255, 0.38);
+        transition: transform 160ms ease, box-shadow 160ms ease;
+      }
+
+      .download-cta:hover:not(:disabled),
+      .download-cta:focus-visible:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 22px 48px rgba(30, 107, 255, 0.46);
+      }
+
+      .download-cta:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .download-fineprint {
+        margin: 1rem auto 0;
+        max-width: 480px;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+      }
+
+      .code-result {
+        margin-top: 1.6rem;
+        padding: 1.2rem;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(55, 200, 113, 0.35);
+        background: rgba(55, 200, 113, 0.08);
+        display: none;
+      }
+
+      .code-result.visible {
+        display: block;
+      }
+
+      .code-result.error {
+        border-color: rgba(255, 99, 99, 0.4);
+        background: rgba(255, 99, 99, 0.08);
+      }
+
+      .code-label {
+        margin: 0 0 0.5rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+      }
+
+      .code-value {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        font-family: "SF Mono", "Menlo", monospace;
+        font-size: 1.4rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        word-break: break-all;
+      }
+
+      .copy-btn {
+        padding: 0.45rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid var(--border-soft);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-main);
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .code-redeem-link {
+        display: inline-block;
+        margin-top: 0.9rem;
+        color: var(--accent-bright);
+        font-weight: 700;
+        font-size: 0.92rem;
+      }
+
+      .download-back {
+        display: inline-block;
+        margin-top: 1.4rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="page-overlay"></div>
+
+      <header class="site-header">
+        <a class="brand" href="./index.html" aria-label="CruizX home">
+          <img src="./assets/logga_nobg.png" alt="CruizX" />
+        </a>
+      </header>
+
+      <main class="download-main" id="top">
+        <section class="download-card reveal">
+          <span class="download-badge">Flyer2026 · Limited offer</span>
+          <h1>Få 7 dagar CruizX Pro gratis</h1>
+          <p class="lead">
+            Tack för att du skannade! Hämta din unika kod nedan och lös in den i
+            App Store för att låsa upp CruizX Pro i en vecka – helt utan
+            kostnad.
+          </p>
+
+          <ul class="download-perks">
+            <li><strong>Konvojverktyg</strong>Live position och formation</li>
+            <li><strong>Vägalerts</strong>Realtid från andra förare</li>
+            <li><strong>Pro-kartor</strong>Anpassade för långsamma fordon</li>
+          </ul>
+
+          <div
+            class="cf-turnstile"
+            data-sitekey="0x4AAAAAADeBoILZkWQUKi8E"
+            data-theme="dark"
+            data-callback="onTurnstileSuccess"
+            data-error-callback="onTurnstileError"
+            data-expired-callback="onTurnstileExpired"
+            style="margin: 0 auto 1rem; display: flex; justify-content: center;"
+          ></div>
+
+          <button type="button" class="download-cta" id="claim-btn" disabled>
+            Hämta min kod
+          </button>
+
+          <p class="download-fineprint">
+            En kod per enhet. Erbjudandet kräver iPhone och ett Apple-ID. Koden
+            är giltig tills den löses in eller kampanjen tar slut.
+          </p>
+
+          <div class="code-result" id="code-result" role="status" aria-live="polite">
+            <p class="code-label" id="code-result-label">Din kod</p>
+            <div class="code-value">
+              <span id="code-value-text">—</span>
+              <button type="button" class="copy-btn" id="copy-btn">Kopiera</button>
+            </div>
+            <a
+              class="code-redeem-link"
+              id="redeem-link"
+              href="https://apps.apple.com/redeem"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Öppna App Store och lös in →
+            </a>
+          </div>
+
+          <a class="download-back" href="./index.html">← Tillbaka till cruizx.com</a>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="footer-main">
+          <p>CruizX</p>
+          <p>Driven by the ride.</p>
+          <p>&copy; 2026 CruizX</p>
+        </div>
+        <p class="legal-links">
+          <a href="./privacy.html">Privacy</a>
+          <span>•</span>
+          <a href="./cookies.html">Cookies</a>
+          <span>•</span>
+          <a href="./terms.html">Terms</a>
+          <span>•</span>
+          <a href="./support.html">Support</a>
+        </p>
+      </footer>
+    </div>
+
+    <script src="./download.js"></script>
+  </body>
+</html>

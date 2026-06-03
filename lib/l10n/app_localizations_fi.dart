@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.0.0 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.1 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Yhteisön hälytykset';
@@ -382,6 +382,21 @@ class AppLocalizationsFi extends AppLocalizations {
   String get profileStatsSpeedViolations => 'Ylinopeudet';
 
   @override
+  String get profileVehicleTitle => 'Ajoneuvoni';
+
+  @override
+  String get profileVehicleElectric => 'Sähköajoneuvo';
+
+  @override
+  String get profileVehicleElectricSubtitle => 'Näytä latausasemat kartalla';
+
+  @override
+  String get profileVehicleStuddedTires => 'Nastarenkaat';
+
+  @override
+  String get profileVehicleStuddedTiresSubtitle => 'Vältä katuja, joilla nastarengas on kielletty';
+
+  @override
   String get settingsTitle => 'Asetukset';
 
   @override
@@ -409,6 +424,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsLanguageFinnish => 'Suomi';
 
   @override
+  String get settingsLanguageSpanish => 'Espanja';
+
+  @override
   String get settingsCountryLabel => 'Maa (liikennesäännöt)';
 
   @override
@@ -425,6 +443,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsCountryFrance => '🇫🇷 Ranska';
+
+  @override
+  String get settingsCountrySpain => '🇪🇸 Espanja';
 
   @override
   String get settingsCountryHint => 'Nopeusrajoitukset ja liikennesäännöt mukautuvat valitun maan mukaan.';
@@ -771,6 +792,11 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallRestoreButton => 'Palauta osto';
 
   @override
+  String paywallDisclosure(Object price) {
+    return 'CruizX Pro · $price/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override
@@ -823,6 +849,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get paywallPurchaseSuccess => 'Olet nyt Pro-käyttäjä!';
+
+  @override
+  String get paywallPurchaseFailed => 'Ostoa ei voitu suorittaa. Tarkista App Store -tilisi ja yritä uudelleen.';
 
   @override
   String get paywallRestoreSuccess => 'Osto palautettu!';

@@ -45,7 +45,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.0.0 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.1 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Fellesskapsvarsler';
@@ -382,6 +382,21 @@ class AppLocalizationsNb extends AppLocalizations {
   String get profileStatsSpeedViolations => 'Fartsoverskridelser';
 
   @override
+  String get profileVehicleTitle => 'Mitt kjøretøy';
+
+  @override
+  String get profileVehicleElectric => 'Elkjøretøy';
+
+  @override
+  String get profileVehicleElectricSubtitle => 'Vis ladestasjoner på kartet';
+
+  @override
+  String get profileVehicleStuddedTires => 'Piggdekk';
+
+  @override
+  String get profileVehicleStuddedTiresSubtitle => 'Unngå gater med piggdekkforbud';
+
+  @override
   String get settingsTitle => 'Innstillinger';
 
   @override
@@ -409,6 +424,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsLanguageFinnish => 'Finsk';
 
   @override
+  String get settingsLanguageSpanish => 'Spansk';
+
+  @override
   String get settingsCountryLabel => 'Land (trafikkregler)';
 
   @override
@@ -425,6 +443,9 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get settingsCountryFrance => '🇫🇷 Frankrike';
+
+  @override
+  String get settingsCountrySpain => '🇪🇸 Spania';
 
   @override
   String get settingsCountryHint => 'Fartsgrenser og veiregler tilpasses valgt land.';
@@ -771,6 +792,11 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallRestoreButton => 'Gjenopprett kjøp';
 
   @override
+  String paywallDisclosure(Object price) {
+    return 'CruizX Pro · $price/måned · fornyes automatisk. Avslutt når som helst i Innstillinger minst 24 timer før fornyelse. Belastes din Apple ID-konto.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override
@@ -823,6 +849,9 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get paywallPurchaseSuccess => 'Du er nå en Pro-bruker!';
+
+  @override
+  String get paywallPurchaseFailed => 'Kjøpet kunne ikke fullføres. Sjekk App Store-kontoen din og prøv igjen.';
 
   @override
   String get paywallRestoreSuccess => 'Kjøpet gjenopprettet!';

@@ -14,7 +14,14 @@ class CountryVehicleRules {
   CountryVehicleRules._();
 
   /// Supported country codes (ISO 3166-1 alpha-2).
-  static const List<String> supportedCountries = ['SE', 'NO', 'DK', 'FI', 'FR'];
+  static const List<String> supportedCountries = [
+    'SE',
+    'NO',
+    'DK',
+    'FI',
+    'FR',
+    'ES',
+  ];
 
   /// Default country when none is set.
   static const String defaultCountry = 'SE';
@@ -43,8 +50,11 @@ class CountryVehicleRules {
   /// Attempt to detect country from GPS coordinates.
   /// Returns null if coordinates don't match any supported country.
   static String? countryFromCoordinates(double lat, double lon) {
-    // France mainland — well separated from Nordics.
-    if (lat >= 41.3 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6) return 'FR';
+    // Spain mainland — check before France to avoid overlap in Pyrenees area.
+    if (lat >= 35.9 && lat <= 43.8 && lon >= -9.3 && lon <= 3.3) return 'ES';
+
+    // France mainland.
+    if (lat >= 43.0 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6) return 'FR';
 
     // Denmark – Jutland (west of Great Belt).
     if (lat >= 54.5 && lat <= 57.8 && lon >= 8.0 && lon <= 10.9) return 'DK';
@@ -80,7 +90,7 @@ class CountryVehicleRules {
     // A-traktor: motorväg & motortrafikled förbjudet, max 30 km/h.
     'SE_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.0,
@@ -88,7 +98,7 @@ class CountryVehicleRules {
     // Mopedbil: motorväg & motortrafikled förbjudet, max 45 km/h.
     'SE_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.0,
@@ -96,7 +106,7 @@ class CountryVehicleRules {
     // Traktor: motorväg förbjudet, färja tillåten.
     'SE_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.5,
@@ -107,14 +117,14 @@ class CountryVehicleRules {
     // Ferries are common in Norway and generally accessible to slow vehicles.
     'NO_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
     ),
     'NO_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
@@ -122,7 +132,7 @@ class CountryVehicleRules {
     // Traktor: ferries very common and allowed in Norway.
     'NO_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.7,
@@ -132,21 +142,21 @@ class CountryVehicleRules {
     // EPA-traktor: motorvej & motortrafikvej forbudt, max 30 km/h.
     'DK_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'DK_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'DK_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.5,
       useFerry: 0.5,
@@ -157,7 +167,7 @@ class CountryVehicleRules {
     // driven in Finland it remains construction-limited to 30 km/h.
     'FI_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
-      maxLegalSpeedKmh: 35,
+      maxLegalSpeedKmh: 30,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -165,7 +175,7 @@ class CountryVehicleRules {
     // Mopoauto: 45 km/h as in all EU countries.
     'FI_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -173,7 +183,7 @@ class CountryVehicleRules {
     // Traktori: up to 40 km/h in Finland.
     'FI_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 40,
-      maxLegalSpeedKmh: 45,
+      maxLegalSpeedKmh: 40,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.5,
@@ -184,14 +194,14 @@ class CountryVehicleRules {
     // Autoroute & voie express forbidden, max 45 km/h.
     'FR_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
     ),
     'FR_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
-      maxLegalSpeedKmh: 50,
+      maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -200,6 +210,33 @@ class CountryVehicleRules {
     // but 2016 reform allows EU T1 tractors up to 40 km/h on public roads.
     'FR_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 25,
+      maxLegalSpeedKmh: 40,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+
+    // ── Spain (ES) ──────────────────────────────────────────────────────
+    // Spain has no native A-tractor class; similar agricultural-derived
+    // vehicles are limited to 45 km/h on public roads (DGT circular).
+    'ES_A-tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 40,
+      maxLegalSpeedKmh: 45,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    // Cuadriciclo ligero (microcar / moped car): EU-harmonised 45 km/h.
+    'ES_Moped car': VehicleRoutingProfile(
+      defaultSpeedKmh: 45,
+      maxLegalSpeedKmh: 45,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
+    'ES_Tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
       useHighways: 0.0,
       useTolls: 0.0,
