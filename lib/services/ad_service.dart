@@ -75,7 +75,7 @@ class AdService {
     MobileAds.instance.updateRequestConfiguration(
       RequestConfiguration(
         testDeviceIds: [
-          'dcf7da2138fb5c5cd5b04c95cf08fccd', // Kim's iPhone17
+          '82b543d5d83ee2e55ab814b835fb505b', // Kim's iPhone17
           // Add more test device IDs here as needed
         ],
       ),
