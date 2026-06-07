@@ -2542,9 +2542,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   PolylineLayer(
                                                     polylines: [
                                                       Polyline(
-                                                        points: _isNavigating && _lastNearestIdx > 0
+                                                        points:
+                                                            _isNavigating &&
+                                                                _lastNearestIdx >
+                                                                    0
                                                             ? _routePoints.sublist(
-                                                                _lastNearestIdx.clamp(0, _routePoints.length),
+                                                                _lastNearestIdx
+                                                                    .clamp(
+                                                                      0,
+                                                                      _routePoints
+                                                                          .length,
+                                                                    ),
                                                               )
                                                             : _routePoints,
                                                         color: const Color(
