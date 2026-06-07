@@ -559,6 +559,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                     _routePoints.isNotEmpty && _routeInstructions.isNotEmpty;
                 if (onRoute) {
                   _tgtHdg = headingForArrow;
+
+                  // POSITION SNAPPING: snap displayed position to nearest
+                  // point on route when close (< 15m) to eliminate GPS drift.
+                  final (snapped, _, distM) = _projectOntoRoute(point);
+                  if (distM < 15) {
+                    _tgtLat = snapped.latitude;
+                    _tgtLng = snapped.longitude;
+                  }
                 } else {
                   // Movement-derived bearing is much stabler than raw compass.
                   final prev = _lastLocForBearing;
@@ -2534,7 +2542,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   PolylineLayer(
                                                     polylines: [
                                                       Polyline(
-                                                        points: _routePoints,
+                                                        points: _isNavigating && _lastNearestIdx > 0
+                                                            ? _routePoints.sublist(
+                                                                _lastNearestIdx.clamp(0, _routePoints.length),
+                                                              )
+                                                            : _routePoints,
                                                         color: const Color(
                                                           0xFF3AA8FF,
                                                         ),

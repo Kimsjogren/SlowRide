@@ -14,6 +14,7 @@ class TtsService {
   static const String _hintShownKey = 'tts_voice_hint_shown';
   SharedPreferences? _prefs;
   bool _initialized = false;
+  String _lastSpokenText = '';
 
   static const Map<String, String> _langMap = {
     'sv': 'sv-SE',
@@ -30,11 +31,12 @@ class TtsService {
     _prefs = await SharedPreferences.getInstance();
     enabled.value = _prefs?.getBool(_enabledKey) ?? false;
 
-    // iOS: configure audio session so TTS works alongside other audio
-    await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.ambient, [
+    // iOS: use playback category with duckOthers so nav voice is clear
+    // and lowers background audio (music/podcasts) during announcements.
+    await _tts.setIosAudioCategory(IosTextToSpeechAudioCategory.playback, [
       IosTextToSpeechAudioCategoryOptions.allowBluetooth,
       IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
-      IosTextToSpeechAudioCategoryOptions.mixWithOthers,
+      IosTextToSpeechAudioCategoryOptions.duckOthers,
     ]);
 
     await _applyLanguage();
@@ -92,6 +94,8 @@ class TtsService {
 
   Future<void> speak(String text) async {
     if (!enabled.value || text.isEmpty) return;
+    if (text == _lastSpokenText) return; // already speaking this
+    _lastSpokenText = text;
     await _tts.stop();
     await _tts.speak(text);
   }

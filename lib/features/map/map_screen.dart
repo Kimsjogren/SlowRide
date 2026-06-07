@@ -1891,7 +1891,11 @@ class _MapScreenState extends State<MapScreen> {
                     locationNotifier: _locationNotifier,
                     headingNotifier: _headingNotifier,
                     destination: _destination,
-                    routePoints: _routePoints,
+                    routePoints: _isNavigating && _lastNearestIdx > 0
+                        ? _routePoints.sublist(
+                            _lastNearestIdx.clamp(0, _routePoints.length),
+                          )
+                        : _routePoints,
                     studdedTireBanZones:
                         UserPreferencesService.instance.hasStuddedTires.value
                         ? StuddedTireZones.all.map((z) => z.polygon).toList()

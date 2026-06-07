@@ -355,6 +355,15 @@ class _MapWidgetState extends State<MapWidget>
             // At very low speed, keep heading stable instead of chasing noise.
             _tgtHdg = _filteredTgtHdg;
           }
+
+          // POSITION SNAPPING: When close to route, snap displayed position
+          // to the projected point on the route so the arrow rides on the
+          // blue line instead of floating beside it due to GPS drift.
+          if ((distToRouteM ?? 999) < 15 && widget.routePoints.length >= 2) {
+            final (snappedPos, _, _) = _projectOntoRoute(loc);
+            _tgtLat = snappedPos.latitude;
+            _tgtLng = snappedPos.longitude;
+          }
         }
         _lastLocForBearing = loc;
         _lastGpsAt = now;
