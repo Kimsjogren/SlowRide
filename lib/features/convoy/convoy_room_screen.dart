@@ -830,6 +830,25 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return cleaned.isNotEmpty ? cleaned : t;
   }
 
+  String _localizedManeuverPrimaryText(
+    AppLocalizations l10n,
+    int sign,
+    String fallback,
+  ) {
+    return switch (sign) {
+      -3 => l10n.voiceTurnSharpLeft,
+      -2 => l10n.voiceTurnLeft,
+      -1 => l10n.voiceTurnSlightLeft,
+      0 => l10n.voiceContinue,
+      1 => l10n.voiceTurnSlightRight,
+      2 => l10n.voiceTurnRight,
+      3 => l10n.voiceTurnSharpRight,
+      -6 || 6 => l10n.voiceRoundabout,
+      4 => l10n.voiceDestination,
+      _ => _maneuverPrimaryText(fallback),
+    };
+  }
+
   Color _maneuverAccentColor(double distanceMeters, int sign) {
     final absSign = sign.abs();
     if (distanceMeters <= 30) return const Color(0xFFD84315);
@@ -3053,7 +3072,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   ),
                                                   const SizedBox(height: 5),
                                                   Text(
-                                                    _maneuverPrimaryText(
+                                                    _localizedManeuverPrimaryText(
+                                                      l10n,
+                                                      _nextManeuverSign,
                                                       _nextManeuverText,
                                                     ),
                                                     style: const TextStyle(
