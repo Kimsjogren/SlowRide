@@ -2608,10 +2608,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       Polyline(
                                                         points:
                                                             _isNavigating &&
-                                                            _displayNearestIdx >
+                                                                _displayNearestIdx >
                                                                     0
                                                             ? _routePoints.sublist(
-                                                            _displayNearestIdx
+                                                                _displayNearestIdx
                                                                     .clamp(
                                                                       0,
                                                                       _routePoints

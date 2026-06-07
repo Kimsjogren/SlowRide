@@ -76,6 +76,34 @@ class RoutingService {
     _providerOsrmPublic,
   ];
 
+  String _graphHopperLocale() {
+    final code = UserPreferencesService.instance.languageCode.value;
+    return switch (code) {
+      'sv' => 'sv',
+      'en' => 'en',
+      'fr' => 'fr',
+      'nb' => 'no',
+      'da' => 'da',
+      'fi' => 'fi',
+      'es' => 'es',
+      _ => 'en',
+    };
+  }
+
+  String _valhallaLanguage() {
+    final code = UserPreferencesService.instance.languageCode.value;
+    return switch (code) {
+      'sv' => 'sv-SE',
+      'en' => 'en-US',
+      'fr' => 'fr-FR',
+      'nb' => 'nb-NO',
+      'da' => 'da-DK',
+      'fi' => 'fi-FI',
+      'es' => 'es-ES',
+      _ => 'en-US',
+    };
+  }
+
   Future<RouteResult> getRoute({
     required LatLng origin,
     required LatLng destination,
@@ -215,11 +243,12 @@ class RoutingService {
     // which requires the paid Platinum tier).
     // Slow vehicles must avoid motorways and ferries by law.
     final avoidFeatures = _graphHopperAvoidFor(vehicleType, countryCode);
+    final locale = _graphHopperLocale();
 
     // Build URI manually to handle repeated `point=` params correctly.
     final buffer = StringBuffer(
       '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey'
-      '&profile=car&points_encoded=false&instructions=true&locale=sv',
+      '&profile=car&points_encoded=false&instructions=true&locale=$locale',
     );
     buffer.write(
       '&point=${origin.latitude},${origin.longitude}'
@@ -452,7 +481,10 @@ class RoutingService {
       ],
       'costing': 'auto',
       'costing_options': {'auto': costingOptions},
-      'directions_options': {'units': 'kilometers', 'language': 'sv-SE'},
+      'directions_options': {
+        'units': 'kilometers',
+        'language': _valhallaLanguage(),
+      },
       // Request shape as decoded coordinates for easier parsing
       'shape_format': 'polyline6',
     };
