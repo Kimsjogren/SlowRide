@@ -117,6 +117,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   double _remainingDistM = 0;
   double _speedKmh = 0;
   int _lastNearestIdx = 0;
+  int _displayNearestIdx = 0;
 
   static const List<Color> _avatarPalette = [
     Color(0xFF1E6BFF),
@@ -769,6 +770,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       if (distToOldStart > 8) {
         _lastNearestIdx = bestSeg;
       }
+    }
+
+    // Smooth visual trim so the passed route removal does not appear jumpy.
+    if (_displayNearestIdx < _lastNearestIdx) {
+      final step = (_lastNearestIdx - _displayNearestIdx).clamp(0, 6);
+      _displayNearestIdx += step;
     }
 
     return (bestProj, _lastNearestIdx, math.sqrt(bestDistSq));
@@ -1924,6 +1931,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _totalRouteDistM = cumDist.isNotEmpty ? cumDist.last : 0;
         _remainingDistM = _totalRouteDistM;
         _lastNearestIdx = 0;
+        _displayNearestIdx = 0;
         _distToNextManeuver = double.infinity;
         _nextManeuverSign = 0;
         _nextManeuverText = '';
@@ -1956,6 +1964,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
       setState(() {
         _routePoints = const [];
+        _lastNearestIdx = 0;
+        _displayNearestIdx = 0;
         _routingStatus = switch (e.code) {
           RoutingErrorCode.noRouteFound => l10n.mapRouteNoRouteFound,
           RoutingErrorCode.providerUnavailable =>
@@ -2019,6 +2029,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       debugPrint('Convoy routing error: $e');
       setState(() {
         _routePoints = const [];
+        _lastNearestIdx = 0;
+        _displayNearestIdx = 0;
         _routingStatus = AppLocalizations.of(context)!.mapRouteFailed;
       });
     } finally {
@@ -2045,6 +2057,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _totalRouteDistM = 0;
       _remainingDistM = 0;
       _lastNearestIdx = 0;
+      _displayNearestIdx = 0;
     });
   }
 
@@ -2595,10 +2608,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       Polyline(
                                                         points:
                                                             _isNavigating &&
-                                                                _lastNearestIdx >
+                                                            _displayNearestIdx >
                                                                     0
                                                             ? _routePoints.sublist(
-                                                                _lastNearestIdx
+                                                            _displayNearestIdx
                                                                     .clamp(
                                                                       0,
                                                                       _routePoints

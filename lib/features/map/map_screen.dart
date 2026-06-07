@@ -51,6 +51,7 @@ class _MapScreenState extends State<MapScreen> {
 
   // Tracks progress along route so nearest-point scan is O(1) not O(n).
   int _lastNearestIdx = 0;
+  int _displayNearestIdx = 0;
   String _routingStatus = '';
   bool _isRouting = false;
   bool _isNavigating = false;
@@ -895,8 +896,23 @@ class _MapScreenState extends State<MapScreen> {
         idx = i;
       }
     }
-    _lastNearestIdx = idx;
-    return idx;
+
+    // Never move backward because that makes the passed-route segment
+    // re-appear and causes visual "flicker" of the blue line behind us.
+    if (idx > _lastNearestIdx) {
+      final oldDist = _segDist(pos, _routePoints[_lastNearestIdx]);
+      if (oldDist > 6 || (idx - _lastNearestIdx) > 2) {
+        _lastNearestIdx = idx;
+      }
+    }
+
+    // Smooth the visible trim point so the line removal looks stable even
+    // when nearest-point index jumps several points on sparse geometries.
+    if (_displayNearestIdx < _lastNearestIdx) {
+      final step = (_lastNearestIdx - _displayNearestIdx).clamp(0, 6);
+      _displayNearestIdx += step;
+    }
+    return _lastNearestIdx;
   }
 
   double _segDist(LatLng a, LatLng b) {
@@ -1537,6 +1553,7 @@ class _MapScreenState extends State<MapScreen> {
         _totalRouteDistM = totalDist;
         _instructions = route.instructions;
         _lastNearestIdx = 0; // reset forward-scan index for new route
+        _displayNearestIdx = 0;
         _nextManeuverText = '';
         _nextManeuverSign = 0;
         _distToNextManeuver = 0;
@@ -1558,6 +1575,8 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         _routePoints = const [];
+        _lastNearestIdx = 0;
+        _displayNearestIdx = 0;
         _routingStatus = switch (error.code) {
           RoutingErrorCode.noRouteFound => l10n.mapRouteNoRouteFound,
           RoutingErrorCode.providerUnavailable =>
@@ -1656,6 +1675,8 @@ class _MapScreenState extends State<MapScreen> {
     }
     setState(() {
       _routePoints = const [];
+      _lastNearestIdx = 0;
+      _displayNearestIdx = 0;
       _destination = null;
       _destinationLabel = '';
       _isNavigating = false;
@@ -1910,9 +1931,9 @@ class _MapScreenState extends State<MapScreen> {
                     locationNotifier: _locationNotifier,
                     headingNotifier: _headingNotifier,
                     destination: _destination,
-                    routePoints: _isNavigating && _lastNearestIdx > 0
+                    routePoints: _isNavigating && _displayNearestIdx > 0
                         ? _routePoints.sublist(
-                            _lastNearestIdx.clamp(0, _routePoints.length),
+                            _displayNearestIdx.clamp(0, _routePoints.length),
                           )
                         : _routePoints,
                     studdedTireBanZones:
