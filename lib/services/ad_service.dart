@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
@@ -47,8 +48,35 @@ class AdService {
   InterstitialAd? _convoyInterstitial;
   bool _convoyAdLoading = false;
 
+  Future<void> _requestConsent() async {
+    final completer = Completer<void>();
+    ConsentInformation.instance.requestConsentInfoUpdate(
+      ConsentRequestParameters(),
+      () async {
+        if (await ConsentInformation.instance.isConsentFormAvailable()) {
+          ConsentForm.loadAndShowConsentFormIfRequired((FormError? error) {
+            if (error != null) {
+              debugPrint('[AdService] Consent form error: ${error.message}');
+            }
+            completer.complete();
+          });
+        } else {
+          completer.complete();
+        }
+      },
+      (FormError error) {
+        debugPrint('[AdService] Consent request error: ${error.message}');
+        completer.complete();
+      },
+    );
+    return completer.future;
+  }
+
   Future<void> initialize() async {
-    // Request ATT permission on iOS 14+ before loading ads
+    // Step 1: UMP consent (GDPR/EEA) – must run before MobileAds.initialize()
+    await _requestConsent();
+
+    // Step 2: Request ATT permission on iOS 14+ before loading ads
     if (Platform.isIOS) {
       try {
         final status =
