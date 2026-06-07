@@ -584,10 +584,12 @@ class _ParentSettingsScreenState extends State<ParentSettingsScreen> {
         await ParentService.instance.disableSharing();
       }
     } catch (e) {
+      debugPrint('Parent mode toggle error: $e');
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ).showSnackBar(SnackBar(content: Text(l10n.authGenericError)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

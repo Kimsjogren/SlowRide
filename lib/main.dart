@@ -78,7 +78,7 @@ class _CruizXAppState extends State<CruizXApp> {
       },
       onError: (Object e, StackTrace st) {
         debugPrint('Auth stream error: $e\n$st');
-        _showErrorDialog('Auth-fel: $e');
+        _showErrorDialog(e.toString());
       },
     );
   }
@@ -99,7 +99,7 @@ class _CruizXAppState extends State<CruizXApp> {
         );
       } catch (e, st) {
         debugPrint('Auth navigation error: $e\n$st');
-        _showErrorDialog('Navigationsfel: $e');
+        _showErrorDialog(e.toString());
       }
     });
   }
@@ -108,15 +108,16 @@ class _CruizXAppState extends State<CruizXApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = navigatorKey.currentContext;
       if (ctx == null) return;
+      final l10n = AppLocalizations.of(ctx);
       showDialog<void>(
         context: ctx,
         builder: (_) => AlertDialog(
-          title: const Text('Debug Error'),
+          title: Text(l10n?.authGenericError ?? 'Error'),
           content: SelectableText(message),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
+              child: Text(l10n?.routeBlockedOk ?? 'OK'),
             ),
           ],
         ),
