@@ -130,12 +130,47 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   ];
 
   static const double _followZoom = 16;
+  static const double _k3DTiltRad = 0.44; // ~25 deg
+  static const double _k3DArrowAlignmentY = 0.30;
+  static const double _k3DLeadBaseDeg = 0.00042;
   static const Duration _pinTtl = Duration(minutes: 30);
 
   double _wrap360(double angle) => (angle % 360 + 360) % 360;
 
   double _angleDiff(double from, double to) {
     return ((to - from + 540) % 360) - 180;
+  }
+
+  LatLng _cameraCenterForNav({
+    required double lat,
+    required double lng,
+    required double headingDeg,
+    required double zoom,
+  }) {
+    if (!_use3DMap) return LatLng(lat, lng);
+
+    // Keep vehicle in lower part of screen in 3D by shifting camera center
+    // ahead along heading. Scale by zoom to keep visual lead stable.
+    final offsetDeg = _k3DLeadBaseDeg * math.pow(2.0, 17.2 - zoom).toDouble();
+    final rad = headingDeg * math.pi / 180.0;
+    final cLat = lat + offsetDeg * math.cos(rad);
+    final cLng = lng + offsetDeg * math.sin(rad);
+    return LatLng(cLat, cLng);
+  }
+
+  void _moveCameraForNav({
+    required double lat,
+    required double lng,
+    required double headingDeg,
+    required double zoom,
+  }) {
+    final center = _cameraCenterForNav(
+      lat: lat,
+      lng: lng,
+      headingDeg: headingDeg,
+      zoom: zoom,
+    );
+    _mapController.moveAndRotate(center, zoom, _use3DMap ? -headingDeg : 0);
   }
 
   @override
@@ -522,10 +557,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 _camInitialized = true;
                 final zoom = _targetZoom();
                 _curZoom = _tgtZoom = zoom;
-                _mapController.moveAndRotate(
-                  point,
-                  zoom,
-                  _use3DMap ? -headingForArrow : 0,
+                _moveCameraForNav(
+                  lat: point.latitude,
+                  lng: point.longitude,
+                  headingDeg: headingForArrow,
+                  zoom: zoom,
                 );
               } else {
                 // Blend new GPS fix instead of snapping target → eliminates
@@ -1054,16 +1090,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     if (!shouldPaintCamera) return;
     _lastCameraTickAt = elapsed;
 
-    if (_use3DMap) {
-      // Scale offset with zoom so on-screen lead stays constant.
-      final offsetDeg = 0.00045 * math.pow(2.0, 17.5 - zoom).toDouble();
-      final rad = _curHdg * math.pi / 180.0;
-      final cLat = _curLat + offsetDeg * math.cos(rad);
-      final cLng = _curLng + offsetDeg * math.sin(rad);
-      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
-    } else {
-      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
-    }
+    _moveCameraForNav(
+      lat: _curLat,
+      lng: _curLng,
+      headingDeg: _curHdg,
+      zoom: zoom,
+    );
   }
 
   void _onSearchChanged(String query) {
@@ -2343,8 +2375,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       _isFollowingMyPosition && _use3DMap;
                                   final matrix = is3D
                                       ? (Matrix4.identity()
-                                          ..setEntry(3, 2, 0.001)
-                                          ..rotateX(0.49))
+                                          ..setEntry(3, 2, 0.0008)
+                                          ..rotateX(_k3DTiltRad))
                                       : Matrix4.identity();
                                   return Stack(
                                     clipBehavior: Clip.hardEdge,
@@ -2561,9 +2593,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   PolylineLayer(
                                                     polylines: [
                                                       Polyline(
-                                                        points: _isNavigating && _lastNearestIdx > 0
+                                                        points:
+                                                            _isNavigating &&
+                                                                _lastNearestIdx >
+                                                                    0
                                                             ? _routePoints.sublist(
-                                                                _lastNearestIdx.clamp(0, _routePoints.length),
+                                                                _lastNearestIdx
+                                                                    .clamp(
+                                                                      0,
+                                                                      _routePoints
+                                                                          .length,
+                                                                    ),
                                                               )
                                                             : _routePoints,
                                                         color: const Color(
@@ -2625,7 +2665,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                             IgnorePointer(
                               child: Align(
                                 alignment: _use3DMap
-                                    ? const Alignment(0, 0.36)
+                                    ? const Alignment(0, _k3DArrowAlignmentY)
                                     : Alignment.center,
                                 child: ValueListenableBuilder<double>(
                                   valueListenable: _arrowHdg,
@@ -3728,10 +3768,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       () => _isFollowingMyPosition = true,
                                     );
                                     final zoom = _targetZoom();
-                                    _mapController.moveAndRotate(
-                                      me,
-                                      zoom,
-                                      _use3DMap ? -_myHeading : 0,
+                                    _moveCameraForNav(
+                                      lat: me.latitude,
+                                      lng: me.longitude,
+                                      headingDeg: _myHeading,
+                                      zoom: zoom,
                                     );
                                   },
                                   color: _isFollowingMyPosition
