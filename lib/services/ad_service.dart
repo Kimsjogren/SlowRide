@@ -98,17 +98,23 @@ class AdService {
     debugPrint('[AdService] Initializing MobileAds...');
     await MobileAds.instance.initialize();
 
-    // Register test devices for development (required for test ads on real devices)
-    // Add device IDs from console logs here during testing
-    MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(
-        testDeviceIds: [
-          '82b543d5d83ee2e55ab814b835fb505b', // Kim's iPhone17
-          // Add more test device IDs here as needed
-        ],
-      ),
-    );
-    debugPrint('[AdService] MobileAds initialized ✅ (test devices configured)');
+    // Keep test device configuration strictly to debug builds.
+    // In release, an empty config avoids forcing AdMob test mode.
+    if (kReleaseMode) {
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(testDeviceIds: []),
+      );
+      debugPrint('[AdService] MobileAds initialized ✅ (release mode)');
+    } else {
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          testDeviceIds: [
+            '82b543d5d83ee2e55ab814b835fb505b', // Kim's iPhone17
+          ],
+        ),
+      );
+      debugPrint('[AdService] MobileAds initialized ✅ (test devices configured)');
+    }
 
     _preloadConvoyInterstitial();
   }
