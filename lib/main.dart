@@ -9,6 +9,7 @@ import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
 import 'package:slowride/features/settings/settings_screen.dart';
 import 'package:slowride/services/ad_service.dart';
+import 'package:slowride/services/analytics_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/firebase_service.dart';
@@ -32,6 +33,16 @@ Future<void> main() async {
     return false;
   };
 
+  try {
+    await FirebaseService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('Firebase init error: $e\n$st');
+  }
+  try {
+    await AnalyticsService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('Analytics init error: $e\n$st');
+  }
   try {
     await UserPreferencesService.instance.initialize();
   } catch (e, st) {
@@ -145,6 +156,7 @@ class _CruizXAppState extends State<CruizXApp> {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           locale: preferences.localeOverride,
+          navigatorObservers: AnalyticsService.instance.navigatorObservers,
           home: const StartupSplashScreen(),
         );
       },

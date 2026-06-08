@@ -42,6 +42,7 @@ dependencies:
   http: any
   shared_preferences: any
   firebase_core: any
+  firebase_analytics: any
   cloud_firestore: any
   supabase_flutter: any
   google_mobile_ads: any
