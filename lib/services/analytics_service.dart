@@ -32,7 +32,8 @@ class AnalyticsService {
       await analytics.logAppOpen();
       _observer = FirebaseAnalyticsObserver(analytics: analytics);
       _enabled = true;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Analytics service init error: $e\n$st');
       _enabled = false;
       _observer = null;
     }
