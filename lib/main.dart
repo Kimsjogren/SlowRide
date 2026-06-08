@@ -38,11 +38,7 @@ Future<void> main() async {
   } catch (e, st) {
     debugPrint('Firebase init error: $e\n$st');
   }
-  try {
-    await AnalyticsService.instance.initialize();
-  } catch (e, st) {
-    debugPrint('Analytics init error: $e\n$st');
-  }
+  await AnalyticsService.instance.initialize();
   try {
     await UserPreferencesService.instance.initialize();
   } catch (e, st) {
