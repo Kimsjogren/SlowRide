@@ -69,6 +69,10 @@ class MapWidget extends StatefulWidget {
 
 class _MapWidgetState extends State<MapWidget>
     with SingleTickerProviderStateMixin {
+  static const double _k3DTiltRad = 0.44; // ~25 deg
+  static const double _k3DArrowAlignmentY = 0.30;
+  static const double _k3DLeadBaseDeg = 0.00042;
+
   final MapController _mapController = MapController();
   late final http.Client _tileHttpClient;
   late final NetworkTileProvider _tileProvider;
@@ -480,18 +484,44 @@ class _MapWidgetState extends State<MapWidget>
     if (!shouldPaintCamera) return;
     _lastCameraTickAt = tickNow;
 
-    if (widget.use3D) {
-      // Shift camera centre ahead of the user so the dot sits in the lower
-      // third. offsetDeg scales with zoom so the lead distance stays visually
-      // constant (deeper zoom = smaller deg offset for same on-screen offset).
-      final offsetDeg = 0.00050 * math.pow(2.0, 17.5 - zoom).toDouble();
-      final rad = _curHdg * math.pi / 180.0;
-      final cLat = _curLat + offsetDeg * math.cos(rad);
-      final cLng = _curLng + offsetDeg * math.sin(rad);
-      _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -_curHdg);
-    } else {
-      _mapController.moveAndRotate(LatLng(_curLat, _curLng), zoom, -_curHdg);
-    }
+    _moveCameraForNav(
+      lat: _curLat,
+      lng: _curLng,
+      headingDeg: _curHdg,
+      zoom: zoom,
+    );
+  }
+
+  LatLng _cameraCenterForNav({
+    required double lat,
+    required double lng,
+    required double headingDeg,
+    required double zoom,
+  }) {
+    if (!widget.use3D) return LatLng(lat, lng);
+
+    // Keep the car in the lower part of the screen in 3D by moving camera
+    // center ahead along heading. Scale by zoom to keep visual lead stable.
+    final offsetDeg = _k3DLeadBaseDeg * math.pow(2.0, 17.2 - zoom).toDouble();
+    final rad = headingDeg * math.pi / 180.0;
+    final cLat = lat + offsetDeg * math.cos(rad);
+    final cLng = lng + offsetDeg * math.sin(rad);
+    return LatLng(cLat, cLng);
+  }
+
+  void _moveCameraForNav({
+    required double lat,
+    required double lng,
+    required double headingDeg,
+    required double zoom,
+  }) {
+    final center = _cameraCenterForNav(
+      lat: lat,
+      lng: lng,
+      headingDeg: headingDeg,
+      zoom: zoom,
+    );
+    _mapController.moveAndRotate(center, zoom, -headingDeg);
   }
 
   @override
@@ -523,15 +553,12 @@ class _MapWidgetState extends State<MapWidget>
         _curZoom = _tgtZoom = zoom;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          if (widget.use3D) {
-            final offsetDeg = 0.00050 * math.pow(2.0, 17.5 - zoom).toDouble();
-            final rad = _curHdg * math.pi / 180.0;
-            final cLat = _curLat + offsetDeg * math.cos(rad);
-            final cLng = _curLng + offsetDeg * math.sin(rad);
-            _mapController.moveAndRotate(LatLng(cLat, cLng), zoom, -hdg);
-          } else {
-            _mapController.moveAndRotate(loc, zoom, -hdg);
-          }
+          _moveCameraForNav(
+            lat: _curLat,
+            lng: _curLng,
+            headingDeg: hdg,
+            zoom: zoom,
+          );
         });
       }
       return;
@@ -562,10 +589,11 @@ class _MapWidgetState extends State<MapWidget>
             widget.nextManeuverSign != oldWidget.nextManeuverSign) &&
         _navInitialized) {
       _tgtZoom = _computeNavZoom();
-      _mapController.moveAndRotate(
-        LatLng(_curLat, _curLng),
-        _tgtZoom,
-        -_curHdg,
+      _moveCameraForNav(
+        lat: _curLat,
+        lng: _curLng,
+        headingDeg: _curHdg,
+        zoom: _tgtZoom,
       );
     }
 
@@ -599,7 +627,7 @@ class _MapWidgetState extends State<MapWidget>
     final matrix = is3D
         ? (Matrix4.identity()
             ..setEntry(3, 2, 0.0008) // perspective depth
-            ..rotateX(0.49)) // ≈ 28° forward tilt
+            ..rotateX(_k3DTiltRad))
         : Matrix4.identity();
 
     return ClipRRect(
@@ -807,7 +835,7 @@ class _MapWidgetState extends State<MapWidget>
                 IgnorePointer(
                   child: Align(
                     alignment: is3D
-                        ? const Alignment(0, 0.36)
+                        ? const Alignment(0, _k3DArrowAlignmentY)
                         : Alignment.center,
                     child: _LocationDot(
                       headingNotifier: _arrowHdg,

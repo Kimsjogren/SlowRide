@@ -113,7 +113,9 @@ class AdService {
           ],
         ),
       );
-      debugPrint('[AdService] MobileAds initialized ✅ (test devices configured)');
+      debugPrint(
+        '[AdService] MobileAds initialized ✅ (test devices configured)',
+      );
     }
 
     _preloadConvoyInterstitial();

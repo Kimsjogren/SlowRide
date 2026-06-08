@@ -560,6 +560,7 @@ function hideCookieBanner() {
 
 function saveCookieConsent(value) {
   localStorage.setItem(COOKIE_CONSENT_KEY, value);
+  window.dispatchEvent(new CustomEvent("cruizx:cookie-consent", { detail: { value } }));
   hideCookieBanner();
 }
 
