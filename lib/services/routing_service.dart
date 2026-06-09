@@ -69,7 +69,7 @@ class RoutingService {
 
   /// Fallback chain: Valhalla → GraphHopper → OSRM public.
   /// Always tries Valhalla first (best quality for slow vehicles).
-  /// Falls back automatically on timeout, HTTP errors, or connection failures.
+  /// Falls back automatically only for non-legal-critical routing.
   static const _fallbackChain = [
     _providerValhalla,
     _providerGraphHopper,
@@ -126,33 +126,35 @@ class RoutingService {
     }
 
     // Slow-vehicle legal rules must never be weakened by provider fallback.
-    // OSRM fallback can not reliably enforce the same avoid rules.
+    // OSRM/GraphHopper can not enforce all country+vehicle legal constraints
+    // as strictly as Valhalla.
     final requiresStrictAvoids =
         profile.useHighways < 0.3 ||
         profile.useFerry < 0.3 ||
         profile.useTolls < 0.3;
     final isSlowVehicle = maxLegalSpeed <= 45;
+    final mustUseStrictLegalRouting = requiresStrictAvoids || isSlowVehicle;
 
     // GraphHopper/OSRM cannot reliably enforce "avoid 70-80 roads" behavior.
     // For slow vehicles, keep routing on providers that support stronger
     // profile constraints and then prefer Valhalla first.
     final eligibleProviders = (() {
-      final base = requiresStrictAvoids
-          ? providers
-                .where(
-                  (p) =>
-                      p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
-                )
-                .toList(growable: true)
-          : providers.toList(growable: true);
-
-      if (isSlowVehicle) {
-        base.removeWhere((p) => p == _providerGraphHopper);
+      // Legal-critical routing only uses providers that can apply explicit
+      // avoid rules. OSRM providers are excluded here.
+      if (mustUseStrictLegalRouting) {
+        final strictProviders = providers
+            .where(
+              (p) => p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
+            )
+            .toList(growable: true);
+        strictProviders.remove(_providerValhalla);
+        strictProviders.insert(0, _providerValhalla);
+        return strictProviders.toList(growable: false);
       }
 
+      final base = providers.toList(growable: true);
       base.remove(_providerValhalla);
       base.insert(0, _providerValhalla);
-
       return base.toList(growable: false);
     })();
 
@@ -173,10 +175,11 @@ class RoutingService {
         // Retry with next provider on provider outages.
         // Also allow fallback if Valhalla reports no-route for a request,
         // since data freshness can differ between providers.
-        final canFallback =
-            e.code == RoutingErrorCode.providerUnavailable ||
-            (provider == _providerValhalla &&
-                e.code == RoutingErrorCode.noRouteFound);
+        final canFallback = mustUseStrictLegalRouting
+            ? e.code == RoutingErrorCode.providerUnavailable
+            : (e.code == RoutingErrorCode.providerUnavailable ||
+                  (provider == _providerValhalla &&
+                      e.code == RoutingErrorCode.noRouteFound));
         if (canFallback) {
           lastError = e;
           continue;
@@ -211,13 +214,19 @@ class RoutingService {
         countryCode: countryCode,
       );
     } else if (provider == _providerGraphHopper) {
-      return _getRouteFromGraphHopper(
+      final route = await _getRouteFromGraphHopper(
         origin: origin,
         destination: destination,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
       );
+      _validateRouteSpeed(
+        route: route,
+        vehicleType: vehicleType,
+        countryCode: countryCode,
+      );
+      return route;
     } else if (provider == _providerOpenRouteService) {
       final route = await _getRouteFromOpenRouteService(
         origin: origin,
