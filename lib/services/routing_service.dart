@@ -112,6 +112,10 @@ class RoutingService {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
     final profile = CountryVehicleRules.getProfile(country, vehicleType);
+    final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
+      country,
+      vehicleType,
+    );
 
     final configuredProvider = BackendConfig.routingProvider;
 
@@ -127,13 +131,30 @@ class RoutingService {
         profile.useHighways < 0.3 ||
         profile.useFerry < 0.3 ||
         profile.useTolls < 0.3;
-    final eligibleProviders = requiresStrictAvoids
-        ? providers
-              .where(
-                (p) => p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
-              )
-              .toList(growable: false)
-        : providers;
+    final isSlowVehicle = maxLegalSpeed <= 45;
+
+    // GraphHopper/OSRM cannot reliably enforce "avoid 70-80 roads" behavior.
+    // For slow vehicles, keep routing on providers that support stronger
+    // profile constraints and then prefer Valhalla first.
+    final eligibleProviders = (() {
+      final base = requiresStrictAvoids
+          ? providers
+                .where(
+                  (p) =>
+                      p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
+                )
+                .toList(growable: true)
+          : providers.toList(growable: true);
+
+      if (isSlowVehicle) {
+        base.removeWhere((p) => p == _providerGraphHopper);
+      }
+
+      base.remove(_providerValhalla);
+      base.insert(0, _providerValhalla);
+
+      return base.toList(growable: false);
+    })();
 
     Object? lastError;
     for (final provider in eligibleProviders) {
@@ -465,12 +486,16 @@ class RoutingService {
   }) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
     final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+    final isSlowVehicle =
+        CountryVehicleRules.maxLegalSpeedFor(countryCode, vehicleType) <= 45;
     final costingOptions = <String, dynamic>{
       'top_speed': userSpeedKmh.round(),
       'use_highways': profile.useHighways,
       'use_tolls': profile.useTolls,
       'use_ferry': profile.useFerry,
-      'shortest': false,
+      // For slow vehicles, shortest tends to avoid long detours over larger
+      // fast roads and keeps routing on local road networks.
+      'shortest': isSlowVehicle,
     };
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
