@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
@@ -3100,17 +3101,19 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(height: 8),
-                                            GestureDetector(
-                                              onTap: _startSimulation,
-                                              child: Text(
-                                                'Simulate',
-                                                style: TextStyle(
-                                                  color: Colors.white38,
-                                                  fontSize: 13,
+                                            if (!kReleaseMode) ...[
+                                              const SizedBox(height: 8),
+                                              GestureDetector(
+                                                onTap: _startSimulation,
+                                                child: Text(
+                                                  l10n.mapSimulateButton,
+                                                  style: TextStyle(
+                                                    color: Colors.white38,
+                                                    fontSize: 13,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
+                                            ],
                                           ],
                                         ],
                                       ),
