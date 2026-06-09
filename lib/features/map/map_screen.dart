@@ -80,6 +80,9 @@ class _MapScreenState extends State<MapScreen> {
   DateTime? _tripStartTime;
   LatLng? _lastNavPos;
   double _tripDistanceM = 0;
+  double _etaSmoothedSpeedKmh = 0;
+  DateTime? _etaLastMovementAt;
+  static const Duration _etaPauseGrace = Duration(seconds: 25);
 
   // ── Community alerts ──────────────────────────────────────────
   final AlertsController _alertsController = AlertsController();
@@ -1069,6 +1072,68 @@ class _MapScreenState extends State<MapScreen> {
     return result;
   }
 
+  /// Smart ETA speed: GPS-driven, smoothed, and resilient to short stops.
+  double _smartEtaSpeedKmh(double liveSpeedKmh) {
+    final selectedVehicleSpeedKmh =
+        UserPreferencesService.instance.maxSpeedKmh.value;
+    if (selectedVehicleSpeedKmh <= 0) return 0;
+
+    final cappedLive = liveSpeedKmh.clamp(0.0, selectedVehicleSpeedKmh);
+    if (cappedLive >= 3.0) {
+      _etaLastMovementAt = DateTime.now();
+      if (_etaSmoothedSpeedKmh <= 0) {
+        _etaSmoothedSpeedKmh = cappedLive;
+      } else {
+        _etaSmoothedSpeedKmh = _etaSmoothedSpeedKmh * 0.75 + cappedLive * 0.25;
+      }
+      return _etaSmoothedSpeedKmh.clamp(1.0, selectedVehicleSpeedKmh);
+    }
+
+    if (_etaSmoothedSpeedKmh > 0 && _etaLastMovementAt != null) {
+      final pause = DateTime.now().difference(_etaLastMovementAt!);
+      if (pause <= _etaPauseGrace) {
+        _etaSmoothedSpeedKmh = (_etaSmoothedSpeedKmh * 0.96).clamp(
+          3.0,
+          selectedVehicleSpeedKmh,
+        );
+        return _etaSmoothedSpeedKmh;
+      }
+    }
+
+    return 0;
+  }
+
+  (int turns, int complexTurns) _remainingManeuversFrom(int currentInstrIdx) {
+    if (_instructions.isEmpty) return (0, 0);
+    final start = (currentInstrIdx + 1).clamp(0, _instructions.length);
+    var turns = 0;
+    var complexTurns = 0;
+    for (int i = start; i < _instructions.length; i++) {
+      final sign = _instructions[i].sign;
+      if (sign == 0 || sign == 4) continue;
+      turns++;
+      if (sign.abs() >= 2 || sign.abs() == 6) {
+        complexTurns++;
+      }
+    }
+    return (turns, complexTurns);
+  }
+
+  double _etaManeuverDelaySeconds({
+    required int turns,
+    required int complexTurns,
+    required double remainingMeters,
+  }) {
+    if (turns <= 0 || remainingMeters <= 120) return 0;
+    final vehicleMax = UserPreferencesService.instance.maxSpeedKmh.value;
+    final slowFactor = ((45.0 - vehicleMax).clamp(0.0, 15.0)) / 15.0;
+    final basePerTurn = 6.0 + 4.0 * slowFactor;
+    final complexExtra = 5.0 + 3.0 * slowFactor;
+    final rawDelay = turns * basePerTurn + complexTurns * complexExtra;
+    final cap = (remainingMeters / 45.0).clamp(20.0, 180.0);
+    return rawDelay.clamp(0.0, cap);
+  }
+
   Widget _mapCircleButton({
     required VoidCallback onTap,
     required Widget child,
@@ -1691,6 +1756,8 @@ class _MapScreenState extends State<MapScreen> {
       _tripStartTime = null;
       _tripDistanceM = 0;
       _lastNavPos = null;
+      _etaSmoothedSpeedKmh = 0;
+      _etaLastMovementAt = null;
       _nearbyAlert = null;
       _isSimulating = false;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
@@ -1722,6 +1789,8 @@ class _MapScreenState extends State<MapScreen> {
     String? newStreetName;
     int? nearestIdxForHeading;
     double? nearestPointDistM;
+    int remainingTurns = 0;
+    int remainingComplexTurns = 0;
     if (_isNavigating && _routePoints.isNotEmpty) {
       final nearestIdx = _nearestRoutePointIndex(currentPos);
       nearestIdxForHeading = nearestIdx;
@@ -1741,6 +1810,9 @@ class _MapScreenState extends State<MapScreen> {
           }
           instrIdx = i + 1;
         }
+        final remaining = _remainingManeuversFrom(instrIdx);
+        remainingTurns = remaining.$1;
+        remainingComplexTurns = remaining.$2;
         // Track current street name from the active instruction
         final currentInstr = _instructions[instrIdx];
         if (currentInstr.streetName.isNotEmpty) {
@@ -1804,12 +1876,15 @@ class _MapScreenState extends State<MapScreen> {
         final distStr = remKm >= 1.0
             ? '${remKm.toStringAsFixed(1)} km ${l10n.mapRemaining}'
             : '${newRemaining.round()} m ${l10n.mapRemaining}';
-        final vehicleType = UserPreferencesService.instance.vehicleType.value;
-        final effSpd = SpeedCalibrationService.instance.effectiveSpeedKmh(
-          vehicleType,
-        );
-        if (effSpd > 0 && newRemaining > 50) {
-          final sec = newRemaining / (effSpd / 3.6);
+        final etaSpeedKmh = _smartEtaSpeedKmh(newSpeed);
+        if (etaSpeedKmh > 0 && newRemaining > 50) {
+          final baseSec = newRemaining / (etaSpeedKmh / 3.6);
+          final maneuverDelaySec = _etaManeuverDelaySeconds(
+            turns: remainingTurns,
+            complexTurns: remainingComplexTurns,
+            remainingMeters: newRemaining,
+          );
+          final sec = baseSec + maneuverDelaySec;
           final arrival = DateTime.now().add(Duration(seconds: sec.round()));
           final hh = arrival.hour.toString().padLeft(2, '0');
           final mm = arrival.minute.toString().padLeft(2, '0');
@@ -1981,16 +2056,20 @@ class _MapScreenState extends State<MapScreen> {
                     valueListenable: preferences.maxSpeedKmh,
                     builder: (context, maxSpeedKmh, _) {
                       final roadLimitKmh = _roadSpeedLimitKmh;
-                      final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
-                      final over = _speedKmh > effectiveLimitKmh;
+                      final effectiveLimitKmh = roadLimitKmh;
+                      final over =
+                          effectiveLimitKmh != null &&
+                          _speedKmh > effectiveLimitKmh;
                       final speedDisplay = preferences.toDisplaySpeed(
                         speedKmh: _speedKmh,
                         unit: speedUnit,
                       );
-                      final effectiveLimitDisplay = preferences.toDisplaySpeed(
-                        speedKmh: effectiveLimitKmh,
-                        unit: speedUnit,
-                      );
+                      final effectiveLimitDisplay = effectiveLimitKmh == null
+                          ? 0.0
+                          : preferences.toDisplaySpeed(
+                              speedKmh: effectiveLimitKmh,
+                              unit: speedUnit,
+                            );
                       final roadLimitDisplay = roadLimitKmh == null
                           ? null
                           : preferences.toDisplaySpeed(
@@ -2705,18 +2784,21 @@ class _MapScreenState extends State<MapScreen> {
                           valueListenable: preferences.maxSpeedKmh,
                           builder: (context, maxSpeedKmh, _) {
                             final roadLimitKmh = _roadSpeedLimitKmh;
-                            final effectiveLimitKmh =
-                                roadLimitKmh ?? maxSpeedKmh;
-                            final over = _speedKmh > effectiveLimitKmh;
+                            final effectiveLimitKmh = roadLimitKmh;
+                            final over =
+                                effectiveLimitKmh != null &&
+                                _speedKmh > effectiveLimitKmh;
                             final speedDisplay = preferences.toDisplaySpeed(
                               speedKmh: _speedKmh,
                               unit: speedUnit,
                             );
-                            final effectiveLimitDisplay = preferences
-                                .toDisplaySpeed(
-                                  speedKmh: effectiveLimitKmh,
-                                  unit: speedUnit,
-                                );
+                            final effectiveLimitDisplay =
+                                effectiveLimitKmh == null
+                                ? 0.0
+                                : preferences.toDisplaySpeed(
+                                    speedKmh: effectiveLimitKmh,
+                                    unit: speedUnit,
+                                  );
                             final roadLimitDisplay = roadLimitKmh == null
                                 ? null
                                 : preferences.toDisplaySpeed(

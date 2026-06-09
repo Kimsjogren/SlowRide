@@ -9,6 +9,9 @@ const footerPrivacyLink = document.querySelector("#footer-privacy-link");
 const footerCookiesLink = document.querySelector("#footer-cookies-link");
 const footerTermsLink = document.querySelector("#footer-terms-link");
 const footerSupportLink = document.querySelector("#footer-support-link");
+const navSupportLink = document.querySelector("#nav-support-link");
+const navDownloadLink = document.querySelector("#nav-download-link");
+const downloadBackLink = document.querySelector("#download-back-link");
 const cookiePolicyLink = document.querySelector("#cookie-policy-link");
 
 const translations = {
@@ -16,7 +19,13 @@ const translations = {
     languageLabel: "Language",
     navFeatures: "Features",
     navExperience: "Experience",
-    navLaunch: "Launch",
+    navSupport: "Support",
+    navDownload: "Download",
+    downloadEyebrow: "Download",
+    downloadTitle: "Get CruizX on iPhone",
+    downloadBody:
+      "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
+    downloadBack: "← Back to CruizX",
     heroEyebrow: "For slow vehicles",
     heroTitle:
       "Built for slow vehicles: navigation, convoy, and live road alerts in one app.",
@@ -94,7 +103,13 @@ const translations = {
     languageLabel: "Språk",
     navFeatures: "Funktioner",
     navExperience: "Upplevelse",
-    navLaunch: "Lansering",
+    navSupport: "Support",
+    navDownload: "Ladda ner",
+    downloadEyebrow: "Ladda ner",
+    downloadTitle: "Hämta CruizX till iPhone",
+    downloadBody:
+      "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
+    downloadBack: "← Tillbaka till CruizX",
     heroEyebrow: "För långsamma fordon",
     heroTitle:
       "Byggd för långsamma fordon: navigation, konvoj och live vägvarningar i en app.",
@@ -172,7 +187,13 @@ const translations = {
     languageLabel: "Sprak",
     navFeatures: "Funksjoner",
     navExperience: "Opplevelse",
-    navLaunch: "Lansering",
+    navSupport: "Support",
+    navDownload: "Last ned",
+    downloadEyebrow: "Last ned",
+    downloadTitle: "Last ned CruizX til iPhone",
+    downloadBody:
+      "Installer CruizX via App Store. Hvis du åpner siden på mobilen, kan du trykke direkte på App Store-merket.",
+    downloadBack: "← Tilbake til CruizX",
     heroEyebrow: "For langsomme kjoretoy",
     heroTitle:
       "Bygget for langsomme kjoretoy: navigasjon, konvoi og live veivarsler i en app.",
@@ -250,7 +271,13 @@ const translations = {
     languageLabel: "Sprog",
     navFeatures: "Funktioner",
     navExperience: "Oplevelse",
-    navLaunch: "Lancering",
+    navSupport: "Support",
+    navDownload: "Download",
+    downloadEyebrow: "Download",
+    downloadTitle: "Hent CruizX til iPhone",
+    downloadBody:
+      "Installer CruizX via App Store. Hvis du åbner siden på mobilen, kan du trykke direkte på App Store-badget.",
+    downloadBack: "← Tilbage til CruizX",
     heroEyebrow: "Til langsomme koretojer",
     heroTitle:
       "Bygget til langsomme koretojer: navigation, konvoj og live vejvarsler i en app.",
@@ -328,7 +355,13 @@ const translations = {
     languageLabel: "Kieli",
     navFeatures: "Ominaisuudet",
     navExperience: "Kokemus",
-    navLaunch: "Julkaisu",
+    navSupport: "Tuki",
+    navDownload: "Lataa",
+    downloadEyebrow: "Lataa",
+    downloadTitle: "Hae CruizX iPhoneen",
+    downloadBody:
+      "Asenna CruizX App Storesta. Jos avaat sivun puhelimella, voit napauttaa suoraan App Store -merkkiä.",
+    downloadBack: "← Takaisin CruizXiin",
     heroEyebrow: "Hitaille ajoneuvoille",
     heroTitle:
       "Rakennettu hitaille ajoneuvoille: navigointi, konvoji ja live tievaroitukset samassa sovelluksessa.",
@@ -406,7 +439,13 @@ const translations = {
     languageLabel: "Langue",
     navFeatures: "Fonctionnalites",
     navExperience: "Experience",
-    navLaunch: "Lancement",
+    navSupport: "Support",
+    navDownload: "Telecharger",
+    downloadEyebrow: "Telecharger",
+    downloadTitle: "Telechargez CruizX sur iPhone",
+    downloadBody:
+      "Installez CruizX via l App Store. Si vous ouvrez cette page sur mobile, appuyez directement sur le badge App Store.",
+    downloadBack: "← Retour a CruizX",
     heroEyebrow: "Pour les vehicules lents",
     heroTitle:
       "Concu pour les vehicules lents: navigation, convoi et alertes route en direct dans une seule application.",
@@ -521,6 +560,9 @@ function updateLegalLinks(lang) {
   if (footerCookiesLink) footerCookiesLink.href = `./cookies.html${query}`;
   if (footerTermsLink) footerTermsLink.href = `./terms.html${query}`;
   if (footerSupportLink) footerSupportLink.href = `./support.html${query}`;
+  if (navSupportLink) navSupportLink.href = `./support.html${query}`;
+  if (navDownloadLink) navDownloadLink.href = `./get-app.html${query}`;
+  if (downloadBackLink) downloadBackLink.href = `./index.html${query}`;
   if (cookiePolicyLink) cookiePolicyLink.href = `./cookies.html${query}`;
 }
 

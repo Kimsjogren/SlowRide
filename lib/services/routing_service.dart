@@ -754,7 +754,9 @@ List<String> _graphHopperAvoidFor(String vehicleType, String countryCode) {
 }
 
 double _maxAllowedAverageSpeedKmhFor(String vehicleType, String countryCode) {
-  return CountryVehicleRules.maxLegalSpeedFor(countryCode, vehicleType);
+  final selected = UserPreferencesService.instance.maxSpeedKmh.value;
+  if (selected <= 0) return 1;
+  return selected;
 }
 
 void _validateRouteSpeed({

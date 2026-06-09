@@ -787,7 +787,7 @@ main {
     order: 2;
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1.38fr;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
     gap: 0.45rem;
     padding: 0.55rem;
   }

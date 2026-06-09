@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CruizX - Ladda ner</title>
+    <meta
+      name="description"
+      content="Ladda ner CruizX till iPhone via App Store."
+    />
+    <!DOCTYPE html>
+    <html lang="en">
+      .download-main {
+        width: min(920px, calc(100vw - 2rem));
+        margin: 0 auto;
+        <title>CruizX | Download</title>
+      }
+
+      .header-controls {
+        gap: 0.8rem;
+        <meta name="theme-color" content="#06111f" />
+      }
+        <script src="./analytics.js" defer></script>
+
+          .download-main {
+            width: min(calc(100% - 2rem), var(--max-width));
+            margin: 0 auto;
+            padding: 1rem 0 2.2rem;
+          }
+
+          .download-main .launch-card {
+            margin-top: 1.8rem;
+          }
+
+          .download-main .store-badge {
+            height: 52px;
+          }
+
+          .download-actions {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+          }
+
+          @media (max-width: 720px) {
+            .download-main {
+              padding-top: 1rem;
+            }
+
+            .download-main .store-badge {
+              height: 42px;
+            }
+
+            .download-actions {
+              flex-direction: column;
+            }
+          }
+  </head>
+  <body>
+    <div class="site-shell">
+        <div class="page-shell">
+          <div class="page-overlay"></div>
+
+        <div class="header-inner">
+            <a class="brand" href="./index.html" aria-label="CruizX home">
+              <img src="./assets/logga_nobg.png" alt="CruizX" />
+            </a>
+
+            <div class="header-controls">
+              <label class="language-switch" for="language-select">
+                <span data-i18n="languageLabel">Language</span>
+                <select id="language-select" aria-label="Select language">
+                  <option value="en">EN</option>
+                  <option value="sv">SV</option>
+                  <option value="nb">NB</option>
+                  <option value="da">DA</option>
+                  <option value="fi">FI</option>
+                  <option value="fr">FR</option>
+                </select>
+              </label>
+
+              <nav class="site-nav">
+                <a href="./index.html#features" data-i18n="navFeatures">Features</a>
+                <a href="./index.html#experience" data-i18n="navExperience">Experience</a>
+                <a href="./support.html" id="nav-support-link" data-i18n="navSupport">Support</a>
+                <a href="./get-app.html" id="nav-download-link" data-i18n="navDownload">Download</a>
+                <a href="https://kimtechtool.se" target="_blank" rel="noreferrer">
+                  KimTechTool
+                </a>
+              </nav>
+        </div>
+      </header>
+
+      <main class="download-main" id="top">
+            <section class="launch" id="download">
+              <div class="launch-card">
+          <p class="eyebrow" data-i18n="downloadEyebrow">Ladda ner</p>
+              <h2 data-i18n="downloadTitle">Hämta CruizX till iPhone</h2>
+              <p data-i18n="downloadBody">
+            Installera CruizX via App Store. Om du öppnar sidan från mobilen kan
+            du trycka direkt på App Store-badgen.
+          </p>
+
+              <p class="launch-platforms" data-i18n="launchPlatforms">Coming soon on iOS & Android.</p>
+
+              <div class="store-badges" aria-label="Nedladdningsalternativ">
+            <a
+              class="store-badge-link"
+              href="https://www.apple.com/app-store/"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Download on the App Store"
+            >
+              <img
+                class="store-badge"
+                src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                alt="Download on the App Store"
+                loading="lazy"
+              />
+            </a>
+          </div>
+
+          <div class="download-actions">
+            <a class="button button-secondary" href="./index.html" id="download-back-link" data-i18n="downloadBack">← Tillbaka till CruizX</a>
+          </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="footer-main">
+          <p>CruizX</p>
+          <p data-i18n="footerTagline">Driven by the ride.</p>
+          <p>&copy; 2026 CruizX</p>
+        </div>
+        <p class="legal-links">
+          <a href="./privacy.html" id="footer-privacy-link" data-i18n="footerPrivacy">Privacy</a>
+          <span>•</span>
+          <a href="./cookies.html" id="footer-cookies-link" data-i18n="footerCookies">Cookies</a>
+          <span>•</span>
+          <a href="./terms.html" id="footer-terms-link" data-i18n="footerTerms">Terms</a>
+          <span>•</span>
+          <a href="./support.html" id="footer-support-link" data-i18n="footerSupport">Support</a>
+        </p>
+      </footer>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

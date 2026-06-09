@@ -18,7 +18,6 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/supabase_service.dart';
-import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/services/favorite_places_service.dart';
@@ -115,7 +114,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   List<double> _cumulativeDist = const [];
   double _totalRouteDistM = 0;
   double _remainingDistM = 0;
-  double _speedKmh = 0;
+  double _etaSmoothedSpeedKmh = 0;
+  DateTime? _etaLastMovementAt;
   int _lastNearestIdx = 0;
   int _displayNearestIdx = 0;
 
@@ -135,6 +135,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const double _k3DArrowAlignmentY = 0.30;
   static const double _k3DLeadBaseDeg = 0.00042;
   static const Duration _pinTtl = Duration(minutes: 30);
+  static const Duration _etaPauseGrace = Duration(seconds: 25);
 
   double _wrap360(double angle) => (angle % 360 + 360) % 360;
 
@@ -475,7 +476,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             // Always update fields directly (no setState for position/speed
             // in follow mode — avoids full widget-tree rebuild every GPS tick,
             // which was causing the arrow to stutter every ~1-3 s).
-            _speedKmh = newSpeed;
             _speedNotifier.value = newSpeed;
             _myLocation = point;
             _myHeading = headingForArrow;
@@ -498,13 +498,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               final distStr = remKm >= 1.0
                   ? '${remKm.toStringAsFixed(1)} km ${l10nR.mapRemaining}'
                   : '${newRemaining.round()} m ${l10nR.mapRemaining}';
-              final vehicleType =
-                  UserPreferencesService.instance.vehicleType.value;
-              final effSpd = SpeedCalibrationService.instance.effectiveSpeedKmh(
-                vehicleType,
-              );
-              if (effSpd > 0 && newRemaining > 50) {
-                final sec = newRemaining / (effSpd / 3.6);
+              final etaSpeedKmh = _smartEtaSpeedKmh(newSpeed);
+              if (etaSpeedKmh > 0 && newRemaining > 50) {
+                final sec = newRemaining / (etaSpeedKmh / 3.6);
                 final arrival = DateTime.now().add(
                   Duration(seconds: sec.round()),
                 );
@@ -993,11 +989,104 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return result;
   }
 
+  /// Smart ETA speed: GPS-driven, smoothed, and resilient to short stops.
+  double _smartEtaSpeedKmh(double liveSpeedKmh) {
+    final selectedVehicleSpeedKmh =
+        UserPreferencesService.instance.maxSpeedKmh.value;
+    if (selectedVehicleSpeedKmh <= 0) return 0;
+
+    final cappedLive = liveSpeedKmh
+        .clamp(0.0, selectedVehicleSpeedKmh)
+        .toDouble();
+    if (cappedLive >= 3.0) {
+      _etaLastMovementAt = DateTime.now();
+      if (_etaSmoothedSpeedKmh <= 0) {
+        _etaSmoothedSpeedKmh = cappedLive;
+      } else {
+        _etaSmoothedSpeedKmh = _etaSmoothedSpeedKmh * 0.75 + cappedLive * 0.25;
+      }
+      return _etaSmoothedSpeedKmh
+          .clamp(1.0, selectedVehicleSpeedKmh)
+          .toDouble();
+    }
+
+    if (_etaSmoothedSpeedKmh > 0 && _etaLastMovementAt != null) {
+      final pause = DateTime.now().difference(_etaLastMovementAt!);
+      if (pause <= _etaPauseGrace) {
+        _etaSmoothedSpeedKmh = (_etaSmoothedSpeedKmh * 0.96)
+            .clamp(3.0, selectedVehicleSpeedKmh)
+            .toDouble();
+        return _etaSmoothedSpeedKmh;
+      }
+    }
+
+    return 0;
+  }
+
+  double _currentEtaSpeedKmh() {
+    final selectedVehicleSpeedKmh =
+        UserPreferencesService.instance.maxSpeedKmh.value;
+    if (selectedVehicleSpeedKmh <= 0 || _etaSmoothedSpeedKmh <= 0) return 0;
+    final lastMovement = _etaLastMovementAt;
+    if (lastMovement == null) return 0;
+    if (DateTime.now().difference(lastMovement) > _etaPauseGrace) return 0;
+    return _etaSmoothedSpeedKmh.clamp(1.0, selectedVehicleSpeedKmh).toDouble();
+  }
+
+  (int turns, int complexTurns) _remainingManeuversFromCurrentPosition() {
+    if (_routeInstructions.isEmpty) return (0, 0);
+
+    int instrIdx = 0;
+    for (int i = 0; i < _routeInstructions.length - 1; i++) {
+      if (_routeInstructions[i + 1].pointIndex > _lastNearestIdx) {
+        instrIdx = i;
+        break;
+      }
+      instrIdx = i + 1;
+    }
+
+    final start = (instrIdx + 1).clamp(0, _routeInstructions.length);
+    var turns = 0;
+    var complexTurns = 0;
+    for (int i = start; i < _routeInstructions.length; i++) {
+      final sign = _routeInstructions[i].sign;
+      if (sign == 0 || sign == 4) continue;
+      turns++;
+      if (sign.abs() >= 2 || sign.abs() == 6) {
+        complexTurns++;
+      }
+    }
+    return (turns, complexTurns);
+  }
+
+  double _etaManeuverDelaySeconds({
+    required int turns,
+    required int complexTurns,
+    required double remainingMeters,
+  }) {
+    if (turns <= 0 || remainingMeters <= 120) return 0;
+    final vehicleMax = UserPreferencesService.instance.maxSpeedKmh.value;
+    final slowFactor = ((45.0 - vehicleMax).clamp(0.0, 15.0)) / 15.0;
+    final basePerTurn = 6.0 + 4.0 * slowFactor;
+    final complexExtra = 5.0 + 3.0 * slowFactor;
+    final rawDelay = turns * basePerTurn + complexTurns * complexExtra;
+    final cap = (remainingMeters / 45.0).clamp(20.0, 180.0);
+    return rawDelay.clamp(0.0, cap);
+  }
+
   String _formatEta() {
     final l10n = AppLocalizations.of(context)!;
     if (!_isNavigating || _remainingDistM <= 50) return '';
-    if (_speedKmh < 3) return '';
-    final remainingSec = _remainingDistM / (_speedKmh / 3.6);
+    final etaSpeedKmh = _currentEtaSpeedKmh();
+    if (etaSpeedKmh <= 0) return '';
+    final baseSec = _remainingDistM / (etaSpeedKmh / 3.6);
+    final remaining = _remainingManeuversFromCurrentPosition();
+    final maneuverDelaySec = _etaManeuverDelaySeconds(
+      turns: remaining.$1,
+      complexTurns: remaining.$2,
+      remainingMeters: _remainingDistM,
+    );
+    final remainingSec = baseSec + maneuverDelaySec;
     final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
     final h = arrival.hour.toString().padLeft(2, '0');
     final m = arrival.minute.toString().padLeft(2, '0');
@@ -2056,6 +2145,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _cumulativeDist = const [];
       _totalRouteDistM = 0;
       _remainingDistM = 0;
+      _etaSmoothedSpeedKmh = 0;
+      _etaLastMovementAt = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
     });
@@ -3336,10 +3427,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 final roadLimitKmh =
                                                     _roadSpeedLimitKmh;
                                                 final effectiveLimitKmh =
-                                                    roadLimitKmh ?? maxSpeedKmh;
+                                                    roadLimitKmh;
                                                 final over =
+                                                    effectiveLimitKmh != null &&
                                                     liveSpeed >
-                                                    effectiveLimitKmh;
+                                                        effectiveLimitKmh;
                                                 final speedDisplay =
                                                     UserPreferencesService
                                                         .instance
@@ -3348,13 +3440,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           unit: speedUnit,
                                                         );
                                                 final effectiveLimitDisplay =
-                                                    UserPreferencesService
-                                                        .instance
-                                                        .toDisplaySpeed(
-                                                          speedKmh:
-                                                              effectiveLimitKmh,
-                                                          unit: speedUnit,
-                                                        );
+                                                    effectiveLimitKmh == null
+                                                    ? 0.0
+                                                    : UserPreferencesService
+                                                          .instance
+                                                          .toDisplaySpeed(
+                                                            speedKmh:
+                                                                effectiveLimitKmh,
+                                                            unit: speedUnit,
+                                                          );
                                                 final roadLimitDisplay =
                                                     roadLimitKmh == null
                                                     ? null
