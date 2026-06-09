@@ -556,12 +556,22 @@ function applyLanguage(lang) {
 
 function updateLegalLinks(lang) {
   const query = `?lang=${lang}`;
+  const pathname = globalThis.location.pathname.toLowerCase();
+  const isIndexPage = pathname.endsWith("/") || pathname.endsWith("/index.html");
   if (footerPrivacyLink) footerPrivacyLink.href = `./privacy.html${query}`;
   if (footerCookiesLink) footerCookiesLink.href = `./cookies.html${query}`;
   if (footerTermsLink) footerTermsLink.href = `./terms.html${query}`;
   if (footerSupportLink) footerSupportLink.href = `./support.html${query}`;
-  if (navSupportLink) navSupportLink.href = `./support.html${query}`;
-  if (navDownloadLink) navDownloadLink.href = `./get-app.html${query}`;
+  if (navSupportLink) {
+    navSupportLink.href = isIndexPage
+      ? "#support"
+      : `./index.html${query}#support`;
+  }
+  if (navDownloadLink) {
+    navDownloadLink.href = isIndexPage
+      ? "#download"
+      : `./index.html${query}#download`;
+  }
   if (downloadBackLink) downloadBackLink.href = `./index.html${query}`;
   if (cookiePolicyLink) cookiePolicyLink.href = `./cookies.html${query}`;
 }
@@ -602,7 +612,9 @@ function hideCookieBanner() {
 
 function saveCookieConsent(value) {
   localStorage.setItem(COOKIE_CONSENT_KEY, value);
-  window.dispatchEvent(new CustomEvent("cruizx:cookie-consent", { detail: { value } }));
+  globalThis.dispatchEvent(
+    new CustomEvent("cruizx:cookie-consent", { detail: { value } })
+  );
   hideCookieBanner();
 }
 
