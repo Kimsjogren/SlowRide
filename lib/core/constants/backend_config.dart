@@ -70,4 +70,11 @@ class BackendConfig {
     'FORCE_FREE',
     defaultValue: false,
   );
+
+  /// External checkout used by the web app (kept separate from native stores).
+  /// Build with: --dart-define=WEB_CHECKOUT_URL=https://your-checkout-url
+  static const String webCheckoutUrl = String.fromEnvironment(
+    'WEB_CHECKOUT_URL',
+    defaultValue: 'https://cruizx.com/get-app',
+  );
 }

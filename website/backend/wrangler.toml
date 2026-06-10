@@ -14,3 +14,8 @@ zone_name = "cruizx.com"
 #   wrangler secret put DEVICE_SALT           # slumpmässig sträng, valfri längd
 #   wrangler secret put STATS_TOKEN           # för GET /api/stats
 #   wrangler secret put TURNSTILE_SECRET      # Cloudflare Turnstile secret key
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put STRIPE_PRICE_ID
+#   wrangler secret put WEB_CHECKOUT_SUCCESS_URL
+#   wrangler secret put WEB_CHECKOUT_CANCEL_URL

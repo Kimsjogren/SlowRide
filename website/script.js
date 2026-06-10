@@ -30,6 +30,9 @@ const translations = {
     downloadTitle: "Get CruizX on iPhone",
     downloadBody:
       "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
+    downloadAndroidCta: "Download Android Free",
+    downloadAndroidNote:
+      "Android download is free right now (Free version). Android Pro payment in web and in-app is coming soon.",
     downloadBack: "← Back to CruizX",
     heroEyebrow: "For slow vehicles",
     heroTitle:
@@ -119,6 +122,9 @@ const translations = {
     downloadTitle: "Hämta CruizX till iPhone",
     downloadBody:
       "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
+    downloadAndroidCta: "Ladda ner Android Free",
+    downloadAndroidNote:
+      "Android är gratis att ladda ner just nu (Free-version). Android Pro-betalning på webben och i appen kommer snart.",
     downloadBack: "← Tillbaka till CruizX",
     heroEyebrow: "För långsamma fordon",
     heroTitle:

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slowride/core/constants/backend_config.dart';
+import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/supabase_service.dart';
 
 enum PaywallReason { routeLimit, convoyLimit, memberLimit }
 
@@ -28,11 +30,44 @@ class SubscriptionService {
   ProductDetails? _monthlyProduct;
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
+  Timer? _webSyncTimer;
+  bool _authListenersAttached = false;
+  bool _webSyncInFlight = false;
 
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
 
   /// Localized price string from App Store (e.g. "39,00 kr", "3,49 $").
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
+
+  bool get isWebCheckout => kIsWeb;
+
+  String? get webCheckoutUrl {
+    final raw = BackendConfig.webCheckoutUrl.trim();
+    if (raw.isEmpty) return null;
+    return raw;
+  }
+
+  Uri? buildWebCheckoutUri() {
+    final raw = webCheckoutUrl;
+    if (raw == null) return null;
+
+    final baseUri = Uri.tryParse(raw);
+    if (baseUri == null) return null;
+
+    final merged = Map<String, String>.from(baseUri.queryParameters);
+    merged['source'] = 'slowride_web';
+
+    final uid = AuthService.instance.userId.value;
+    final email = AuthService.instance.userEmail.value;
+    if (uid != null && uid.isNotEmpty) {
+      merged['uid'] = uid;
+    }
+    if (email != null && email.isNotEmpty) {
+      merged['email'] = email;
+    }
+
+    return baseUri.replace(queryParameters: merged);
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -51,11 +86,101 @@ class SubscriptionService {
       isPro.value = _prefs.getBool(_isProKey) ?? false;
     }
 
-    await _startIap();
+    if (kIsWeb) {
+      _attachAuthListeners();
+      await syncWebEntitlement();
+      _startWebEntitlementPolling();
+    } else {
+      await _startIap();
+    }
+
     _initialized = true;
   }
 
+  void _attachAuthListeners() {
+    if (_authListenersAttached) return;
+    AuthService.instance.userId.addListener(_onAuthChanged);
+    AuthService.instance.isLoggedIn.addListener(_onAuthChanged);
+    _authListenersAttached = true;
+  }
+
+  void _onAuthChanged() {
+    if (!kIsWeb) return;
+    unawaited(syncWebEntitlement(force: true));
+  }
+
+  void _startWebEntitlementPolling() {
+    _webSyncTimer?.cancel();
+    _webSyncTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(syncWebEntitlement());
+    });
+  }
+
+  Future<bool> syncWebEntitlement({bool force = false}) async {
+    if (!kIsWeb) return isPro.value;
+    if (_webSyncInFlight && !force) return isPro.value;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+    if (BackendConfig.forceFree) {
+      await deactivatePro();
+      return false;
+    }
+    if (!SupabaseService.instance.isEnabled) {
+      return isPro.value;
+    }
+
+    _webSyncInFlight = true;
+    try {
+      final uid = AuthService.instance.userId.value;
+      if (uid == null || uid.isEmpty) {
+        await deactivatePro();
+        return false;
+      }
+
+      final rows = await SupabaseService.instance.client
+          .from('web_subscriptions')
+          .select('status,current_period_end,updated_at')
+          .eq('user_id', uid)
+          .order('updated_at', ascending: false)
+          .limit(1);
+
+      if (rows.isEmpty) {
+        await deactivatePro();
+        return false;
+      }
+
+      final row = Map<String, dynamic>.from(rows.first as Map);
+      final status = (row['status'] ?? '').toString().toLowerCase();
+      final endRaw = row['current_period_end']?.toString();
+      final periodEnd = endRaw == null ? null : DateTime.tryParse(endRaw);
+      final nowUtc = DateTime.now().toUtc();
+      final periodEndUtc = periodEnd?.toUtc();
+
+      final activeStatus = status == 'active' || status == 'trialing';
+      final graceStatus =
+          status == 'canceled' &&
+          periodEndUtc != null &&
+          periodEndUtc.isAfter(nowUtc);
+
+      if (activeStatus || graceStatus) {
+        await activatePro();
+        return true;
+      }
+
+      await deactivatePro();
+      return false;
+    } catch (e) {
+      debugPrint('Web subscription sync failed: $e');
+      return isPro.value;
+    } finally {
+      _webSyncInFlight = false;
+    }
+  }
+
   Future<void> _startIap() async {
+    if (kIsWeb) return;
     try {
       final available = await _iap.isAvailable();
       if (!available) return;
@@ -159,6 +284,7 @@ class SubscriptionService {
 
   /// Starts native store purchase flow for monthly Pro subscription.
   Future<bool> purchaseProMonthly() async {
+    if (kIsWeb) return false;
     if (BackendConfig.forceFree) return false;
     if (BackendConfig.forcePro) {
       await activatePro();
@@ -202,6 +328,7 @@ class SubscriptionService {
 
   /// Restores previous store purchases and reapplies Pro entitlement.
   Future<bool> restorePurchase() async {
+    if (kIsWeb) return false;
     if (BackendConfig.forcePro) {
       await activatePro();
       return true;

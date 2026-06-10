@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:slowride/core/constants/legal_links.dart';
@@ -682,21 +683,22 @@ class SettingsScreen extends StatelessWidget {
                           const SizedBox(height: 8),
 
                           // ── Restore button ───────────────────────
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton(
-                              onPressed: () => _restorePurchase(context),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: Colors.white.withValues(alpha: 0.25),
+                          if (!kIsWeb)
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => _restorePurchase(context),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.25),
+                                  ),
                                 ),
+                                child: Text(l10n.paywallRestoreButton),
                               ),
-                              child: Text(l10n.paywallRestoreButton),
                             ),
-                          ),
 
                           // ── Subscription note ────────────────────
-                          if (!isPro) ...[
+                          if (!isPro && !kIsWeb) ...[
                             const SizedBox(height: 14),
                             Text(
                               l10n.settingsProSubscriptionNote,

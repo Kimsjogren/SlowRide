@@ -76,6 +76,50 @@ class RoutingService {
     _providerOsrmPublic,
   ];
 
+  // Motorway keywords in all 7 supported app languages + English.
+  // Used to hard-reject routes that contain motorway segments for slow vehicles
+  // (A-tractor ≤ 30 km/h, moped car ≤ 45 km/h, tractor ≤ 40 km/h).
+  static const List<String> _motorwayKeywords = [
+    'motorway', 'freeway', 'expressway', // English
+    'motorväg', 'motortrafikled', // Swedish
+    'motorvei', 'motortrafikkvei', // Norwegian
+    'motorvej', 'motortrafikvej', // Danish
+    'moottoritie', // Finnish
+    'autoroute', 'voie express', // French
+    'autopista', 'autovía', 'autovia', // Spanish
+  ];
+
+  /// Hard-rejects a route for slow vehicles (legal max ≤ 45 km/h) if any
+  /// turn instruction text or street name contains a motorway keyword.
+  ///
+  /// Valhalla uses [use_highways: 0.0] as a strong *preference*, not a hard
+  /// ban — it still routes via motorways when it sees no alternative.
+  /// This post-processing guard ensures those routes are never surfaced to
+  /// A-tractor, moped-car, or tractor users.
+  void _assertNoMotorwayForSlowVehicle({
+    required RouteResult route,
+    required String vehicleType,
+    required String countryCode,
+  }) {
+    final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
+      countryCode,
+      vehicleType,
+    );
+    if (maxLegalSpeed > 45) return; // Non-slow vehicle — not restricted.
+
+    for (final instruction in route.instructions) {
+      final text = instruction.text.toLowerCase();
+      final street = instruction.streetName.toLowerCase();
+      for (final keyword in _motorwayKeywords) {
+        if (text.contains(keyword) || street.contains(keyword)) {
+          throw const RoutingException(
+            RoutingErrorCode.routeNotAllowedForVehicle,
+          );
+        }
+      }
+    }
+  }
+
   String _graphHopperLocale() {
     final code = UserPreferencesService.instance.languageCode.value;
     return switch (code) {
@@ -226,6 +270,11 @@ class RoutingService {
         vehicleType: vehicleType,
         countryCode: countryCode,
       );
+      _assertNoMotorwayForSlowVehicle(
+        route: route,
+        vehicleType: vehicleType,
+        countryCode: countryCode,
+      );
       return route;
     } else if (provider == _providerOpenRouteService) {
       final route = await _getRouteFromOpenRouteService(
@@ -236,6 +285,11 @@ class RoutingService {
         countryCode: countryCode,
       );
       _validateRouteSpeed(
+        route: route,
+        vehicleType: vehicleType,
+        countryCode: countryCode,
+      );
+      _assertNoMotorwayForSlowVehicle(
         route: route,
         vehicleType: vehicleType,
         countryCode: countryCode,
@@ -495,10 +549,15 @@ class RoutingService {
   }) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
     final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
-    final isSlowVehicle =
-        CountryVehicleRules.maxLegalSpeedFor(countryCode, vehicleType) <= 45;
+    final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
+      countryCode,
+      vehicleType,
+    );
+    final isSlowVehicle = maxLegalSpeedKmh <= 45;
     final costingOptions = <String, dynamic>{
-      'top_speed': userSpeedKmh.round(),
+      // Clamp top_speed to the vehicle's legal maximum so Valhalla never
+      // optimises for a speed the vehicle cannot legally achieve on any road.
+      'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
       'use_highways': profile.useHighways,
       'use_tolls': profile.useTolls,
       'use_ferry': profile.useFerry,
@@ -587,6 +646,23 @@ class RoutingService {
       final maneuvers = legMap['maneuvers'] as List<dynamic>? ?? [];
       for (final maneuver in maneuvers) {
         final m = maneuver as Map<String, dynamic>;
+
+        // Hard-block: Valhalla tags motorway maneuvers with highway:true.
+        // Reject immediately — don't rely on instruction-text keywords which
+        // can miss motorways referred to by road number (E4, E18, etc.).
+        final isOnHighway = m['highway'] as bool? ?? false;
+        if (isOnHighway) {
+          final maxLegal = CountryVehicleRules.maxLegalSpeedFor(
+            countryCode,
+            vehicleType,
+          );
+          if (maxLegal <= 45) {
+            throw const RoutingException(
+              RoutingErrorCode.routeNotAllowedForVehicle,
+            );
+          }
+        }
+
         // Valhalla provides street_names for the road after this maneuver
         final streetNames = m['street_names'] as List<dynamic>?;
         final streetName = (streetNames != null && streetNames.isNotEmpty)
@@ -622,12 +698,19 @@ class RoutingService {
         ? distanceMeters / avgSpeedMs
         : 0.0;
 
-    return RouteResult(
+    final result = RouteResult(
       points: allPoints,
       distanceMeters: distanceMeters,
       durationSeconds: calculatedDurationSeconds,
       instructions: allInstructions,
     );
+    // Hard-reject routes that include motorway segments for slow vehicles.
+    _assertNoMotorwayForSlowVehicle(
+      route: result,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+    );
+    return result;
   }
 
   /// Decode Valhalla's polyline6 format (precision 1e-6) to LatLng list.

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/l10n/app_localizations.dart';
@@ -17,7 +20,50 @@ class _PaywallScreenState extends State<PaywallScreen> {
   bool _loading = false;
   bool _restoring = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb) {
+      unawaited(SubscriptionService.instance.syncWebEntitlement(force: true));
+    }
+  }
+
+  Future<void> _openWebCheckout() async {
+    final uri = SubscriptionService.instance.buildWebCheckoutUri();
+    if (uri == null) {
+      return;
+    }
+
+    final opened = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (opened) {
+      unawaited(SubscriptionService.instance.syncWebEntitlement(force: true));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Checkout opened. Pro is activated automatically after successful payment.',
+          ),
+          backgroundColor: Color(0xFF00913F),
+        ),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Could not open web checkout right now.'),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+        ),
+      );
+    }
+  }
+
   Future<void> _upgrade() async {
+    if (kIsWeb || SubscriptionService.instance.isWebCheckout) {
+      await _openWebCheckout();
+      return;
+    }
+
     final l10n = AppLocalizations.of(context)!;
     setState(() => _loading = true);
     try {
@@ -322,34 +368,47 @@ class _PaywallScreenState extends State<PaywallScreen> {
                   const SizedBox(height: 14),
 
                   // Restore
-                  TextButton(
-                    onPressed: _restoring ? null : _restore,
-                    child: _restoring
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white38,
+                  if (!kIsWeb) ...[
+                    TextButton(
+                      onPressed: _restoring ? null : _restore,
+                      child: _restoring
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white38,
+                              ),
+                            )
+                          : Text(
+                              l10n.paywallRestoreButton,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                fontSize: 14,
+                              ),
                             ),
-                          )
-                        : Text(
-                            l10n.paywallRestoreButton,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 14,
-                            ),
-                          ),
-                  ),
+                    ),
+                    const SizedBox(height: 12),
 
-                  const SizedBox(height: 12),
-
-                  // Required Apple subscription disclosure (Guideline 3.1.2c)
-                  ValueListenableBuilder<String?>(
-                    valueListenable:
-                        SubscriptionService.instance.localizedPrice,
-                    builder: (_, price, _) => Text(
-                      l10n.paywallDisclosure(price ?? '–'),
+                    // Required Apple subscription disclosure (Guideline 3.1.2c)
+                    ValueListenableBuilder<String?>(
+                      valueListenable:
+                          SubscriptionService.instance.localizedPrice,
+                      builder: (_, price, _) => Text(
+                        l10n.paywallDisclosure(price ?? '–'),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          fontSize: 11,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Web version uses external checkout on cruizx.com.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.35),
@@ -357,9 +416,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         height: 1.5,
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 10),
+                    const SizedBox(height: 10),
+                  ],
 
                   // Privacy Policy & Terms of Use links
                   Row(

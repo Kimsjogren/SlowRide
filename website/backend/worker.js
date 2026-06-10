@@ -5,6 +5,8 @@
  *   POST /api/claim   → returnerar { code, redeem_url, repeat }
  *   POST /api/scan    → logga en QR-scan (no-op om redan loggad)
  *   GET  /api/stats   → enkel översikt (skyddad med STATS_TOKEN)
+ *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
+ *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
  * Säkerhet:
  *   - Service-key bor i Worker-secrets (wrangler secret put …),
@@ -36,13 +38,17 @@ function corsHeaders(origin) {
 }
 
 function json(body, init = {}, origin = "") {
+  const mergedHeaders = {
+    "Content-Type": "application/json",
+    ...corsHeaders(origin),
+  };
+  if (init.headers) {
+    Object.assign(mergedHeaders, init.headers);
+  }
+
   return new Response(JSON.stringify(body), {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders(origin),
-      ...(init.headers || {}),
-    },
+    headers: mergedHeaders,
   });
 }
 
@@ -61,7 +67,7 @@ function readCookie(request, name) {
 }
 
 function makeDeviceId() {
-  return crypto.randomUUID().replace(/-/g, "");
+  return crypto.randomUUID().replaceAll("-", "");
 }
 
 async function deviceHash(request, deviceId, env) {
@@ -112,6 +118,256 @@ async function logEvent(env, kind, campaign, deviceHashHex, ip, meta) {
     },
     body: JSON.stringify([{ kind, campaign, device_hash: deviceHashHex, ip, meta }]),
   });
+}
+
+function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function stripeFormBody(params) {
+  const form = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === null || value === undefined) continue;
+    form.append(key, String(value));
+  }
+  return form;
+}
+
+async function stripeApiPost(env, path, params) {
+  const body = stripeFormBody(params);
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const detail = data?.error?.message || `Stripe ${res.status}`;
+    throw new Error(detail);
+  }
+  return data;
+}
+
+async function stripeApiGet(env, path) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${env.STRIPE_SECRET_KEY}`,
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const detail = data?.error?.message || `Stripe ${res.status}`;
+    throw new Error(detail);
+  }
+  return data;
+}
+
+function constantTimeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    out |= (a.codePointAt(i) ?? 0) ^ (b.codePointAt(i) ?? 0);
+  }
+  return out === 0;
+}
+
+function parseStripeSignature(header) {
+  const parsed = { t: null, v1: [] };
+  if (!header) return parsed;
+  for (const part of header.split(",")) {
+    const [k, v] = part.split("=");
+    if (k === "t") parsed.t = v;
+    if (k === "v1") parsed.v1.push(v);
+  }
+  return parsed;
+}
+
+async function hmacSha256Hex(secret, payload) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifyStripeWebhook(request, env, rawBody) {
+  const header = request.headers.get("Stripe-Signature");
+  const { t, v1 } = parseStripeSignature(header);
+  if (!t || !Array.isArray(v1) || v1.length === 0) return false;
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(t));
+  if (!Number.isFinite(age) || age > 300) return false;
+
+  const expected = await hmacSha256Hex(env.STRIPE_WEBHOOK_SECRET, `${t}.${rawBody}`);
+  return v1.some((candidate) => constantTimeEqual(candidate, expected));
+}
+
+async function upsertWebSubscription(env, row) {
+  const res = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/web_subscriptions?on_conflict=user_id,provider`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([row]),
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Supabase web_subscriptions upsert ${res.status}: ${await res.text()}`);
+  }
+}
+
+async function loadUserIdByExternalSub(env, externalSub) {
+  const url = `${env.SUPABASE_URL}/rest/v1/web_subscriptions?select=user_id&external_sub=eq.${encodeURIComponent(externalSub)}&limit=1`;
+  const res = await fetch(url, {
+    headers: {
+      "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+      "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  });
+  if (!res.ok) return null;
+  const rows = await res.json();
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return rows[0]?.user_id || null;
+}
+
+function unixToIsoMaybe(unixSeconds) {
+  if (!Number.isFinite(unixSeconds)) return null;
+  return new Date(unixSeconds * 1000).toISOString();
+}
+
+async function handleWebCheckoutSession(request, env, origin) {
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID) {
+    return json({ error: "stripe_not_configured" }, { status: 500 }, origin);
+  }
+
+  let body = {};
+  try { body = await request.json(); } catch {}
+
+  const uid = (body.uid || "").toString().trim();
+  const email = (body.email || "").toString().trim().toLowerCase();
+  if (!isUuid(uid)) {
+    return json({ error: "invalid_uid" }, { status: 400 }, origin);
+  }
+
+  const successUrl = env.WEB_CHECKOUT_SUCCESS_URL || "https://cruizx.com/get-app?checkout=success";
+  const cancelUrl = env.WEB_CHECKOUT_CANCEL_URL || "https://cruizx.com/get-app?checkout=cancel";
+
+  try {
+    const session = await stripeApiPost(env, "/checkout/sessions", {
+      mode: "subscription",
+      "line_items[0][price]": env.STRIPE_PRICE_ID,
+      "line_items[0][quantity]": 1,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      client_reference_id: uid,
+      "metadata[uid]": uid,
+      "subscription_data[metadata][uid]": uid,
+      ...(email ? { customer_email: email } : {}),
+    });
+
+    return json(
+      {
+        status: "ok",
+        id: session.id,
+        url: session.url,
+      },
+      { status: 200 },
+      origin
+    );
+  } catch (e) {
+    return json({ error: "stripe_checkout_failed", detail: String(e) }, { status: 500 }, origin);
+  }
+}
+
+async function syncSubscriptionFromStripe(env, stripeSub, fallbackUid = null) {
+  if (!stripeSub?.id) return;
+
+  const uidFromMetadata =
+    stripeSub?.metadata?.uid ||
+    stripeSub?.items?.data?.[0]?.metadata?.uid ||
+    null;
+  const userId = uidFromMetadata || fallbackUid || await loadUserIdByExternalSub(env, stripeSub.id);
+  if (!isUuid(userId)) {
+    return;
+  }
+
+  const row = {
+    user_id: userId,
+    provider: "stripe",
+    external_customer: stripeSub.customer || null,
+    external_sub: stripeSub.id,
+    status: stripeSub.status || "inactive",
+    current_period_end: unixToIsoMaybe(stripeSub.current_period_end),
+  };
+  await upsertWebSubscription(env, row);
+}
+
+async function handleStripeWebhook(request, env) {
+  if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY) {
+    return new Response("stripe webhook not configured", { status: 500 });
+  }
+
+  const rawBody = await request.text();
+  const valid = await verifyStripeWebhook(request, env, rawBody);
+  if (!valid) {
+    return new Response("invalid signature", { status: 400 });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return new Response("invalid json", { status: 400 });
+  }
+
+  try {
+    const type = event?.type;
+    const object = event?.data?.object;
+
+    if (type === "checkout.session.completed" && object?.mode === "subscription") {
+      const uid = object?.metadata?.uid || object?.client_reference_id || null;
+      if (object?.subscription) {
+        const sub = await stripeApiGet(env, `/subscriptions/${encodeURIComponent(object.subscription)}`);
+        await syncSubscriptionFromStripe(env, sub, uid);
+      }
+    }
+
+    if (type === "customer.subscription.created" || type === "customer.subscription.updated") {
+      await syncSubscriptionFromStripe(env, object, null);
+    }
+
+    if (type === "customer.subscription.deleted") {
+      const userId = object?.metadata?.uid || await loadUserIdByExternalSub(env, object?.id);
+      if (isUuid(userId)) {
+        await upsertWebSubscription(env, {
+          user_id: userId,
+          provider: "stripe",
+          external_customer: object?.customer || null,
+          external_sub: object?.id || null,
+          status: "canceled",
+          current_period_end: unixToIsoMaybe(object?.current_period_end),
+        });
+      }
+    }
+
+    return new Response("ok", { status: 200 });
+  } catch (e) {
+    return new Response(`webhook processing failed: ${String(e)}`, { status: 500 });
+  }
 }
 
 // --- Handlers -------------------------------------------------------
@@ -243,6 +499,12 @@ export default {
     }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       return handleStats(request, env, origin);
+    }
+    if (url.pathname === "/api/web/checkout-session" && request.method === "POST") {
+      return handleWebCheckoutSession(request, env, origin);
+    }
+    if (url.pathname === "/api/web/stripe-webhook" && request.method === "POST") {
+      return handleStripeWebhook(request, env);
     }
 
     return json({ error: "not_found" }, { status: 404 }, origin);

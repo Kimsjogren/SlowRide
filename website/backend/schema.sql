@@ -119,3 +119,51 @@ alter table public.offer_codes  enable row level security;
 alter table public.flyer_events enable row level security;
 -- (Ingen policy = inga rättigheter för anon/authenticated. Workern
 --  använder service_role-nyckeln, som bypassar RLS.)
+
+-- 6. Web subscription-entitlements -------------------------------------
+-- Den här tabellen används av Flutter-webbappen för att avgöra om
+-- användaren ska vara Pro efter lyckad webbetalning.
+
+create table if not exists public.web_subscriptions (
+  id                 bigserial primary key,
+  user_id            uuid not null references auth.users(id) on delete cascade,
+  provider           text not null default 'stripe',
+  external_customer  text,
+  external_sub       text unique,
+  status             text not null default 'inactive',
+  current_period_end timestamptz,
+  updated_at         timestamptz not null default now(),
+  created_at         timestamptz not null default now()
+);
+
+create unique index if not exists web_subscriptions_user_provider_uidx
+  on public.web_subscriptions (user_id, provider);
+
+create index if not exists web_subscriptions_status_idx
+  on public.web_subscriptions (status, current_period_end desc);
+
+create or replace function public.touch_web_subscriptions_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_web_subscriptions_updated_at on public.web_subscriptions;
+create trigger trg_web_subscriptions_updated_at
+before update on public.web_subscriptions
+for each row execute function public.touch_web_subscriptions_updated_at();
+
+alter table public.web_subscriptions enable row level security;
+
+drop policy if exists "web_subscriptions_select_own" on public.web_subscriptions;
+create policy "web_subscriptions_select_own"
+on public.web_subscriptions
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+-- Skrivning görs från webhook/backend med service_role, inte från klienten.

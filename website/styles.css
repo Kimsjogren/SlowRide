@@ -656,8 +656,30 @@ main {
   transition: transform 160ms ease, opacity 160ms ease;
 }
 
+.store-alt-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
 .store-badge-link:hover,
 .store-badge-link:focus-visible {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.store-alt-link:hover,
+.store-alt-link:focus-visible {
   transform: translateY(-1px);
   opacity: 0.95;
 }
@@ -666,6 +688,13 @@ main {
   display: block;
   height: 44px;
   width: auto;
+}
+
+.download-android-note {
+  margin: 0 0 0.2rem;
+  color: rgba(99, 215, 255, 0.92);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .launch-form input {
