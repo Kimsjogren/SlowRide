@@ -491,6 +491,13 @@ export default {
       return new Response(null, { headers: corsHeaders(origin) });
     }
 
+    if (url.pathname === "/api/download/apk" && request.method === "GET") {
+      return Response.redirect(
+        "https://github.com/Kimsjogren/SlowRide/releases/download/v1.0.5/app-release.apk",
+        302
+      );
+    }
+
     if (url.pathname === "/api/claim" && request.method === "POST") {
       return handleClaim(request, env, origin);
     }
