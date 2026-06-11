@@ -941,6 +941,11 @@ main {
     height: 40px;
   }
 
+  .android-badge-link {
+    width: 120px;
+    height: 40px;
+  }
+
   .signal-grid {
     display: grid;
     grid-template-columns: 1fr;
