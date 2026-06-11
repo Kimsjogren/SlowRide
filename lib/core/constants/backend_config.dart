@@ -77,4 +77,12 @@ class BackendConfig {
     'WEB_CHECKOUT_URL',
     defaultValue: 'https://cruizx.com/get-app',
   );
+
+  /// Force web (Stripe) checkout instead of native store IAP.
+  /// Set to true when building the sideloaded APK.
+  /// Build with: flutter build apk --dart-define=WEB_CHECKOUT_ONLY=true
+  static const bool webCheckoutOnly = bool.fromEnvironment(
+    'WEB_CHECKOUT_ONLY',
+    defaultValue: false,
+  );
 }

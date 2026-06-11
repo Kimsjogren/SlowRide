@@ -39,7 +39,7 @@ class SubscriptionService {
   /// Localized price string from App Store (e.g. "39,00 kr", "3,49 $").
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
-  bool get isWebCheckout => kIsWeb;
+  bool get isWebCheckout => kIsWeb || BackendConfig.webCheckoutOnly;
 
   String? get webCheckoutUrl {
     final raw = BackendConfig.webCheckoutUrl.trim();
