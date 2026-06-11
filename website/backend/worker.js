@@ -471,13 +471,26 @@ async function handleStats(request, env, origin) {
   if (!token || token !== env.STATS_TOKEN) {
     return json({ error: "unauthorized" }, { status: 401 }, origin);
   }
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/flyer_stats?select=*`, {
-    headers: {
-      "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
-      "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-  });
-  return json(await res.json(), { status: res.status }, origin);
+  const [flyerRes, apkRes] = await Promise.all([
+    fetch(`${env.SUPABASE_URL}/rest/v1/flyer_stats?select=*`, {
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    }),
+    fetch(`${env.SUPABASE_URL}/rest/v1/flyer_events?kind=eq.apk_download&select=id`, {
+      headers: {
+        "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+        "Prefer": "count=exact",
+        "Range-Unit": "items",
+        "Range": "0-0",
+      },
+    }),
+  ]);
+  const flyerData = await flyerRes.json();
+  const apkDownloads = parseInt(apkRes.headers.get("Content-Range")?.split("/")[1] ?? "0", 10);
+  return json({ ...flyerData, apk_downloads: apkDownloads }, { status: flyerRes.status }, origin);
 }
 
 // --- Entry ----------------------------------------------------------
@@ -492,6 +505,10 @@ export default {
     }
 
     if (url.pathname === "/api/download/apk" && request.method === "GET") {
+      // Log download event (fire-and-forget)
+      const ip = request.headers.get("CF-Connecting-IP") || "";
+      const ua = request.headers.get("User-Agent") || "";
+      logEvent(env, "apk_download", "website", "", ip, { ua }).catch(() => {});
       return Response.redirect(
         "https://github.com/Kimsjogren/SlowRide/releases/download/v1.0.5/CruizX-1.0.5-67-free.apk",
         302
