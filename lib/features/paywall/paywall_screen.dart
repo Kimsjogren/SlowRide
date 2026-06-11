@@ -77,7 +77,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _upgrade() async {
-    if (AuthService.instance.userId.value == null) {
+    if (SubscriptionService.instance.isWebCheckout &&
+        AuthService.instance.userId.value == null) {
       await _showLoginRequired();
       return;
     }
