@@ -27,7 +27,7 @@ const translations = {
       "Get support with account questions, launch access, and app-related issues. We usually reply as quickly as possible.",
     supportMailLabel: "Email us directly:",
     downloadEyebrow: "Download",
-    downloadTitle: "Get CruizX on iPhone",
+    downloadTitle: "Get CruizX",
     downloadBody:
       "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
     downloadAndroidNote:
@@ -96,7 +96,7 @@ const translations = {
     launchTitle: "Join CruizX and get early access to features built for your driving style.",
     launchBody:
       "Get launch updates and early-access features built for your kind of driving.",
-    launchPlatforms: "Also coming soon on Google Play.",
+    launchPlatforms: "Soon on Google Play.",
     emailPlaceholder: "Your email",
     launchCta: "Get early access",
     footerTagline: "Driven by the ride.",
@@ -123,7 +123,7 @@ const translations = {
       "Få hjälp med kontofrågor, lanseringsåtkomst och apprelaterade problem. Vi svarar vanligtvis så snabbt som möjligt.",
     supportMailLabel: "Mejla oss direkt:",
     downloadEyebrow: "Ladda ner",
-    downloadTitle: "Hämta CruizX till iPhone",
+    downloadTitle: "Hämta CruizX",
     downloadBody:
       "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
     downloadAndroidNote:
@@ -192,7 +192,7 @@ const translations = {
     launchTitle: "Gå med i CruizX och få tidig tillgång till funktioner byggda för ditt sätt att köra.",
     launchBody:
       "Få lanseringsuppdateringar och tidig tillgång till funktioner anpassade för din typ av körning.",
-    launchPlatforms: "Finns snart även på Google Play.",
+    launchPlatforms: "Snart på Google Play.",
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidig tillgång",
     footerTagline: "Driven by the ride.",
@@ -219,7 +219,7 @@ const translations = {
       "Fa hjelp med kontosporsmal, lanseringstilgang og apprelaterte problemer. Vi svarer vanligvis sa raskt som mulig.",
     supportMailLabel: "Send oss e-post direkte:",
     downloadEyebrow: "Last ned",
-    downloadTitle: "Last ned CruizX til iPhone",
+    downloadTitle: "Last ned CruizX",
     downloadBody:
       "Installer CruizX via App Store. Hvis du åpner siden på mobilen, kan du trykke direkte på App Store-merket.",
     downloadAndroidNote:
@@ -288,7 +288,7 @@ const translations = {
     launchTitle: "Bli med i CruizX og få tidlig tilgang til funksjoner bygget for din kjørestil.",
     launchBody:
       "Få lanseringsoppdateringer og tidlig tilgang til funksjoner bygget for denne typen kjøring.",
-    launchPlatforms: "Kommer snart på Google Play.",
+    launchPlatforms: "Snart på Google Play.",
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidlig tilgang",
     footerTagline: "Driven by the ride.",
@@ -315,7 +315,7 @@ const translations = {
       "Fa hjalp med kontosporgsmal, lanceringsadgang og apprelaterede problemer. Vi svarer som regel sa hurtigt som muligt.",
     supportMailLabel: "Send os en e-mail direkte:",
     downloadEyebrow: "Download",
-    downloadTitle: "Hent CruizX til iPhone",
+    downloadTitle: "Hent CruizX",
     downloadBody:
       "Installer CruizX via App Store. Hvis du åbner siden på mobilen, kan du trykke direkte på App Store-badget.",
     downloadAndroidNote:
@@ -384,7 +384,7 @@ const translations = {
     launchTitle: "Bliv en del af CruizX og få tidlig adgang til funktioner bygget til din kørestil.",
     launchBody:
       "Få lanceringsopdateringer og tidlig adgang til funktioner bygget til denne type kørsel.",
-    launchPlatforms: "Kommer snart på Google Play.",
+    launchPlatforms: "Snart på Google Play.",
     emailPlaceholder: "Din e-mail",
     launchCta: "Få tidlig adgang",
     footerTagline: "Driven by the ride.",
@@ -411,7 +411,7 @@ const translations = {
       "Saat apua tilikysymyksiin, julkaisuoikeuteen ja sovellukseen liittyviin ongelmiin. Vastaamme yleensa mahdollisimman nopeasti.",
     supportMailLabel: "Laheta meille suoraan sahkopostia:",
     downloadEyebrow: "Lataa",
-    downloadTitle: "Hae CruizX iPhoneen",
+    downloadTitle: "Hae CruizX",
     downloadBody:
       "Asenna CruizX App Storesta. Jos avaat sivun puhelimella, voit napauttaa suoraan App Store -merkkiä.",
     downloadAndroidNote:
@@ -480,7 +480,7 @@ const translations = {
     launchTitle: "Liity CruizXiin ja saat varhaisen paasyn ominaisuuksiin, jotka sopivat ajotyyliisi.",
     launchBody:
       "Saat julkaisu-uutiset ja varhaisen paasyn ominaisuuksiin, jotka on rakennettu taman tyyppiseen ajoon.",
-    launchPlatforms: "Tulossa pian myös Google Playhin.",
+    launchPlatforms: "Pian Google Playssa.",
     emailPlaceholder: "Sahkopostisi",
     launchCta: "Liity julkaisuun",
     footerTagline: "Driven by the ride.",
@@ -507,7 +507,7 @@ const translations = {
       "Obtenez de l aide pour le compte, l acces au lancement et les problemes lies a l application. Nous repondons en general le plus vite possible.",
     supportMailLabel: "Envoyez-nous un e-mail directement :",
     downloadEyebrow: "Telecharger",
-    downloadTitle: "Telechargez CruizX sur iPhone",
+    downloadTitle: "Telecharger CruizX",
     downloadBody:
       "Installez CruizX via l App Store. Si vous ouvrez cette page sur mobile, appuyez directement sur le badge App Store.",
     downloadAndroidNote:
@@ -576,7 +576,7 @@ const translations = {
     launchTitle: "Rejoignez CruizX et obtenez un acces anticipe aux fonctions adaptees a votre conduite.",
     launchBody:
       "Recevez les mises a jour de lancement et un acces anticipe aux fonctions adaptees a votre type de conduite.",
-    launchPlatforms: "Bientot aussi sur Google Play.",
+    launchPlatforms: "Bientot sur Google Play.",
     emailPlaceholder: "Votre e-mail",
     launchCta: "Rejoindre le lancement",
     footerTagline: "Driven by the ride.",
