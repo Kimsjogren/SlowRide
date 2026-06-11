@@ -31,7 +31,7 @@ const translations = {
     downloadBody:
       "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
     downloadAndroidNote:
-      "Android APK — free version. Install manually (outside Google Play).",
+      "Tap the Android badge to download the APK. Install manually outside Google Play.",
     proAndroidOnly: "Android only",
     proTitle: "Upgrade to CruizX Pro",
     proBody: "Unlimited routes, enhanced convoy support and an ad-free experience.",
@@ -97,7 +97,7 @@ const translations = {
     launchTitle: "Join CruizX and get early access to features built for your driving style.",
     launchBody:
       "Get launch updates and early-access features built for your kind of driving.",
-    launchPlatforms: "Soon on Google Play.",
+    launchPlatforms: "Android APK: tap the Android badge to download.",
     emailPlaceholder: "Your email",
     launchCta: "Get early access",
     footerTagline: "Driven by the ride.",
@@ -128,7 +128,7 @@ const translations = {
     downloadBody:
       "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
     downloadAndroidNote:
-      "Android APK — gratis version. Installeras manuellt (utanför Google Play).",
+      "Tryck på Android-badgen för att ladda ner APK. Installeras manuellt utanför Google Play.",
     proAndroidOnly: "Endast för Android",
     proTitle: "Uppgradera till CruizX Pro",
     proBody: "Obegränsade rutter, utökad konvojfunktion och en reklamfri upplevelse.",
@@ -194,7 +194,7 @@ const translations = {
     launchTitle: "Gå med i CruizX och få tidig tillgång till funktioner byggda för ditt sätt att köra.",
     launchBody:
       "Få lanseringsuppdateringar och tidig tillgång till funktioner anpassade för din typ av körning.",
-    launchPlatforms: "Snart på Google Play.",
+    launchPlatforms: "Android APK: tryck på Android-badgen för att ladda ner.",
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidig tillgång",
     footerTagline: "Driven by the ride.",
@@ -225,7 +225,7 @@ const translations = {
     downloadBody:
       "Installer CruizX via App Store. Hvis du åpner siden på mobilen, kan du trykke direkte på App Store-merket.",
     downloadAndroidNote:
-      "Android APK – gratis versjon. Installeres manuelt (utenfor Google Play).",
+      "Trykk på Android-merket for å laste ned APK. Installeres manuelt utenfor Google Play.",
     proAndroidOnly: "Kun for Android",
     proTitle: "Oppgrader til CruizX Pro",
     proBody: "Ubegrensede ruter, forbedret konvoistøtte og en reklamefri opplevelse.",
@@ -291,7 +291,7 @@ const translations = {
     launchTitle: "Bli med i CruizX og få tidlig tilgang til funksjoner bygget for din kjørestil.",
     launchBody:
       "Få lanseringsoppdateringer og tidlig tilgang til funksjoner bygget for denne typen kjøring.",
-    launchPlatforms: "Snart på Google Play.",
+    launchPlatforms: "Android APK: trykk på Android-merket for å laste ned.",
     emailPlaceholder: "Din e-post",
     launchCta: "Få tidlig tilgang",
     footerTagline: "Driven by the ride.",
@@ -322,7 +322,7 @@ const translations = {
     downloadBody:
       "Installer CruizX via App Store. Hvis du åbner siden på mobilen, kan du trykke direkte på App Store-badget.",
     downloadAndroidNote:
-      "Android APK – gratis version. Installeres manuelt (uden for Google Play).",
+      "Tryk på Android-badget for at downloade APK. Installeres manuelt uden for Google Play.",
     proAndroidOnly: "Kun til Android",
     proTitle: "Opgrader til CruizX Pro",
     proBody: "Ubegrænsede ruter, forbedret konvoistøtte og en reklamefri oplevelse.",
@@ -388,7 +388,7 @@ const translations = {
     launchTitle: "Bliv en del af CruizX og få tidlig adgang til funktioner bygget til din kørestil.",
     launchBody:
       "Få lanceringsopdateringer og tidlig adgang til funktioner bygget til denne type kørsel.",
-    launchPlatforms: "Snart på Google Play.",
+    launchPlatforms: "Android APK: tryk på Android-badget for at downloade.",
     emailPlaceholder: "Din e-mail",
     launchCta: "Få tidlig adgang",
     footerTagline: "Driven by the ride.",
@@ -419,7 +419,7 @@ const translations = {
     downloadBody:
       "Asenna CruizX App Storesta. Jos avaat sivun puhelimella, voit napauttaa suoraan App Store -merkkiä.",
     downloadAndroidNote:
-      "Android APK – ilmainen versio. Asenna manuaalisesti (Google Playn ulkopuolelta).",
+      "Napauta Android-merkkiä ladataksesi APK:n. Asenna manuaalisesti Google Playn ulkopuolelta.",
     proAndroidOnly: "Vain Androidille",
     proTitle: "Päivitä CruizX Prohon",
     proBody: "Rajattomat reitit, parannettu saattue-tuki ja mainokseton kokemus.",
@@ -485,7 +485,7 @@ const translations = {
     launchTitle: "Liity CruizXiin ja saat varhaisen paasyn ominaisuuksiin, jotka sopivat ajotyyliisi.",
     launchBody:
       "Saat julkaisu-uutiset ja varhaisen paasyn ominaisuuksiin, jotka on rakennettu taman tyyppiseen ajoon.",
-    launchPlatforms: "Pian Google Playssa.",
+    launchPlatforms: "Android APK: napauta Android-merkkiä ladataksesi.",
     emailPlaceholder: "Sahkopostisi",
     launchCta: "Liity julkaisuun",
     footerTagline: "Driven by the ride.",
@@ -516,7 +516,7 @@ const translations = {
     downloadBody:
       "Installez CruizX via l App Store. Si vous ouvrez cette page sur mobile, appuyez directement sur le badge App Store.",
     downloadAndroidNote:
-      "APK Android – version gratuite. Installation manuelle (hors Google Play).",
+      "Appuyez sur le badge Android pour télécharger l APK. Installation manuelle hors Google Play.",
     proAndroidOnly: "Android uniquement",
     proTitle: "Passer à CruizX Pro",
     proBody: "Itinéraires illimités, convoi amélioré et expérience sans publicité.",
@@ -582,7 +582,7 @@ const translations = {
     launchTitle: "Rejoignez CruizX et obtenez un acces anticipe aux fonctions adaptees a votre conduite.",
     launchBody:
       "Recevez les mises a jour de lancement et un acces anticipe aux fonctions adaptees a votre type de conduite.",
-    launchPlatforms: "Bientot sur Google Play.",
+    launchPlatforms: "APK Android : appuyez sur le badge Android pour telecharger.",
     emailPlaceholder: "Votre e-mail",
     launchCta: "Rejoindre le lancement",
     footerTagline: "Driven by the ride.",
