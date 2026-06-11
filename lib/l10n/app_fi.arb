@@ -344,7 +344,7 @@
   "paywallSubtitle": "Ei rajoituksia. Ei mainoksia. Täysi pääsy.",
   "paywallPrice": "3,49 € / kuukausi",
   "paywallUpgradeButton": "Päivitä Prohon",
-  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
+  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallDisclosureAndroid": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.",  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Reittejä päivässä",
   "paywallFreeRouteLimit": "4 reittiä",

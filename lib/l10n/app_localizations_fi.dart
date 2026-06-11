@@ -797,6 +797,11 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
+  String paywallDisclosureAndroid(Object price) {
+    return 'CruizX Pro · $price/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override

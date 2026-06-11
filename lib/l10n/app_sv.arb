@@ -349,6 +349,8 @@
   "paywallRestoreButton": "Återställ köp",
   "paywallDisclosure": "CruizX Pro · {price}/månad · förnyas automatiskt. Avsluta när som helst i Inställningar minst 24 timmar innan förnyelse. Debiteras ditt Apple ID-konto.",
   "@paywallDisclosure": { "placeholders": { "price": {} } },
+  "paywallDisclosureAndroid": "CruizX Pro · {price}/månad · förnyas automatiskt. Hanteras och faktureras via Stripe. Avsluta när som helst på cruizx.com eller kontakta support.",
+  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Rutter per dag",

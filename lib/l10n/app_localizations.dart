@@ -1593,6 +1593,12 @@ abstract class AppLocalizations {
   /// **'CruizX Pro · {price}/month · auto-renewing. Cancel anytime in Settings at least 24 hours before renewal. Charged to your Apple ID account.'**
   String paywallDisclosure(Object price);
 
+  /// No description provided for @paywallDisclosureAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Pro · {price}/month · auto-renewing. Managed and billed via Stripe. Cancel anytime at cruizx.com or by contacting support.'**
+  String paywallDisclosureAndroid(Object price);
+
   /// No description provided for @paywallFreeLabel.
   ///
   /// In en, this message translates to:

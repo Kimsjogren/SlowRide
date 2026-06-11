@@ -349,6 +349,8 @@
   "paywallRestoreButton": "Restore purchase",
   "paywallDisclosure": "CruizX Pro · {price}/month · auto-renewing. Cancel anytime in Settings at least 24 hours before renewal. Charged to your Apple ID account.",
   "@paywallDisclosure": { "placeholders": { "price": {} } },
+  "paywallDisclosureAndroid": "CruizX Pro · {price}/month · auto-renewing. Managed and billed via Stripe. Cancel anytime at cruizx.com or by contacting support.",
+  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Routes per day",

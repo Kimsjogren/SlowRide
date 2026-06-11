@@ -414,19 +414,26 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // Required Apple subscription disclosure (Guideline 3.1.2c)
+                    // Disclosure text: Apple for iOS/Google Play, Stripe for APK
                     ValueListenableBuilder<String?>(
                       valueListenable:
                           SubscriptionService.instance.localizedPrice,
-                      builder: (_, price, _) => Text(
-                        l10n.paywallDisclosure(price ?? '–'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          fontSize: 11,
-                          height: 1.5,
-                        ),
-                      ),
+                      builder: (_, price, _) {
+                        final isWebCheckout =
+                            SubscriptionService.instance.isWebCheckout;
+                        final text = isWebCheckout
+                            ? l10n.paywallDisclosureAndroid(price ?? '–')
+                            : l10n.paywallDisclosure(price ?? '–');
+                        return Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            fontSize: 11,
+                            height: 1.5,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 10),
                   ] else ...[

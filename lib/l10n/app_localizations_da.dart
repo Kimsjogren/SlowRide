@@ -797,6 +797,11 @@ class AppLocalizationsDa extends AppLocalizations {
   }
 
   @override
+  String paywallDisclosureAndroid(Object price) {
+    return 'CruizX Pro · $price/måned · fornyes automatisk. Administreres og faktureres via Stripe. Annuller til enhver tid på cruizx.com eller kontakt support.';
+  }
+
+  @override
   String get paywallFreeLabel => 'Free';
 
   @override

@@ -347,6 +347,8 @@
   "paywallRestoreButton": "Restaurar compra",
   "paywallDisclosure": "CruizX Pro · {price}/mes · renovación automática. Cancela en cualquier momento en Ajustes al menos 24 horas antes de la renovación. Se cargará en tu cuenta de Apple ID.",
   "@paywallDisclosure": { "placeholders": { "price": {} } },
+  "paywallDisclosureAndroid": "CruizX Pro · {price}/mes · renovación automática. Gestionado y facturado a través de Stripe. Cancela en cualquier momento en cruizx.com o contacta con soporte.",
+  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Gratis",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Rutas por día",
