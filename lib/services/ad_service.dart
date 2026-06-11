@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:slowride/services/subscription_service.dart';
 
@@ -76,7 +77,14 @@ class AdService {
     // Step 1: UMP consent (GDPR/EEA) – must run before MobileAds.initialize()
     await _requestConsent();
 
-    // Step 2: Request ATT permission on iOS 14+ before loading ads
+    // Step 2: Request POST_NOTIFICATIONS on Android 13+ (API 33+)
+    if (Platform.isAndroid) {
+      try {
+        await Permission.notification.request();
+      } catch (_) {}
+    }
+
+    // Step 3: Request ATT permission on iOS 14+ before loading ads
     if (Platform.isIOS) {
       try {
         final status =
