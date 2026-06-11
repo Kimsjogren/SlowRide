@@ -857,6 +857,15 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallRestoreSuccess => 'Købet gendannet!';
 
   @override
+  String get paywallLoginRequiredTitle => 'Log ind påkrævet';
+
+  @override
+  String get paywallLoginRequiredBody => 'Du skal have en konto for at købe CruizX Pro. Opret en gratis konto i appen for at fortsætte.';
+
+  @override
+  String get paywallLoginRequiredAction => 'OK';
+
+  @override
   String get paywallRestoreNotFound => 'Intet tidligere køb fundet.';
 
   @override

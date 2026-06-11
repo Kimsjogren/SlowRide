@@ -857,6 +857,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallRestoreSuccess => 'Purchase restored!';
 
   @override
+  String get paywallLoginRequiredTitle => 'Sign in required';
+
+  @override
+  String get paywallLoginRequiredBody => 'You need an account to purchase CruizX Pro. Create a free account in the app to continue.';
+
+  @override
+  String get paywallLoginRequiredAction => 'OK';
+
+  @override
   String get paywallRestoreNotFound => 'No previous purchase found.';
 
   @override

@@ -857,6 +857,15 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallRestoreSuccess => 'Osto palautettu!';
 
   @override
+  String get paywallLoginRequiredTitle => 'Kirjautuminen vaaditaan';
+
+  @override
+  String get paywallLoginRequiredBody => 'Tarvitset tilin ostaaksesi CruizX Pron. Luo ilmainen tili sovelluksessa jatkaaksesi.';
+
+  @override
+  String get paywallLoginRequiredAction => 'OK';
+
+  @override
   String get paywallRestoreNotFound => 'Aiempaa ostoa ei löytynyt.';
 
   @override

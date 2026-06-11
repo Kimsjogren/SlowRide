@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/l10n/app_localizations.dart';
+import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -58,7 +59,29 @@ class _PaywallScreenState extends State<PaywallScreen> {
     }
   }
 
+  Future<void> _showLoginRequired() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.paywallLoginRequiredTitle),
+        content: Text(l10n.paywallLoginRequiredBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.paywallLoginRequiredAction),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _upgrade() async {
+    if (AuthService.instance.userId.value == null) {
+      await _showLoginRequired();
+      return;
+    }
+
     if (kIsWeb || SubscriptionService.instance.isWebCheckout) {
       await _openWebCheckout();
       return;

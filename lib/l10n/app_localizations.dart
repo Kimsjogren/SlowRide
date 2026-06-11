@@ -1713,6 +1713,24 @@ abstract class AppLocalizations {
   /// **'Purchase restored!'**
   String get paywallRestoreSuccess;
 
+  /// No description provided for @paywallLoginRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in required'**
+  String get paywallLoginRequiredTitle;
+
+  /// No description provided for @paywallLoginRequiredBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You need an account to purchase CruizX Pro. Create a free account in the app to continue.'**
+  String get paywallLoginRequiredBody;
+
+  /// No description provided for @paywallLoginRequiredAction.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get paywallLoginRequiredAction;
+
   /// No description provided for @paywallRestoreNotFound.
   ///
   /// In en, this message translates to:
