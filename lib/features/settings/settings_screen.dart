@@ -221,6 +221,20 @@ class SettingsScreen extends StatelessWidget {
                             onChanged: (value) {
                               if (value != null) {
                                 preferences.countryCode.value = value;
+                                // Auto-set language to match the selected country.
+                                final syncedLanguage = switch (value) {
+                                  'SE' => 'sv',
+                                  'NO' => 'nb',
+                                  'DK' => 'da',
+                                  'FI' => 'fi',
+                                  'FR' => 'fr',
+                                  'ES' => 'es',
+                                  _ => null,
+                                };
+                                if (syncedLanguage != null) {
+                                  preferences.languageCode.value =
+                                      syncedLanguage;
+                                }
                               }
                             },
                           );
