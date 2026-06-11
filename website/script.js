@@ -31,7 +31,7 @@ const translations = {
     downloadBody:
       "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
     downloadAndroidNote:
-      "Tap the Android badge to download the APK. Install manually outside Google Play.",
+      "Tap the Android badge to download the APK. Coming soon to Google Play.",
     proAndroidOnly: "Android only",
     proTitle: "Upgrade to CruizX Pro",
     proBody: "Unlimited routes, enhanced convoy support and an ad-free experience.",
@@ -128,7 +128,7 @@ const translations = {
     downloadBody:
       "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
     downloadAndroidNote:
-      "Tryck på Android-badgen för att ladda ner APK. Installeras manuellt utanför Google Play.",
+      "Tryck på Android-badgen för att ladda ner APK. Snart ute på Google Play.",
     proAndroidOnly: "Endast för Android",
     proTitle: "Uppgradera till CruizX Pro",
     proBody: "Obegränsade rutter, utökad konvojfunktion och en reklamfri upplevelse.",
@@ -225,7 +225,7 @@ const translations = {
     downloadBody:
       "Installer CruizX via App Store. Hvis du åpner siden på mobilen, kan du trykke direkte på App Store-merket.",
     downloadAndroidNote:
-      "Trykk på Android-merket for å laste ned APK. Installeres manuelt utenfor Google Play.",
+      "Trykk på Android-merket for å laste ned APK. Kommer snart på Google Play.",
     proAndroidOnly: "Kun for Android",
     proTitle: "Oppgrader til CruizX Pro",
     proBody: "Ubegrensede ruter, forbedret konvoistøtte og en reklamefri opplevelse.",
@@ -322,7 +322,7 @@ const translations = {
     downloadBody:
       "Installer CruizX via App Store. Hvis du åbner siden på mobilen, kan du trykke direkte på App Store-badget.",
     downloadAndroidNote:
-      "Tryk på Android-badget for at downloade APK. Installeres manuelt uden for Google Play.",
+      "Tryk på Android-badget for at downloade APK. Kommer snart på Google Play.",
     proAndroidOnly: "Kun til Android",
     proTitle: "Opgrader til CruizX Pro",
     proBody: "Ubegrænsede ruter, forbedret konvoistøtte og en reklamefri oplevelse.",
@@ -419,7 +419,7 @@ const translations = {
     downloadBody:
       "Asenna CruizX App Storesta. Jos avaat sivun puhelimella, voit napauttaa suoraan App Store -merkkiä.",
     downloadAndroidNote:
-      "Napauta Android-merkkiä ladataksesi APK:n. Asenna manuaalisesti Google Playn ulkopuolelta.",
+      "Napauta Android-merkkiä ladataksesi APK:n. Tulossa pian Google Playhin.",
     proAndroidOnly: "Vain Androidille",
     proTitle: "Päivitä CruizX Prohon",
     proBody: "Rajattomat reitit, parannettu saattue-tuki ja mainokseton kokemus.",
@@ -516,7 +516,7 @@ const translations = {
     downloadBody:
       "Installez CruizX via l App Store. Si vous ouvrez cette page sur mobile, appuyez directement sur le badge App Store.",
     downloadAndroidNote:
-      "Appuyez sur le badge Android pour télécharger l APK. Installation manuelle hors Google Play.",
+      "Appuyez sur le badge Android pour télécharger l APK. Bientot sur Google Play.",
     proAndroidOnly: "Android uniquement",
     proTitle: "Passer à CruizX Pro",
     proBody: "Itinéraires illimités, convoi amélioré et expérience sans publicité.",
