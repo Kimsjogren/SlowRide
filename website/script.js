@@ -30,9 +30,13 @@ const translations = {
     downloadTitle: "Get CruizX on iPhone",
     downloadBody:
       "Install CruizX via the App Store. If you open this page on your phone, tap the App Store badge to continue.",
-    downloadAndroidCta: "Download Android Free",
     downloadAndroidNote:
-      "Android download is free right now (Free version). Android Pro payment in web and in-app is coming soon.",
+      "Android APK — free version. Install manually (outside Google Play).",
+    proTitle: "Upgrade to CruizX Pro",
+    proBody: "Unlimited routes, enhanced convoy support and an ad-free experience.",
+    proPrice: "39 kr / month",
+    proCta: "Get Pro",
+    proNote: "Secure payment via Stripe. Cancel anytime.",
     downloadBack: "← Back to CruizX",
     heroEyebrow: "For slow vehicles",
     heroTitle:
@@ -122,9 +126,13 @@ const translations = {
     downloadTitle: "Hämta CruizX till iPhone",
     downloadBody:
       "Installera CruizX via App Store. Om du öppnar sidan från mobilen kan du trycka direkt på App Store-badgen.",
-    downloadAndroidCta: "Ladda ner Android Free",
     downloadAndroidNote:
-      "Android är gratis att ladda ner just nu (Free-version). Android Pro-betalning på webben och i appen kommer snart.",
+      "Android APK — gratis version. Installeras manuellt (utanför Google Play).",
+    proTitle: "Uppgradera till CruizX Pro",
+    proBody: "Obegränsade rutter, utökad konvojfunktion och en reklamfri upplevelse.",
+    proPrice: "39 kr / månad",
+    proCta: "Skaffa Pro",
+    proNote: "Säker betalning via Stripe. Avsluta när som helst.",
     downloadBack: "← Tillbaka till CruizX",
     heroEyebrow: "För långsamma fordon",
     heroTitle:
@@ -214,6 +222,13 @@ const translations = {
     downloadTitle: "Last ned CruizX til iPhone",
     downloadBody:
       "Installer CruizX via App Store. Hvis du åpner siden på mobilen, kan du trykke direkte på App Store-merket.",
+    downloadAndroidNote:
+      "Android APK – gratis versjon. Installeres manuelt (utenfor Google Play).",
+    proTitle: "Oppgrader til CruizX Pro",
+    proBody: "Ubegrensede ruter, forbedret konvoistøtte og en reklamefri opplevelse.",
+    proPrice: "39 kr / måned",
+    proCta: "Få Pro",
+    proNote: "Sikker betaling via Stripe. Avslutt når som helst.",
     downloadBack: "← Tilbake til CruizX",
     heroEyebrow: "For langsomme kjoretoy",
     heroTitle:
@@ -303,6 +318,13 @@ const translations = {
     downloadTitle: "Hent CruizX til iPhone",
     downloadBody:
       "Installer CruizX via App Store. Hvis du åbner siden på mobilen, kan du trykke direkte på App Store-badget.",
+    downloadAndroidNote:
+      "Android APK – gratis version. Installeres manuelt (uden for Google Play).",
+    proTitle: "Opgrader til CruizX Pro",
+    proBody: "Ubegrænsede ruter, forbedret konvoistøtte og en reklamefri oplevelse.",
+    proPrice: "39 kr / måned",
+    proCta: "Få Pro",
+    proNote: "Sikker betaling via Stripe. Annuller når som helst.",
     downloadBack: "← Tilbage til CruizX",
     heroEyebrow: "Til langsomme koretojer",
     heroTitle:
@@ -392,6 +414,13 @@ const translations = {
     downloadTitle: "Hae CruizX iPhoneen",
     downloadBody:
       "Asenna CruizX App Storesta. Jos avaat sivun puhelimella, voit napauttaa suoraan App Store -merkkiä.",
+    downloadAndroidNote:
+      "Android APK – ilmainen versio. Asenna manuaalisesti (Google Playn ulkopuolelta).",
+    proTitle: "Päivitä CruizX Prohon",
+    proBody: "Rajattomat reitit, parannettu saattue-tuki ja mainokseton kokemus.",
+    proPrice: "39 kr / kuukausi",
+    proCta: "Hanki Pro",
+    proNote: "Turvallinen maksu Stripen kautta. Peruuta milloin tahansa.",
     downloadBack: "← Takaisin CruizXiin",
     heroEyebrow: "Hitaille ajoneuvoille",
     heroTitle:
@@ -481,6 +510,13 @@ const translations = {
     downloadTitle: "Telechargez CruizX sur iPhone",
     downloadBody:
       "Installez CruizX via l App Store. Si vous ouvrez cette page sur mobile, appuyez directement sur le badge App Store.",
+    downloadAndroidNote:
+      "APK Android – version gratuite. Installation manuelle (hors Google Play).",
+    proTitle: "Passer à CruizX Pro",
+    proBody: "Itinéraires illimités, convoi amélioré et expérience sans publicité.",
+    proPrice: "39 kr / mois",
+    proCta: "Obtenir Pro",
+    proNote: "Paiement sécurisé via Stripe. Annulez à tout moment.",
     downloadBack: "← Retour a CruizX",
     heroEyebrow: "Pour les vehicules lents",
     heroTitle:
@@ -630,6 +666,36 @@ function renderLiveClock() {
 
 renderLiveClock();
 setInterval(renderLiveClock, 60 * 1000);
+
+setInterval(renderLiveClock, 60 * 1000);
+
+// ── Pro checkout ────────────────────────────────────────────────────────────
+const btnBuyPro = document.querySelector("#btn-buy-pro");
+if (btnBuyPro) {
+  btnBuyPro.addEventListener("click", async () => {
+    btnBuyPro.disabled = true;
+    btnBuyPro.textContent = "…";
+    try {
+      const res = await fetch("https://cruizx.com/api/web/checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: "", email: "" }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        globalThis.location.href = data.url;
+      } else {
+        throw new Error(data.error || "no url");
+      }
+    } catch (_) {
+      btnBuyPro.disabled = false;
+      const lang = localStorage.getItem("cruizx_site_lang") || "en";
+      btnBuyPro.textContent = translations[lang]?.proCta ?? "Get Pro";
+      alert("Something went wrong. Please try again.");
+    }
+  });
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 const saved = localStorage.getItem("cruizx_site_lang");
 const browserLang = (navigator.language || "en").slice(0, 2).toLowerCase();

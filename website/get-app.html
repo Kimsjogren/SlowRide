@@ -32,12 +32,68 @@
         flex-wrap: wrap;
       }
 
+      .android-badge-link img {
+        height: 52px;
+      }
+
+      .pro-section {
+        margin-top: 2.4rem;
+        padding-top: 2rem;
+        border-top: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .pro-section h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        color: rgba(255,255,255,0.9);
+        color: rgba(255,255,255,0.65);
+        font-size: 0.95rem;
+        margin: 0 0 1.2rem;
+      }
+
+      .pro-price {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 1rem !important;
+      }
+
+      .btn-pro {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #3b6bff 0%, #1a3ccc 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1rem;
+        padding: 0.85rem 2rem;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        transition: opacity 0.2s;
+      }
+
+      .btn-pro:hover { opacity: 0.88; }
+      .btn-pro:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .pro-note {
+        margin-top: 0.75rem !important;
+        font-size: 0.82rem !important;
+        color: rgba(255,255,255,0.4) !important;
+      }
+
       @media (max-width: 720px) {
         .download-main {
           padding-top: 1rem;
         }
 
         .download-main .store-badge {
+          height: 42px;
+        }
+
+        .android-badge-link img {
           height: 42px;
         }
 
@@ -109,21 +165,33 @@
                 />
               </a>
               <a
-                class="store-alt-link"
-                href="./assets/downloads/CruizX-1.0.4-65-free.apk"
-                download="CruizX-1.0.4-65-free.apk"
-                data-i18n="downloadAndroidCta"
+                class="android-badge-link"
+                href="./assets/downloads/CruizX-1.0.5-66-free.apk"
+                download="CruizX-1.0.5-66-free.apk"
+                aria-label="Download Android APK"
               >
-                Download Android Free
+                <img
+                  src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                  alt="Get it on Android"
+                  loading="lazy"
+                />
               </a>
             </div>
 
             <p class="download-android-note" data-i18n="downloadAndroidNote">
-              Android download is free right now (Free version). Android Pro
-              payment in web and in-app is coming soon.
+              Android APK — free version. Install manually (outside Google Play).
             </p>
 
-            <div class="download-actions">
+            <!-- Pro subscription -->
+            <div class="pro-section" id="pro-section">
+              <h3 data-i18n="proTitle">Upgrade to CruizX Pro</h3>
+              <p data-i18n="proBody">Unlimited routes, enhanced convoy support and an ad-free experience.</p>
+              <p class="pro-price" data-i18n="proPrice">39 kr / month</p>
+              <button class="btn-pro" id="btn-buy-pro" data-i18n="proCta">Get Pro</button>
+              <p class="pro-note" data-i18n="proNote">Secure payment via Stripe. Cancel anytime.</p>
+            </div>
+
+            <div class="download-actions" style="margin-top:1.6rem">
               <a
                 class="button button-secondary"
                 href="./index.html"
