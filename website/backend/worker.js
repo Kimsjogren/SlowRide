@@ -259,9 +259,7 @@ async function handleWebCheckoutSession(request, env, origin) {
 
   const uid = (body.uid || "").toString().trim();
   const email = (body.email || "").toString().trim().toLowerCase();
-  if (!isUuid(uid)) {
-    return json({ error: "invalid_uid" }, { status: 400 }, origin);
-  }
+  // uid is optional when purchasing from website (not from the app)
 
   const successUrl = env.WEB_CHECKOUT_SUCCESS_URL || "https://cruizx.com/get-app?checkout=success";
   const cancelUrl = env.WEB_CHECKOUT_CANCEL_URL || "https://cruizx.com/get-app?checkout=cancel";
@@ -273,9 +271,11 @@ async function handleWebCheckoutSession(request, env, origin) {
       "line_items[0][quantity]": 1,
       success_url: successUrl,
       cancel_url: cancelUrl,
-      client_reference_id: uid,
-      "metadata[uid]": uid,
-      "subscription_data[metadata][uid]": uid,
+      ...(isUuid(uid) ? {
+        client_reference_id: uid,
+        "metadata[uid]": uid,
+        "subscription_data[metadata][uid]": uid,
+      } : {}),
       ...(email ? { customer_email: email } : {}),
     });
 
