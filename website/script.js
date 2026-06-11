@@ -672,6 +672,11 @@ setInterval(renderLiveClock, 60 * 1000);
 // ── Pro checkout ────────────────────────────────────────────────────────────
 const btnBuyPro = document.querySelector("#btn-buy-pro");
 if (btnBuyPro) {
+  // Read uid/email injected by the Flutter app via URL params (?uid=...&email=...)
+  const _urlParams = new URLSearchParams(globalThis.location.search);
+  const _appUid   = _urlParams.get("uid")   ?? "";
+  const _appEmail = _urlParams.get("email") ?? "";
+
   btnBuyPro.addEventListener("click", async () => {
     btnBuyPro.disabled = true;
     btnBuyPro.textContent = "…";
@@ -679,7 +684,7 @@ if (btnBuyPro) {
       const res = await fetch("https://cruizx.com/api/web/checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: "", email: "" }),
+        body: JSON.stringify({ uid: _appUid, email: _appEmail }),
       });
       const data = await res.json();
       if (data.url) {
