@@ -1138,6 +1138,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerDot => 'Piste';
 
   @override
+  String get settingsMapMarkerCar => 'Auto';
+
+  @override
   String get settingsMapMarkerSmile => 'Hymy';
 
   @override

@@ -2142,6 +2142,12 @@ abstract class AppLocalizations {
   /// **'Dot'**
   String get settingsMapMarkerDot;
 
+  /// No description provided for @settingsMapMarkerCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get settingsMapMarkerCar;
+
   /// No description provided for @settingsMapMarkerSmile.
   ///
   /// In en, this message translates to:

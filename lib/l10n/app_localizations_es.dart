@@ -1149,6 +1149,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsMapMarkerDot => 'Punto';
 
   @override
+  String get settingsMapMarkerCar => 'Coche';
+
+  @override
   String get settingsMapMarkerSmile => 'Sonrisa';
 
   @override

@@ -86,6 +86,18 @@ class UserLocationMarker extends StatelessWidget {
     };
   }
 
+  static bool _isAvatarStyle(MapMarkerStyle style) {
+    return switch (style) {
+      MapMarkerStyle.car ||
+      MapMarkerStyle.smile ||
+      MapMarkerStyle.cool ||
+      MapMarkerStyle.turbo ||
+      MapMarkerStyle.crown ||
+      MapMarkerStyle.ghost => true,
+      _ => false,
+    };
+  }
+
   static _MarkerPalette _paletteFor(MapMarkerStyle style) {
     return switch (style) {
       MapMarkerStyle.navigation => const _MarkerPalette(
@@ -107,6 +119,11 @@ class UserLocationMarker extends StatelessWidget {
         base: Color(0xFF25C281),
         accent: Color(0xFFA8FFD9),
         glow: Color(0xFF25C281),
+      ),
+      MapMarkerStyle.car => const _MarkerPalette(
+        base: Color(0xFF00A7FF),
+        accent: Color(0xFFC3F1FF),
+        glow: Color(0xFF00A7FF),
       ),
       MapMarkerStyle.smile => const _MarkerPalette(
         base: Color(0xFFFFC83D),
@@ -158,18 +175,37 @@ class _MarkerBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAvatar = UserLocationMarker._isAvatarStyle(style);
+    final borderRadius = BorderRadius.circular(isAvatar ? size * 0.34 : size);
     final child = Stack(
+      clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
         if (showChrome)
           Positioned(
-            top: size * 0.16,
+            top: size * 0.14,
             child: Container(
-              width: size * 0.58,
-              height: size * 0.18,
+              width: size * 0.54,
+              height: size * 0.16,
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(size),
+              ),
+            ),
+          ),
+        if (showChrome && isAvatar)
+          Positioned(
+            bottom: -size * 0.05,
+            child: Container(
+              width: size * 0.22,
+              height: size * 0.22,
+              decoration: BoxDecoration(
+                color: palette.base,
+                borderRadius: BorderRadius.circular(size),
+                border: Border.all(
+                  color: borderColor.withValues(alpha: 0.9),
+                  width: borderWidth * 0.65,
+                ),
               ),
             ),
           ),
@@ -185,7 +221,7 @@ class _MarkerBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: borderRadius,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -206,7 +242,7 @@ class _MarkerBadge extends StatelessWidget {
             ),
         ],
       ),
-      child: ClipOval(child: child),
+      child: ClipRRect(borderRadius: borderRadius, child: child),
     );
   }
 
@@ -232,6 +268,7 @@ class _MarkerBadge extends StatelessWidget {
         color: Colors.white,
         size: size * 0.42,
       ),
+      MapMarkerStyle.car => _CarAvatar(size: size),
       MapMarkerStyle.smile => _AvatarFace(
         size: size,
         eyeColor: const Color(0xFF20243A),
@@ -300,29 +337,58 @@ class _AvatarFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final eyeSize = size * 0.10;
-    final mouthWidth = size * (surprised ? 0.12 : 0.30);
-    final mouthHeight = size * (surprised ? 0.12 : 0.08);
+    final mouthWidth = size * (surprised ? 0.13 : 0.30);
+    final mouthHeight = size * (surprised ? 0.13 : 0.09);
 
     return Stack(
+      clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
         Positioned(
-          top: size * 0.34,
-          left: size * 0.26,
-          child: _Eye(size: eyeSize, color: eyeColor),
+          top: size * 0.31,
+          left: size * 0.24,
+          child: _Eye(
+            size: eyeSize,
+            color: eyeColor,
+            blink: accessory == null && !surprised,
+          ),
         ),
         Positioned(
-          top: size * 0.34,
-          right: size * 0.26,
+          top: size * 0.31,
+          right: size * 0.24,
           child: _Eye(size: eyeSize, color: eyeColor),
         ),
         Positioned(
           bottom: surprised ? size * 0.26 : size * 0.22,
+          child: surprised
+              ? Container(
+                  width: mouthWidth,
+                  height: mouthHeight,
+                  decoration: BoxDecoration(
+                    color: smileColor,
+                    borderRadius: BorderRadius.circular(size),
+                  ),
+                )
+              : Container(
+                  width: mouthWidth,
+                  height: mouthHeight,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: smileColor, width: size * 0.07),
+                    ),
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(size),
+                    ),
+                  ),
+                ),
+        ),
+        Positioned(
+          top: size * 0.22,
           child: Container(
-            width: mouthWidth,
-            height: mouthHeight,
+            width: size * 0.42,
+            height: size * 0.06,
             decoration: BoxDecoration(
-              color: smileColor,
+              color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(size),
             ),
           ),
@@ -347,17 +413,121 @@ class _AvatarFace extends StatelessWidget {
 }
 
 class _Eye extends StatelessWidget {
-  const _Eye({required this.size, required this.color});
+  const _Eye({required this.size, required this.color, this.blink = false});
 
   final double size;
   final Color color;
+  final bool blink;
+
+  @override
+  Widget build(BuildContext context) {
+    if (blink) {
+      return Container(
+        width: size * 1.1,
+        height: size * 0.34,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(size),
+        ),
+      );
+    }
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+}
+
+class _CarAvatar extends StatelessWidget {
+  const _CarAvatar({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          bottom: size * 0.18,
+          child: Container(
+            width: size * 0.60,
+            height: size * 0.26,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(size * 0.18),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.32,
+          child: Container(
+            width: size * 0.34,
+            height: size * 0.16,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D5F9E),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(size * 0.20),
+                bottom: Radius.circular(size * 0.08),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.37,
+          left: size * 0.31,
+          child: Container(
+            width: size * 0.08,
+            height: size * 0.08,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.37,
+          right: size * 0.31,
+          child: Container(
+            width: size * 0.08,
+            height: size * 0.08,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.13,
+          left: size * 0.20,
+          child: _Wheel(size: size * 0.12),
+        ),
+        Positioned(
+          bottom: size * 0.13,
+          right: size * 0.20,
+          child: _Wheel(size: size * 0.12),
+        ),
+      ],
+    );
+  }
+}
+
+class _Wheel extends StatelessWidget {
+  const _Wheel({required this.size});
+
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      decoration: const BoxDecoration(
+        color: Color(0xFF172033),
+        shape: BoxShape.circle,
+      ),
     );
   }
 }

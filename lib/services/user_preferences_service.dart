@@ -9,6 +9,7 @@ enum MapMarkerStyle {
   compass,
   triangle,
   dot,
+  car,
   smile,
   cool,
   turbo,

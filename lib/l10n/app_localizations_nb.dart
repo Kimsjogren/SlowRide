@@ -1134,6 +1134,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsMapMarkerDot => 'Punkt';
 
   @override
+  String get settingsMapMarkerCar => 'Bil';
+
+  @override
   String get settingsMapMarkerSmile => 'Smile';
 
   @override
