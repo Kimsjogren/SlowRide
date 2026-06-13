@@ -3,7 +3,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 
 enum SpeedUnit { kmh, mph }
-enum MapMarkerStyle { navigation, compass, triangle, dot }
+
+enum MapMarkerStyle {
+  navigation,
+  compass,
+  triangle,
+  dot,
+  smile,
+  cool,
+  turbo,
+  crown,
+  ghost,
+}
 
 class UserPreferencesService {
   UserPreferencesService._();

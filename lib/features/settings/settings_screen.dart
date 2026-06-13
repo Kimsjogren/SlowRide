@@ -14,6 +14,7 @@ import 'package:slowride/services/user_preferences_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:slowride/widgets/ad_banner_widget.dart';
 import 'package:slowride/widgets/app_background.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -462,56 +463,71 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<MapMarkerStyle>(
                     valueListenable: preferences.mapMarkerStyle,
                     builder: (context, markerStyle, _) {
-                      return DropdownButtonFormField<MapMarkerStyle>(
-                        dropdownColor: const Color(0xFF0A1F63),
-                        style: valueStyle,
-                        iconEnabledColor: Colors.white70,
-                        value: markerStyle,
-                        decoration: InputDecoration(
-                          labelText: l10n.settingsMapMarkerLabel,
-                          labelStyle: labelStyle,
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white24),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white54),
-                          ),
+                      final options = [
+                        (
+                          style: MapMarkerStyle.navigation,
+                          label: l10n.settingsMapMarkerArrow,
                         ),
-                        items: [
-                          DropdownMenuItem(
-                            value: MapMarkerStyle.navigation,
-                            child: _MarkerStyleItem(
-                              icon: Icons.navigation,
-                              label: l10n.settingsMapMarkerArrow,
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: MapMarkerStyle.compass,
-                            child: _MarkerStyleItem(
-                              icon: Icons.assistant_navigation,
-                              label: l10n.settingsMapMarkerCompass,
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: MapMarkerStyle.triangle,
-                            child: _MarkerStyleItem(
-                              icon: Icons.change_history,
-                              label: l10n.settingsMapMarkerTriangle,
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: MapMarkerStyle.dot,
-                            child: _MarkerStyleItem(
-                              icon: Icons.trip_origin,
-                              label: l10n.settingsMapMarkerDot,
-                            ),
+                        (
+                          style: MapMarkerStyle.compass,
+                          label: l10n.settingsMapMarkerCompass,
+                        ),
+                        (
+                          style: MapMarkerStyle.triangle,
+                          label: l10n.settingsMapMarkerTriangle,
+                        ),
+                        (
+                          style: MapMarkerStyle.dot,
+                          label: l10n.settingsMapMarkerDot,
+                        ),
+                        (
+                          style: MapMarkerStyle.smile,
+                          label: l10n.settingsMapMarkerSmile,
+                        ),
+                        (
+                          style: MapMarkerStyle.cool,
+                          label: l10n.settingsMapMarkerCool,
+                        ),
+                        (
+                          style: MapMarkerStyle.turbo,
+                          label: l10n.settingsMapMarkerTurbo,
+                        ),
+                        (
+                          style: MapMarkerStyle.crown,
+                          label: l10n.settingsMapMarkerCrown,
+                        ),
+                        (
+                          style: MapMarkerStyle.ghost,
+                          label: l10n.settingsMapMarkerGhost,
+                        ),
+                      ];
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(l10n.settingsMapMarkerLabel, style: labelStyle),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: options
+                                .map(
+                                  (option) => _MarkerStyleChoice(
+                                    label: option.label,
+                                    selected: markerStyle == option.style,
+                                    onTap: () =>
+                                        preferences.mapMarkerStyle.value =
+                                            option.style,
+                                    child: UserLocationMarker.stylePreview(
+                                      option.style,
+                                      size: 42,
+                                      selected: markerStyle == option.style,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                           ),
                         ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            preferences.mapMarkerStyle.value = value;
-                          }
-                        },
                       );
                     },
                   ),
@@ -844,20 +860,55 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-class _MarkerStyleItem extends StatelessWidget {
-  const _MarkerStyleItem({required this.icon, required this.label});
+class _MarkerStyleChoice extends StatelessWidget {
+  const _MarkerStyleChoice({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.child,
+  });
 
-  final IconData icon;
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.white70),
-        const SizedBox(width: 10),
-        Text(label),
-      ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        width: 94,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: selected ? 0.16 : 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.85)
+                : Colors.white.withValues(alpha: 0.18),
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            child,
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: selected ? 0.96 : 0.82),
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

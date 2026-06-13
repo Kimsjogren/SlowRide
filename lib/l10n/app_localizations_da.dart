@@ -33,7 +33,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get splashLoadingCoreModules => 'Indlæser kernemoduler...';
 
   @override
-  String get splashInitializingAccountSession => 'Initialiserer kontosession...';
+  String get splashInitializingAccountSession =>
+      'Initialiserer kontosession...';
 
   @override
   String get splashLoadingPreferences => 'Indlæser indstillinger...';
@@ -51,13 +52,15 @@ class AppLocalizationsDa extends AppLocalizations {
   String get alertsTitle => 'Fællesskabsadvarsler';
 
   @override
-  String get alertsSubtitle => 'Rapportér og se vejfarer, kontroller og vejforhold.';
+  String get alertsSubtitle =>
+      'Rapportér og se vejfarer, kontroller og vejforhold.';
 
   @override
   String get convoyRequiresSignInTitle => 'Konvoj kræver login';
 
   @override
-  String get convoyRequiresSignInSubtitle => 'Log ind eller opret en konto her for at oprette konvojgrupper og se live-positioner.';
+  String get convoyRequiresSignInSubtitle =>
+      'Log ind eller opret en konto her for at oprette konvojgrupper og se live-positioner.';
 
   @override
   String get signIn => 'Log ind';
@@ -102,7 +105,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get signUpOtpSent => 'Kontooprettelseskode sendt til din e-mail.';
 
   @override
-  String get signInOtpInvalid => 'Kunne ikke bekræfte OTP. Tjek din kode og prøv igen.';
+  String get signInOtpInvalid =>
+      'Kunne ikke bekræfte OTP. Tjek din kode og prøv igen.';
 
   @override
   String get signUpNoAccountAction => 'Ingen konto? Opret en';
@@ -168,19 +172,22 @@ class AppLocalizationsDa extends AppLocalizations {
   String get authForgotPasswordTitle => 'Nulstil adgangskode';
 
   @override
-  String get authForgotPasswordDescription => 'Indtast din e-mailadresse, så sender vi dig et link til at nulstille din adgangskode.';
+  String get authForgotPasswordDescription =>
+      'Indtast din e-mailadresse, så sender vi dig et link til at nulstille din adgangskode.';
 
   @override
   String get authForgotPasswordButton => 'Send nulstillingslink';
 
   @override
-  String get authForgotPasswordSuccess => 'Hvis kontoen findes, har vi sendt et nulstillingslink til din e-mail.';
+  String get authForgotPasswordSuccess =>
+      'Hvis kontoen findes, har vi sendt et nulstillingslink til din e-mail.';
 
   @override
   String get authResetPasswordTitle => 'Ny adgangskode';
 
   @override
-  String get authResetPasswordDescription => 'Indtast din nye adgangskode nedenfor.';
+  String get authResetPasswordDescription =>
+      'Indtast din nye adgangskode nedenfor.';
 
   @override
   String get authNewPasswordLabel => 'Ny adgangskode';
@@ -195,28 +202,34 @@ class AppLocalizationsDa extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Alle felter er påkrævet.';
 
   @override
-  String get authErrorPasswordTooShort => 'Adgangskoden skal være mindst 6 tegn.';
+  String get authErrorPasswordTooShort =>
+      'Adgangskoden skal være mindst 6 tegn.';
 
   @override
-  String get authErrorConfirmEmail => 'Tjek din e-mail for at bekræfte din konto, og log derefter ind.';
+  String get authErrorConfirmEmail =>
+      'Tjek din e-mail for at bekræfte din konto, og log derefter ind.';
 
   @override
-  String get authErrorEmailAndPasswordRequired => 'Indtast e-mail og adgangskode.';
+  String get authErrorEmailAndPasswordRequired =>
+      'Indtast e-mail og adgangskode.';
 
   @override
   String get authErrorInvalidCredentials => 'Forkert e-mail eller adgangskode.';
 
   @override
-  String get authErrorEmailAlreadyInUse => 'Der findes allerede en konto med den e-mailadresse.';
+  String get authErrorEmailAlreadyInUse =>
+      'Der findes allerede en konto med den e-mailadresse.';
 
   @override
-  String get convoyRealtimeBackendMissing => 'Realtidskonvoj er ikke konfigureret endnu. Tilføj backend-konfiguration for at dele live-position mellem brugere.';
+  String get convoyRealtimeBackendMissing =>
+      'Realtidskonvoj er ikke konfigureret endnu. Tilføj backend-konfiguration for at dele live-position mellem brugere.';
 
   @override
   String get convoyModeTitle => 'Konvojtilstand';
 
   @override
-  String get convoyModeSubtitle => 'Opret gruppekørsel med delt destination og live-positioner.';
+  String get convoyModeSubtitle =>
+      'Opret gruppekørsel med delt destination og live-positioner.';
 
   @override
   String get convoyCreateButton => 'Opret konvoj';
@@ -231,7 +244,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get convoyLeaveButton => 'Forlad';
 
   @override
-  String get convoyJoinFirstHint => 'Deltag i konvojen først, og tryk derefter for at åbne chat og kort.';
+  String get convoyJoinFirstHint =>
+      'Deltag i konvojen først, og tryk derefter for at åbne chat og kort.';
 
   @override
   String get convoyJoinByCodeTitle => 'Deltag i konvoj';
@@ -323,7 +337,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get convoyListEmpty => 'Ingen konvojer endnu. Opret den første.';
 
   @override
-  String get convoyListEmptyMine => 'Du har ikke deltaget i nogen konvojer endnu.';
+  String get convoyListEmptyMine =>
+      'Du har ikke deltaget i nogen konvojer endnu.';
 
   @override
   String get convoyFilterAll => 'Alle';
@@ -356,7 +371,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get profileNotSignedIn => 'Du er ikke logget ind.';
 
   @override
-  String get profileSignInInConvoyHint => 'Login er tilgængelig under fanen Konvoj.';
+  String get profileSignInInConvoyHint =>
+      'Login er tilgængelig under fanen Konvoj.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -394,7 +410,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get profileVehicleStuddedTires => 'Pigdæk';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle => 'Undgå gader med pigdækforbud';
+  String get profileVehicleStuddedTiresSubtitle =>
+      'Undgå gader med pigdækforbud';
 
   @override
   String get settingsTitle => 'Indstillinger';
@@ -448,7 +465,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Spanien';
 
   @override
-  String get settingsCountryHint => 'Hastighedsgrænser og vejregler tilpasses det valgte land.';
+  String get settingsCountryHint =>
+      'Hastighedsgrænser og vejregler tilpasses det valgte land.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -488,10 +506,12 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsProStatusInactive => 'Ikke aktiv';
 
   @override
-  String get settingsProDescriptionActive => 'Du har adgang til alle Pro-funktioner.';
+  String get settingsProDescriptionActive =>
+      'Du har adgang til alle Pro-funktioner.';
 
   @override
-  String get settingsProDescriptionInactive => 'Lås alle funktioner op med CruizX Pro.';
+  String get settingsProDescriptionInactive =>
+      'Lås alle funktioner op med CruizX Pro.';
 
   @override
   String get settingsProFeatureRoutes => 'Ubegrænsede ruter';
@@ -506,7 +526,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsProFeatureSupport => 'Prioriteret support';
 
   @override
-  String get settingsProSubscriptionNote => 'Abonnement: CruizX Pro Månedlig (1 måned). Betaling opkræves dit Apple-ID og fornyes automatisk, medmindre det annulleres mindst 24 timer før periodens udløb.';
+  String get settingsProSubscriptionNote =>
+      'Abonnement: CruizX Pro Månedlig (1 måned). Betaling opkræves dit Apple-ID og fornyes automatisk, medmindre det annulleres mindst 24 timer før periodens udløb.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -532,13 +553,15 @@ class AppLocalizationsDa extends AppLocalizations {
   String get navigationTitle => 'Sving-for-sving-navigation';
 
   @override
-  String get navigationSubtitle => 'Vejvejledning, næste sving og ankomsttid optimeret til langsomme køretøjer.';
+  String get navigationSubtitle =>
+      'Vejvejledning, næste sving og ankomsttid optimeret til langsomme køretøjer.';
 
   @override
   String get mapStartingGps => 'Starter GPS...';
 
   @override
-  String get mapTapToSelectDestination => 'Tryk på kortet for at vælge destination';
+  String get mapTapToSelectDestination =>
+      'Tryk på kortet for at vælge destination';
 
   @override
   String get mapAddressFieldHint => 'Søg adresse (f.eks. Strøget 1, København)';
@@ -553,7 +576,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mapAddressLookupFailed => 'Kunne ikke søge adresse lige nu';
 
   @override
-  String get mapLocationServicesDisabled => 'Placeringstjenester er deaktiveret';
+  String get mapLocationServicesDisabled =>
+      'Placeringstjenester er deaktiveret';
 
   @override
   String get mapLocationPermissionMissing => 'Placeringstilladelse mangler';
@@ -582,25 +606,31 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mapRemaining => 'tilbage';
 
   @override
-  String get mapRouteNoRouteFound => 'Ingen rute fundet mellem de valgte punkter';
+  String get mapRouteNoRouteFound =>
+      'Ingen rute fundet mellem de valgte punkter';
 
   @override
-  String get mapRouteProviderUnavailable => 'Rutetjenesten er utilgængelig lige nu';
+  String get mapRouteProviderUnavailable =>
+      'Rutetjenesten er utilgængelig lige nu';
 
   @override
-  String get mapRouteMissingApiKey => 'Ruting er ikke konfigureret i backend (manglende API-nøgle)';
+  String get mapRouteMissingApiKey =>
+      'Ruting er ikke konfigureret i backend (manglende API-nøgle)';
 
   @override
   String get mapRouteInvalidGeometry => 'Rutedata fra serveren er ugyldig';
 
   @override
-  String get mapRouteUnknownProvider => 'Ruteleverandøren er ikke korrekt konfigureret';
+  String get mapRouteUnknownProvider =>
+      'Ruteleverandøren er ikke korrekt konfigureret';
 
   @override
-  String get mapRouteTooFastForVehicle => 'Rute afvist: estimeret gennemsnitshastighed er for høj til denne køretøjstype.';
+  String get mapRouteTooFastForVehicle =>
+      'Rute afvist: estimeret gennemsnitshastighed er for høj til denne køretøjstype.';
 
   @override
-  String get mapRouteNotAllowedForVehicle => 'Ingen lovlig rute fundet til denne køretøjstype.';
+  String get mapRouteNotAllowedForVehicle =>
+      'Ingen lovlig rute fundet til denne køretøjstype.';
 
   @override
   String get routeBlockedTitle => 'Rute ikke tilgængelig';
@@ -691,7 +721,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Du skal være logget ind for at rapportere';
 
   @override
-  String get alertsScreenSubtitle => 'Advarsler fra andre CruizX-chauffører inden for ~50 km. Tryk på tommel for at bekræfte en advarsel.';
+  String get alertsScreenSubtitle =>
+      'Advarsler fra andre CruizX-chauffører inden for ~50 km. Tryk på tommel for at bekræfte en advarsel.';
 
   @override
   String get alertReportButton => 'Rapportér';
@@ -719,7 +750,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get alertReportQuestion => 'Hvad ser du på vejen?';
 
   @override
-  String get alertReportDescHint2 => 'Valgfri beskrivelse… (f.eks. \"stor gren\")';
+  String get alertReportDescHint2 =>
+      'Valgfri beskrivelse… (f.eks. \"stor gren\")';
 
   @override
   String get alertReportedSuccess => 'Advarsel rapporteret! Tak 🙏';
@@ -731,7 +763,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get adBannerLoading => 'Indlæser annonce…';
 
   @override
-  String get adBannerWaitingRetry => 'Annonce venter på netværk… (tryk for at prøve igen)';
+  String get adBannerWaitingRetry =>
+      'Annonce venter på netværk… (tryk for at prøve igen)';
 
   @override
   String get mapStartNavigation => 'Start navigation';
@@ -780,7 +813,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallTitle => 'Opgrader til CruizX Pro';
 
   @override
-  String get paywallSubtitle => 'Ingen begrænsninger. Ingen reklamer. Fuld adgang.';
+  String get paywallSubtitle =>
+      'Ingen begrænsninger. Ingen reklamer. Fuld adgang.';
 
   @override
   String get paywallPrice => '29 kr / måned';
@@ -838,25 +872,29 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Daglig rutegrænse nået';
 
   @override
-  String get paywallRouteLimitBody => 'Gratisbrugere kan beregne 4 ruter per dag. Opgrader til Pro for ubegrænset navigation.';
+  String get paywallRouteLimitBody =>
+      'Gratisbrugere kan beregne 4 ruter per dag. Opgrader til Pro for ubegrænset navigation.';
 
   @override
   String get paywallConvoyLimitTitle => 'Konvojgrænse nået';
 
   @override
-  String get paywallConvoyLimitBody => 'Gratisbrugere kan kun være med i 1 konvoj ad gangen.';
+  String get paywallConvoyLimitBody =>
+      'Gratisbrugere kan kun være med i 1 konvoj ad gangen.';
 
   @override
   String get paywallMemberLimitTitle => 'Konvojen er fuld';
 
   @override
-  String get paywallMemberLimitBody => 'Gratisbrugere kan kun deltage i konvojer med færre end 2 medlemmer. Opgrader til Pro for ubegrænset adgang.';
+  String get paywallMemberLimitBody =>
+      'Gratisbrugere kan kun deltage i konvojer med færre end 2 medlemmer. Opgrader til Pro for ubegrænset adgang.';
 
   @override
   String get paywallPurchaseSuccess => 'Du er nu en Pro-bruger!';
 
   @override
-  String get paywallPurchaseFailed => 'Købet kunne ikke gennemføres. Tjek din App Store-konto og prøv igen.';
+  String get paywallPurchaseFailed =>
+      'Købet kunne ikke gennemføres. Tjek din App Store-konto og prøv igen.';
 
   @override
   String get paywallRestoreSuccess => 'Købet gendannet!';
@@ -865,7 +903,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'Log ind påkrævet';
 
   @override
-  String get paywallLoginRequiredBody => 'Du skal have en konto for at købe CruizX Pro. Opret en gratis konto i appen for at fortsætte.';
+  String get paywallLoginRequiredBody =>
+      'Du skal have en konto for at købe CruizX Pro. Opret en gratis konto i appen for at fortsætte.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -903,10 +942,12 @@ class AppLocalizationsDa extends AppLocalizations {
   String get parentModeTitle => 'Forældretilstand';
 
   @override
-  String get parentModeDescription => 'Lad en forælder følge din kørsel i realtid.';
+  String get parentModeDescription =>
+      'Lad en forælder følge din kørsel i realtid.';
 
   @override
-  String get parentModeLoginRequired => 'Du skal være logget ind for at bruge forældretilstand.';
+  String get parentModeLoginRequired =>
+      'Du skal være logget ind for at bruge forældretilstand.';
 
   @override
   String get parentModeEnable => 'Aktivér forældretilstand';
@@ -921,7 +962,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get parentModeInviteCode => 'Invitationskode';
 
   @override
-  String get parentModeInviteCodeSubtitle => 'Del denne kode med din forælder for at sammenkæde deres konto.';
+  String get parentModeInviteCodeSubtitle =>
+      'Del denne kode med din forælder for at sammenkæde deres konto.';
 
   @override
   String get parentModeCopyCode => 'Kopiér';
@@ -944,7 +986,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get parentModeLinkedParents => 'Sammenkædede forældre';
 
   @override
-  String get parentModeNoParentsLinked => 'Ingen forældre sammenkædet endnu. Del din kode!';
+  String get parentModeNoParentsLinked =>
+      'Ingen forældre sammenkædet endnu. Del din kode!';
 
   @override
   String get parentModeUnlinkTitle => 'Fjern forælder?';
@@ -1025,13 +1068,15 @@ class AppLocalizationsDa extends AppLocalizations {
   String get parentDashboardNoChildren => 'Ingen børn sammenkædet endnu';
 
   @override
-  String get parentDashboardNoChildrenHint => 'Tilføj et barn ved at indtaste deres invitationskode fra CruizX Forældretilstand.';
+  String get parentDashboardNoChildrenHint =>
+      'Tilføj et barn ved at indtaste deres invitationskode fra CruizX Forældretilstand.';
 
   @override
   String get parentDashboardEnterCode => 'Indtast invitationskode';
 
   @override
-  String get parentDashboardEnterCodeHint => 'Bed dit barn dele sin 6-tegns invitationskode fra Forældretilstand-indstillingerne.';
+  String get parentDashboardEnterCodeHint =>
+      'Bed dit barn dele sin 6-tegns invitationskode fra Forældretilstand-indstillingerne.';
 
   @override
   String get parentDashboardLink => 'Sammenkæd';
@@ -1040,16 +1085,22 @@ class AppLocalizationsDa extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Sammenkædning lykkedes!';
 
   @override
-  String get parentDashboardLinkFailed => 'Kunne ikke finde barn med den kode. Tjek koden og prøv igen.';
+  String get parentDashboardLinkFailed =>
+      'Kunne ikke finde barn med den kode. Tjek koden og prøv igen.';
 
   @override
-  String get parentDashboardLinkSelf => 'Du kan ikke sammenkæde med din egen konto. Bed dit barn dele sin kode fra sin konto.';
+  String get parentDashboardLinkSelf =>
+      'Du kan ikke sammenkæde med din egen konto. Bed dit barn dele sin kode fra sin konto.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Hastighedsadvarsel';
 
   @override
-  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
+  String parentDashboardSpeedingDetail(
+    Object name,
+    Object speed,
+    Object limit,
+  ) {
     return '$name kørte $speed km/t (grænse: $limit km/t)';
   }
 
@@ -1084,6 +1135,21 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get settingsMapMarkerDot => 'Punkt';
+
+  @override
+  String get settingsMapMarkerSmile => 'Smile';
+
+  @override
+  String get settingsMapMarkerCool => 'Cool';
+
+  @override
+  String get settingsMapMarkerTurbo => 'Turbo';
+
+  @override
+  String get settingsMapMarkerCrown => 'Krone';
+
+  @override
+  String get settingsMapMarkerGhost => 'Spøgelse';
 
   @override
   String get voiceTurnLeft => 'Drej til venstre';
@@ -1126,10 +1192,12 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mfaSetupTitle => 'Aktivér tofaktorbekræftelse';
 
   @override
-  String get mfaSetupSubtitle => 'Scan QR-koden med en godkendelsesapp som Google Authenticator eller Authy';
+  String get mfaSetupSubtitle =>
+      'Scan QR-koden med en godkendelsesapp som Google Authenticator eller Authy';
 
   @override
-  String get mfaScanQr => 'Scan koden ovenfor og indtast den 6-cifrede kode nedenfor';
+  String get mfaScanQr =>
+      'Scan koden ovenfor og indtast den 6-cifrede kode nedenfor';
 
   @override
   String get mfaVerifyButton => 'Bekræft';
@@ -1138,7 +1206,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mfaVerifyTitle => 'Tofaktorbekræftelse';
 
   @override
-  String get mfaVerifySubtitle => 'Indtast den 6-cifrede kode fra din godkendelsesapp';
+  String get mfaVerifySubtitle =>
+      'Indtast den 6-cifrede kode fra din godkendelsesapp';
 
   @override
   String get mfaInvalidCode => 'Ugyldig kode, prøv igen';
@@ -1165,7 +1234,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mfaDisableTitle => 'Deaktivér 2FA?';
 
   @override
-  String get mfaDisableBody => 'Din konto bliver mindre sikker uden tofaktorbekræftelse.';
+  String get mfaDisableBody =>
+      'Din konto bliver mindre sikker uden tofaktorbekræftelse.';
 
   @override
   String get mfaDisableConfirm => 'Deaktivér';
@@ -1183,7 +1253,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get mfaRecommendTitle => 'Beskyt din konto';
 
   @override
-  String get mfaRecommendBody => 'Vi anbefaler at aktivere tofaktorbekræftelse for at beskytte din konto. Du kan bruge en godkendelsesapp som Google Authenticator eller Authy.';
+  String get mfaRecommendBody =>
+      'Vi anbefaler at aktivere tofaktorbekræftelse for at beskytte din konto. Du kan bruge en godkendelsesapp som Google Authenticator eller Authy.';
 
   @override
   String get mfaRecommendSetup => 'Aktivér nu';
@@ -1226,7 +1297,8 @@ class AppLocalizationsDa extends AppLocalizations {
   String get favCustom => 'Anden favorit';
 
   @override
-  String get ttsVoiceHint => 'Tip: Download bedre stemmer i Indstillinger → Tilgængelighed → Oplæst indhold → Stemmer';
+  String get ttsVoiceHint =>
+      'Tip: Download bedre stemmer i Indstillinger → Tilgængelighed → Oplæst indhold → Stemmer';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';
