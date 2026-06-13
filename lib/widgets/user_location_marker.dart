@@ -89,6 +89,8 @@ class UserLocationMarker extends StatelessWidget {
   static bool _isAvatarStyle(MapMarkerStyle style) {
     return switch (style) {
       MapMarkerStyle.car ||
+      MapMarkerStyle.epa ||
+      MapMarkerStyle.microcar ||
       MapMarkerStyle.smile ||
       MapMarkerStyle.cool ||
       MapMarkerStyle.turbo ||
@@ -124,6 +126,16 @@ class UserLocationMarker extends StatelessWidget {
         base: Color(0xFF00A7FF),
         accent: Color(0xFFC3F1FF),
         glow: Color(0xFF00A7FF),
+      ),
+      MapMarkerStyle.epa => const _MarkerPalette(
+        base: Color(0xFFFF8C42),
+        accent: Color(0xFFFFD1A8),
+        glow: Color(0xFFFF8C42),
+      ),
+      MapMarkerStyle.microcar => const _MarkerPalette(
+        base: Color(0xFF34C759),
+        accent: Color(0xFFC8FFD5),
+        glow: Color(0xFF34C759),
       ),
       MapMarkerStyle.smile => const _MarkerPalette(
         base: Color(0xFFFFC83D),
@@ -269,6 +281,8 @@ class _MarkerBadge extends StatelessWidget {
         size: size * 0.42,
       ),
       MapMarkerStyle.car => _CarAvatar(size: size),
+      MapMarkerStyle.epa => _EpaAvatar(size: size),
+      MapMarkerStyle.microcar => _MicrocarAvatar(size: size),
       MapMarkerStyle.smile => _AvatarFace(
         size: size,
         eyeColor: const Color(0xFF20243A),
@@ -451,82 +465,310 @@ class _CarAvatar extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Positioned(
-          bottom: size * 0.18,
+          top: size * 0.16,
           child: Container(
-            width: size * 0.60,
-            height: size * 0.26,
+            width: size * 0.30,
+            height: size * 0.12,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(size * 0.18),
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(size * 0.10),
             ),
           ),
         ),
         Positioned(
-          bottom: size * 0.32,
+          top: size * 0.24,
           child: Container(
-            width: size * 0.34,
-            height: size * 0.16,
+            width: size * 0.52,
+            height: size * 0.42,
             decoration: BoxDecoration(
-              color: const Color(0xFF0D5F9E),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(size * 0.20),
-                bottom: Radius.circular(size * 0.08),
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(size * 0.18),
+                topRight: Radius.circular(size * 0.18),
+                bottomLeft: Radius.circular(size * 0.14),
+                bottomRight: Radius.circular(size * 0.14),
+              ),
+              border: Border.all(
+                color: const Color(0xFF18324A).withValues(alpha: 0.18),
+                width: size * 0.012,
               ),
             ),
           ),
         ),
         Positioned(
-          bottom: size * 0.37,
-          left: size * 0.31,
+          top: size * 0.30,
           child: Container(
-            width: size * 0.08,
-            height: size * 0.08,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+            width: size * 0.34,
+            height: size * 0.18,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D5F9E).withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(size * 0.08),
             ),
           ),
         ),
         Positioned(
-          bottom: size * 0.37,
-          right: size * 0.31,
+          top: size * 0.24,
           child: Container(
-            width: size * 0.08,
-            height: size * 0.08,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+            width: size * 0.14,
+            height: size * 0.04,
+            decoration: BoxDecoration(
+              color: const Color(0xFF8EE7FF),
+              borderRadius: BorderRadius.circular(size),
             ),
           ),
         ),
         Positioned(
-          bottom: size * 0.13,
-          left: size * 0.20,
-          child: _Wheel(size: size * 0.12),
+          top: size * 0.48,
+          left: size * 0.16,
+          child: Container(
+            width: size * 0.06,
+            height: size * 0.10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF172033),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
         ),
         Positioned(
-          bottom: size * 0.13,
-          right: size * 0.20,
-          child: _Wheel(size: size * 0.12),
+          top: size * 0.48,
+          right: size * 0.16,
+          child: Container(
+            width: size * 0.06,
+            height: size * 0.10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF172033),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.18,
+          left: size * 0.16,
+          child: Container(
+            width: size * 0.06,
+            height: size * 0.10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF172033),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.18,
+          right: size * 0.16,
+          child: Container(
+            width: size * 0.06,
+            height: size * 0.10,
+            decoration: BoxDecoration(
+              color: const Color(0xFF172033),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-class _Wheel extends StatelessWidget {
-  const _Wheel({required this.size});
+class _EpaAvatar extends StatelessWidget {
+  const _EpaAvatar({required this.size});
 
   final double size;
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: size * 0.18,
+          child: Container(
+            width: size * 0.28,
+            height: size * 0.10,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(size * 0.08),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.26,
+          child: Container(
+            width: size * 0.48,
+            height: size * 0.22,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(size * 0.16),
+                topRight: Radius.circular(size * 0.16),
+                bottomLeft: Radius.circular(size * 0.08),
+                bottomRight: Radius.circular(size * 0.08),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.30,
+          child: Container(
+            width: size * 0.30,
+            height: size * 0.12,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C7A89),
+              borderRadius: BorderRadius.circular(size * 0.06),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.20,
+          child: Container(
+            width: size * 0.52,
+            height: size * 0.18,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8EDF2),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(size * 0.04),
+                topRight: Radius.circular(size * 0.04),
+                bottomLeft: Radius.circular(size * 0.12),
+                bottomRight: Radius.circular(size * 0.12),
+              ),
+              border: Border.all(
+                color: const Color(0xFF6E7A87).withValues(alpha: 0.35),
+                width: size * 0.012,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.24,
+          child: Container(
+            width: size * 0.28,
+            height: size * 0.08,
+            decoration: BoxDecoration(
+              color: const Color(0xFFB9C3CC),
+              borderRadius: BorderRadius.circular(size * 0.04),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.46,
+          left: size * 0.15,
+          child: _SideWheel(height: size * 0.11, width: size * 0.06),
+        ),
+        Positioned(
+          top: size * 0.46,
+          right: size * 0.15,
+          child: _SideWheel(height: size * 0.11, width: size * 0.06),
+        ),
+        Positioned(
+          bottom: size * 0.18,
+          left: size * 0.15,
+          child: _SideWheel(height: size * 0.11, width: size * 0.06),
+        ),
+        Positioned(
+          bottom: size * 0.18,
+          right: size * 0.15,
+          child: _SideWheel(height: size * 0.11, width: size * 0.06),
+        ),
+      ],
+    );
+  }
+}
+
+class _MicrocarAvatar extends StatelessWidget {
+  const _MicrocarAvatar({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: size * 0.18,
+          child: Container(
+            width: size * 0.24,
+            height: size * 0.08,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(size * 0.08),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.24,
+          child: Container(
+            width: size * 0.40,
+            height: size * 0.40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(size * 0.16),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.30,
+          child: Container(
+            width: size * 0.26,
+            height: size * 0.16,
+            decoration: BoxDecoration(
+              color: const Color(0xFF79D8FF),
+              borderRadius: BorderRadius.circular(size * 0.07),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: size * 0.26,
+          child: Container(
+            width: size * 0.18,
+            height: size * 0.05,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B2233).withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(size),
+            ),
+          ),
+        ),
+        Positioned(
+          top: size * 0.42,
+          left: size * 0.20,
+          child: _SideWheel(height: size * 0.10, width: size * 0.055),
+        ),
+        Positioned(
+          top: size * 0.42,
+          right: size * 0.20,
+          child: _SideWheel(height: size * 0.10, width: size * 0.055),
+        ),
+        Positioned(
+          bottom: size * 0.24,
+          left: size * 0.20,
+          child: _SideWheel(height: size * 0.10, width: size * 0.055),
+        ),
+        Positioned(
+          bottom: size * 0.24,
+          right: size * 0.20,
+          child: _SideWheel(height: size * 0.10, width: size * 0.055),
+        ),
+      ],
+    );
+  }
+}
+
+class _SideWheel extends StatelessWidget {
+  const _SideWheel({required this.height, required this.width});
+
+  final double height;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
-      decoration: const BoxDecoration(
-        color: Color(0xFF172033),
-        shape: BoxShape.circle,
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFF172033),
+        borderRadius: BorderRadius.circular(width),
       ),
     );
   }

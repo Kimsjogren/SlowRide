@@ -1140,6 +1140,12 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsMapMarkerCar => 'Bil';
 
   @override
+  String get settingsMapMarkerEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Knallertbil';
+
+  @override
   String get settingsMapMarkerSmile => 'Smile';
 
   @override

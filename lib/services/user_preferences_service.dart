@@ -10,6 +10,8 @@ enum MapMarkerStyle {
   triangle,
   dot,
   car,
+  epa,
+  microcar,
   smile,
   cool,
   turbo,

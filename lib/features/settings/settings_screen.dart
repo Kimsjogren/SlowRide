@@ -485,6 +485,14 @@ class SettingsScreen extends StatelessWidget {
                           label: l10n.settingsMapMarkerCar,
                         ),
                         (
+                          style: MapMarkerStyle.epa,
+                          label: l10n.settingsMapMarkerEpa,
+                        ),
+                        (
+                          style: MapMarkerStyle.microcar,
+                          label: l10n.settingsMapMarkerMicrocar,
+                        ),
+                        (
                           style: MapMarkerStyle.smile,
                           label: l10n.settingsMapMarkerSmile,
                         ),

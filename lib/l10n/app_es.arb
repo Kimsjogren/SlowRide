@@ -215,6 +215,8 @@
   "settingsMapMarkerTriangle": "Triángulo",
   "settingsMapMarkerDot": "Punto",
   "settingsMapMarkerCar": "Coche",
+  "settingsMapMarkerEpa": "EPA",
+  "settingsMapMarkerMicrocar": "Microcoche",
   "settingsMapMarkerSmile": "Sonrisa",
   "settingsMapMarkerCool": "Cool",
   "settingsMapMarkerTurbo": "Turbo",

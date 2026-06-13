@@ -1141,6 +1141,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerCar => 'Auto';
 
   @override
+  String get settingsMapMarkerEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Mopoauto';
+
+  @override
   String get settingsMapMarkerSmile => 'Hymy';
 
   @override

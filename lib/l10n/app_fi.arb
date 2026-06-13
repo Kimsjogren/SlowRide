@@ -215,6 +215,8 @@
   "settingsMapMarkerTriangle": "Kolmio",
   "settingsMapMarkerDot": "Piste",
   "settingsMapMarkerCar": "Auto",
+  "settingsMapMarkerEpa": "EPA",
+  "settingsMapMarkerMicrocar": "Mopoauto",
   "settingsMapMarkerSmile": "Hymy",
   "settingsMapMarkerCool": "Cool",
   "settingsMapMarkerTurbo": "Turbo",

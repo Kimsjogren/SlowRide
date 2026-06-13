@@ -2148,6 +2148,18 @@ abstract class AppLocalizations {
   /// **'Car'**
   String get settingsMapMarkerCar;
 
+  /// No description provided for @settingsMapMarkerEpa.
+  ///
+  /// In en, this message translates to:
+  /// **'EPA'**
+  String get settingsMapMarkerEpa;
+
+  /// No description provided for @settingsMapMarkerMicrocar.
+  ///
+  /// In en, this message translates to:
+  /// **'Microcar'**
+  String get settingsMapMarkerMicrocar;
+
   /// No description provided for @settingsMapMarkerSmile.
   ///
   /// In en, this message translates to:

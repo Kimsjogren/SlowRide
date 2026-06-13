@@ -1160,6 +1160,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCar => 'Voiture';
 
   @override
+  String get settingsMapMarkerEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Voiturette';
+
+  @override
   String get settingsMapMarkerSmile => 'Sourire';
 
   @override
