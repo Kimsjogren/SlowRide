@@ -51,15 +51,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String get alertsTitle => 'Yhteisön hälytykset';
 
   @override
-  String get alertsSubtitle =>
-      'Ilmoita ja tarkastele tievaaroja, tarkastuksia ja tieolosuhteita.';
+  String get alertsSubtitle => 'Ilmoita ja tarkastele tievaaroja, tarkastuksia ja tieolosuhteita.';
 
   @override
   String get convoyRequiresSignInTitle => 'Saattue vaatii kirjautumisen';
 
   @override
-  String get convoyRequiresSignInSubtitle =>
-      'Kirjaudu sisään tai luo tili täällä luodaksesi saattueryhmiä ja nähdäksesi live-sijainnit.';
+  String get convoyRequiresSignInSubtitle => 'Kirjaudu sisään tai luo tili täällä luodaksesi saattueryhmiä ja nähdäksesi live-sijainnit.';
 
   @override
   String get signIn => 'Kirjaudu sisään';
@@ -104,8 +102,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get signUpOtpSent => 'Tilin luontikoodi lähetetty sähköpostiisi.';
 
   @override
-  String get signInOtpInvalid =>
-      'OTP-koodia ei voitu vahvistaa. Tarkista koodi ja yritä uudelleen.';
+  String get signInOtpInvalid => 'OTP-koodia ei voitu vahvistaa. Tarkista koodi ja yritä uudelleen.';
 
   @override
   String get signUpNoAccountAction => 'Ei tiliä? Luo tili';
@@ -171,15 +168,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authForgotPasswordTitle => 'Palauta salasana';
 
   @override
-  String get authForgotPasswordDescription =>
-      'Syötä sähköpostiosoitteesi, niin lähetämme sinulle linkin salasanan palauttamiseksi.';
+  String get authForgotPasswordDescription => 'Syötä sähköpostiosoitteesi, niin lähetämme sinulle linkin salasanan palauttamiseksi.';
 
   @override
   String get authForgotPasswordButton => 'Lähetä palautuslinkki';
 
   @override
-  String get authForgotPasswordSuccess =>
-      'Jos tili on olemassa, lähetimme palautuslinkin sähköpostiisi.';
+  String get authForgotPasswordSuccess => 'Jos tili on olemassa, lähetimme palautuslinkin sähköpostiisi.';
 
   @override
   String get authResetPasswordTitle => 'Uusi salasana';
@@ -200,16 +195,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Kaikki kentät ovat pakollisia.';
 
   @override
-  String get authErrorPasswordTooShort =>
-      'Salasanan on oltava vähintään 6 merkkiä.';
+  String get authErrorPasswordTooShort => 'Salasanan on oltava vähintään 6 merkkiä.';
 
   @override
-  String get authErrorConfirmEmail =>
-      'Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.';
+  String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.';
 
   @override
-  String get authErrorEmailAndPasswordRequired =>
-      'Syötä sähköposti ja salasana.';
+  String get authErrorEmailAndPasswordRequired => 'Syötä sähköposti ja salasana.';
 
   @override
   String get authErrorInvalidCredentials => 'Väärä sähköposti tai salasana.';
@@ -218,15 +210,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authErrorEmailAlreadyInUse => 'Tällä sähköpostilla on jo tili.';
 
   @override
-  String get convoyRealtimeBackendMissing =>
-      'Reaaliaikaista saattuetta ei ole vielä määritetty. Lisää backend-konfiguraatio jakaaksesi live-sijainnit käyttäjien kesken.';
+  String get convoyRealtimeBackendMissing => 'Reaaliaikaista saattuetta ei ole vielä määritetty. Lisää backend-konfiguraatio jakaaksesi live-sijainnit käyttäjien kesken.';
 
   @override
   String get convoyModeTitle => 'Saattuetila';
 
   @override
-  String get convoyModeSubtitle =>
-      'Luo ryhmäajo jaetulla määränpäällä ja live-sijainneilla.';
+  String get convoyModeSubtitle => 'Luo ryhmäajo jaetulla määränpäällä ja live-sijainneilla.';
 
   @override
   String get convoyCreateButton => 'Luo saattue';
@@ -241,8 +231,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get convoyLeaveButton => 'Poistu';
 
   @override
-  String get convoyJoinFirstHint =>
-      'Liity ensin saattueeseen ja avaa sitten chat ja kartta napauttamalla.';
+  String get convoyJoinFirstHint => 'Liity ensin saattueeseen ja avaa sitten chat ja kartta napauttamalla.';
 
   @override
   String get convoyJoinByCodeTitle => 'Liity saattueeseen';
@@ -254,8 +243,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get convoyJoinWithCodeButton => 'Liity';
 
   @override
-  String get convoyJoinByCodeNotFound =>
-      'Saattuetta ei löytynyt tällä koodilla.';
+  String get convoyJoinByCodeNotFound => 'Saattuetta ei löytynyt tällä koodilla.';
 
   @override
   String convoyJoinByCodeSuccess(String name) {
@@ -335,8 +323,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get convoyListEmpty => 'Ei saattueita vielä. Luo ensimmäinen.';
 
   @override
-  String get convoyListEmptyMine =>
-      'Et ole vielä liittynyt yhteenkään saattueeseen.';
+  String get convoyListEmptyMine => 'Et ole vielä liittynyt yhteenkään saattueeseen.';
 
   @override
   String get convoyFilterAll => 'Kaikki';
@@ -369,8 +356,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get profileNotSignedIn => 'Et ole kirjautuneena.';
 
   @override
-  String get profileSignInInConvoyHint =>
-      'Kirjautuminen on saatavilla Saattue-välilehdellä.';
+  String get profileSignInInConvoyHint => 'Kirjautuminen on saatavilla Saattue-välilehdellä.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -408,8 +394,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get profileVehicleStuddedTires => 'Nastarenkaat';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle =>
-      'Vältä katuja, joilla nastarengas on kielletty';
+  String get profileVehicleStuddedTiresSubtitle => 'Vältä katuja, joilla nastarengas on kielletty';
 
   @override
   String get settingsTitle => 'Asetukset';
@@ -463,8 +448,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Espanja';
 
   @override
-  String get settingsCountryHint =>
-      'Nopeusrajoitukset ja liikennesäännöt mukautuvat valitun maan mukaan.';
+  String get settingsCountryHint => 'Nopeusrajoitukset ja liikennesäännöt mukautuvat valitun maan mukaan.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -504,12 +488,10 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsProStatusInactive => 'Ei aktiivinen';
 
   @override
-  String get settingsProDescriptionActive =>
-      'Sinulla on pääsy kaikkiin Pro-ominaisuuksiin.';
+  String get settingsProDescriptionActive => 'Sinulla on pääsy kaikkiin Pro-ominaisuuksiin.';
 
   @override
-  String get settingsProDescriptionInactive =>
-      'Avaa kaikki ominaisuudet CruizX Prolla.';
+  String get settingsProDescriptionInactive => 'Avaa kaikki ominaisuudet CruizX Prolla.';
 
   @override
   String get settingsProFeatureRoutes => 'Rajattomat reitit';
@@ -524,8 +506,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsProFeatureSupport => 'Ensisijainen tuki';
 
   @override
-  String get settingsProSubscriptionNote =>
-      'Tilaus: CruizX Pro Kuukausittain (1 kuukausi). Maksu veloitetaan Apple ID:ltäsi ja uusitaan automaattisesti, ellei sitä peruuteta vähintään 24 tuntia ennen jakson päättymistä.';
+  String get settingsProSubscriptionNote => 'Tilaus: CruizX Pro Kuukausittain (1 kuukausi). Maksu veloitetaan Apple ID:ltäsi ja uusitaan automaattisesti, ellei sitä peruuteta vähintään 24 tuntia ennen jakson päättymistä.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -548,22 +529,91 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsRestorePurchaseFailed => 'Ostoa ei voitu palauttaa.';
 
   @override
+  String get settingsMapMarkerLabel => 'Karttamerkki';
+
+  @override
+  String get settingsMapMarkerCategoryClassic => 'Klassiset';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Mopoauto';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerCategoryLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerCategoryAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerCategoryPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerCategoryTractor => 'Traktori';
+
+  @override
+  String get settingsMapMarkerArrow => 'Nuoli';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompassi';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Kolmio';
+
+  @override
+  String get settingsMapMarkerDot => 'Piste';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Mopoauto';
+
+  @override
+  String get settingsMapMarkerLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerTractor => 'Traktori';
+
+  @override
+  String get settingsColorRed => 'Punainen';
+
+  @override
+  String get settingsColorBlue => 'Sininen';
+
+  @override
+  String get settingsColorBlack => 'Musta';
+
+  @override
+  String get settingsColorWhite => 'Valkoinen';
+
+  @override
+  String get settingsColorGold => 'Kulta';
+
+  @override
+  String get settingsColorGraphite => 'Grafiitti';
+
+  @override
+  String get settingsColorYellow => 'Keltainen';
+
+  @override
   String get navigationTitle => 'Käännös käännökseltä -navigointi';
 
   @override
-  String get navigationSubtitle =>
-      'Reittiohjeet, seuraava käännös ja saapumisaika optimoitu hitaille ajoneuvoille.';
+  String get navigationSubtitle => 'Reittiohjeet, seuraava käännös ja saapumisaika optimoitu hitaille ajoneuvoille.';
 
   @override
   String get mapStartingGps => 'Käynnistetään GPS...';
 
   @override
-  String get mapTapToSelectDestination =>
-      'Napauta karttaa valitaksesi määränpään';
+  String get mapTapToSelectDestination => 'Napauta karttaa valitaksesi määränpään';
 
   @override
-  String get mapAddressFieldHint =>
-      'Hae osoite (esim. Mannerheimintie 1, Helsinki)';
+  String get mapAddressFieldHint => 'Hae osoite (esim. Mannerheimintie 1, Helsinki)';
 
   @override
   String get mapSearchingAddress => 'Haetaan osoitetta...';
@@ -575,8 +625,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mapAddressLookupFailed => 'Osoitetta ei voitu hakea juuri nyt';
 
   @override
-  String get mapLocationServicesDisabled =>
-      'Sijaintipalvelut ovat pois käytöstä';
+  String get mapLocationServicesDisabled => 'Sijaintipalvelut ovat pois käytöstä';
 
   @override
   String get mapLocationPermissionMissing => 'Sijaintilupa puuttuu';
@@ -588,8 +637,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mapGpsUnavailable => 'GPS ei ole käytettävissä tässä ympäristössä';
 
   @override
-  String get mapWaitingForGps =>
-      'Odotetaan GPS-sijaintia ennen reitin laskentaa';
+  String get mapWaitingForGps => 'Odotetaan GPS-sijaintia ennen reitin laskentaa';
 
   @override
   String get mapCalculatingRoute => 'Lasketaan reittiä...';
@@ -606,32 +654,25 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mapRemaining => 'jäljellä';
 
   @override
-  String get mapRouteNoRouteFound =>
-      'Reittiä ei löytynyt valittujen pisteiden välille';
+  String get mapRouteNoRouteFound => 'Reittiä ei löytynyt valittujen pisteiden välille';
 
   @override
-  String get mapRouteProviderUnavailable =>
-      'Reittipalvelu ei ole käytettävissä juuri nyt';
+  String get mapRouteProviderUnavailable => 'Reittipalvelu ei ole käytettävissä juuri nyt';
 
   @override
-  String get mapRouteMissingApiKey =>
-      'Reittiä ei ole määritetty backendissä (API-avain puuttuu)';
+  String get mapRouteMissingApiKey => 'Reittiä ei ole määritetty backendissä (API-avain puuttuu)';
 
   @override
-  String get mapRouteInvalidGeometry =>
-      'Reittidata palvelimelta on virheellinen';
+  String get mapRouteInvalidGeometry => 'Reittidata palvelimelta on virheellinen';
 
   @override
-  String get mapRouteUnknownProvider =>
-      'Reittitarjoaja ei ole oikein määritetty';
+  String get mapRouteUnknownProvider => 'Reittitarjoaja ei ole oikein määritetty';
 
   @override
-  String get mapRouteTooFastForVehicle =>
-      'Reitti hylätty: arvioitu keskinopeus on liian suuri tälle ajoneuvotyypille.';
+  String get mapRouteTooFastForVehicle => 'Reitti hylätty: arvioitu keskinopeus on liian suuri tälle ajoneuvotyypille.';
 
   @override
-  String get mapRouteNotAllowedForVehicle =>
-      'Laillisesti hyväksyttävää reittiä ei löytynyt tälle ajoneuvotyypille.';
+  String get mapRouteNotAllowedForVehicle => 'Laillisesti hyväksyttävää reittiä ei löytynyt tälle ajoneuvotyypille.';
 
   @override
   String get routeBlockedTitle => 'Reitti ei saatavilla';
@@ -719,12 +760,10 @@ class AppLocalizationsFi extends AppLocalizations {
   String get alertGpsUnavailable => 'GPS ei ole vielä käytettävissä';
 
   @override
-  String get alertMustBeLoggedIn =>
-      'Sinun on oltava kirjautuneena ilmoittaaksesi';
+  String get alertMustBeLoggedIn => 'Sinun on oltava kirjautuneena ilmoittaaksesi';
 
   @override
-  String get alertsScreenSubtitle =>
-      'Hälytykset muilta CruizX-kuljettajilta ~50 km säteellä. Napauta peukaloita vahvistaaksesi hälytyksen.';
+  String get alertsScreenSubtitle => 'Hälytykset muilta CruizX-kuljettajilta ~50 km säteellä. Napauta peukaloita vahvistaaksesi hälytyksen.';
 
   @override
   String get alertReportButton => 'Ilmoita';
@@ -764,8 +803,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get adBannerLoading => 'Ladataan mainosta…';
 
   @override
-  String get adBannerWaitingRetry =>
-      'Mainos odottaa verkkoa… (napauta yrittääksesi uudelleen)';
+  String get adBannerWaitingRetry => 'Mainos odottaa verkkoa… (napauta yrittääksesi uudelleen)';
 
   @override
   String get mapStartNavigation => 'Aloita navigointi';
@@ -872,29 +910,25 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Päivittäinen reittirajaus saavutettu';
 
   @override
-  String get paywallRouteLimitBody =>
-      'Ilmaiskäyttäjät voivat laskea 4 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
+  String get paywallRouteLimitBody => 'Ilmaiskäyttäjät voivat laskea 4 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
 
   @override
   String get paywallConvoyLimitTitle => 'Saattueraja saavutettu';
 
   @override
-  String get paywallConvoyLimitBody =>
-      'Ilmaiskäyttäjät voivat olla vain 1 saattueessa kerrallaan.';
+  String get paywallConvoyLimitBody => 'Ilmaiskäyttäjät voivat olla vain 1 saattueessa kerrallaan.';
 
   @override
   String get paywallMemberLimitTitle => 'Saattue on täynnä';
 
   @override
-  String get paywallMemberLimitBody =>
-      'Ilmaiskäyttäjät voivat liittyä vain saattueisiin, joissa on alle 2 jäsentä. Päivitä Prohon rajattomaan pääsyyn.';
+  String get paywallMemberLimitBody => 'Ilmaiskäyttäjät voivat liittyä vain saattueisiin, joissa on alle 2 jäsentä. Päivitä Prohon rajattomaan pääsyyn.';
 
   @override
   String get paywallPurchaseSuccess => 'Olet nyt Pro-käyttäjä!';
 
   @override
-  String get paywallPurchaseFailed =>
-      'Ostoa ei voitu suorittaa. Tarkista App Store -tilisi ja yritä uudelleen.';
+  String get paywallPurchaseFailed => 'Ostoa ei voitu suorittaa. Tarkista App Store -tilisi ja yritä uudelleen.';
 
   @override
   String get paywallRestoreSuccess => 'Osto palautettu!';
@@ -903,8 +937,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'Kirjautuminen vaaditaan';
 
   @override
-  String get paywallLoginRequiredBody =>
-      'Tarvitset tilin ostaaksesi CruizX Pron. Luo ilmainen tili sovelluksessa jatkaaksesi.';
+  String get paywallLoginRequiredBody => 'Tarvitset tilin ostaaksesi CruizX Pron. Luo ilmainen tili sovelluksessa jatkaaksesi.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -942,12 +975,10 @@ class AppLocalizationsFi extends AppLocalizations {
   String get parentModeTitle => 'Vanhempi-tila';
 
   @override
-  String get parentModeDescription =>
-      'Anna vanhemman seurata ajoasi reaaliajassa.';
+  String get parentModeDescription => 'Anna vanhemman seurata ajoasi reaaliajassa.';
 
   @override
-  String get parentModeLoginRequired =>
-      'Sinun on oltava kirjautuneena käyttääksesi vanhempi-tilaa.';
+  String get parentModeLoginRequired => 'Sinun on oltava kirjautuneena käyttääksesi vanhempi-tilaa.';
 
   @override
   String get parentModeEnable => 'Ota vanhempi-tila käyttöön';
@@ -962,8 +993,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get parentModeInviteCode => 'Kutsukoodi';
 
   @override
-  String get parentModeInviteCodeSubtitle =>
-      'Jaa tämä koodi vanhemmallesi yhdistääksesi heidän tilinsä.';
+  String get parentModeInviteCodeSubtitle => 'Jaa tämä koodi vanhemmallesi yhdistääksesi heidän tilinsä.';
 
   @override
   String get parentModeCopyCode => 'Kopioi';
@@ -986,8 +1016,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get parentModeLinkedParents => 'Yhdistetyt vanhemmat';
 
   @override
-  String get parentModeNoParentsLinked =>
-      'Ei yhdistettyjä vanhempia vielä. Jaa koodisi!';
+  String get parentModeNoParentsLinked => 'Ei yhdistettyjä vanhempia vielä. Jaa koodisi!';
 
   @override
   String get parentModeUnlinkTitle => 'Poista vanhempi?';
@@ -1062,22 +1091,19 @@ class AppLocalizationsFi extends AppLocalizations {
   String get parentDashboardOffline => 'Offline';
 
   @override
-  String get parentDashboardNoAlerts =>
-      'Ei hälytyksiä viimeisten 24 tunnin aikana';
+  String get parentDashboardNoAlerts => 'Ei hälytyksiä viimeisten 24 tunnin aikana';
 
   @override
   String get parentDashboardNoChildren => 'Ei yhdistettyjä lapsia vielä';
 
   @override
-  String get parentDashboardNoChildrenHint =>
-      'Lisää lapsi syöttämällä heidän kutsukoodinsa CruizX Vanhempi-tilasta.';
+  String get parentDashboardNoChildrenHint => 'Lisää lapsi syöttämällä heidän kutsukoodinsa CruizX Vanhempi-tilasta.';
 
   @override
   String get parentDashboardEnterCode => 'Syötä kutsukoodi';
 
   @override
-  String get parentDashboardEnterCodeHint =>
-      'Pyydä lastasi jakamaan 6-merkkinen kutsukoodinsa Vanhempi-tilan asetuksista.';
+  String get parentDashboardEnterCodeHint => 'Pyydä lastasi jakamaan 6-merkkinen kutsukoodinsa Vanhempi-tilan asetuksista.';
 
   @override
   String get parentDashboardLink => 'Yhdistä';
@@ -1086,22 +1112,16 @@ class AppLocalizationsFi extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Yhdistäminen onnistui!';
 
   @override
-  String get parentDashboardLinkFailed =>
-      'Lasta ei löytynyt tällä koodilla. Tarkista koodi ja yritä uudelleen.';
+  String get parentDashboardLinkFailed => 'Lasta ei löytynyt tällä koodilla. Tarkista koodi ja yritä uudelleen.';
 
   @override
-  String get parentDashboardLinkSelf =>
-      'Et voi yhdistää omaan tiliisi. Pyydä lastasi jakamaan koodinsa omalta tililtään.';
+  String get parentDashboardLinkSelf => 'Et voi yhdistää omaan tiliisi. Pyydä lastasi jakamaan koodinsa omalta tililtään.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Nopeushälytys';
 
   @override
-  String parentDashboardSpeedingDetail(
-    Object name,
-    Object speed,
-    Object limit,
-  ) {
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
     return '$name ajoi nopeudella $speed km/h (raja: $limit km/h)';
   }
 
@@ -1121,69 +1141,6 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsVoiceNavigationSubtitle => 'Lue käännösohjeet ääneen';
-
-  @override
-  String get settingsMapMarkerLabel => 'Karttamerkki';
-
-  @override
-  String get settingsMapMarkerCategoryClassic => 'Klassiset';
-
-  @override
-  String get settingsMapMarkerCategoryMicrocar => 'Mopoauto';
-
-  @override
-  String get settingsMapMarkerCategoryEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerArrow => 'Nuoli';
-
-  @override
-  String get settingsMapMarkerCompass => 'Kompassi';
-
-  @override
-  String get settingsMapMarkerTriangle => 'Kolmio';
-
-  @override
-  String get settingsMapMarkerDot => 'Piste';
-
-  @override
-  String get settingsMapMarkerCar => 'Auto';
-
-  @override
-  String get settingsMapMarkerEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerMicrocar => 'Mopoauto';
-
-  @override
-  String get settingsColorRed => 'Punainen';
-
-  @override
-  String get settingsColorBlue => 'Sininen';
-
-  @override
-  String get settingsColorBlack => 'Musta';
-
-  @override
-  String get settingsColorWhite => 'Valkoinen';
-
-  @override
-  String get settingsColorGold => 'Kulta';
-
-  @override
-  String get settingsMapMarkerSmile => 'Hymy';
-
-  @override
-  String get settingsMapMarkerCool => 'Cool';
-
-  @override
-  String get settingsMapMarkerTurbo => 'Turbo';
-
-  @override
-  String get settingsMapMarkerCrown => 'Kruunu';
-
-  @override
-  String get settingsMapMarkerGhost => 'Haamu';
 
   @override
   String get voiceTurnLeft => 'Käänny vasemmalle';
@@ -1226,12 +1183,10 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mfaSetupTitle => 'Ota kaksivaiheinen tunnistautuminen käyttöön';
 
   @override
-  String get mfaSetupSubtitle =>
-      'Skannaa QR-koodi tunnistautumissovelluksella, kuten Google Authenticator tai Authy';
+  String get mfaSetupSubtitle => 'Skannaa QR-koodi tunnistautumissovelluksella, kuten Google Authenticator tai Authy';
 
   @override
-  String get mfaScanQr =>
-      'Skannaa yllä oleva koodi ja syötä 6-numeroinen koodi alle';
+  String get mfaScanQr => 'Skannaa yllä oleva koodi ja syötä 6-numeroinen koodi alle';
 
   @override
   String get mfaVerifyButton => 'Vahvista';
@@ -1240,8 +1195,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mfaVerifyTitle => 'Kaksivaiheinen tunnistautuminen';
 
   @override
-  String get mfaVerifySubtitle =>
-      'Syötä 6-numeroinen koodi tunnistautumissovelluksestasi';
+  String get mfaVerifySubtitle => 'Syötä 6-numeroinen koodi tunnistautumissovelluksestasi';
 
   @override
   String get mfaInvalidCode => 'Virheellinen koodi, yritä uudelleen';
@@ -1268,8 +1222,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mfaDisableTitle => 'Poista 2FA käytöstä?';
 
   @override
-  String get mfaDisableBody =>
-      'Tilisi on vähemmän turvassa ilman kaksivaiheista tunnistautumista.';
+  String get mfaDisableBody => 'Tilisi on vähemmän turvassa ilman kaksivaiheista tunnistautumista.';
 
   @override
   String get mfaDisableConfirm => 'Poista käytöstä';
@@ -1287,8 +1240,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mfaRecommendTitle => 'Suojaa tilisi';
 
   @override
-  String get mfaRecommendBody =>
-      'Suosittelemme kaksivaiheisen tunnistautumisen käyttöönottoa tilisi suojaamiseksi. Voit käyttää tunnistautumissovellusta, kuten Google Authenticator tai Authy.';
+  String get mfaRecommendBody => 'Suosittelemme kaksivaiheisen tunnistautumisen käyttöönottoa tilisi suojaamiseksi. Voit käyttää tunnistautumissovellusta, kuten Google Authenticator tai Authy.';
 
   @override
   String get mfaRecommendSetup => 'Ota käyttöön nyt';
@@ -1331,8 +1283,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get favCustom => 'Muu suosikki';
 
   @override
-  String get ttsVoiceHint =>
-      'Vinkki: Lataa parempia ääniä kohdasta Asetukset → Esteettömyys → Puhuttu sisältö → Äänet';
+  String get ttsVoiceHint => 'Vinkki: Lataa parempia ääniä kohdasta Asetukset → Esteettömyys → Puhuttu sisältö → Äänet';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';

@@ -33,8 +33,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashLoadingCoreModules => 'Loading core modules...';
 
   @override
-  String get splashInitializingAccountSession =>
-      'Initializing account session...';
+  String get splashInitializingAccountSession => 'Initializing account session...';
 
   @override
   String get splashLoadingPreferences => 'Loading preferences...';
@@ -52,15 +51,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertsTitle => 'Community Alerts';
 
   @override
-  String get alertsSubtitle =>
-      'Report and view road hazards, checks, and road conditions.';
+  String get alertsSubtitle => 'Report and view road hazards, checks, and road conditions.';
 
   @override
   String get convoyRequiresSignInTitle => 'Convoy requires sign in';
 
   @override
-  String get convoyRequiresSignInSubtitle =>
-      'Sign in or create an account here to create convoy groups and see live locations.';
+  String get convoyRequiresSignInSubtitle => 'Sign in or create an account here to create convoy groups and see live locations.';
 
   @override
   String get signIn => 'Sign in';
@@ -105,8 +102,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signUpOtpSent => 'Account creation code sent to your email.';
 
   @override
-  String get signInOtpInvalid =>
-      'Could not verify OTP. Check your code and try again.';
+  String get signInOtpInvalid => 'Could not verify OTP. Check your code and try again.';
 
   @override
   String get signUpNoAccountAction => 'No account? Create one';
@@ -172,15 +168,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authForgotPasswordTitle => 'Reset password';
 
   @override
-  String get authForgotPasswordDescription =>
-      'Enter your email address and we\'ll send you a link to reset your password.';
+  String get authForgotPasswordDescription => 'Enter your email address and we\'ll send you a link to reset your password.';
 
   @override
   String get authForgotPasswordButton => 'Send reset link';
 
   @override
-  String get authForgotPasswordSuccess =>
-      'If the account exists, we\'ve sent a reset link to your email.';
+  String get authForgotPasswordSuccess => 'If the account exists, we\'ve sent a reset link to your email.';
 
   @override
   String get authResetPasswordTitle => 'New password';
@@ -201,34 +195,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'All fields are required.';
 
   @override
-  String get authErrorPasswordTooShort =>
-      'Password must be at least 6 characters.';
+  String get authErrorPasswordTooShort => 'Password must be at least 6 characters.';
 
   @override
-  String get authErrorConfirmEmail =>
-      'Check your email to confirm your account, then sign in.';
+  String get authErrorConfirmEmail => 'Check your email to confirm your account, then sign in.';
 
   @override
-  String get authErrorEmailAndPasswordRequired =>
-      'Enter your email and password.';
+  String get authErrorEmailAndPasswordRequired => 'Enter your email and password.';
 
   @override
   String get authErrorInvalidCredentials => 'Incorrect email or password.';
 
   @override
-  String get authErrorEmailAlreadyInUse =>
-      'An account with that email already exists.';
+  String get authErrorEmailAlreadyInUse => 'An account with that email already exists.';
 
   @override
-  String get convoyRealtimeBackendMissing =>
-      'Realtime convoy is not configured yet. Add backend config to share live positions between users.';
+  String get convoyRealtimeBackendMissing => 'Realtime convoy is not configured yet. Add backend config to share live positions between users.';
 
   @override
   String get convoyModeTitle => 'Convoy Mode';
 
   @override
-  String get convoyModeSubtitle =>
-      'Create group driving with a shared destination and live locations.';
+  String get convoyModeSubtitle => 'Create group driving with a shared destination and live locations.';
 
   @override
   String get convoyCreateButton => 'Create convoy';
@@ -243,8 +231,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get convoyLeaveButton => 'Leave';
 
   @override
-  String get convoyJoinFirstHint =>
-      'Join the convoy first, then tap it to open chat and map.';
+  String get convoyJoinFirstHint => 'Join the convoy first, then tap it to open chat and map.';
 
   @override
   String get convoyJoinByCodeTitle => 'Join convoy';
@@ -369,8 +356,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNotSignedIn => 'You are not signed in.';
 
   @override
-  String get profileSignInInConvoyHint =>
-      'Sign in is available in the Convoy tab.';
+  String get profileSignInInConvoyHint => 'Sign in is available in the Convoy tab.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -402,15 +388,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileVehicleElectric => 'Electric vehicle';
 
   @override
-  String get profileVehicleElectricSubtitle =>
-      'Show charging stations on the map';
+  String get profileVehicleElectricSubtitle => 'Show charging stations on the map';
 
   @override
   String get profileVehicleStuddedTires => 'Studded tires';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle =>
-      'Avoid streets with studded tire bans';
+  String get profileVehicleStuddedTiresSubtitle => 'Avoid streets with studded tire bans';
 
   @override
   String get settingsTitle => 'Settings';
@@ -464,8 +448,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Spain';
 
   @override
-  String get settingsCountryHint =>
-      'Speed limits and road rules adapt to the selected country.';
+  String get settingsCountryHint => 'Speed limits and road rules adapt to the selected country.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -505,12 +488,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProStatusInactive => 'Not active';
 
   @override
-  String get settingsProDescriptionActive =>
-      'You have access to all Pro features.';
+  String get settingsProDescriptionActive => 'You have access to all Pro features.';
 
   @override
-  String get settingsProDescriptionInactive =>
-      'Unlock all features with CruizX Pro.';
+  String get settingsProDescriptionInactive => 'Unlock all features with CruizX Pro.';
 
   @override
   String get settingsProFeatureRoutes => 'Unlimited routes';
@@ -525,8 +506,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProFeatureSupport => 'Priority support';
 
   @override
-  String get settingsProSubscriptionNote =>
-      'Subscription: CruizX Pro Monthly (1 month). Payment is charged to your Apple ID and renews automatically unless canceled at least 24 hours before the end of the current period.';
+  String get settingsProSubscriptionNote => 'Subscription: CruizX Pro Monthly (1 month). Payment is charged to your Apple ID and renews automatically unless canceled at least 24 hours before the end of the current period.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -549,11 +529,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRestorePurchaseFailed => 'Could not restore purchase.';
 
   @override
+  String get settingsMapMarkerLabel => 'Map marker';
+
+  @override
+  String get settingsMapMarkerCategoryClassic => 'Classic';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Microcar';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerCategoryLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerCategoryAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerCategoryPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerCategoryTractor => 'Tractor';
+
+  @override
+  String get settingsMapMarkerArrow => 'Arrow';
+
+  @override
+  String get settingsMapMarkerCompass => 'Compass';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Triangle';
+
+  @override
+  String get settingsMapMarkerDot => 'Dot';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Microcar';
+
+  @override
+  String get settingsMapMarkerLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerTractor => 'Tractor';
+
+  @override
+  String get settingsColorRed => 'Red';
+
+  @override
+  String get settingsColorBlue => 'Blue';
+
+  @override
+  String get settingsColorBlack => 'Black';
+
+  @override
+  String get settingsColorWhite => 'White';
+
+  @override
+  String get settingsColorGold => 'Gold';
+
+  @override
+  String get settingsColorGraphite => 'Graphite';
+
+  @override
+  String get settingsColorYellow => 'Yellow';
+
+  @override
   String get navigationTitle => 'Turn-by-Turn Navigation';
 
   @override
-  String get navigationSubtitle =>
-      'Directions, next turn, and ETA optimized for slow vehicles.';
+  String get navigationSubtitle => 'Directions, next turn, and ETA optimized for slow vehicles.';
 
   @override
   String get mapStartingGps => 'Starting GPS...';
@@ -562,8 +613,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapTapToSelectDestination => 'Tap the map to select a destination';
 
   @override
-  String get mapAddressFieldHint =>
-      'Search address (e.g. Main St 10, Stockholm)';
+  String get mapAddressFieldHint => 'Search address (e.g. Main St 10, Stockholm)';
 
   @override
   String get mapSearchingAddress => 'Searching address...';
@@ -587,8 +637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapGpsUnavailable => 'GPS is unavailable in this environment';
 
   @override
-  String get mapWaitingForGps =>
-      'Waiting for GPS position before route calculation';
+  String get mapWaitingForGps => 'Waiting for GPS position before route calculation';
 
   @override
   String get mapCalculatingRoute => 'Calculating route...';
@@ -608,27 +657,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapRouteNoRouteFound => 'No route found between selected points';
 
   @override
-  String get mapRouteProviderUnavailable =>
-      'Routing service is unavailable right now';
+  String get mapRouteProviderUnavailable => 'Routing service is unavailable right now';
 
   @override
-  String get mapRouteMissingApiKey =>
-      'Routing is not configured on backend (missing API key)';
+  String get mapRouteMissingApiKey => 'Routing is not configured on backend (missing API key)';
 
   @override
   String get mapRouteInvalidGeometry => 'Route data from server is invalid';
 
   @override
-  String get mapRouteUnknownProvider =>
-      'Routing provider is not configured correctly';
+  String get mapRouteUnknownProvider => 'Routing provider is not configured correctly';
 
   @override
-  String get mapRouteTooFastForVehicle =>
-      'Route rejected: estimated average speed is too high for this vehicle type.';
+  String get mapRouteTooFastForVehicle => 'Route rejected: estimated average speed is too high for this vehicle type.';
 
   @override
-  String get mapRouteNotAllowedForVehicle =>
-      'No legally compliant route found for this vehicle type.';
+  String get mapRouteNotAllowedForVehicle => 'No legally compliant route found for this vehicle type.';
 
   @override
   String get routeBlockedTitle => 'Route not available';
@@ -719,8 +763,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertMustBeLoggedIn => 'You must be signed in to report';
 
   @override
-  String get alertsScreenSubtitle =>
-      'Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.';
+  String get alertsScreenSubtitle => 'Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.';
 
   @override
   String get alertReportButton => 'Report';
@@ -748,8 +791,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alertReportQuestion => 'What do you see on the road?';
 
   @override
-  String get alertReportDescHint2 =>
-      'Optional description… (e.g. \"large branch\")';
+  String get alertReportDescHint2 => 'Optional description… (e.g. \"large branch\")';
 
   @override
   String get alertReportedSuccess => 'Alert reported! Thank you 🙏';
@@ -761,8 +803,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adBannerLoading => 'Loading ad…';
 
   @override
-  String get adBannerWaitingRetry =>
-      'Ad is waiting for network… (tap to retry)';
+  String get adBannerWaitingRetry => 'Ad is waiting for network… (tap to retry)';
 
   @override
   String get mapStartNavigation => 'Start navigation';
@@ -869,29 +910,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Route limit reached';
 
   @override
-  String get paywallRouteLimitBody =>
-      'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.';
+  String get paywallRouteLimitBody => 'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.';
 
   @override
   String get paywallConvoyLimitTitle => 'Convoy limit reached';
 
   @override
-  String get paywallConvoyLimitBody =>
-      'Free users can only be in 1 convoy at a time.';
+  String get paywallConvoyLimitBody => 'Free users can only be in 1 convoy at a time.';
 
   @override
   String get paywallMemberLimitTitle => 'Convoy is full';
 
   @override
-  String get paywallMemberLimitBody =>
-      'Free users can only join convoys with fewer than 2 members. Upgrade to Pro for unlimited access.';
+  String get paywallMemberLimitBody => 'Free users can only join convoys with fewer than 2 members. Upgrade to Pro for unlimited access.';
 
   @override
   String get paywallPurchaseSuccess => 'You are now a Pro user!';
 
   @override
-  String get paywallPurchaseFailed =>
-      'Purchase could not be completed. Please check your App Store account and try again.';
+  String get paywallPurchaseFailed => 'Purchase could not be completed. Please check your App Store account and try again.';
 
   @override
   String get paywallRestoreSuccess => 'Purchase restored!';
@@ -900,8 +937,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'Sign in required';
 
   @override
-  String get paywallLoginRequiredBody =>
-      'You need an account to purchase CruizX Pro. Create a free account in the app to continue.';
+  String get paywallLoginRequiredBody => 'You need an account to purchase CruizX Pro. Create a free account in the app to continue.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -939,12 +975,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentModeTitle => 'Parent Mode';
 
   @override
-  String get parentModeDescription =>
-      'Let a parent follow your driving in real-time.';
+  String get parentModeDescription => 'Let a parent follow your driving in real-time.';
 
   @override
-  String get parentModeLoginRequired =>
-      'You must be logged in to use Parent Mode.';
+  String get parentModeLoginRequired => 'You must be logged in to use Parent Mode.';
 
   @override
   String get parentModeEnable => 'Enable Parent Mode';
@@ -959,8 +993,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentModeInviteCode => 'Invite Code';
 
   @override
-  String get parentModeInviteCodeSubtitle =>
-      'Share this code with your parent to link their account.';
+  String get parentModeInviteCodeSubtitle => 'Share this code with your parent to link their account.';
 
   @override
   String get parentModeCopyCode => 'Copy';
@@ -983,8 +1016,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentModeLinkedParents => 'Linked Parents';
 
   @override
-  String get parentModeNoParentsLinked =>
-      'No parents linked yet. Share your code!';
+  String get parentModeNoParentsLinked => 'No parents linked yet. Share your code!';
 
   @override
   String get parentModeUnlinkTitle => 'Remove parent?';
@@ -1065,15 +1097,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentDashboardNoChildren => 'No children linked yet';
 
   @override
-  String get parentDashboardNoChildrenHint =>
-      'Add a child by entering their invite code from CruizX Parent Mode.';
+  String get parentDashboardNoChildrenHint => 'Add a child by entering their invite code from CruizX Parent Mode.';
 
   @override
   String get parentDashboardEnterCode => 'Enter invite code';
 
   @override
-  String get parentDashboardEnterCodeHint =>
-      'Ask your child to share their 6-character invite code from Parent Mode settings.';
+  String get parentDashboardEnterCodeHint => 'Ask your child to share their 6-character invite code from Parent Mode settings.';
 
   @override
   String get parentDashboardLink => 'Link';
@@ -1082,22 +1112,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Successfully linked!';
 
   @override
-  String get parentDashboardLinkFailed =>
-      'Could not find child with that code. Check the code and try again.';
+  String get parentDashboardLinkFailed => 'Could not find child with that code. Check the code and try again.';
 
   @override
-  String get parentDashboardLinkSelf =>
-      'You cannot link to your own account. Ask your child to share their code from their account.';
+  String get parentDashboardLinkSelf => 'You cannot link to your own account. Ask your child to share their code from their account.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Speed alert';
 
   @override
-  String parentDashboardSpeedingDetail(
-    Object name,
-    Object speed,
-    Object limit,
-  ) {
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
     return '$name drove at $speed km/h (limit: $limit km/h)';
   }
 
@@ -1117,69 +1141,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsVoiceNavigationSubtitle => 'Read turn instructions aloud';
-
-  @override
-  String get settingsMapMarkerLabel => 'Map marker';
-
-  @override
-  String get settingsMapMarkerCategoryClassic => 'Classic';
-
-  @override
-  String get settingsMapMarkerCategoryMicrocar => 'Microcar';
-
-  @override
-  String get settingsMapMarkerCategoryEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerArrow => 'Arrow';
-
-  @override
-  String get settingsMapMarkerCompass => 'Compass';
-
-  @override
-  String get settingsMapMarkerTriangle => 'Triangle';
-
-  @override
-  String get settingsMapMarkerDot => 'Dot';
-
-  @override
-  String get settingsMapMarkerCar => 'Car';
-
-  @override
-  String get settingsMapMarkerEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerMicrocar => 'Microcar';
-
-  @override
-  String get settingsColorRed => 'Red';
-
-  @override
-  String get settingsColorBlue => 'Blue';
-
-  @override
-  String get settingsColorBlack => 'Black';
-
-  @override
-  String get settingsColorWhite => 'White';
-
-  @override
-  String get settingsColorGold => 'Gold';
-
-  @override
-  String get settingsMapMarkerSmile => 'Smile';
-
-  @override
-  String get settingsMapMarkerCool => 'Cool';
-
-  @override
-  String get settingsMapMarkerTurbo => 'Turbo';
-
-  @override
-  String get settingsMapMarkerCrown => 'Crown';
-
-  @override
-  String get settingsMapMarkerGhost => 'Ghost';
 
   @override
   String get voiceTurnLeft => 'Turn left';
@@ -1222,12 +1183,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mfaSetupTitle => 'Enable two-factor authentication';
 
   @override
-  String get mfaSetupSubtitle =>
-      'Scan the QR code with an authenticator app like Google Authenticator or Authy';
+  String get mfaSetupSubtitle => 'Scan the QR code with an authenticator app like Google Authenticator or Authy';
 
   @override
-  String get mfaScanQr =>
-      'Scan the code above and enter the 6-digit code below';
+  String get mfaScanQr => 'Scan the code above and enter the 6-digit code below';
 
   @override
   String get mfaVerifyButton => 'Verify';
@@ -1236,8 +1195,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mfaVerifyTitle => 'Two-factor authentication';
 
   @override
-  String get mfaVerifySubtitle =>
-      'Enter the 6-digit code from your authenticator app';
+  String get mfaVerifySubtitle => 'Enter the 6-digit code from your authenticator app';
 
   @override
   String get mfaInvalidCode => 'Invalid code, try again';
@@ -1264,8 +1222,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mfaDisableTitle => 'Turn off 2FA?';
 
   @override
-  String get mfaDisableBody =>
-      'Your account will be less secure without two-factor authentication.';
+  String get mfaDisableBody => 'Your account will be less secure without two-factor authentication.';
 
   @override
   String get mfaDisableConfirm => 'Turn off';
@@ -1283,8 +1240,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mfaRecommendTitle => 'Protect your account';
 
   @override
-  String get mfaRecommendBody =>
-      'We recommend enabling two-factor authentication to protect your account. You can use an authenticator app like Google Authenticator or Authy.';
+  String get mfaRecommendBody => 'We recommend enabling two-factor authentication to protect your account. You can use an authenticator app like Google Authenticator or Authy.';
 
   @override
   String get mfaRecommendSetup => 'Enable now';
@@ -1327,8 +1283,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get favCustom => 'Other favorite';
 
   @override
-  String get ttsVoiceHint =>
-      'Tip: Download better voices in Settings → Accessibility → Spoken Content → Voices';
+  String get ttsVoiceHint => 'Tip: Download better voices in Settings → Accessibility → Spoken Content → Voices';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';

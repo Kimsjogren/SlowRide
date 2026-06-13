@@ -465,8 +465,10 @@ class SettingsScreen extends StatelessWidget {
                     builder: (context, markerStyle, _) {
                       final categories = [
                         MapMarkerCategory.classic,
-                        MapMarkerCategory.microcar,
-                        MapMarkerCategory.epa,
+                        MapMarkerCategory.ligier,
+                        MapMarkerCategory.aixam,
+                        MapMarkerCategory.pickup,
+                        MapMarkerCategory.tractor,
                       ];
 
                       return Column(
@@ -923,7 +925,7 @@ class _MarkerCategorySection extends StatelessWidget {
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 50,
+                  size: 60,
                   selected: selected,
                 ),
               );

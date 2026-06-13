@@ -18,6 +18,16 @@ enum MapMarkerStyle {
   epaBlue,
   epaBlack,
   epaWhite,
+  epaGold,
+  aixamWhite,
+  aixamRed,
+  aixamBlack,
+  aixamGraphite,
+  aixamYellow,
+  tractorWhite,
+  tractorBlack,
+  tractorRed,
+  tractorGold,
 }
 
 class UserPreferencesService {

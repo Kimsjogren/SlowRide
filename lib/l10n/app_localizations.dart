@@ -67,8 +67,7 @@ import 'app_localizations_sv.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -76,8 +75,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -89,13 +87,12 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -105,7 +102,7 @@ abstract class AppLocalizations {
     Locale('fi'),
     Locale('fr'),
     Locale('nb'),
-    Locale('sv'),
+    Locale('sv')
   ];
 
   /// No description provided for @appTitle.
@@ -1116,6 +1113,150 @@ abstract class AppLocalizations {
   /// **'Could not restore purchase.'**
   String get settingsRestorePurchaseFailed;
 
+  /// No description provided for @settingsMapMarkerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Map marker'**
+  String get settingsMapMarkerLabel;
+
+  /// No description provided for @settingsMapMarkerCategoryClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get settingsMapMarkerCategoryClassic;
+
+  /// No description provided for @settingsMapMarkerCategoryMicrocar.
+  ///
+  /// In en, this message translates to:
+  /// **'Microcar'**
+  String get settingsMapMarkerCategoryMicrocar;
+
+  /// No description provided for @settingsMapMarkerCategoryEpa.
+  ///
+  /// In en, this message translates to:
+  /// **'EPA'**
+  String get settingsMapMarkerCategoryEpa;
+
+  /// No description provided for @settingsMapMarkerCategoryLigier.
+  ///
+  /// In en, this message translates to:
+  /// **'Ligier'**
+  String get settingsMapMarkerCategoryLigier;
+
+  /// No description provided for @settingsMapMarkerCategoryAixam.
+  ///
+  /// In en, this message translates to:
+  /// **'Aixam'**
+  String get settingsMapMarkerCategoryAixam;
+
+  /// No description provided for @settingsMapMarkerCategoryPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup'**
+  String get settingsMapMarkerCategoryPickup;
+
+  /// No description provided for @settingsMapMarkerCategoryTractor.
+  ///
+  /// In en, this message translates to:
+  /// **'Tractor'**
+  String get settingsMapMarkerCategoryTractor;
+
+  /// No description provided for @settingsMapMarkerArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get settingsMapMarkerArrow;
+
+  /// No description provided for @settingsMapMarkerCompass.
+  ///
+  /// In en, this message translates to:
+  /// **'Compass'**
+  String get settingsMapMarkerCompass;
+
+  /// No description provided for @settingsMapMarkerTriangle.
+  ///
+  /// In en, this message translates to:
+  /// **'Triangle'**
+  String get settingsMapMarkerTriangle;
+
+  /// No description provided for @settingsMapMarkerDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Dot'**
+  String get settingsMapMarkerDot;
+
+  /// No description provided for @settingsMapMarkerMicrocar.
+  ///
+  /// In en, this message translates to:
+  /// **'Microcar'**
+  String get settingsMapMarkerMicrocar;
+
+  /// No description provided for @settingsMapMarkerLigier.
+  ///
+  /// In en, this message translates to:
+  /// **'Ligier'**
+  String get settingsMapMarkerLigier;
+
+  /// No description provided for @settingsMapMarkerAixam.
+  ///
+  /// In en, this message translates to:
+  /// **'Aixam'**
+  String get settingsMapMarkerAixam;
+
+  /// No description provided for @settingsMapMarkerPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Pickup'**
+  String get settingsMapMarkerPickup;
+
+  /// No description provided for @settingsMapMarkerTractor.
+  ///
+  /// In en, this message translates to:
+  /// **'Tractor'**
+  String get settingsMapMarkerTractor;
+
+  /// No description provided for @settingsColorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get settingsColorRed;
+
+  /// No description provided for @settingsColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get settingsColorBlue;
+
+  /// No description provided for @settingsColorBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get settingsColorBlack;
+
+  /// No description provided for @settingsColorWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get settingsColorWhite;
+
+  /// No description provided for @settingsColorGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold'**
+  String get settingsColorGold;
+
+  /// No description provided for @settingsColorGraphite.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphite'**
+  String get settingsColorGraphite;
+
+  /// No description provided for @settingsColorYellow.
+  ///
+  /// In en, this message translates to:
+  /// **'Yellow'**
+  String get settingsColorYellow;
+
   /// No description provided for @navigationTitle.
   ///
   /// In en, this message translates to:
@@ -2112,132 +2253,6 @@ abstract class AppLocalizations {
   /// **'Read turn instructions aloud'**
   String get settingsVoiceNavigationSubtitle;
 
-  /// No description provided for @settingsMapMarkerLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Map marker'**
-  String get settingsMapMarkerLabel;
-
-  /// No description provided for @settingsMapMarkerCategoryClassic.
-  ///
-  /// In en, this message translates to:
-  /// **'Classic'**
-  String get settingsMapMarkerCategoryClassic;
-
-  /// No description provided for @settingsMapMarkerCategoryMicrocar.
-  ///
-  /// In en, this message translates to:
-  /// **'Microcar'**
-  String get settingsMapMarkerCategoryMicrocar;
-
-  /// No description provided for @settingsMapMarkerCategoryEpa.
-  ///
-  /// In en, this message translates to:
-  /// **'EPA'**
-  String get settingsMapMarkerCategoryEpa;
-
-  /// No description provided for @settingsMapMarkerArrow.
-  ///
-  /// In en, this message translates to:
-  /// **'Arrow'**
-  String get settingsMapMarkerArrow;
-
-  /// No description provided for @settingsMapMarkerCompass.
-  ///
-  /// In en, this message translates to:
-  /// **'Compass'**
-  String get settingsMapMarkerCompass;
-
-  /// No description provided for @settingsMapMarkerTriangle.
-  ///
-  /// In en, this message translates to:
-  /// **'Triangle'**
-  String get settingsMapMarkerTriangle;
-
-  /// No description provided for @settingsMapMarkerDot.
-  ///
-  /// In en, this message translates to:
-  /// **'Dot'**
-  String get settingsMapMarkerDot;
-
-  /// No description provided for @settingsMapMarkerCar.
-  ///
-  /// In en, this message translates to:
-  /// **'Car'**
-  String get settingsMapMarkerCar;
-
-  /// No description provided for @settingsMapMarkerEpa.
-  ///
-  /// In en, this message translates to:
-  /// **'EPA'**
-  String get settingsMapMarkerEpa;
-
-  /// No description provided for @settingsMapMarkerMicrocar.
-  ///
-  /// In en, this message translates to:
-  /// **'Microcar'**
-  String get settingsMapMarkerMicrocar;
-
-  /// No description provided for @settingsColorRed.
-  ///
-  /// In en, this message translates to:
-  /// **'Red'**
-  String get settingsColorRed;
-
-  /// No description provided for @settingsColorBlue.
-  ///
-  /// In en, this message translates to:
-  /// **'Blue'**
-  String get settingsColorBlue;
-
-  /// No description provided for @settingsColorBlack.
-  ///
-  /// In en, this message translates to:
-  /// **'Black'**
-  String get settingsColorBlack;
-
-  /// No description provided for @settingsColorWhite.
-  ///
-  /// In en, this message translates to:
-  /// **'White'**
-  String get settingsColorWhite;
-
-  /// No description provided for @settingsColorGold.
-  ///
-  /// In en, this message translates to:
-  /// **'Gold'**
-  String get settingsColorGold;
-
-  /// No description provided for @settingsMapMarkerSmile.
-  ///
-  /// In en, this message translates to:
-  /// **'Smile'**
-  String get settingsMapMarkerSmile;
-
-  /// No description provided for @settingsMapMarkerCool.
-  ///
-  /// In en, this message translates to:
-  /// **'Cool'**
-  String get settingsMapMarkerCool;
-
-  /// No description provided for @settingsMapMarkerTurbo.
-  ///
-  /// In en, this message translates to:
-  /// **'Turbo'**
-  String get settingsMapMarkerTurbo;
-
-  /// No description provided for @settingsMapMarkerCrown.
-  ///
-  /// In en, this message translates to:
-  /// **'Crown'**
-  String get settingsMapMarkerCrown;
-
-  /// No description provided for @settingsMapMarkerGhost.
-  ///
-  /// In en, this message translates to:
-  /// **'Ghost'**
-  String get settingsMapMarkerGhost;
-
   /// No description provided for @voiceTurnLeft.
   ///
   /// In en, this message translates to:
@@ -2515,8 +2530,7 @@ abstract class AppLocalizations {
   String get ttsVoiceHintDismiss;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -2525,43 +2539,30 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) => <String>[
-    'da',
-    'en',
-    'es',
-    'fi',
-    'fr',
-    'nb',
-    'sv',
-  ].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'da':
-      return AppLocalizationsDa();
-    case 'en':
-      return AppLocalizationsEn();
-    case 'es':
-      return AppLocalizationsEs();
-    case 'fi':
-      return AppLocalizationsFi();
-    case 'fr':
-      return AppLocalizationsFr();
-    case 'nb':
-      return AppLocalizationsNb();
-    case 'sv':
-      return AppLocalizationsSv();
+    case 'da': return AppLocalizationsDa();
+    case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
+    case 'fi': return AppLocalizationsFi();
+    case 'fr': return AppLocalizationsFr();
+    case 'nb': return AppLocalizationsNb();
+    case 'sv': return AppLocalizationsSv();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

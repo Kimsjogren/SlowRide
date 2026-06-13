@@ -51,15 +51,13 @@ class AppLocalizationsSv extends AppLocalizations {
   String get alertsTitle => 'Community-varningar';
 
   @override
-  String get alertsSubtitle =>
-      'Rapportera och visa vägfaror, kontroller och vägstatus.';
+  String get alertsSubtitle => 'Rapportera och visa vägfaror, kontroller och vägstatus.';
 
   @override
   String get convoyRequiresSignInTitle => 'Konvoj kräver inloggning';
 
   @override
-  String get convoyRequiresSignInSubtitle =>
-      'Logga in eller skapa konto här för att skapa konvojgrupper och se livepositioner.';
+  String get convoyRequiresSignInSubtitle => 'Logga in eller skapa konto här för att skapa konvojgrupper och se livepositioner.';
 
   @override
   String get signIn => 'Logga in';
@@ -104,8 +102,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get signUpOtpSent => 'Kod för kontoskapande skickad till din e-post.';
 
   @override
-  String get signInOtpInvalid =>
-      'Kunde inte verifiera OTP. Kontrollera koden och försök igen.';
+  String get signInOtpInvalid => 'Kunde inte verifiera OTP. Kontrollera koden och försök igen.';
 
   @override
   String get signUpNoAccountAction => 'Har du inget konto? Skapa ett';
@@ -171,15 +168,13 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authForgotPasswordTitle => 'Återställ lösenord';
 
   @override
-  String get authForgotPasswordDescription =>
-      'Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.';
+  String get authForgotPasswordDescription => 'Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.';
 
   @override
   String get authForgotPasswordButton => 'Skicka återställningslänk';
 
   @override
-  String get authForgotPasswordSuccess =>
-      'Om kontot finns har vi skickat en återställningslänk till din e-post.';
+  String get authForgotPasswordSuccess => 'Om kontot finns har vi skickat en återställningslänk till din e-post.';
 
   @override
   String get authResetPasswordTitle => 'Nytt lösenord';
@@ -200,12 +195,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Fyll i alla fält.';
 
   @override
-  String get authErrorPasswordTooShort =>
-      'Lösenordet måste vara minst 6 tecken.';
+  String get authErrorPasswordTooShort => 'Lösenordet måste vara minst 6 tecken.';
 
   @override
-  String get authErrorConfirmEmail =>
-      'Kolla din e-post och bekräfta kontot, logga sedan in.';
+  String get authErrorConfirmEmail => 'Kolla din e-post och bekräfta kontot, logga sedan in.';
 
   @override
   String get authErrorEmailAndPasswordRequired => 'Fyll i e-post och lösenord.';
@@ -214,19 +207,16 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authErrorInvalidCredentials => 'Fel e-post eller lösenord.';
 
   @override
-  String get authErrorEmailAlreadyInUse =>
-      'Det finns redan ett konto med den e-postadressen.';
+  String get authErrorEmailAlreadyInUse => 'Det finns redan ett konto med den e-postadressen.';
 
   @override
-  String get convoyRealtimeBackendMissing =>
-      'Realtime-konvoj är inte konfigurerad ännu. Lägg till backend-konfiguration för att dela liveposition mellan användare.';
+  String get convoyRealtimeBackendMissing => 'Realtime-konvoj är inte konfigurerad ännu. Lägg till backend-konfiguration för att dela liveposition mellan användare.';
 
   @override
   String get convoyModeTitle => 'Konvojläge';
 
   @override
-  String get convoyModeSubtitle =>
-      'Skapa gruppkörning med delad destination och livepositioner.';
+  String get convoyModeSubtitle => 'Skapa gruppkörning med delad destination och livepositioner.';
 
   @override
   String get convoyCreateButton => 'Skapa konvoj';
@@ -241,8 +231,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get convoyLeaveButton => 'Lämna';
 
   @override
-  String get convoyJoinFirstHint =>
-      'Gå med i konvojen först och tryck sedan för att öppna chat och karta.';
+  String get convoyJoinFirstHint => 'Gå med i konvojen först och tryck sedan för att öppna chat och karta.';
 
   @override
   String get convoyJoinByCodeTitle => 'Gå med i konvoj';
@@ -334,8 +323,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get convoyListEmpty => 'Inga konvojer ännu. Skapa den första.';
 
   @override
-  String get convoyListEmptyMine =>
-      'Du har inte gått med i några konvojer ännu.';
+  String get convoyListEmptyMine => 'Du har inte gått med i några konvojer ännu.';
 
   @override
   String get convoyFilterAll => 'Alla';
@@ -368,8 +356,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get profileNotSignedIn => 'Du är inte inloggad.';
 
   @override
-  String get profileSignInInConvoyHint =>
-      'Inloggning sker under fliken Konvoj.';
+  String get profileSignInInConvoyHint => 'Inloggning sker under fliken Konvoj.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -407,8 +394,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get profileVehicleStuddedTires => 'Dubbdäck';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle =>
-      'Undvik gator med dubbdäcksförbud';
+  String get profileVehicleStuddedTiresSubtitle => 'Undvik gator med dubbdäcksförbud';
 
   @override
   String get settingsTitle => 'Inställningar';
@@ -462,8 +448,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Spanien';
 
   @override
-  String get settingsCountryHint =>
-      'Hastighetsgränser och vägregler anpassas efter valt land.';
+  String get settingsCountryHint => 'Hastighetsgränser och vägregler anpassas efter valt land.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -503,12 +488,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsProStatusInactive => 'Inte aktiv';
 
   @override
-  String get settingsProDescriptionActive =>
-      'Du har tillgång till alla Pro-funktioner.';
+  String get settingsProDescriptionActive => 'Du har tillgång till alla Pro-funktioner.';
 
   @override
-  String get settingsProDescriptionInactive =>
-      'Låsa upp alla funktioner med CruizX Pro.';
+  String get settingsProDescriptionInactive => 'Låsa upp alla funktioner med CruizX Pro.';
 
   @override
   String get settingsProFeatureRoutes => 'Obegränsade rutter';
@@ -523,8 +506,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsProFeatureSupport => 'Prioriterad support';
 
   @override
-  String get settingsProSubscriptionNote =>
-      'Prenumeration: CruizX Pro Månad (1 månad). Betalning debiteras ditt Apple-ID och förnyas automatiskt om den inte avbryts minst 24 timmar före periodens slut.';
+  String get settingsProSubscriptionNote => 'Prenumeration: CruizX Pro Månad (1 månad). Betalning debiteras ditt Apple-ID och förnyas automatiskt om den inte avbryts minst 24 timmar före periodens slut.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -547,18 +529,88 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsRestorePurchaseFailed => 'Kunde inte återställa köp.';
 
   @override
+  String get settingsMapMarkerLabel => 'Kartmarkör';
+
+  @override
+  String get settingsMapMarkerCategoryClassic => 'Klassiska';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
+  String get settingsMapMarkerCategoryLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerCategoryAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerCategoryPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerCategoryTractor => 'Traktor';
+
+  @override
+  String get settingsMapMarkerArrow => 'Pil';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompass';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Triangel';
+
+  @override
+  String get settingsMapMarkerDot => 'Punkt';
+
+  @override
+  String get settingsMapMarkerMicrocar => 'Mopedbil';
+
+  @override
+  String get settingsMapMarkerLigier => 'Ligier';
+
+  @override
+  String get settingsMapMarkerAixam => 'Aixam';
+
+  @override
+  String get settingsMapMarkerPickup => 'Pickup';
+
+  @override
+  String get settingsMapMarkerTractor => 'Traktor';
+
+  @override
+  String get settingsColorRed => 'Röd';
+
+  @override
+  String get settingsColorBlue => 'Blå';
+
+  @override
+  String get settingsColorBlack => 'Svart';
+
+  @override
+  String get settingsColorWhite => 'Vit';
+
+  @override
+  String get settingsColorGold => 'Guld';
+
+  @override
+  String get settingsColorGraphite => 'Grafit';
+
+  @override
+  String get settingsColorYellow => 'Gul';
+
+  @override
   String get navigationTitle => 'Sväng-för-sväng-navigering';
 
   @override
-  String get navigationSubtitle =>
-      'Anvisningar, nästa sväng och ETA optimerat för långsamma fordon.';
+  String get navigationSubtitle => 'Anvisningar, nästa sväng och ETA optimerat för långsamma fordon.';
 
   @override
   String get mapStartingGps => 'Startar GPS...';
 
   @override
-  String get mapTapToSelectDestination =>
-      'Tryck på kartan för att välja destination';
+  String get mapTapToSelectDestination => 'Tryck på kartan för att välja destination';
 
   @override
   String get mapAddressFieldHint => 'Sök adress (t.ex. Sveavägen 1, Stockholm)';
@@ -605,27 +657,22 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mapRouteNoRouteFound => 'Ingen rutt hittades mellan valda punkter';
 
   @override
-  String get mapRouteProviderUnavailable =>
-      'Rutttjänsten är inte tillgänglig just nu';
+  String get mapRouteProviderUnavailable => 'Rutttjänsten är inte tillgänglig just nu';
 
   @override
-  String get mapRouteMissingApiKey =>
-      'Routing är inte konfigurerat i backend (saknad API-nyckel)';
+  String get mapRouteMissingApiKey => 'Routing är inte konfigurerat i backend (saknad API-nyckel)';
 
   @override
   String get mapRouteInvalidGeometry => 'Ruttdata från servern är ogiltig';
 
   @override
-  String get mapRouteUnknownProvider =>
-      'Routing-provider är inte korrekt konfigurerad';
+  String get mapRouteUnknownProvider => 'Routing-provider är inte korrekt konfigurerad';
 
   @override
-  String get mapRouteTooFastForVehicle =>
-      'Rutt stoppad: beräknad medelhastighet är för hög för vald fordonstyp.';
+  String get mapRouteTooFastForVehicle => 'Rutt stoppad: beräknad medelhastighet är för hög för vald fordonstyp.';
 
   @override
-  String get mapRouteNotAllowedForVehicle =>
-      'Ingen lagligt godkänd rutt hittades för vald fordonstyp.';
+  String get mapRouteNotAllowedForVehicle => 'Ingen lagligt godkänd rutt hittades för vald fordonstyp.';
 
   @override
   String get routeBlockedTitle => 'Rutt ej tillgänglig';
@@ -716,8 +763,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Du måste vara inloggad för att rapportera';
 
   @override
-  String get alertsScreenSubtitle =>
-      'Larm från andra CruizX-förare inom ~50 km. Klistra dig på tumsymboler för att bekräfta ett larm.';
+  String get alertsScreenSubtitle => 'Larm från andra CruizX-förare inom ~50 km. Klistra dig på tumsymboler för att bekräfta ett larm.';
 
   @override
   String get alertReportButton => 'Rapportera';
@@ -745,8 +791,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get alertReportQuestion => 'Vad ser du på vägen?';
 
   @override
-  String get alertReportDescHint2 =>
-      'Valfri beskrivning… (t.ex. \"stor gren\")';
+  String get alertReportDescHint2 => 'Valfri beskrivning… (t.ex. \"stor gren\")';
 
   @override
   String get alertReportedSuccess => 'Larm rapporterat! Tack 🙏';
@@ -758,8 +803,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get adBannerLoading => 'Annons laddas…';
 
   @override
-  String get adBannerWaitingRetry =>
-      'Annons väntar på nätverk… (tryck för försök igen)';
+  String get adBannerWaitingRetry => 'Annons väntar på nätverk… (tryck för försök igen)';
 
   @override
   String get mapStartNavigation => 'Starta navigation';
@@ -808,8 +852,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallTitle => 'Uppgradera till CruizX Pro';
 
   @override
-  String get paywallSubtitle =>
-      'Inga begränsningar. Ingen reklam. Full åtkomst.';
+  String get paywallSubtitle => 'Inga begränsningar. Ingen reklam. Full åtkomst.';
 
   @override
   String get paywallPrice => '39 kr / månad';
@@ -867,29 +910,25 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Dagsgränsen nådd';
 
   @override
-  String get paywallRouteLimitBody =>
-      'Free-användare kan beräkna 4 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
+  String get paywallRouteLimitBody => 'Free-användare kan beräkna 4 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
 
   @override
   String get paywallConvoyLimitTitle => 'Konvojgräns nådd';
 
   @override
-  String get paywallConvoyLimitBody =>
-      'Free-användare kan bara vara med i 1 konvoj åt gången.';
+  String get paywallConvoyLimitBody => 'Free-användare kan bara vara med i 1 konvoj åt gången.';
 
   @override
   String get paywallMemberLimitTitle => 'Konvojen är full';
 
   @override
-  String get paywallMemberLimitBody =>
-      'Free-användare kan bara gå med i konvojer med färre än 2 medlemmar. Uppgradera till Pro för obegränsad åtkomst.';
+  String get paywallMemberLimitBody => 'Free-användare kan bara gå med i konvojer med färre än 2 medlemmar. Uppgradera till Pro för obegränsad åtkomst.';
 
   @override
   String get paywallPurchaseSuccess => 'Du är nu en Pro-användare!';
 
   @override
-  String get paywallPurchaseFailed =>
-      'Köpet kunde inte genomföras. Kontrollera ditt App Store-konto och försök igen.';
+  String get paywallPurchaseFailed => 'Köpet kunde inte genomföras. Kontrollera ditt App Store-konto och försök igen.';
 
   @override
   String get paywallRestoreSuccess => 'Köpet återställt!';
@@ -898,8 +937,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'Inloggning krävs';
 
   @override
-  String get paywallLoginRequiredBody =>
-      'Du behöver ett konto för att köpa CruizX Pro. Skapa ett gratis konto i appen för att fortsätta.';
+  String get paywallLoginRequiredBody => 'Du behöver ett konto för att köpa CruizX Pro. Skapa ett gratis konto i appen för att fortsätta.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -937,12 +975,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentModeTitle => 'Föräldraläge';
 
   @override
-  String get parentModeDescription =>
-      'Låt en förälder följa din körning i realtid.';
+  String get parentModeDescription => 'Låt en förälder följa din körning i realtid.';
 
   @override
-  String get parentModeLoginRequired =>
-      'Du måste vara inloggad för att använda föräldraläge.';
+  String get parentModeLoginRequired => 'Du måste vara inloggad för att använda föräldraläge.';
 
   @override
   String get parentModeEnable => 'Aktivera föräldraläge';
@@ -957,8 +993,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentModeInviteCode => 'Inbjudningskod';
 
   @override
-  String get parentModeInviteCodeSubtitle =>
-      'Dela denna kod med din förälder för att länka deras konto.';
+  String get parentModeInviteCodeSubtitle => 'Dela denna kod med din förälder för att länka deras konto.';
 
   @override
   String get parentModeCopyCode => 'Kopiera';
@@ -981,8 +1016,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentModeLinkedParents => 'Länkade föräldrar';
 
   @override
-  String get parentModeNoParentsLinked =>
-      'Inga föräldrar länkade ännu. Dela din kod!';
+  String get parentModeNoParentsLinked => 'Inga föräldrar länkade ännu. Dela din kod!';
 
   @override
   String get parentModeUnlinkTitle => 'Ta bort förälder?';
@@ -1002,8 +1036,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentModeShareLocation => 'Dela position';
 
   @override
-  String get parentModeShareLocationSubtitle =>
-      'Visa var du befinner dig på kartan';
+  String get parentModeShareLocationSubtitle => 'Visa var du befinner dig på kartan';
 
   @override
   String get parentModeShareSpeed => 'Dela hastighet';
@@ -1064,15 +1097,13 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentDashboardNoChildren => 'Inga barn länkade ännu';
 
   @override
-  String get parentDashboardNoChildrenHint =>
-      'Lägg till ett barn genom att ange deras inbjudningskod från CruizX Föräldraläge.';
+  String get parentDashboardNoChildrenHint => 'Lägg till ett barn genom att ange deras inbjudningskod från CruizX Föräldraläge.';
 
   @override
   String get parentDashboardEnterCode => 'Ange inbjudningskod';
 
   @override
-  String get parentDashboardEnterCodeHint =>
-      'Be ditt barn dela sin 6-tecken inbjudningskod från Föräldraläge-inställningarna.';
+  String get parentDashboardEnterCodeHint => 'Be ditt barn dela sin 6-tecken inbjudningskod från Föräldraläge-inställningarna.';
 
   @override
   String get parentDashboardLink => 'Länka';
@@ -1081,22 +1112,16 @@ class AppLocalizationsSv extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Länkning lyckades!';
 
   @override
-  String get parentDashboardLinkFailed =>
-      'Kunde inte hitta barn med den koden. Kontrollera koden och försök igen.';
+  String get parentDashboardLinkFailed => 'Kunde inte hitta barn med den koden. Kontrollera koden och försök igen.';
 
   @override
-  String get parentDashboardLinkSelf =>
-      'Du kan inte länka till ditt eget konto. Be ditt barn dela sin kod från sitt konto.';
+  String get parentDashboardLinkSelf => 'Du kan inte länka till ditt eget konto. Be ditt barn dela sin kod från sitt konto.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Hastighetsvarning';
 
   @override
-  String parentDashboardSpeedingDetail(
-    Object name,
-    Object speed,
-    Object limit,
-  ) {
+  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
     return '$name körde i $speed km/h (gräns: $limit km/h)';
   }
 
@@ -1116,69 +1141,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get settingsVoiceNavigationSubtitle => 'Läs upp svänginstruktioner';
-
-  @override
-  String get settingsMapMarkerLabel => 'Kartmarkör';
-
-  @override
-  String get settingsMapMarkerCategoryClassic => 'Klassiska';
-
-  @override
-  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
-
-  @override
-  String get settingsMapMarkerCategoryEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerArrow => 'Pil';
-
-  @override
-  String get settingsMapMarkerCompass => 'Kompass';
-
-  @override
-  String get settingsMapMarkerTriangle => 'Triangel';
-
-  @override
-  String get settingsMapMarkerDot => 'Punkt';
-
-  @override
-  String get settingsMapMarkerCar => 'Bil';
-
-  @override
-  String get settingsMapMarkerEpa => 'EPA';
-
-  @override
-  String get settingsMapMarkerMicrocar => 'Mopedbil';
-
-  @override
-  String get settingsColorRed => 'Röd';
-
-  @override
-  String get settingsColorBlue => 'Blå';
-
-  @override
-  String get settingsColorBlack => 'Svart';
-
-  @override
-  String get settingsColorWhite => 'Vit';
-
-  @override
-  String get settingsColorGold => 'Guld';
-
-  @override
-  String get settingsMapMarkerSmile => 'Smile';
-
-  @override
-  String get settingsMapMarkerCool => 'Cool';
-
-  @override
-  String get settingsMapMarkerTurbo => 'Turbo';
-
-  @override
-  String get settingsMapMarkerCrown => 'Krona';
-
-  @override
-  String get settingsMapMarkerGhost => 'Spöke';
 
   @override
   String get voiceTurnLeft => 'Sväng vänster';
@@ -1221,12 +1183,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mfaSetupTitle => 'Aktivera tvåfaktorsautentisering';
 
   @override
-  String get mfaSetupSubtitle =>
-      'Skanna QR-koden med en autentiseringsapp som Google Authenticator eller Authy';
+  String get mfaSetupSubtitle => 'Skanna QR-koden med en autentiseringsapp som Google Authenticator eller Authy';
 
   @override
-  String get mfaScanQr =>
-      'Skanna koden ovan och ange den 6-siffriga koden nedan';
+  String get mfaScanQr => 'Skanna koden ovan och ange den 6-siffriga koden nedan';
 
   @override
   String get mfaVerifyButton => 'Verifiera';
@@ -1235,8 +1195,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mfaVerifyTitle => 'Tvåfaktorsautentisering';
 
   @override
-  String get mfaVerifySubtitle =>
-      'Ange den 6-siffriga koden från din autentiseringsapp';
+  String get mfaVerifySubtitle => 'Ange den 6-siffriga koden från din autentiseringsapp';
 
   @override
   String get mfaInvalidCode => 'Felaktig kod, försök igen';
@@ -1263,8 +1222,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mfaDisableTitle => 'Stäng av 2FA?';
 
   @override
-  String get mfaDisableBody =>
-      'Ditt konto blir mindre säkert utan tvåfaktorsautentisering.';
+  String get mfaDisableBody => 'Ditt konto blir mindre säkert utan tvåfaktorsautentisering.';
 
   @override
   String get mfaDisableConfirm => 'Stäng av';
@@ -1282,8 +1240,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mfaRecommendTitle => 'Skydda ditt konto';
 
   @override
-  String get mfaRecommendBody =>
-      'Vi rekommenderar att du aktiverar tvåfaktorsautentisering för att skydda ditt konto. Du kan använda en autentiseringsapp som Google Authenticator eller Authy.';
+  String get mfaRecommendBody => 'Vi rekommenderar att du aktiverar tvåfaktorsautentisering för att skydda ditt konto. Du kan använda en autentiseringsapp som Google Authenticator eller Authy.';
 
   @override
   String get mfaRecommendSetup => 'Aktivera nu';
@@ -1326,8 +1283,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get favCustom => 'Annan favorit';
 
   @override
-  String get ttsVoiceHint =>
-      'Tips: Ladda ner bättre röster i Inställningar → Hjälpmedel → Uppläsning och tal → Röster';
+  String get ttsVoiceHint => 'Tips: Ladda ner bättre röster i Inställningar → Hjälpmedel → Uppläsning och tal → Röster';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';
