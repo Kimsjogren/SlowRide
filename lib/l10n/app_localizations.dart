@@ -2118,6 +2118,24 @@ abstract class AppLocalizations {
   /// **'Map marker'**
   String get settingsMapMarkerLabel;
 
+  /// No description provided for @settingsMapMarkerCategoryClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get settingsMapMarkerCategoryClassic;
+
+  /// No description provided for @settingsMapMarkerCategoryMicrocar.
+  ///
+  /// In en, this message translates to:
+  /// **'Microcar'**
+  String get settingsMapMarkerCategoryMicrocar;
+
+  /// No description provided for @settingsMapMarkerCategoryEpa.
+  ///
+  /// In en, this message translates to:
+  /// **'EPA'**
+  String get settingsMapMarkerCategoryEpa;
+
   /// No description provided for @settingsMapMarkerArrow.
   ///
   /// In en, this message translates to:
@@ -2159,6 +2177,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Microcar'**
   String get settingsMapMarkerMicrocar;
+
+  /// No description provided for @settingsColorRed.
+  ///
+  /// In en, this message translates to:
+  /// **'Red'**
+  String get settingsColorRed;
+
+  /// No description provided for @settingsColorBlue.
+  ///
+  /// In en, this message translates to:
+  /// **'Blue'**
+  String get settingsColorBlue;
+
+  /// No description provided for @settingsColorBlack.
+  ///
+  /// In en, this message translates to:
+  /// **'Black'**
+  String get settingsColorBlack;
+
+  /// No description provided for @settingsColorWhite.
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get settingsColorWhite;
+
+  /// No description provided for @settingsColorGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold'**
+  String get settingsColorGold;
 
   /// No description provided for @settingsMapMarkerSmile.
   ///

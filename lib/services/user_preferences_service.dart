@@ -9,14 +9,15 @@ enum MapMarkerStyle {
   compass,
   triangle,
   dot,
-  car,
-  epa,
-  microcar,
-  smile,
-  cool,
-  turbo,
-  crown,
-  ghost,
+  microcarRed,
+  microcarBlue,
+  microcarBlack,
+  microcarWhite,
+  microcarGold,
+  epaRed,
+  epaBlue,
+  epaBlack,
+  epaWhite,
 }
 
 class UserPreferencesService {

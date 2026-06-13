@@ -1125,6 +1125,15 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsMapMarkerLabel => 'Kortmarkør';
 
   @override
+  String get settingsMapMarkerCategoryClassic => 'Klassiske';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Knallertbil';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
   String get settingsMapMarkerArrow => 'Pil';
 
   @override
@@ -1144,6 +1153,21 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get settingsMapMarkerMicrocar => 'Knallertbil';
+
+  @override
+  String get settingsColorRed => 'Rød';
+
+  @override
+  String get settingsColorBlue => 'Blå';
+
+  @override
+  String get settingsColorBlack => 'Sort';
+
+  @override
+  String get settingsColorWhite => 'Hvid';
+
+  @override
+  String get settingsColorGold => 'Guld';
 
   @override
   String get settingsMapMarkerSmile => 'Smile';

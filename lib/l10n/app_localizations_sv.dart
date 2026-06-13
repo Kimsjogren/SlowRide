@@ -1121,6 +1121,15 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsMapMarkerLabel => 'Kartmarkör';
 
   @override
+  String get settingsMapMarkerCategoryClassic => 'Klassiska';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
   String get settingsMapMarkerArrow => 'Pil';
 
   @override
@@ -1140,6 +1149,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get settingsMapMarkerMicrocar => 'Mopedbil';
+
+  @override
+  String get settingsColorRed => 'Röd';
+
+  @override
+  String get settingsColorBlue => 'Blå';
+
+  @override
+  String get settingsColorBlack => 'Svart';
+
+  @override
+  String get settingsColorWhite => 'Vit';
+
+  @override
+  String get settingsColorGold => 'Guld';
 
   @override
   String get settingsMapMarkerSmile => 'Smile';

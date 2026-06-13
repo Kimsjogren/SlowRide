@@ -463,55 +463,10 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<MapMarkerStyle>(
                     valueListenable: preferences.mapMarkerStyle,
                     builder: (context, markerStyle, _) {
-                      final options = [
-                        (
-                          style: MapMarkerStyle.navigation,
-                          label: l10n.settingsMapMarkerArrow,
-                        ),
-                        (
-                          style: MapMarkerStyle.compass,
-                          label: l10n.settingsMapMarkerCompass,
-                        ),
-                        (
-                          style: MapMarkerStyle.triangle,
-                          label: l10n.settingsMapMarkerTriangle,
-                        ),
-                        (
-                          style: MapMarkerStyle.dot,
-                          label: l10n.settingsMapMarkerDot,
-                        ),
-                        (
-                          style: MapMarkerStyle.car,
-                          label: l10n.settingsMapMarkerCar,
-                        ),
-                        (
-                          style: MapMarkerStyle.epa,
-                          label: l10n.settingsMapMarkerEpa,
-                        ),
-                        (
-                          style: MapMarkerStyle.microcar,
-                          label: l10n.settingsMapMarkerMicrocar,
-                        ),
-                        (
-                          style: MapMarkerStyle.smile,
-                          label: l10n.settingsMapMarkerSmile,
-                        ),
-                        (
-                          style: MapMarkerStyle.cool,
-                          label: l10n.settingsMapMarkerCool,
-                        ),
-                        (
-                          style: MapMarkerStyle.turbo,
-                          label: l10n.settingsMapMarkerTurbo,
-                        ),
-                        (
-                          style: MapMarkerStyle.crown,
-                          label: l10n.settingsMapMarkerCrown,
-                        ),
-                        (
-                          style: MapMarkerStyle.ghost,
-                          label: l10n.settingsMapMarkerGhost,
-                        ),
+                      final categories = [
+                        MapMarkerCategory.classic,
+                        MapMarkerCategory.microcar,
+                        MapMarkerCategory.epa,
                       ];
 
                       return Column(
@@ -519,25 +474,22 @@ class SettingsScreen extends StatelessWidget {
                         children: [
                           Text(l10n.settingsMapMarkerLabel, style: labelStyle),
                           const SizedBox(height: 14),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: options
-                                .map(
-                                  (option) => _MarkerStyleChoice(
-                                    label: option.label,
-                                    selected: markerStyle == option.style,
-                                    onTap: () =>
-                                        preferences.mapMarkerStyle.value =
-                                            option.style,
-                                    child: UserLocationMarker.stylePreview(
-                                      option.style,
-                                      size: 42,
-                                      selected: markerStyle == option.style,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                          ...categories.map(
+                            (category) => Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _MarkerCategorySection(
+                                title: UserLocationMarker.categoryLabel(
+                                  category,
+                                  l10n,
+                                ),
+                                options: UserLocationMarker.optionsForCategory(
+                                  category,
+                                ),
+                                selectedStyle: markerStyle,
+                                onSelected: (style) =>
+                                    preferences.mapMarkerStyle.value = style,
+                              ),
+                            ),
                           ),
                         ],
                       );
@@ -921,6 +873,64 @@ class _MarkerStyleChoice extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MarkerCategorySection extends StatelessWidget {
+  const _MarkerCategorySection({
+    required this.title,
+    required this.options,
+    required this.selectedStyle,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<MapMarkerOption> options;
+  final MapMarkerStyle selectedStyle;
+  final ValueChanged<MapMarkerStyle> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 108,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: options.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final option = options[index];
+              final selected = option.style == selectedStyle;
+              final label = option.label(l10n);
+              final color = option.colorName(l10n);
+              return _MarkerStyleChoice(
+                label: color == null ? label : '$label\n$color',
+                selected: selected,
+                onTap: () => onSelected(option.style),
+                child: UserLocationMarker.stylePreview(
+                  option.style,
+                  size: 50,
+                  selected: selected,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1126,6 +1126,15 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerLabel => 'Karttamerkki';
 
   @override
+  String get settingsMapMarkerCategoryClassic => 'Klassiset';
+
+  @override
+  String get settingsMapMarkerCategoryMicrocar => 'Mopoauto';
+
+  @override
+  String get settingsMapMarkerCategoryEpa => 'EPA';
+
+  @override
   String get settingsMapMarkerArrow => 'Nuoli';
 
   @override
@@ -1145,6 +1154,21 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsMapMarkerMicrocar => 'Mopoauto';
+
+  @override
+  String get settingsColorRed => 'Punainen';
+
+  @override
+  String get settingsColorBlue => 'Sininen';
+
+  @override
+  String get settingsColorBlack => 'Musta';
+
+  @override
+  String get settingsColorWhite => 'Valkoinen';
+
+  @override
+  String get settingsColorGold => 'Kulta';
 
   @override
   String get settingsMapMarkerSmile => 'Hymy';

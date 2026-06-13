@@ -1,7 +1,34 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/user_preferences_service.dart';
+
+enum MapMarkerCategory { classic, microcar, epa }
+
+class MapMarkerOption {
+  const MapMarkerOption({
+    required this.style,
+    required this.category,
+    required this.assetPath,
+    required this.labelBuilder,
+    this.colorNameBuilder,
+    this.rotatesWithHeading = false,
+    this.tint,
+  });
+
+  final MapMarkerStyle style;
+  final MapMarkerCategory category;
+  final String? assetPath;
+  final String Function(AppLocalizations l10n) labelBuilder;
+  final String Function(AppLocalizations l10n)? colorNameBuilder;
+  final bool rotatesWithHeading;
+  final Color? tint;
+
+  String label(AppLocalizations l10n) => labelBuilder(l10n);
+
+  String? colorName(AppLocalizations l10n) => colorNameBuilder?.call(l10n);
+}
 
 class UserLocationMarker extends StatelessWidget {
   const UserLocationMarker({
@@ -23,21 +50,132 @@ class UserLocationMarker extends StatelessWidget {
   final double borderWidth;
   final bool showOuterGlow;
 
+  static const List<MapMarkerOption> options = [
+    MapMarkerOption(
+      style: MapMarkerStyle.navigation,
+      category: MapMarkerCategory.classic,
+      assetPath: null,
+      labelBuilder: _arrowLabel,
+      rotatesWithHeading: true,
+      tint: Color(0xFF1E90FF),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.compass,
+      category: MapMarkerCategory.classic,
+      assetPath: null,
+      labelBuilder: _compassLabel,
+      rotatesWithHeading: true,
+      tint: Color(0xFF00BFA5),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.triangle,
+      category: MapMarkerCategory.classic,
+      assetPath: null,
+      labelBuilder: _triangleLabel,
+      rotatesWithHeading: true,
+      tint: Color(0xFF6C63FF),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.dot,
+      category: MapMarkerCategory.classic,
+      assetPath: null,
+      labelBuilder: _dotLabel,
+      tint: Color(0xFF25C281),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.microcarRed,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/105F87AA-6074-4B4A-A7CD-E127515E5CC4.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.microcarBlue,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/AD4E2031-7011-471E-9E58-035D77DD0B48.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.microcarBlack,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/A5749156-12A5-4CE5-B25B-912ECD3965CD.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.microcarWhite,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/73F70485-0439-4968-9256-97E569628BBC.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _whiteLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.microcarGold,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/8EE771CD-8380-40F9-8773-8FDFB0A6F372.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.epaRed,
+      category: MapMarkerCategory.epa,
+      assetPath: 'assets/192ED5A9-0723-4BEB-ADA8-CBECE9EB065F.png',
+      labelBuilder: _epaLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.epaBlue,
+      category: MapMarkerCategory.epa,
+      assetPath: 'assets/17F2CAAE-09B6-4F6B-975C-E7A2F3ADB1FB.png',
+      labelBuilder: _epaLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.epaBlack,
+      category: MapMarkerCategory.epa,
+      assetPath: 'assets/8EF4AEEB-9B42-4CB6-8E12-F314F536213A.png',
+      labelBuilder: _epaLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.epaWhite,
+      category: MapMarkerCategory.epa,
+      assetPath: 'assets/827E38C0-7FB9-46E9-946D-8822822A7DFA.png',
+      labelBuilder: _epaLabel,
+      colorNameBuilder: _whiteLabel,
+    ),
+  ];
+
+  static MapMarkerOption optionFor(MapMarkerStyle style) {
+    return options.firstWhere(
+      (option) => option.style == style,
+      orElse: () => options.first,
+    );
+  }
+
+  static List<MapMarkerOption> optionsForCategory(MapMarkerCategory category) {
+    return options.where((option) => option.category == category).toList();
+  }
+
+  static String categoryLabel(
+    MapMarkerCategory category,
+    AppLocalizations l10n,
+  ) {
+    return switch (category) {
+      MapMarkerCategory.classic => l10n.settingsMapMarkerCategoryClassic,
+      MapMarkerCategory.microcar => l10n.settingsMapMarkerCategoryMicrocar,
+      MapMarkerCategory.epa => l10n.settingsMapMarkerCategoryEpa,
+    };
+  }
+
   static Widget stylePreview(
     MapMarkerStyle style, {
-    double size = 42,
+    double size = 48,
     bool selected = false,
   }) {
-    final palette = _paletteFor(style);
-    return _MarkerBadge(
-      style: style,
-      size: size,
-      borderColor: selected ? Colors.white : Colors.white70,
-      borderWidth: selected ? 2.6 : 2.0,
-      showOuterGlow: selected,
-      palette: palette,
-      showChrome: true,
-    );
+    final option = optionFor(style);
+    return _MarkerPreview(option: option, size: size, selected: selected);
   }
 
   @override
@@ -50,24 +188,22 @@ class UserLocationMarker extends StatelessWidget {
         return ValueListenableBuilder<double>(
           valueListenable: headingNotifier,
           builder: (_, heading, _) {
+            final option = optionFor(markerStyle);
             final rotatesWithHeading =
-                !lockNorthUp && _rotatesWithHeading(markerStyle);
-            final palette = _paletteFor(markerStyle);
+                !lockNorthUp && option.rotatesWithHeading;
+            final tint = option.tint ?? backgroundColor;
 
             return Center(
               child: Transform.rotate(
                 angle: rotatesWithHeading ? heading * math.pi / 180.0 : 0.0,
-                child: _MarkerBadge(
-                  style: markerStyle,
+                child: _MarkerPreview(
+                  option: option,
                   size: size,
+                  selected: true,
+                  forceTint: tint,
                   borderColor: borderColor,
                   borderWidth: borderWidth,
                   showOuterGlow: showOuterGlow,
-                  palette: palette,
-                  showChrome:
-                      backgroundColor.a > 0 ||
-                      borderColor.a > 0 ||
-                      showOuterGlow,
                 ),
               ),
             );
@@ -76,720 +212,113 @@ class UserLocationMarker extends StatelessWidget {
       },
     );
   }
-
-  static bool _rotatesWithHeading(MapMarkerStyle style) {
-    return switch (style) {
-      MapMarkerStyle.navigation ||
-      MapMarkerStyle.compass ||
-      MapMarkerStyle.triangle => true,
-      _ => false,
-    };
-  }
-
-  static bool _isAvatarStyle(MapMarkerStyle style) {
-    return switch (style) {
-      MapMarkerStyle.car ||
-      MapMarkerStyle.epa ||
-      MapMarkerStyle.microcar ||
-      MapMarkerStyle.smile ||
-      MapMarkerStyle.cool ||
-      MapMarkerStyle.turbo ||
-      MapMarkerStyle.crown ||
-      MapMarkerStyle.ghost => true,
-      _ => false,
-    };
-  }
-
-  static _MarkerPalette _paletteFor(MapMarkerStyle style) {
-    return switch (style) {
-      MapMarkerStyle.navigation => const _MarkerPalette(
-        base: Color(0xFF1E90FF),
-        accent: Color(0xFF7BD6FF),
-        glow: Color(0xFF1E90FF),
-      ),
-      MapMarkerStyle.compass => const _MarkerPalette(
-        base: Color(0xFF00BFA5),
-        accent: Color(0xFF82FFF1),
-        glow: Color(0xFF00BFA5),
-      ),
-      MapMarkerStyle.triangle => const _MarkerPalette(
-        base: Color(0xFF6C63FF),
-        accent: Color(0xFFB9B3FF),
-        glow: Color(0xFF6C63FF),
-      ),
-      MapMarkerStyle.dot => const _MarkerPalette(
-        base: Color(0xFF25C281),
-        accent: Color(0xFFA8FFD9),
-        glow: Color(0xFF25C281),
-      ),
-      MapMarkerStyle.car => const _MarkerPalette(
-        base: Color(0xFF00A7FF),
-        accent: Color(0xFFC3F1FF),
-        glow: Color(0xFF00A7FF),
-      ),
-      MapMarkerStyle.epa => const _MarkerPalette(
-        base: Color(0xFFFF8C42),
-        accent: Color(0xFFFFD1A8),
-        glow: Color(0xFFFF8C42),
-      ),
-      MapMarkerStyle.microcar => const _MarkerPalette(
-        base: Color(0xFF34C759),
-        accent: Color(0xFFC8FFD5),
-        glow: Color(0xFF34C759),
-      ),
-      MapMarkerStyle.smile => const _MarkerPalette(
-        base: Color(0xFFFFC83D),
-        accent: Color(0xFFFFF0A8),
-        glow: Color(0xFFFFC83D),
-      ),
-      MapMarkerStyle.cool => const _MarkerPalette(
-        base: Color(0xFF47C7FF),
-        accent: Color(0xFFC4F3FF),
-        glow: Color(0xFF47C7FF),
-      ),
-      MapMarkerStyle.turbo => const _MarkerPalette(
-        base: Color(0xFF9B51E0),
-        accent: Color(0xFFE4C7FF),
-        glow: Color(0xFF9B51E0),
-      ),
-      MapMarkerStyle.crown => const _MarkerPalette(
-        base: Color(0xFFFF7A45),
-        accent: Color(0xFFFFD0A8),
-        glow: Color(0xFFFF7A45),
-      ),
-      MapMarkerStyle.ghost => const _MarkerPalette(
-        base: Color(0xFF7F8CFF),
-        accent: Color(0xFFE1E5FF),
-        glow: Color(0xFF7F8CFF),
-      ),
-    };
-  }
 }
 
-class _MarkerBadge extends StatelessWidget {
-  const _MarkerBadge({
-    required this.style,
+class _MarkerPreview extends StatelessWidget {
+  const _MarkerPreview({
+    required this.option,
     required this.size,
-    required this.borderColor,
-    required this.borderWidth,
-    required this.showOuterGlow,
-    required this.palette,
-    required this.showChrome,
+    required this.selected,
+    this.forceTint,
+    this.borderColor,
+    this.borderWidth,
+    this.showOuterGlow,
   });
 
-  final MapMarkerStyle style;
+  final MapMarkerOption option;
   final double size;
-  final Color borderColor;
-  final double borderWidth;
-  final bool showOuterGlow;
-  final _MarkerPalette palette;
-  final bool showChrome;
+  final bool selected;
+  final Color? forceTint;
+  final Color? borderColor;
+  final double? borderWidth;
+  final bool? showOuterGlow;
 
   @override
   Widget build(BuildContext context) {
-    final isAvatar = UserLocationMarker._isAvatarStyle(style);
-    final borderRadius = BorderRadius.circular(isAvatar ? size * 0.34 : size);
-    final child = Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        if (showChrome)
-          Positioned(
-            top: size * 0.14,
-            child: Container(
-              width: size * 0.54,
-              height: size * 0.16,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(size),
-              ),
-            ),
-          ),
-        if (showChrome && isAvatar)
-          Positioned(
-            bottom: -size * 0.05,
-            child: Container(
-              width: size * 0.22,
-              height: size * 0.22,
-              decoration: BoxDecoration(
-                color: palette.base,
-                borderRadius: BorderRadius.circular(size),
-                border: Border.all(
-                  color: borderColor.withValues(alpha: 0.9),
-                  width: borderWidth * 0.65,
-                ),
-              ),
-            ),
-          ),
-        _styleChild(style, size),
-      ],
-    );
-
-    if (!showChrome) {
-      return SizedBox(width: size, height: size, child: child);
-    }
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [palette.accent, palette.base],
-        ),
-        border: Border.all(color: borderColor, width: borderWidth),
-        boxShadow: [
-          BoxShadow(
-            color: palette.glow.withValues(alpha: 0.65),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-          if (showOuterGlow)
-            BoxShadow(
-              color: palette.glow.withValues(alpha: 0.28),
-              blurRadius: 22,
-              spreadRadius: 8,
-            ),
-        ],
-      ),
-      child: ClipRRect(borderRadius: borderRadius, child: child),
-    );
-  }
-
-  Widget _styleChild(MapMarkerStyle style, double size) {
-    return switch (style) {
-      MapMarkerStyle.navigation => Icon(
-        Icons.navigation,
-        color: Colors.white,
-        size: size * 0.54,
-      ),
-      MapMarkerStyle.compass => Icon(
-        Icons.assistant_navigation,
-        color: Colors.white,
-        size: size * 0.56,
-      ),
-      MapMarkerStyle.triangle => Icon(
-        Icons.change_history,
-        color: Colors.white,
-        size: size * 0.56,
-      ),
-      MapMarkerStyle.dot => Icon(
-        Icons.trip_origin,
-        color: Colors.white,
-        size: size * 0.42,
-      ),
-      MapMarkerStyle.car => _CarAvatar(size: size),
-      MapMarkerStyle.epa => _EpaAvatar(size: size),
-      MapMarkerStyle.microcar => _MicrocarAvatar(size: size),
-      MapMarkerStyle.smile => _AvatarFace(
-        size: size,
-        eyeColor: const Color(0xFF20243A),
-        smileColor: const Color(0xFF20243A),
-      ),
-      MapMarkerStyle.cool => _AvatarFace(
-        size: size,
-        eyeColor: const Color(0xFF111827),
-        smileColor: const Color(0xFF111827),
-        accessory: Icon(
-          Icons.horizontal_rule_rounded,
-          color: const Color(0xFF111827),
-          size: size * 0.52,
-        ),
-        accessoryOffset: Offset(0, -size * 0.04),
-      ),
-      MapMarkerStyle.turbo => _AvatarFace(
-        size: size,
-        eyeColor: Colors.white,
-        smileColor: Colors.white,
-        accessory: Icon(
-          Icons.bolt_rounded,
-          color: const Color(0xFFFFD54F),
-          size: size * 0.34,
-        ),
-        accessoryOffset: Offset(size * 0.18, -size * 0.20),
-      ),
-      MapMarkerStyle.crown => _AvatarFace(
-        size: size,
-        eyeColor: const Color(0xFF3A1F14),
-        smileColor: const Color(0xFF3A1F14),
-        accessory: Icon(
-          Icons.workspace_premium,
-          color: const Color(0xFFFFE082),
-          size: size * 0.34,
-        ),
-        accessoryOffset: Offset(0, -size * 0.22),
-      ),
-      MapMarkerStyle.ghost => _AvatarFace(
-        size: size,
-        eyeColor: const Color(0xFF272B63),
-        smileColor: const Color(0xFF272B63),
-        surprised: true,
-      ),
-    };
-  }
-}
-
-class _AvatarFace extends StatelessWidget {
-  const _AvatarFace({
-    required this.size,
-    required this.eyeColor,
-    required this.smileColor,
-    this.accessory,
-    this.accessoryOffset = Offset.zero,
-    this.surprised = false,
-  });
-
-  final double size;
-  final Color eyeColor;
-  final Color smileColor;
-  final Widget? accessory;
-  final Offset accessoryOffset;
-  final bool surprised;
-
-  @override
-  Widget build(BuildContext context) {
-    final eyeSize = size * 0.10;
-    final mouthWidth = size * (surprised ? 0.13 : 0.30);
-    final mouthHeight = size * (surprised ? 0.13 : 0.09);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        Positioned(
-          top: size * 0.31,
-          left: size * 0.24,
-          child: _Eye(
-            size: eyeSize,
-            color: eyeColor,
-            blink: accessory == null && !surprised,
-          ),
-        ),
-        Positioned(
-          top: size * 0.31,
-          right: size * 0.24,
-          child: _Eye(size: eyeSize, color: eyeColor),
-        ),
-        Positioned(
-          bottom: surprised ? size * 0.26 : size * 0.22,
-          child: surprised
-              ? Container(
-                  width: mouthWidth,
-                  height: mouthHeight,
-                  decoration: BoxDecoration(
-                    color: smileColor,
-                    borderRadius: BorderRadius.circular(size),
-                  ),
-                )
-              : Container(
-                  width: mouthWidth,
-                  height: mouthHeight,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: smileColor, width: size * 0.07),
-                    ),
-                    borderRadius: BorderRadius.vertical(
-                      bottom: Radius.circular(size),
-                    ),
-                  ),
-                ),
-        ),
-        Positioned(
-          top: size * 0.22,
-          child: Container(
-            width: size * 0.42,
-            height: size * 0.06,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        if (!surprised)
-          Positioned(
-            bottom: size * 0.20,
-            child: Container(
-              width: size * 0.18,
-              height: size * 0.04,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.30),
-                borderRadius: BorderRadius.circular(size),
-              ),
-            ),
-          ),
-        if (accessory != null)
-          Transform.translate(offset: accessoryOffset, child: accessory!),
-      ],
-    );
-  }
-}
-
-class _Eye extends StatelessWidget {
-  const _Eye({required this.size, required this.color, this.blink = false});
-
-  final double size;
-  final Color color;
-  final bool blink;
-
-  @override
-  Widget build(BuildContext context) {
-    if (blink) {
+    if (option.assetPath != null) {
+      final effectiveGlow = showOuterGlow ?? selected;
       return Container(
-        width: size * 1.1,
-        height: size * 0.34,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(size),
+          borderRadius: BorderRadius.circular(size * 0.28),
+          border: Border.all(
+            color: borderColor ?? (selected ? Colors.white : Colors.white70),
+            width: borderWidth ?? (selected ? 2.0 : 1.2),
+          ),
+          boxShadow: [
+            if (effectiveGlow)
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.22),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+          ],
+          color: Colors.white.withValues(alpha: 0.05),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(size * 0.24),
+          child: Padding(
+            padding: EdgeInsets.all(size * 0.08),
+            child: Image.asset(
+              option.assetPath!,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
         ),
       );
     }
+
+    final tint = forceTint ?? option.tint ?? const Color(0xFF1E90FF);
+    final icon = switch (option.style) {
+      MapMarkerStyle.navigation => Icons.navigation,
+      MapMarkerStyle.compass => Icons.assistant_navigation,
+      MapMarkerStyle.triangle => Icons.change_history,
+      MapMarkerStyle.dot => Icons.trip_origin,
+      _ => Icons.navigation,
+    };
+
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-class _CarAvatar extends StatelessWidget {
-  const _CarAvatar({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          top: size * 0.16,
-          child: Container(
-            width: size * 0.30,
-            height: size * 0.12,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(size * 0.10),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.24,
-          child: Container(
-            width: size * 0.52,
-            height: size * 0.42,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(size * 0.18),
-                topRight: Radius.circular(size * 0.18),
-                bottomLeft: Radius.circular(size * 0.14),
-                bottomRight: Radius.circular(size * 0.14),
-              ),
-              border: Border.all(
-                color: const Color(0xFF18324A).withValues(alpha: 0.18),
-                width: size * 0.012,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.30,
-          child: Container(
-            width: size * 0.34,
-            height: size * 0.18,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D5F9E).withValues(alpha: 0.92),
-              borderRadius: BorderRadius.circular(size * 0.08),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.24,
-          child: Container(
-            width: size * 0.14,
-            height: size * 0.04,
-            decoration: BoxDecoration(
-              color: const Color(0xFF8EE7FF),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.48,
-          left: size * 0.16,
-          child: Container(
-            width: size * 0.06,
-            height: size * 0.10,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172033),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.48,
-          right: size * 0.16,
-          child: Container(
-            width: size * 0.06,
-            height: size * 0.10,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172033),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: size * 0.18,
-          left: size * 0.16,
-          child: Container(
-            width: size * 0.06,
-            height: size * 0.10,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172033),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: size * 0.18,
-          right: size * 0.16,
-          child: Container(
-            width: size * 0.06,
-            height: size * 0.10,
-            decoration: BoxDecoration(
-              color: const Color(0xFF172033),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EpaAvatar extends StatelessWidget {
-  const _EpaAvatar({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          top: size * 0.18,
-          child: Container(
-            width: size * 0.28,
-            height: size * 0.10,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(size * 0.08),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.26,
-          child: Container(
-            width: size * 0.48,
-            height: size * 0.22,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(size * 0.16),
-                topRight: Radius.circular(size * 0.16),
-                bottomLeft: Radius.circular(size * 0.08),
-                bottomRight: Radius.circular(size * 0.08),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.30,
-          child: Container(
-            width: size * 0.30,
-            height: size * 0.12,
-            decoration: BoxDecoration(
-              color: const Color(0xFF6C7A89),
-              borderRadius: BorderRadius.circular(size * 0.06),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: size * 0.20,
-          child: Container(
-            width: size * 0.52,
-            height: size * 0.18,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8EDF2),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(size * 0.04),
-                topRight: Radius.circular(size * 0.04),
-                bottomLeft: Radius.circular(size * 0.12),
-                bottomRight: Radius.circular(size * 0.12),
-              ),
-              border: Border.all(
-                color: const Color(0xFF6E7A87).withValues(alpha: 0.35),
-                width: size * 0.012,
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: size * 0.24,
-          child: Container(
-            width: size * 0.28,
-            height: size * 0.08,
-            decoration: BoxDecoration(
-              color: const Color(0xFFB9C3CC),
-              borderRadius: BorderRadius.circular(size * 0.04),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.46,
-          left: size * 0.15,
-          child: _SideWheel(height: size * 0.11, width: size * 0.06),
-        ),
-        Positioned(
-          top: size * 0.46,
-          right: size * 0.15,
-          child: _SideWheel(height: size * 0.11, width: size * 0.06),
-        ),
-        Positioned(
-          bottom: size * 0.18,
-          left: size * 0.15,
-          child: _SideWheel(height: size * 0.11, width: size * 0.06),
-        ),
-        Positioned(
-          bottom: size * 0.18,
-          right: size * 0.15,
-          child: _SideWheel(height: size * 0.11, width: size * 0.06),
-        ),
-      ],
-    );
-  }
-}
-
-class _MicrocarAvatar extends StatelessWidget {
-  const _MicrocarAvatar({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        Positioned(
-          top: size * 0.18,
-          child: Container(
-            width: size * 0.24,
-            height: size * 0.08,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(size * 0.08),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.24,
-          child: Container(
-            width: size * 0.40,
-            height: size * 0.40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(size * 0.16),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.30,
-          child: Container(
-            width: size * 0.26,
-            height: size * 0.16,
-            decoration: BoxDecoration(
-              color: const Color(0xFF79D8FF),
-              borderRadius: BorderRadius.circular(size * 0.07),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: size * 0.26,
-          child: Container(
-            width: size * 0.18,
-            height: size * 0.05,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B2233).withValues(alpha: 0.75),
-              borderRadius: BorderRadius.circular(size),
-            ),
-          ),
-        ),
-        Positioned(
-          top: size * 0.42,
-          left: size * 0.20,
-          child: _SideWheel(height: size * 0.10, width: size * 0.055),
-        ),
-        Positioned(
-          top: size * 0.42,
-          right: size * 0.20,
-          child: _SideWheel(height: size * 0.10, width: size * 0.055),
-        ),
-        Positioned(
-          bottom: size * 0.24,
-          left: size * 0.20,
-          child: _SideWheel(height: size * 0.10, width: size * 0.055),
-        ),
-        Positioned(
-          bottom: size * 0.24,
-          right: size * 0.20,
-          child: _SideWheel(height: size * 0.10, width: size * 0.055),
-        ),
-      ],
-    );
-  }
-}
-
-class _SideWheel extends StatelessWidget {
-  const _SideWheel({required this.height, required this.width});
-
-  final double height;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
       decoration: BoxDecoration(
-        color: const Color(0xFF172033),
-        borderRadius: BorderRadius.circular(width),
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color.lerp(tint, Colors.white, 0.42)!, tint],
+        ),
+        border: Border.all(
+          color: borderColor ?? (selected ? Colors.white : Colors.white70),
+          width: borderWidth ?? (selected ? 2.0 : 1.2),
+        ),
+        boxShadow: [
+          if (showOuterGlow ?? selected)
+            BoxShadow(
+              color: tint.withValues(alpha: 0.36),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+        ],
+      ),
+      child: Icon(
+        icon,
+        color: Colors.white,
+        size: option.style == MapMarkerStyle.dot ? size * 0.42 : size * 0.56,
       ),
     );
   }
 }
 
-class _MarkerPalette {
-  const _MarkerPalette({
-    required this.base,
-    required this.accent,
-    required this.glow,
-  });
-
-  final Color base;
-  final Color accent;
-  final Color glow;
-
-  _MarkerPalette copyWith({Color? base, Color? accent, Color? glow}) {
-    return _MarkerPalette(
-      base: base ?? this.base,
-      accent: accent ?? this.accent,
-      glow: glow ?? this.glow,
-    );
-  }
-}
+String _arrowLabel(AppLocalizations l10n) => l10n.settingsMapMarkerArrow;
+String _compassLabel(AppLocalizations l10n) => l10n.settingsMapMarkerCompass;
+String _triangleLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTriangle;
+String _dotLabel(AppLocalizations l10n) => l10n.settingsMapMarkerDot;
+String _microcarLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMicrocar;
+String _epaLabel(AppLocalizations l10n) => l10n.settingsMapMarkerEpa;
+String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
+String _blueLabel(AppLocalizations l10n) => l10n.settingsColorBlue;
+String _blackLabel(AppLocalizations l10n) => l10n.settingsColorBlack;
+String _whiteLabel(AppLocalizations l10n) => l10n.settingsColorWhite;
+String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;
