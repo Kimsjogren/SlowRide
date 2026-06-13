@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
@@ -316,9 +317,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     valueListenable:
                         SubscriptionService.instance.localizedPrice,
                     builder: (_, price, _) {
-                      final priceText = price != null
+                      final isWebCheckout =
+                          SubscriptionService.instance.isWebCheckout;
+                      final priceText = (price != null && price.isNotEmpty)
                           ? l10n.settingsProPricePerMonth(price)
-                          : l10n.paywallPrice;
+                          : (isWebCheckout
+                                ? l10n.settingsProPricePerMonth(
+                                    BackendConfig.webCheckoutDisplayPrice,
+                                  )
+                                : l10n.paywallPrice);
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -422,7 +429,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
                         final isWebCheckout =
                             SubscriptionService.instance.isWebCheckout;
                         final text = isWebCheckout
-                            ? l10n.paywallDisclosureAndroid(price ?? '–')
+                            ? l10n.paywallDisclosureAndroid(
+                                (price != null && price.isNotEmpty)
+                                    ? price
+                                    : BackendConfig.webCheckoutDisplayPrice,
+                              )
                             : l10n.paywallDisclosure(price ?? '–');
                         return Text(
                           text,

@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 class MapWidget extends StatefulWidget {
   const MapWidget({
@@ -951,47 +952,14 @@ class _LocationDot extends StatelessWidget {
     required this.lockNorthUp,
   });
 
-  // Icons.navigation points straight up (north), no offset needed.
-  static const double _iconHeadingOffsetRad = 0;
-
   final ValueNotifier<double> headingNotifier;
   final bool lockNorthUp;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: headingNotifier,
-      builder: (contextValue, heading, childValue) => Center(
-        child: Transform.rotate(
-          // heading 0 = north; Icons.navigation_rounded already points up (north)
-          // so we rotate and also compensate icon baseline offset.
-          angle: lockNorthUp
-              ? 0.0
-              : (heading * math.pi / 180.0) + _iconHeadingOffsetRad,
-          child: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF1E90FF),
-              border: Border.all(color: Colors.white, width: 2.5),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF1E90FF).withValues(alpha: 0.75),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-                BoxShadow(
-                  color: const Color(0xFF1E90FF).withValues(alpha: 0.30),
-                  blurRadius: 22,
-                  spreadRadius: 8,
-                ),
-              ],
-            ),
-            child: const Icon(Icons.navigation, color: Colors.white, size: 20),
-          ),
-        ),
-      ),
+    return UserLocationMarker(
+      headingNotifier: headingNotifier,
+      lockNorthUp: lockNorthUp,
     );
   }
 }

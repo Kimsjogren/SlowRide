@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/features/settings/parent_settings_screen.dart';
@@ -448,6 +449,74 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: ValueListenableBuilder<MapMarkerStyle>(
+                    valueListenable: preferences.mapMarkerStyle,
+                    builder: (context, markerStyle, _) {
+                      return DropdownButtonFormField<MapMarkerStyle>(
+                        dropdownColor: const Color(0xFF0A1F63),
+                        style: valueStyle,
+                        iconEnabledColor: Colors.white70,
+                        value: markerStyle,
+                        decoration: InputDecoration(
+                          labelText: l10n.settingsMapMarkerLabel,
+                          labelStyle: labelStyle,
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white54),
+                          ),
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                            value: MapMarkerStyle.navigation,
+                            child: _MarkerStyleItem(
+                              icon: Icons.navigation,
+                              label: l10n.settingsMapMarkerArrow,
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: MapMarkerStyle.compass,
+                            child: _MarkerStyleItem(
+                              icon: Icons.assistant_navigation,
+                              label: l10n.settingsMapMarkerCompass,
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: MapMarkerStyle.triangle,
+                            child: _MarkerStyleItem(
+                              icon: Icons.change_history,
+                              label: l10n.settingsMapMarkerTriangle,
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: MapMarkerStyle.dot,
+                            child: _MarkerStyleItem(
+                              icon: Icons.trip_origin,
+                              label: l10n.settingsMapMarkerDot,
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            preferences.mapMarkerStyle.value = value;
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // Voice navigation toggle
                 Container(
                   width: double.infinity,
@@ -638,13 +707,24 @@ class SettingsScreen extends StatelessWidget {
                               valueListenable:
                                   SubscriptionService.instance.localizedPrice,
                               builder: (_, price, _) {
-                                if (price == null) {
+                                final displayPrice =
+                                    (price != null && price.isNotEmpty)
+                                    ? l10n.settingsProPricePerMonth(price)
+                                    : (SubscriptionService
+                                              .instance
+                                              .isWebCheckout
+                                          ? l10n.settingsProPricePerMonth(
+                                              BackendConfig
+                                                  .webCheckoutDisplayPrice,
+                                            )
+                                          : null);
+                                if (displayPrice == null) {
                                   return const SizedBox.shrink();
                                 }
                                 return Padding(
                                   padding: const EdgeInsets.only(top: 6),
                                   child: Text(
-                                    l10n.settingsProPricePerMonth(price),
+                                    displayPrice,
                                     style: TextStyle(
                                       color: Colors.white.withValues(
                                         alpha: 0.5,
@@ -760,6 +840,24 @@ class SettingsScreen extends StatelessWidget {
           AdBannerWidget(adUnitId: AdService.instance.bannerSettingsUnitId),
         ],
       ),
+    );
+  }
+}
+
+class _MarkerStyleItem extends StatelessWidget {
+  const _MarkerStyleItem({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: Colors.white70),
+        const SizedBox(width: 10),
+        Text(label),
+      ],
     );
   }
 }

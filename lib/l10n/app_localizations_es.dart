@@ -1071,6 +1071,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Leer instrucciones de giro en voz alta';
 
   @override
+  String get settingsMapMarkerLabel => 'Marcador del mapa';
+
+  @override
+  String get settingsMapMarkerArrow => 'Flecha';
+
+  @override
+  String get settingsMapMarkerCompass => 'Brújula';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Triángulo';
+
+  @override
+  String get settingsMapMarkerDot => 'Punto';
+
+  @override
   String get voiceTurnLeft => 'Gire a la izquierda';
 
   @override

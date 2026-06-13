@@ -2109,6 +2109,36 @@ abstract class AppLocalizations {
   /// **'Read turn instructions aloud'**
   String get settingsVoiceNavigationSubtitle;
 
+  /// No description provided for @settingsMapMarkerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Map marker'**
+  String get settingsMapMarkerLabel;
+
+  /// No description provided for @settingsMapMarkerArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get settingsMapMarkerArrow;
+
+  /// No description provided for @settingsMapMarkerCompass.
+  ///
+  /// In en, this message translates to:
+  /// **'Compass'**
+  String get settingsMapMarkerCompass;
+
+  /// No description provided for @settingsMapMarkerTriangle.
+  ///
+  /// In en, this message translates to:
+  /// **'Triangle'**
+  String get settingsMapMarkerTriangle;
+
+  /// No description provided for @settingsMapMarkerDot.
+  ///
+  /// In en, this message translates to:
+  /// **'Dot'**
+  String get settingsMapMarkerDot;
+
   /// No description provided for @voiceTurnLeft.
   ///
   /// In en, this message translates to:

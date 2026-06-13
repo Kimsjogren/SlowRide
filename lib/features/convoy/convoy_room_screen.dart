@@ -28,6 +28,7 @@ import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -1665,17 +1666,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               ],
             ),
             child: isMe
-                ? ValueListenableBuilder<double>(
-                    valueListenable: _arrowHdg,
-                    builder: (contextValue, hdg, childValue) =>
-                        Transform.rotate(
-                          angle: hdg * math.pi / 180,
-                          child: const Icon(
-                            Icons.navigation,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
+                ? UserLocationMarker(
+                    headingNotifier: _arrowHdg,
+                    lockNorthUp: false,
+                    size: 34,
+                    backgroundColor: Colors.transparent,
+                    borderColor: Colors.transparent,
+                    borderWidth: 0,
+                    showOuterGlow: false,
                   )
                 : Center(
                     child: Text(
@@ -2771,39 +2769,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 alignment: _use3DMap
                                     ? const Alignment(0, _k3DArrowAlignmentY)
                                     : Alignment.center,
-                                child: ValueListenableBuilder<double>(
-                                  valueListenable: _arrowHdg,
-                                  builder: (_, hdgOffset, child) {
-                                    return Transform.rotate(
-                                      angle: hdgOffset * math.pi / 180,
-                                      child: Container(
-                                        width: 38,
-                                        height: 38,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: const Color(0xFF1E6BFF),
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2.5,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: const Color(
-                                                0xFF1E6BFF,
-                                              ).withValues(alpha: 0.75),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(
-                                          Icons.navigation,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                child: UserLocationMarker(
+                                  headingNotifier: _arrowHdg,
+                                  lockNorthUp: false,
                                 ),
                               ),
                             ),

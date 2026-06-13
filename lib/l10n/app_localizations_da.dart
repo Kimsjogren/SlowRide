@@ -1071,6 +1071,21 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Læs svingeinstruktioner højt';
 
   @override
+  String get settingsMapMarkerLabel => 'Kortmarkør';
+
+  @override
+  String get settingsMapMarkerArrow => 'Pil';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompas';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Trekant';
+
+  @override
+  String get settingsMapMarkerDot => 'Punkt';
+
+  @override
   String get voiceTurnLeft => 'Drej til venstre';
 
   @override

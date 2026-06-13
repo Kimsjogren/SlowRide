@@ -49,6 +49,7 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `POST /api/claim`: Tilldelar nästa lediga kod till enheten.
 - `POST /api/scan`: Loggar QR-scan (frivilligt, ingen body).
 - `GET /api/stats`: Returnerar `flyer_stats`-vyn. Header: `X-Stats-Token: <STATS_TOKEN>`.
+- `GET /api/web/pricing`: Returnerar aktivt Stripe-pris för webb/APK, lokaliserat per språk.
 - `POST /api/web/checkout-session`: Skapar Stripe Checkout Session (`mode=subscription`).
 - `POST /api/web/stripe-webhook`: Tar emot Stripe events och uppdaterar `web_subscriptions`.
 
@@ -93,3 +94,29 @@ Notering:
 
 - Klienten skriver inte till tabellen.
 - Endast webhook/backend med service-role ska uppdatera subscription-status.
+
+## Ändra Pro-priset
+
+För webb/APK är `Stripe Price ID` nu den gemensamma sanningskällan.
+
+Flöde:
+
+1. Skapa eller aktivera rätt pris i Stripe.
+1. Uppdatera Worker-secret:
+
+```bash
+wrangler secret put STRIPE_PRICE_ID
+```
+
+1. Deploya workern:
+
+```bash
+wrangler deploy
+```
+
+Efter det hämtar:
+
+- `Flutter` (webb/APK Stripe-spåret) priset från `GET /api/web/pricing`
+- `hemsidan` priset från samma endpoint
+
+För `iPhone / App Store` ändrar du fortfarande priset i `App Store Connect`, eftersom iOS läser priset direkt från Apple.

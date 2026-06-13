@@ -1071,6 +1071,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Lire les instructions de virage à voix haute';
 
   @override
+  String get settingsMapMarkerLabel => 'Marqueur de carte';
+
+  @override
+  String get settingsMapMarkerArrow => 'Flèche';
+
+  @override
+  String get settingsMapMarkerCompass => 'Boussole';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Triangle';
+
+  @override
+  String get settingsMapMarkerDot => 'Point';
+
+  @override
   String get voiceTurnLeft => 'Tournez à gauche';
 
   @override

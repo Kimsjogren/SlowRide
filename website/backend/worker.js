@@ -5,6 +5,7 @@
  *   POST /api/claim   → returnerar { code, redeem_url, repeat }
  *   POST /api/scan    → logga en QR-scan (no-op om redan loggad)
  *   GET  /api/stats   → enkel översikt (skyddad med STATS_TOKEN)
+ *   GET  /api/web/pricing          → läs aktivt Stripe-pris för webb/APK
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -133,6 +134,59 @@ function stripeFormBody(params) {
   return form;
 }
 
+const PRICE_LOCALES = ["en", "sv", "nb", "da", "fi", "fr", "es"];
+
+const INTERVAL_LABELS = {
+  day: { en: "day", sv: "dag", nb: "dag", da: "dag", fi: "päivä", fr: "jour", es: "día" },
+  week: { en: "week", sv: "vecka", nb: "uke", da: "uge", fi: "viikko", fr: "semaine", es: "semana" },
+  month: { en: "month", sv: "månad", nb: "måned", da: "måned", fi: "kuukausi", fr: "mois", es: "mes" },
+  year: { en: "year", sv: "år", nb: "år", da: "år", fi: "vuosi", fr: "an", es: "año" },
+};
+
+function formatAmountForLocale(locale, amountMinor, currency) {
+  const zeroDecimalCurrencies = new Set([
+    "bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga",
+    "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf",
+  ]);
+  const fractionDigits = zeroDecimalCurrencies.has(currency.toLowerCase()) ? 0 : 2;
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: currency.toUpperCase(),
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(amountMinor / Math.pow(10, fractionDigits));
+}
+
+function buildLocalizedPricePayload(price) {
+  const amountMinor = Number(price?.unit_amount ?? 0);
+  const currency = (price?.currency || "sek").toLowerCase();
+  const interval = price?.recurring?.interval || "month";
+  const intervalCount = Number(price?.recurring?.interval_count || 1);
+  const labels = INTERVAL_LABELS[interval] || INTERVAL_LABELS.month;
+
+  const amountByLocale = {};
+  const displayByLocale = {};
+
+  for (const locale of PRICE_LOCALES) {
+    const amountLabel = formatAmountForLocale(locale, amountMinor, currency);
+    amountByLocale[locale] = amountLabel;
+    const intervalLabel = labels[locale] || labels.en;
+    displayByLocale[locale] = intervalCount > 1
+      ? `${amountLabel} / ${intervalCount} ${intervalLabel}`
+      : `${amountLabel} / ${intervalLabel}`;
+  }
+
+  return {
+    stripe_price_id: price.id,
+    amount_minor: amountMinor,
+    currency,
+    interval,
+    interval_count: intervalCount,
+    amount_by_locale: amountByLocale,
+    display_by_locale: displayByLocale,
+  };
+}
+
 async function stripeApiPost(env, path, params) {
   const body = stripeFormBody(params);
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
@@ -164,6 +218,33 @@ async function stripeApiGet(env, path) {
     throw new Error(detail);
   }
   return data;
+}
+
+async function handleWebPricing(env, origin) {
+  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_PRICE_ID) {
+    return json({ error: "stripe_not_configured" }, { status: 500 }, origin);
+  }
+
+  try {
+    const price = await stripeApiGet(
+      env,
+      `/prices/${encodeURIComponent(env.STRIPE_PRICE_ID)}`
+    );
+    return json(
+      {
+        status: "ok",
+        pricing: buildLocalizedPricePayload(price),
+      },
+      { status: 200 },
+      origin
+    );
+  } catch (e) {
+    return json(
+      { error: "stripe_price_lookup_failed", detail: String(e) },
+      { status: 500 },
+      origin
+    );
+  }
 }
 
 function constantTimeEqual(a, b) {
@@ -523,6 +604,9 @@ export default {
     }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       return handleStats(request, env, origin);
+    }
+    if (url.pathname === "/api/web/pricing" && request.method === "GET") {
+      return handleWebPricing(env, origin);
     }
     if (url.pathname === "/api/web/checkout-session" && request.method === "POST") {
       return handleWebCheckoutSession(request, env, origin);

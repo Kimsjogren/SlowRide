@@ -39,6 +39,8 @@ services:
     image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
     container_name: slowride-valhalla
     restart: unless-stopped
+    labels:
+      - autoheal=true
     depends_on:
       merge:
         condition: service_completed_successfully
@@ -67,3 +69,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 300s
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: slowride-autoheal
+    restart: unless-stopped
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - CURL_TIMEOUT=10
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

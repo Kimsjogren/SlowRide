@@ -67,6 +67,97 @@ docker logs slowride-valhalla -f
 curl http://localhost:8002/status
 ```
 
+## Monitoring and Alerts
+
+The compose file already includes:
+
+- a Docker `healthcheck` on `http://localhost:8002/status`
+- `restart: unless-stopped`
+- `autoheal`, which restarts Valhalla if Docker marks it `unhealthy`
+
+That gives you self-healing, but not a real alarm. For alerts on Ubuntu:
+
+### 1. Make the monitor script executable
+
+```bash
+cd docker/valhalla
+chmod +x monitor_valhalla.sh
+```
+
+### 2. Test it manually
+
+```bash
+./monitor_valhalla.sh
+```
+
+Optional alert channels:
+
+- `NTFY_TOPIC=my-private-topic ./monitor_valhalla.sh`
+- `TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... ./monitor_valhalla.sh`
+
+### 3. Run it every minute with systemd
+
+Create `/etc/systemd/system/valhalla-monitor.service`:
+
+```ini
+[Unit]
+Description=Monitor SlowRide Valhalla health
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/slowride/docker/valhalla
+Environment=STATUS_URL=http://127.0.0.1:8002/status
+Environment=CONTAINER_NAME=slowride-valhalla
+# Optional:
+# Environment=NTFY_TOPIC=your-private-topic
+# Environment=TELEGRAM_BOT_TOKEN=123456:abc
+# Environment=TELEGRAM_CHAT_ID=123456789
+ExecStart=/opt/slowride/docker/valhalla/monitor_valhalla.sh
+```
+
+Create `/etc/systemd/system/valhalla-monitor.timer`:
+
+```ini
+[Unit]
+Description=Run Valhalla monitor every minute
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=1m
+Unit=valhalla-monitor.service
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable it:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now valhalla-monitor.timer
+sudo systemctl list-timers | grep valhalla-monitor
+```
+
+### 4. Recommended: external uptime check too
+
+A local alarm won't help if the whole Ubuntu server goes down. Add one external monitor as well:
+
+- Uptime Kuma on another server
+- Better Stack
+- UptimeRobot
+
+Point it at:
+
+```bash
+http://YOUR_SERVER_IP:8002/status
+```
+
+Best setup is both:
+
+- local self-healing + local alerts
+- external uptime monitor for full server/network outages
+
 ### 4. Configure the App
 
 Build the app with Valhalla as the routing provider:

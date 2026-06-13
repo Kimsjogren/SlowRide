@@ -85,4 +85,18 @@ class BackendConfig {
     'WEB_CHECKOUT_ONLY',
     defaultValue: false,
   );
+
+  /// Fallback price label shown for web/Stripe checkout when no store price
+  /// exists (for example in sideloaded APK builds).
+  /// Build with: --dart-define=WEB_CHECKOUT_DISPLAY_PRICE=39\ kr
+  static const String webCheckoutDisplayPrice = String.fromEnvironment(
+    'WEB_CHECKOUT_DISPLAY_PRICE',
+    defaultValue: '39 kr',
+  );
+
+  /// Public worker endpoint for reading the active Stripe web/APK price.
+  static const String webPricingUrl = String.fromEnvironment(
+    'WEB_PRICING_URL',
+    defaultValue: 'https://cruizx.com/api/web/pricing',
+  );
 }

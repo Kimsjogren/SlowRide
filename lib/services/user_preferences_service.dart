@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 
 enum SpeedUnit { kmh, mph }
+enum MapMarkerStyle { navigation, compass, triangle, dot }
 
 class UserPreferencesService {
   UserPreferencesService._();
@@ -21,6 +22,8 @@ class UserPreferencesService {
   final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(false);
   final ValueNotifier<bool> isElectric = ValueNotifier<bool>(false);
   final ValueNotifier<bool> hasStuddedTires = ValueNotifier<bool>(false);
+  final ValueNotifier<MapMarkerStyle> mapMarkerStyle =
+      ValueNotifier<MapMarkerStyle>(MapMarkerStyle.navigation);
 
   static const String _vehicleTypeKey = 'user_vehicle_type';
   static const String _speedUnitKey = 'user_speed_unit';
@@ -30,6 +33,7 @@ class UserPreferencesService {
   static const String _use3DMapKey = 'user_use_3d_map';
   static const String _isElectricKey = 'user_is_electric';
   static const String _hasStuddedTiresKey = 'user_has_studded_tires';
+  static const String _mapMarkerStyleKey = 'user_map_marker_style';
 
   /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_SE_A-tractor'.
   static const String _vehicleSpeedPrefix = 'vehicle_speed_';
@@ -55,6 +59,11 @@ class UserPreferencesService {
     use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
     isElectric.value = _prefs!.getBool(_isElectricKey) ?? false;
     hasStuddedTires.value = _prefs!.getBool(_hasStuddedTiresKey) ?? false;
+    final storedMarkerStyle = _prefs!.getString(_mapMarkerStyleKey);
+    mapMarkerStyle.value = MapMarkerStyle.values.firstWhere(
+      (style) => style.name == storedMarkerStyle,
+      orElse: () => MapMarkerStyle.navigation,
+    );
 
     if (!_listenersAttached) {
       vehicleType.addListener(_onVehicleTypeChanged);
@@ -67,6 +76,7 @@ class UserPreferencesService {
       use3DMap.addListener(_persist3DMap);
       isElectric.addListener(_persistIsElectric);
       hasStuddedTires.addListener(_persistHasStuddedTires);
+      mapMarkerStyle.addListener(_persistMapMarkerStyle);
       _listenersAttached = true;
     }
   }
@@ -123,6 +133,10 @@ class UserPreferencesService {
 
   Future<void> _persistHasStuddedTires() async {
     await _prefs?.setBool(_hasStuddedTiresKey, hasStuddedTires.value);
+  }
+
+  Future<void> _persistMapMarkerStyle() async {
+    await _prefs?.setString(_mapMarkerStyleKey, mapMarkerStyle.value.name);
   }
 
   Future<void> _persistLanguageCode() async {

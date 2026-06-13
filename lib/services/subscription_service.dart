@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 
 enum PaywallReason { routeLimit, convoyLimit, memberLimit }
 
@@ -33,10 +37,12 @@ class SubscriptionService {
   Timer? _webSyncTimer;
   bool _authListenersAttached = false;
   bool _webSyncInFlight = false;
+  bool _languageListenerAttached = false;
+  Map<String, String> _webPriceByLocale = const {};
 
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
 
-  /// Localized price string from App Store (e.g. "39,00 kr", "3,49 $").
+  /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
   bool get isWebCheckout => kIsWeb || BackendConfig.webCheckoutOnly;
@@ -87,9 +93,14 @@ class SubscriptionService {
     }
 
     if (kIsWeb) {
+      _attachLanguageListener();
+      await _loadWebPricing();
       _attachAuthListeners();
       await syncWebEntitlement();
       _startWebEntitlementPolling();
+    } else if (isWebCheckout) {
+      _attachLanguageListener();
+      await _loadWebPricing();
     } else {
       await _startIap();
     }
@@ -102,6 +113,53 @@ class SubscriptionService {
     AuthService.instance.userId.addListener(_onAuthChanged);
     AuthService.instance.isLoggedIn.addListener(_onAuthChanged);
     _authListenersAttached = true;
+  }
+
+  void _attachLanguageListener() {
+    if (_languageListenerAttached) return;
+    UserPreferencesService.instance.languageCode.addListener(
+      _refreshWebDisplayPrice,
+    );
+    _languageListenerAttached = true;
+  }
+
+  String _currentLanguageCode() {
+    final explicit = UserPreferencesService.instance.languageCode.value;
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    final platformCode = PlatformDispatcher.instance.locale.languageCode;
+    return platformCode.isEmpty ? 'en' : platformCode;
+  }
+
+  void _refreshWebDisplayPrice() {
+    final lang = _currentLanguageCode();
+    localizedPrice.value =
+        _webPriceByLocale[lang] ??
+        _webPriceByLocale['en'] ??
+        BackendConfig.webCheckoutDisplayPrice;
+  }
+
+  Future<void> _loadWebPricing() async {
+    try {
+      final res = await http.get(Uri.parse(BackendConfig.webPricingUrl));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        _refreshWebDisplayPrice();
+        return;
+      }
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final pricing = Map<String, dynamic>.from(
+        (data['pricing'] as Map?) ?? const {},
+      );
+      final amountByLocale = Map<String, dynamic>.from(
+        (pricing['amount_by_locale'] as Map?) ?? const {},
+      );
+      _webPriceByLocale = amountByLocale.map(
+        (key, value) => MapEntry(key, value.toString()),
+      );
+      _refreshWebDisplayPrice();
+    } catch (e) {
+      debugPrint('Web pricing fetch failed: $e');
+      _refreshWebDisplayPrice();
+    }
   }
 
   void _onAuthChanged() {

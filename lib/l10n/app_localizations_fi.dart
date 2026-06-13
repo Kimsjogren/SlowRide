@@ -1071,6 +1071,21 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Lue käännösohjeet ääneen';
 
   @override
+  String get settingsMapMarkerLabel => 'Karttamerkki';
+
+  @override
+  String get settingsMapMarkerArrow => 'Nuoli';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompassi';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Kolmio';
+
+  @override
+  String get settingsMapMarkerDot => 'Piste';
+
+  @override
   String get voiceTurnLeft => 'Käänny vasemmalle';
 
   @override

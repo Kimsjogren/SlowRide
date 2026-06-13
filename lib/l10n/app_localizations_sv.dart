@@ -1071,6 +1071,21 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Läs upp svänginstruktioner';
 
   @override
+  String get settingsMapMarkerLabel => 'Kartmarkör';
+
+  @override
+  String get settingsMapMarkerArrow => 'Pil';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompass';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Triangel';
+
+  @override
+  String get settingsMapMarkerDot => 'Punkt';
+
+  @override
   String get voiceTurnLeft => 'Sväng vänster';
 
   @override

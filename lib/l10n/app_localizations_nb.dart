@@ -1071,6 +1071,21 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsVoiceNavigationSubtitle => 'Les opp svingeinstruksjoner';
 
   @override
+  String get settingsMapMarkerLabel => 'Kartmarkør';
+
+  @override
+  String get settingsMapMarkerArrow => 'Pil';
+
+  @override
+  String get settingsMapMarkerCompass => 'Kompass';
+
+  @override
+  String get settingsMapMarkerTriangle => 'Trekant';
+
+  @override
+  String get settingsMapMarkerDot => 'Punkt';
+
+  @override
   String get voiceTurnLeft => 'Sving til venstre';
 
   @override

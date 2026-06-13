@@ -601,6 +601,29 @@ const translations = {
 
 const supportedLanguages = ["da", "en", "fi", "fr", "nb", "sv"];
 const COOKIE_CONSENT_KEY = "cruizx_cookie_consent";
+const WEB_PRICING_URL = "https://cruizx.com/api/web/pricing";
+
+async function hydrateRemotePricing() {
+  try {
+    const res = await fetch(WEB_PRICING_URL, { credentials: "omit" });
+    if (!res.ok) return;
+    const data = await res.json();
+    const displayByLocale = data?.pricing?.display_by_locale;
+    if (!displayByLocale || typeof displayByLocale !== "object") return;
+
+    for (const lang of supportedLanguages) {
+      const display = displayByLocale[lang] ?? displayByLocale.en;
+      if (display && translations[lang]) {
+        translations[lang].proPrice = display;
+      }
+    }
+
+    const currentLang = localStorage.getItem("cruizx_site_lang") || "en";
+    applyLanguage(currentLang);
+  } catch (_) {
+    // Keep static fallback pricing text if the endpoint is unavailable.
+  }
+}
 
 function applyLanguage(lang) {
   const activeLang = supportedLanguages.includes(lang) ? lang : "en";
@@ -716,6 +739,7 @@ const initial = supportedLanguages.includes(saved)
     ? browserLang
     : "en";
 applyLanguage(initial);
+hydrateRemotePricing();
 
 if (languageSelect) {
   languageSelect.addEventListener("change", (event) => {
