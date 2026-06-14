@@ -133,7 +133,7 @@ class SubscriptionService {
       _startWebEntitlementPolling();
     } else if (isWebCheckout) {
       _attachLanguageListener();
-      await _loadWebPricing();
+      _refreshWebDisplayPrice();
     } else {
       await _startIap();
     }
@@ -164,6 +164,10 @@ class SubscriptionService {
   }
 
   void _refreshWebDisplayPrice() {
+    if (BackendConfig.webCheckoutOnly && !kIsWeb) {
+      localizedPrice.value = BackendConfig.webCheckoutDisplayPrice;
+      return;
+    }
     final lang = _currentLanguageCode();
     localizedPrice.value =
         _webPriceByLocale[lang] ??

@@ -204,14 +204,14 @@ class UserLocationMarker extends StatelessWidget {
     MapMarkerOption(
       style: MapMarkerStyle.tractorRed,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8600_cutout.png',
+      assetPath: 'assets/IMG_8600.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorGold,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8601_cutout.png',
+      assetPath: 'assets/IMG_8601.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _goldLabel,
     ),
