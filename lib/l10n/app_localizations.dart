@@ -1155,6 +1155,12 @@ abstract class AppLocalizations {
   /// **'Pickup'**
   String get settingsMapMarkerCategoryPickup;
 
+  /// No description provided for @settingsMapMarkerCategoryAtractor.
+  ///
+  /// In en, this message translates to:
+  /// **'A-tractor'**
+  String get settingsMapMarkerCategoryAtractor;
+
   /// No description provided for @settingsMapMarkerCategoryTractor.
   ///
   /// In en, this message translates to:
@@ -1209,6 +1215,18 @@ abstract class AppLocalizations {
   /// **'Pickup'**
   String get settingsMapMarkerPickup;
 
+  /// No description provided for @settingsMapMarkerMini.
+  ///
+  /// In en, this message translates to:
+  /// **'MINI'**
+  String get settingsMapMarkerMini;
+
+  /// No description provided for @settingsMapMarkerBmw.
+  ///
+  /// In en, this message translates to:
+  /// **'BMW'**
+  String get settingsMapMarkerBmw;
+
   /// No description provided for @settingsMapMarkerTractor.
   ///
   /// In en, this message translates to:
@@ -1245,6 +1263,18 @@ abstract class AppLocalizations {
   /// **'Gold'**
   String get settingsColorGold;
 
+  /// No description provided for @settingsColorSilver.
+  ///
+  /// In en, this message translates to:
+  /// **'Silver'**
+  String get settingsColorSilver;
+
+  /// No description provided for @settingsColorGreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Green'**
+  String get settingsColorGreen;
+
   /// No description provided for @settingsColorGraphite.
   ///
   /// In en, this message translates to:
@@ -1256,6 +1286,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Yellow'**
   String get settingsColorYellow;
+
+  /// No description provided for @settingsColorOrange.
+  ///
+  /// In en, this message translates to:
+  /// **'Orange'**
+  String get settingsColorOrange;
 
   /// No description provided for @navigationTitle.
   ///

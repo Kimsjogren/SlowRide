@@ -28,6 +28,17 @@ enum MapMarkerStyle {
   tractorBlack,
   tractorRed,
   tractorGold,
+  miniWhite,
+  miniGreen,
+  miniOrange,
+  bmwRed,
+  bmwBlack,
+  bmwSilver,
+  bmwOrange,
+  mgoOrange,
+  mgoRed,
+  mgoBlack,
+  mgoYellow,
 }
 
 class UserPreferencesService {

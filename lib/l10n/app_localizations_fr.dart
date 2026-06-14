@@ -550,6 +550,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerCategoryAtractor => 'A-tracteur';
+
+  @override
   String get settingsMapMarkerCategoryTractor => 'Tracteur';
 
   @override
@@ -577,6 +580,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerMini => 'MINI';
+
+  @override
+  String get settingsMapMarkerBmw => 'BMW';
+
+  @override
   String get settingsMapMarkerTractor => 'Tracteur';
 
   @override
@@ -595,10 +604,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsColorGold => 'Or';
 
   @override
+  String get settingsColorSilver => 'Argent';
+
+  @override
+  String get settingsColorGreen => 'Vert';
+
+  @override
   String get settingsColorGraphite => 'Graphite';
 
   @override
   String get settingsColorYellow => 'Jaune';
+
+  @override
+  String get settingsColorOrange => 'Orange';
 
   @override
   String get navigationTitle => 'Navigation virage par virage';

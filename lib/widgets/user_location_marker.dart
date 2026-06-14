@@ -4,7 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
-enum MapMarkerCategory { classic, ligier, aixam, pickup, tractor }
+enum MapMarkerCategory {
+  classic,
+  ligier,
+  aixam,
+  microcar,
+  pickup,
+  atraktor,
+  tractor,
+}
 
 class MapMarkerOption {
   const MapMarkerOption({
@@ -153,6 +161,34 @@ class UserLocationMarker extends StatelessWidget {
       colorNameBuilder: _yellowLabel,
     ),
     MapMarkerOption(
+      style: MapMarkerStyle.mgoOrange,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/IMG_8658.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _orangeLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.mgoRed,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/IMG_8664.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.mgoBlack,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/IMG_8666.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.mgoYellow,
+      category: MapMarkerCategory.microcar,
+      assetPath: 'assets/IMG_8668.png',
+      labelBuilder: _microcarLabel,
+      colorNameBuilder: _yellowLabel,
+    ),
+    MapMarkerOption(
       style: MapMarkerStyle.epaRed,
       category: MapMarkerCategory.pickup,
       assetPath: 'assets/192ED5A9-0723-4BEB-ADA8-CBECE9EB065F.png',
@@ -186,6 +222,55 @@ class UserLocationMarker extends StatelessWidget {
       assetPath: 'assets/A76FE270-F0FE-4E1C-98CE-68ED44E86C44.png',
       labelBuilder: _pickupLabel,
       colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.miniWhite,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/295338CB-45D8-463F-9357-3A10C1FA11F1.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _whiteLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.miniGreen,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/B56A7FAA-043F-4122-89FA-DFFAFAF5789B.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _greenLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.miniOrange,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/E1FF4F62-5EAE-48E6-8711-CB9F3739EDA9.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _orangeLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.bmwRed,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/529B6F72-70A3-43BD-833D-527E94192D06.png',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.bmwBlack,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/7C796342-720A-4043-84C0-71054F3E1742.png',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.bmwSilver,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/C625E0A8-C0D5-4BFD-9636-6219412BE9D3.png',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _silverLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.bmwOrange,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/D3D6C8AC-E43B-407A-A530-F65AD222EDE3.png',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorWhite,
@@ -236,7 +321,9 @@ class UserLocationMarker extends StatelessWidget {
       MapMarkerCategory.classic => l10n.settingsMapMarkerCategoryClassic,
       MapMarkerCategory.ligier => l10n.settingsMapMarkerCategoryLigier,
       MapMarkerCategory.aixam => l10n.settingsMapMarkerCategoryAixam,
+      MapMarkerCategory.microcar => l10n.settingsMapMarkerCategoryMicrocar,
       MapMarkerCategory.pickup => l10n.settingsMapMarkerCategoryPickup,
+      MapMarkerCategory.atraktor => l10n.settingsMapMarkerCategoryAtractor,
       MapMarkerCategory.tractor => l10n.settingsMapMarkerCategoryTractor,
     };
   }
@@ -398,12 +485,18 @@ String _triangleLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTriangle;
 String _dotLabel(AppLocalizations l10n) => l10n.settingsMapMarkerDot;
 String _ligierLabel(AppLocalizations l10n) => l10n.settingsMapMarkerLigier;
 String _aixamLabel(AppLocalizations l10n) => l10n.settingsMapMarkerAixam;
+String _microcarLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMicrocar;
 String _pickupLabel(AppLocalizations l10n) => l10n.settingsMapMarkerPickup;
+String _miniLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMini;
+String _bmwLabel(AppLocalizations l10n) => l10n.settingsMapMarkerBmw;
 String _tractorLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTractor;
 String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
 String _blueLabel(AppLocalizations l10n) => l10n.settingsColorBlue;
 String _blackLabel(AppLocalizations l10n) => l10n.settingsColorBlack;
 String _whiteLabel(AppLocalizations l10n) => l10n.settingsColorWhite;
 String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;
+String _silverLabel(AppLocalizations l10n) => l10n.settingsColorSilver;
+String _greenLabel(AppLocalizations l10n) => l10n.settingsColorGreen;
 String _graphiteLabel(AppLocalizations l10n) => l10n.settingsColorGraphite;
 String _yellowLabel(AppLocalizations l10n) => l10n.settingsColorYellow;
+String _orangeLabel(AppLocalizations l10n) => l10n.settingsColorOrange;

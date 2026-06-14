@@ -467,7 +467,9 @@ class SettingsScreen extends StatelessWidget {
                         MapMarkerCategory.classic,
                         MapMarkerCategory.ligier,
                         MapMarkerCategory.aixam,
+                        MapMarkerCategory.microcar,
                         MapMarkerCategory.pickup,
+                        MapMarkerCategory.atraktor,
                         MapMarkerCategory.tractor,
                       ];
 

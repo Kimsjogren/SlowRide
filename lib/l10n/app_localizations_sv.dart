@@ -550,6 +550,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerCategoryAtractor => 'A-traktor';
+
+  @override
   String get settingsMapMarkerCategoryTractor => 'Traktor';
 
   @override
@@ -577,6 +580,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsMapMarkerPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerMini => 'MINI';
+
+  @override
+  String get settingsMapMarkerBmw => 'BMW';
+
+  @override
   String get settingsMapMarkerTractor => 'Traktor';
 
   @override
@@ -595,10 +604,19 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsColorGold => 'Guld';
 
   @override
+  String get settingsColorSilver => 'Silver';
+
+  @override
+  String get settingsColorGreen => 'Grön';
+
+  @override
   String get settingsColorGraphite => 'Grafit';
 
   @override
   String get settingsColorYellow => 'Gul';
+
+  @override
+  String get settingsColorOrange => 'Orange';
 
   @override
   String get navigationTitle => 'Sväng-för-sväng-navigering';

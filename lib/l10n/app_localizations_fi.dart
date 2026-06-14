@@ -550,6 +550,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerCategoryAtractor => 'A-traktori';
+
+  @override
   String get settingsMapMarkerCategoryTractor => 'Traktori';
 
   @override
@@ -577,6 +580,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerPickup => 'Pickup';
 
   @override
+  String get settingsMapMarkerMini => 'MINI';
+
+  @override
+  String get settingsMapMarkerBmw => 'BMW';
+
+  @override
   String get settingsMapMarkerTractor => 'Traktori';
 
   @override
@@ -595,10 +604,19 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsColorGold => 'Kulta';
 
   @override
+  String get settingsColorSilver => 'Hopea';
+
+  @override
+  String get settingsColorGreen => 'Vihreä';
+
+  @override
   String get settingsColorGraphite => 'Grafiitti';
 
   @override
   String get settingsColorYellow => 'Keltainen';
+
+  @override
+  String get settingsColorOrange => 'Oranssi';
 
   @override
   String get navigationTitle => 'Käännös käännökseltä -navigointi';
