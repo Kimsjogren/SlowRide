@@ -99,4 +99,10 @@ class BackendConfig {
     'WEB_PRICING_URL',
     defaultValue: 'https://cruizx.com/api/web/pricing',
   );
+
+  /// Public worker endpoint that creates a Stripe Checkout Session for APK/web.
+  static const String webCheckoutSessionUrl = String.fromEnvironment(
+    'WEB_CHECKOUT_SESSION_URL',
+    defaultValue: 'https://cruizx.com/api/web/checkout-session',
+  );
 }

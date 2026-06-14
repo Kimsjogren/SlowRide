@@ -516,31 +516,35 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<bool>(
                     valueListenable: TtsService.instance.enabled,
                     builder: (context, ttsEnabled, _) {
-                      return SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          l10n.settingsVoiceNavigation,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                      return Material(
+                        color: Colors.transparent,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            l10n.settingsVoiceNavigation,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
-                        subtitle: Text(
-                          l10n.settingsVoiceNavigationSubtitle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.55),
-                            fontSize: 13,
+                          subtitle: Text(
+                            l10n.settingsVoiceNavigationSubtitle,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 13,
+                            ),
                           ),
+                          secondary: Icon(
+                            ttsEnabled ? Icons.volume_up : Icons.volume_off,
+                            color: ttsEnabled
+                                ? const Color(0xFF00C8FF)
+                                : Colors.white38,
+                          ),
+                          value: ttsEnabled,
+                          activeThumbColor: const Color(0xFF00C8FF),
+                          onChanged: (v) =>
+                              TtsService.instance.enabled.value = v,
                         ),
-                        secondary: Icon(
-                          ttsEnabled ? Icons.volume_up : Icons.volume_off,
-                          color: ttsEnabled
-                              ? const Color(0xFF00C8FF)
-                              : Colors.white38,
-                        ),
-                        value: ttsEnabled,
-                        activeThumbColor: const Color(0xFF00C8FF),
-                        onChanged: (v) => TtsService.instance.enabled.value = v,
                       );
                     },
                   ),
@@ -846,8 +850,8 @@ class _MarkerStyleChoice extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        width: 94,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        width: 102,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: selected ? 0.16 : 0.08),
           borderRadius: BorderRadius.circular(14),
@@ -862,14 +866,19 @@ class _MarkerStyleChoice extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             child,
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: selected ? 0.96 : 0.82),
-                fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            const SizedBox(height: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: selected ? 0.96 : 0.82),
+                  fontSize: 11.5,
+                  height: 1.1,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -909,7 +918,7 @@ class _MarkerCategorySection extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         SizedBox(
-          height: 108,
+          height: 132,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: options.length,
@@ -925,7 +934,7 @@ class _MarkerCategorySection extends StatelessWidget {
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 60,
+                  size: 66,
                   selected: selected,
                 ),
               );

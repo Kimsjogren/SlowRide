@@ -35,7 +35,7 @@ class UserLocationMarker extends StatelessWidget {
     super.key,
     required this.headingNotifier,
     required this.lockNorthUp,
-    this.size = 38,
+    this.size = 42,
     this.backgroundColor = const Color(0xFF1E90FF),
     this.borderColor = Colors.white,
     this.borderWidth = 2.5,
@@ -264,14 +264,16 @@ class UserLocationMarker extends StatelessWidget {
             final rotatesWithHeading =
                 !lockNorthUp && option.rotatesWithHeading;
             final tint = option.tint ?? backgroundColor;
+            final previewSize = option.assetPath != null ? size * 1.12 : size;
 
             return Center(
               child: Transform.rotate(
                 angle: rotatesWithHeading ? heading * math.pi / 180.0 : 0.0,
                 child: _MarkerPreview(
                   option: option,
-                  size: size,
+                  size: previewSize,
                   selected: true,
+                  assetScale: option.assetPath != null ? 1.48 : 1.16,
                   forceTint: tint,
                   borderColor: borderColor,
                   borderWidth: borderWidth,
@@ -291,6 +293,7 @@ class _MarkerPreview extends StatelessWidget {
     required this.option,
     required this.size,
     required this.selected,
+    this.assetScale = 1.16,
     this.forceTint,
     this.borderColor,
     this.borderWidth,
@@ -300,6 +303,7 @@ class _MarkerPreview extends StatelessWidget {
   final MapMarkerOption option;
   final double size;
   final bool selected;
+  final double assetScale;
   final Color? forceTint;
   final Color? borderColor;
   final double? borderWidth;
@@ -333,7 +337,7 @@ class _MarkerPreview extends StatelessWidget {
                 ),
               ),
             Transform.scale(
-              scale: 1.16,
+              scale: assetScale,
               child: Image.asset(
                 option.assetPath!,
                 fit: BoxFit.contain,

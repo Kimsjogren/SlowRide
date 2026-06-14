@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -73,6 +72,40 @@ class SubscriptionService {
     }
 
     return baseUri.replace(queryParameters: merged);
+  }
+
+  Future<Uri?> createWebCheckoutSessionUri() async {
+    final uid = AuthService.instance.userId.value;
+    final email = AuthService.instance.userEmail.value;
+    if (uid == null || uid.isEmpty) {
+      return buildWebCheckoutUri();
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(BackendConfig.webCheckoutSessionUrl),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'uid': uid,
+          if (email != null && email.isNotEmpty) 'email': email,
+        }),
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint(
+          'Stripe checkout session failed: ${response.statusCode} ${response.body}',
+        );
+        return buildWebCheckoutUri();
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final url = data['url']?.toString();
+      if (url == null || url.isEmpty) {
+        return buildWebCheckoutUri();
+      }
+      return Uri.tryParse(url) ?? buildWebCheckoutUri();
+    } catch (e) {
+      debugPrint('Stripe checkout session request failed: $e');
+      return buildWebCheckoutUri();
+    }
   }
 
   Future<void> initialize() async {

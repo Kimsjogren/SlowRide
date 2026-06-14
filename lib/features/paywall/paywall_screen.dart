@@ -31,7 +31,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
   }
 
   Future<void> _openWebCheckout() async {
-    final uri = SubscriptionService.instance.buildWebCheckoutUri();
+    final uri = await SubscriptionService.instance
+        .createWebCheckoutSessionUri();
     if (uri == null) {
       return;
     }
