@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
@@ -145,6 +146,69 @@ class RoutingService {
       'fi' => 'fi-FI',
       'es' => 'es-ES',
       _ => 'en-US',
+    };
+  }
+
+  @visibleForTesting
+  Map<String, dynamic> debugBuildValhallaRequestPayload({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required double userSpeedKmh,
+    required String countryCode,
+    String language = 'sv-SE',
+  }) {
+    return _buildValhallaRequestPayload(
+      origin: origin,
+      destination: destination,
+      vehicleType: vehicleType,
+      userSpeedKmh: userSpeedKmh,
+      countryCode: countryCode,
+      language: language,
+    );
+  }
+
+  Map<String, dynamic> _buildValhallaRequestPayload({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required double userSpeedKmh,
+    required String countryCode,
+    required String language,
+  }) {
+    final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+    final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
+      countryCode,
+      vehicleType,
+    );
+    final isSlowVehicle = maxLegalSpeedKmh <= 45;
+    final costing = isSlowVehicle ? 'motor_scooter' : 'auto';
+    final costingOptions = <String, dynamic>{
+      // Clamp top_speed to the vehicle's legal maximum so Valhalla never
+      // optimises for a speed the vehicle cannot legally achieve on any road.
+      'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
+      'use_highways': profile.useHighways,
+      'use_tolls': profile.useTolls,
+      'use_ferry': profile.useFerry,
+      // For slow vehicles, shortest tends to avoid long detours over larger
+      // fast roads and keeps routing on local road networks.
+      'shortest': isSlowVehicle,
+    };
+    if (isSlowVehicle) {
+      costingOptions['use_primary'] = 0.0;
+      costingOptions['disable_hierarchy_pruning'] = true;
+    }
+
+    return <String, dynamic>{
+      'locations': [
+        {'lat': origin.latitude, 'lon': origin.longitude},
+        {'lat': destination.latitude, 'lon': destination.longitude},
+      ],
+      'costing': costing,
+      'costing_options': {costing: costingOptions},
+      'directions_options': {'units': 'kilometers', 'language': language},
+      // Request shape as decoded coordinates for easier parsing
+      'shape_format': 'polyline6',
     };
   }
 
@@ -548,44 +612,21 @@ class RoutingService {
     required String countryCode,
   }) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
-    final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
     final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
       countryCode,
       vehicleType,
     );
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
-    final costing = isSlowVehicle ? 'motor_scooter' : 'auto';
-    final costingOptions = <String, dynamic>{
-      // Clamp top_speed to the vehicle's legal maximum so Valhalla never
-      // optimises for a speed the vehicle cannot legally achieve on any road.
-      'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
-      'use_highways': profile.useHighways,
-      'use_tolls': profile.useTolls,
-      'use_ferry': profile.useFerry,
-      // For slow vehicles, shortest tends to avoid long detours over larger
-      // fast roads and keeps routing on local road networks.
-      'shortest': isSlowVehicle,
-    };
-    if (isSlowVehicle) {
-      costingOptions['use_primary'] = 0.0;
-      costingOptions['disable_hierarchy_pruning'] = true;
-    }
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
-    final requestPayload = <String, dynamic>{
-      'locations': [
-        {'lat': origin.latitude, 'lon': origin.longitude},
-        {'lat': destination.latitude, 'lon': destination.longitude},
-      ],
-      'costing': costing,
-      'costing_options': {costing: costingOptions},
-      'directions_options': {
-        'units': 'kilometers',
-        'language': _valhallaLanguage(),
-      },
-      // Request shape as decoded coordinates for easier parsing
-      'shape_format': 'polyline6',
-    };
+    final requestPayload = _buildValhallaRequestPayload(
+      origin: origin,
+      destination: destination,
+      vehicleType: vehicleType,
+      userSpeedKmh: userSpeedKmh,
+      countryCode: countryCode,
+      language: _valhallaLanguage(),
+    );
 
     // Avoid studded-tire ban zones when the user has studded tires equipped.
     if (UserPreferencesService.instance.hasStuddedTires.value) {
