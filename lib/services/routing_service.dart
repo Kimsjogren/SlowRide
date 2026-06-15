@@ -554,6 +554,7 @@ class RoutingService {
       vehicleType,
     );
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
+    final costing = isSlowVehicle ? 'motor_scooter' : 'auto';
     final costingOptions = <String, dynamic>{
       // Clamp top_speed to the vehicle's legal maximum so Valhalla never
       // optimises for a speed the vehicle cannot legally achieve on any road.
@@ -565,6 +566,10 @@ class RoutingService {
       // fast roads and keeps routing on local road networks.
       'shortest': isSlowVehicle,
     };
+    if (isSlowVehicle) {
+      costingOptions['use_primary'] = 0.0;
+      costingOptions['disable_hierarchy_pruning'] = true;
+    }
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
     final requestPayload = <String, dynamic>{
@@ -572,8 +577,8 @@ class RoutingService {
         {'lat': origin.latitude, 'lon': origin.longitude},
         {'lat': destination.latitude, 'lon': destination.longitude},
       ],
-      'costing': 'auto',
-      'costing_options': {'auto': costingOptions},
+      'costing': costing,
+      'costing_options': {costing: costingOptions},
       'directions_options': {
         'units': 'kilometers',
         'language': _valhallaLanguage(),
@@ -688,6 +693,9 @@ class RoutingService {
 
     // Valhalla returns summary with length in km and time in seconds
     final summary = trip['summary'] as Map<String, dynamic>?;
+    if (isSlowVehicle && (summary?['has_highway'] as bool? ?? false)) {
+      throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
+    }
     final distanceKm = (summary?['length'] as num?)?.toDouble() ?? 0;
     final distanceMeters = distanceKm * 1000;
 
