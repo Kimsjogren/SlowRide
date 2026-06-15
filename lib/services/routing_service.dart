@@ -212,30 +212,35 @@ class RoutingService {
     };
   }
 
-  Future<RouteResult> getRoute({
-    required LatLng origin,
-    required LatLng destination,
+  @visibleForTesting
+  List<String> debugEligibleProviders({
+    required String configuredProvider,
     required String vehicleType,
-  }) async {
-    final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
-    final country = UserPreferencesService.instance.countryCode.value;
-    final profile = CountryVehicleRules.getProfile(country, vehicleType);
+    required String countryCode,
+  }) {
+    return _eligibleProvidersFor(
+      configuredProvider: configuredProvider,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+    );
+  }
+
+  List<String> _eligibleProvidersFor({
+    required String configuredProvider,
+    required String vehicleType,
+    required String countryCode,
+  }) {
+    final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
     final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
-      country,
+      countryCode,
       vehicleType,
     );
 
-    final configuredProvider = BackendConfig.routingProvider;
-
-    // Build provider order: configured provider first, then fallback chain.
     final providers = <String>[configuredProvider];
-    for (final p in _fallbackChain) {
-      if (!providers.contains(p)) providers.add(p);
+    for (final provider in _fallbackChain) {
+      if (!providers.contains(provider)) providers.add(provider);
     }
 
-    // Slow-vehicle legal rules must never be weakened by provider fallback.
-    // OSRM/GraphHopper can not enforce all country+vehicle legal constraints
-    // as strictly as Valhalla.
     final requiresStrictAvoids =
         profile.useHighways < 0.3 ||
         profile.useFerry < 0.3 ||
@@ -243,28 +248,113 @@ class RoutingService {
     final isSlowVehicle = maxLegalSpeed <= 45;
     final mustUseStrictLegalRouting = requiresStrictAvoids || isSlowVehicle;
 
-    // GraphHopper/OSRM cannot reliably enforce "avoid 70-80 roads" behavior.
-    // For slow vehicles, keep routing on providers that support stronger
-    // profile constraints and then prefer Valhalla first.
-    final eligibleProviders = (() {
-      // Legal-critical routing only uses providers that can apply explicit
-      // avoid rules. OSRM providers are excluded here.
-      if (mustUseStrictLegalRouting) {
-        final strictProviders = providers
-            .where(
-              (p) => p != _providerOsrmPublic && p != _providerOsrmSelfHosted,
-            )
-            .toList(growable: true);
-        strictProviders.remove(_providerValhalla);
-        strictProviders.insert(0, _providerValhalla);
-        return strictProviders.toList(growable: false);
-      }
+    if (mustUseStrictLegalRouting) {
+      final strictProviders = providers
+          .where(
+            (provider) =>
+                provider != _providerOsrmPublic &&
+                provider != _providerOsrmSelfHosted,
+          )
+          .toList(growable: true);
+      strictProviders.remove(_providerValhalla);
+      strictProviders.insert(0, _providerValhalla);
+      return strictProviders.toList(growable: false);
+    }
 
-      final base = providers.toList(growable: true);
-      base.remove(_providerValhalla);
-      base.insert(0, _providerValhalla);
-      return base.toList(growable: false);
-    })();
+    final base = providers.toList(growable: true);
+    base.remove(_providerValhalla);
+    base.insert(0, _providerValhalla);
+    return base.toList(growable: false);
+  }
+
+  @visibleForTesting
+  Uri debugBuildGraphHopperUri({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required String countryCode,
+    String apiKey = 'test-key',
+    String locale = 'sv',
+  }) {
+    return _buildGraphHopperUri(
+      origin: origin,
+      destination: destination,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+      apiKey: apiKey,
+      locale: locale,
+    );
+  }
+
+  Uri _buildGraphHopperUri({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required String countryCode,
+    required String apiKey,
+    required String locale,
+  }) {
+    final avoidFeatures = _graphHopperAvoidFor(vehicleType, countryCode);
+    final buffer = StringBuffer(
+      '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey'
+      '&profile=car&points_encoded=false&instructions=true&locale=$locale',
+    );
+    buffer.write(
+      '&point=${origin.latitude},${origin.longitude}'
+      '&point=${destination.latitude},${destination.longitude}',
+    );
+    if (avoidFeatures.isNotEmpty) {
+      buffer.write('&avoid=${avoidFeatures.join(',')}');
+    }
+    return Uri.parse(buffer.toString());
+  }
+
+  @visibleForTesting
+  Map<String, dynamic> debugBuildOpenRouteServiceRequestPayload({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required String countryCode,
+  }) {
+    return _buildOpenRouteServiceRequestPayload(
+      origin: origin,
+      destination: destination,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+    );
+  }
+
+  Map<String, dynamic> _buildOpenRouteServiceRequestPayload({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+    required String countryCode,
+  }) {
+    final constraints = _routingConstraintsFor(vehicleType, countryCode);
+    return <String, dynamic>{
+      'coordinates': [
+        [origin.longitude, origin.latitude],
+        [destination.longitude, destination.latitude],
+      ],
+      'options': {'avoid_features': constraints.openRouteServiceAvoidFeatures},
+    };
+  }
+
+  Future<RouteResult> getRoute({
+    required LatLng origin,
+    required LatLng destination,
+    required String vehicleType,
+  }) async {
+    final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
+    final country = UserPreferencesService.instance.countryCode.value;
+    final eligibleProviders = _eligibleProvidersFor(
+      configuredProvider: BackendConfig.routingProvider,
+      vehicleType: vehicleType,
+      countryCode: country,
+    );
+    final mustUseStrictLegalRouting =
+        !eligibleProviders.contains(_providerOsrmPublic) &&
+        !eligibleProviders.contains(_providerOsrmSelfHosted);
 
     Object? lastError;
     for (final provider in eligibleProviders) {
@@ -386,28 +476,18 @@ class RoutingService {
 
     final vehicleMaxSpeedKmh = userSpeedKmh;
 
-    // GraphHopper free-tier GET API.
-    // The `avoid` parameter IS supported on free plans (unlike custom_model
-    // which requires the paid Platinum tier).
-    // Slow vehicles must avoid motorways and ferries by law.
-    final avoidFeatures = _graphHopperAvoidFor(vehicleType, countryCode);
     final locale = _graphHopperLocale();
-
-    // Build URI manually to handle repeated `point=` params correctly.
-    final buffer = StringBuffer(
-      '${BackendConfig.graphhopperBaseUrl}/route?key=$apiKey'
-      '&profile=car&points_encoded=false&instructions=true&locale=$locale',
+    final url = _buildGraphHopperUri(
+      origin: origin,
+      destination: destination,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+      apiKey: apiKey,
+      locale: locale,
     );
-    buffer.write(
-      '&point=${origin.latitude},${origin.longitude}'
-      '&point=${destination.latitude},${destination.longitude}',
-    );
-    if (avoidFeatures.isNotEmpty) {
-      buffer.write('&avoid=${avoidFeatures.join(',')}');
-    }
 
     final response = await http.get(
-      Uri.parse(buffer.toString()),
+      url,
       headers: const {'Accept': 'application/json'},
     );
 
@@ -541,7 +621,6 @@ class RoutingService {
     required double userSpeedKmh,
     required String countryCode,
   }) async {
-    final constraints = _routingConstraintsFor(vehicleType, countryCode);
     final apiKey = BackendConfig.openRouteServiceApiKey;
     if (apiKey.isEmpty) {
       throw const RoutingException(RoutingErrorCode.missingApiKey);
@@ -554,15 +633,14 @@ class RoutingService {
     final response = await http.post(
       url,
       headers: {'Authorization': apiKey, 'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'coordinates': [
-          [origin.longitude, origin.latitude],
-          [destination.longitude, destination.latitude],
-        ],
-        'options': {
-          'avoid_features': constraints.openRouteServiceAvoidFeatures,
-        },
-      }),
+      body: jsonEncode(
+        _buildOpenRouteServiceRequestPayload(
+          origin: origin,
+          destination: destination,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        ),
+      ),
     );
 
     if (response.statusCode != 200) {
@@ -594,10 +672,16 @@ class RoutingService {
         )
         .toList(growable: false);
 
+    final distanceMeters = (summary?['distance'] as num?)?.toDouble() ?? 0;
+    final avgSpeedMs = (userSpeedKmh * 0.85) / 3.6;
+    final calculatedDurationSeconds = avgSpeedMs > 0
+        ? distanceMeters / avgSpeedMs
+        : 0.0;
+
     return RouteResult(
       points: points,
-      distanceMeters: (summary?['distance'] as num?)?.toDouble() ?? 0,
-      durationSeconds: (summary?['duration'] as num?)?.toDouble() ?? 0,
+      distanceMeters: distanceMeters,
+      durationSeconds: calculatedDurationSeconds,
     );
   }
 
