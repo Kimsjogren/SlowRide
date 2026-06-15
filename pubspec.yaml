@@ -88,6 +88,11 @@ flutter:
 
   assets:
     - assets/
+    - assets/A-Traktor/
+    - assets/mopedbilar/aixam/
+    - assets/mopedbilar/ligier/
+    - assets/mopedbilar/microcar/
+    - assets/traktor/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

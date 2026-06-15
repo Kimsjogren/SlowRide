@@ -93,218 +93,197 @@ class UserLocationMarker extends StatelessWidget {
     MapMarkerOption(
       style: MapMarkerStyle.microcarRed,
       category: MapMarkerCategory.ligier,
-      assetPath: 'assets/105F87AA-6074-4B4A-A7CD-E127515E5CC4.png',
+      assetPath:
+          'assets/mopedbilar/ligier/105F87AA-6074-4B4A-A7CD-E127515E5CC4.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarBlue,
       category: MapMarkerCategory.ligier,
-      assetPath: 'assets/AD4E2031-7011-471E-9E58-035D77DD0B48.png',
+      assetPath:
+          'assets/mopedbilar/ligier/AD4E2031-7011-471E-9E58-035D77DD0B48.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _blueLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarBlack,
       category: MapMarkerCategory.ligier,
-      assetPath: 'assets/A5749156-12A5-4CE5-B25B-912ECD3965CD.png',
+      assetPath:
+          'assets/mopedbilar/ligier/A5749156-12A5-4CE5-B25B-912ECD3965CD.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarWhite,
       category: MapMarkerCategory.ligier,
-      assetPath: 'assets/73F70485-0439-4968-9256-97E569628BBC.png',
+      assetPath:
+          'assets/mopedbilar/ligier/73F70485-0439-4968-9256-97E569628BBC.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _whiteLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarGold,
       category: MapMarkerCategory.ligier,
-      assetPath: 'assets/8EE771CD-8380-40F9-8773-8FDFB0A6F372.png',
+      assetPath:
+          'assets/mopedbilar/ligier/8EE771CD-8380-40F9-8773-8FDFB0A6F372.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _goldLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.aixamWhite,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/IMG_8603.png',
+      assetPath: 'assets/mopedbilar/aixam/IMG_8603.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _whiteLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.aixamRed,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/IMG_8604.png',
+      assetPath: 'assets/mopedbilar/aixam/IMG_8604.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.aixamBlack,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/IMG_8605.png',
+      assetPath: 'assets/mopedbilar/aixam/IMG_8605.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.aixamGraphite,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/IMG_8606.png',
+      assetPath: 'assets/mopedbilar/aixam/IMG_8606.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _graphiteLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.aixamYellow,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/IMG_8607.png',
+      assetPath: 'assets/mopedbilar/aixam/IMG_8607.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _yellowLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoOrange,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/IMG_8658.png',
+      assetPath: 'assets/mopedbilar/microcar/IMG_8658.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoRed,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/IMG_8664.png',
+      assetPath: 'assets/mopedbilar/microcar/IMG_8664.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoBlack,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/IMG_8666.png',
+      assetPath: 'assets/mopedbilar/microcar/IMG_8666.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoYellow,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/IMG_8668.png',
+      assetPath: 'assets/mopedbilar/microcar/IMG_8668.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _yellowLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.epaRed,
       category: MapMarkerCategory.pickup,
-      assetPath: 'assets/192ED5A9-0723-4BEB-ADA8-CBECE9EB065F.png',
+      assetPath: 'assets/A-Traktor/192ED5A9-0723-4BEB-ADA8-CBECE9EB065F.png',
       labelBuilder: _pickupLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.epaBlue,
       category: MapMarkerCategory.pickup,
-      assetPath: 'assets/17F2CAAE-09B6-4F6B-975C-E7A2F3ADB1FB.png',
+      assetPath: 'assets/A-Traktor/17F2CAAE-09B6-4F6B-975C-E7A2F3ADB1FB.png',
       labelBuilder: _pickupLabel,
       colorNameBuilder: _blueLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.epaBlack,
       category: MapMarkerCategory.pickup,
-      assetPath: 'assets/8EF4AEEB-9B42-4CB6-8E12-F314F536213A.png',
+      assetPath: 'assets/A-Traktor/8EF4AEEB-9B42-4CB6-8E12-F314F536213A.png',
       labelBuilder: _pickupLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.epaWhite,
       category: MapMarkerCategory.pickup,
-      assetPath: 'assets/827E38C0-7FB9-46E9-946D-8822822A7DFA.png',
+      assetPath:
+          'assets/A-Traktor/Projektet Ta bort bakgrunden - 13 juni 2026 10.16.26.png',
       labelBuilder: _pickupLabel,
-      colorNameBuilder: _whiteLabel,
-    ),
-    MapMarkerOption(
-      style: MapMarkerStyle.epaGold,
-      category: MapMarkerCategory.pickup,
-      assetPath: 'assets/A76FE270-F0FE-4E1C-98CE-68ED44E86C44.png',
-      labelBuilder: _pickupLabel,
-      colorNameBuilder: _goldLabel,
-    ),
-    MapMarkerOption(
-      style: MapMarkerStyle.miniWhite,
-      category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/295338CB-45D8-463F-9357-3A10C1FA11F1.png',
-      labelBuilder: _miniLabel,
-      colorNameBuilder: _whiteLabel,
-    ),
-    MapMarkerOption(
-      style: MapMarkerStyle.miniGreen,
-      category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/B56A7FAA-043F-4122-89FA-DFFAFAF5789B.png',
-      labelBuilder: _miniLabel,
-      colorNameBuilder: _greenLabel,
+      colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.miniOrange,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/E1FF4F62-5EAE-48E6-8711-CB9F3739EDA9.png',
+      assetPath: 'assets/A-Traktor/E1FF4F62-5EAE-48E6-8711-CB9F3739EDA9.png',
       labelBuilder: _miniLabel,
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.bmwRed,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/529B6F72-70A3-43BD-833D-527E94192D06.png',
+      assetPath: 'assets/A-Traktor/529B6F72-70A3-43BD-833D-527E94192D06.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
-      style: MapMarkerStyle.bmwBlack,
-      category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/7C796342-720A-4043-84C0-71054F3E1742.png',
-      labelBuilder: _bmwLabel,
-      colorNameBuilder: _blackLabel,
-    ),
-    MapMarkerOption(
       style: MapMarkerStyle.bmwSilver,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/C625E0A8-C0D5-4BFD-9636-6219412BE9D3.png',
+      assetPath: 'assets/A-Traktor/C625E0A8-C0D5-4BFD-9636-6219412BE9D3.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _silverLabel,
     ),
     MapMarkerOption(
-      style: MapMarkerStyle.bmwOrange,
-      category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/D3D6C8AC-E43B-407A-A530-F65AD222EDE3.png',
-      labelBuilder: _bmwLabel,
-      colorNameBuilder: _orangeLabel,
-    ),
-    MapMarkerOption(
       style: MapMarkerStyle.tractorWhite,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8596.png',
+      assetPath: 'assets/traktor/IMG_8596.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _whiteLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorBlack,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8598.png',
+      assetPath: 'assets/traktor/IMG_8598.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorRed,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8600.png',
+      assetPath: 'assets/traktor/IMG_8600.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorGold,
       category: MapMarkerCategory.tractor,
-      assetPath: 'assets/IMG_8601.png',
+      assetPath: 'assets/traktor/IMG_8601.png',
       labelBuilder: _tractorLabel,
       colorNameBuilder: _goldLabel,
     ),
   ];
 
   static MapMarkerOption optionFor(MapMarkerStyle style) {
+    final resolvedStyle = switch (style) {
+      MapMarkerStyle.miniWhite ||
+      MapMarkerStyle.miniGreen => MapMarkerStyle.miniOrange,
+      MapMarkerStyle.bmwBlack ||
+      MapMarkerStyle.bmwOrange => MapMarkerStyle.bmwRed,
+      MapMarkerStyle.epaGold => MapMarkerStyle.epaWhite,
+      _ => style,
+    };
     return options.firstWhere(
-      (option) => option.style == style,
+      (option) => option.style == resolvedStyle,
       orElse: () => options.first,
     );
   }
@@ -496,7 +475,6 @@ String _blackLabel(AppLocalizations l10n) => l10n.settingsColorBlack;
 String _whiteLabel(AppLocalizations l10n) => l10n.settingsColorWhite;
 String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;
 String _silverLabel(AppLocalizations l10n) => l10n.settingsColorSilver;
-String _greenLabel(AppLocalizations l10n) => l10n.settingsColorGreen;
 String _graphiteLabel(AppLocalizations l10n) => l10n.settingsColorGraphite;
 String _yellowLabel(AppLocalizations l10n) => l10n.settingsColorYellow;
 String _orangeLabel(AppLocalizations l10n) => l10n.settingsColorOrange;
