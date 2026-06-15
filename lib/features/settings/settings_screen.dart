@@ -183,7 +183,7 @@ class SettingsScreen extends StatelessWidget {
                             dropdownColor: const Color(0xFF0A1F63),
                             style: valueStyle,
                             iconEnabledColor: Colors.white70,
-                            value: country,
+                            initialValue: country,
                             decoration: InputDecoration(
                               labelText: l10n.settingsCountryLabel,
                               labelStyle: labelStyle,
@@ -258,7 +258,7 @@ class SettingsScreen extends StatelessWidget {
                             dropdownColor: const Color(0xFF0A1F63),
                             style: valueStyle,
                             iconEnabledColor: Colors.white70,
-                            value: languageCode ?? 'system',
+                            initialValue: languageCode ?? 'system',
                             decoration: InputDecoration(
                               labelText: l10n.settingsLanguageLabel,
                               labelStyle: labelStyle,
@@ -463,32 +463,18 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<MapMarkerStyle>(
                     valueListenable: preferences.mapMarkerStyle,
                     builder: (context, markerStyle, _) {
-                      final categories = [
-                        MapMarkerCategory.classic,
-                        MapMarkerCategory.ligier,
-                        MapMarkerCategory.aixam,
-                        MapMarkerCategory.microcar,
-                        MapMarkerCategory.pickup,
-                        MapMarkerCategory.atraktor,
-                        MapMarkerCategory.tractor,
-                      ];
+                      final sections = _markerVehicleSections(l10n);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(l10n.settingsMapMarkerLabel, style: labelStyle),
                           const SizedBox(height: 14),
-                          ...categories.map(
-                            (category) => Padding(
+                          ...sections.map(
+                            (section) => Padding(
                               padding: const EdgeInsets.only(bottom: 14),
-                              child: _MarkerCategorySection(
-                                title: UserLocationMarker.categoryLabel(
-                                  category,
-                                  l10n,
-                                ),
-                                options: UserLocationMarker.optionsForCategory(
-                                  category,
-                                ),
+                              child: _MarkerVehicleSection(
+                                section: section,
                                 selectedStyle: markerStyle,
                                 onSelected: (style) =>
                                     preferences.mapMarkerStyle.value = style,
@@ -864,42 +850,22 @@ class _MarkerStyleChoice extends StatelessWidget {
             width: selected ? 1.6 : 1,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            child,
-            const SizedBox(height: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: selected ? 0.96 : 0.82),
-                  fontSize: 11.5,
-                  height: 1.1,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
+        child: Center(
+          child: Semantics(label: label, selected: selected, child: child),
         ),
       ),
     );
   }
 }
 
-class _MarkerCategorySection extends StatelessWidget {
-  const _MarkerCategorySection({
-    required this.title,
-    required this.options,
+class _MarkerVehicleSection extends StatelessWidget {
+  const _MarkerVehicleSection({
+    required this.section,
     required this.selectedStyle,
     required this.onSelected,
   });
 
-  final String title;
-  final List<MapMarkerOption> options;
+  final _MarkerVehicleGroup section;
   final MapMarkerStyle selectedStyle;
   final ValueChanged<MapMarkerStyle> onSelected;
 
@@ -911,32 +877,77 @@ class _MarkerCategorySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          title,
+          section.title,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...section.brands.map(
+          (brand) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _MarkerBrandSection(
+              brand: brand,
+              selectedStyle: selectedStyle,
+              onSelected: onSelected,
+              l10n: l10n,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MarkerBrandSection extends StatelessWidget {
+  const _MarkerBrandSection({
+    required this.brand,
+    required this.selectedStyle,
+    required this.onSelected,
+    required this.l10n,
+  });
+
+  final _MarkerBrandGroup brand;
+  final MapMarkerStyle selectedStyle;
+  final ValueChanged<MapMarkerStyle> onSelected;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          brand.title,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.72),
             fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         SizedBox(
-          height: 132,
+          height: 96,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: options.length,
+            itemCount: brand.options.length,
             separatorBuilder: (_, _) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
-              final option = options[index];
+              final option = brand.options[index];
               final selected = option.style == selectedStyle;
-              final label = option.label(l10n);
               final color = option.colorName(l10n);
+              final label = color == null
+                  ? option.label(l10n)
+                  : '${option.label(l10n)} $color';
               return _MarkerStyleChoice(
-                label: color == null ? label : '$label\n$color',
+                label: label,
                 selected: selected,
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 66,
+                  size: 74,
                   selected: selected,
                 ),
               );
@@ -946,4 +957,82 @@ class _MarkerCategorySection extends StatelessWidget {
       ],
     );
   }
+}
+
+class _MarkerVehicleGroup {
+  const _MarkerVehicleGroup({required this.title, required this.brands});
+
+  final String title;
+  final List<_MarkerBrandGroup> brands;
+}
+
+class _MarkerBrandGroup {
+  const _MarkerBrandGroup({required this.title, required this.options});
+
+  final String title;
+  final List<MapMarkerOption> options;
+}
+
+List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
+  List<MapMarkerOption> byCategory(MapMarkerCategory category) =>
+      UserLocationMarker.optionsForCategory(category);
+
+  List<MapMarkerOption> byStyles(List<MapMarkerStyle> styles) {
+    return styles.map(UserLocationMarker.optionFor).toList(growable: false);
+  }
+
+  return [
+    _MarkerVehicleGroup(
+      title: l10n.settingsVehicleAtractor,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerPickup,
+          options: byCategory(MapMarkerCategory.pickup),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerMini,
+          options: byStyles([
+            MapMarkerStyle.miniWhite,
+            MapMarkerStyle.miniGreen,
+            MapMarkerStyle.miniOrange,
+          ]),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerBmw,
+          options: byStyles([
+            MapMarkerStyle.bmwRed,
+            MapMarkerStyle.bmwBlack,
+            MapMarkerStyle.bmwSilver,
+            MapMarkerStyle.bmwOrange,
+          ]),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsVehicleMopedCar,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCategoryLigier,
+          options: byCategory(MapMarkerCategory.ligier),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCategoryAixam,
+          options: byCategory(MapMarkerCategory.aixam),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerMicrocar,
+          options: byCategory(MapMarkerCategory.microcar),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsVehicleTractor,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsVehicleTractor,
+          options: byCategory(MapMarkerCategory.tractor),
+        ),
+      ],
+    ),
+  ];
 }
