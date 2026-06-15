@@ -59,7 +59,7 @@ class _MapScreenState extends State<MapScreen> {
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
   bool _use3DMap = true;
-  bool _useDarkMap = false;
+  bool _useDarkMap = true;
   LatLng? _destination;
   String _destinationLabel = '';
   List<LatLng> _routePoints = const [];

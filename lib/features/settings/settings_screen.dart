@@ -890,6 +890,7 @@ class _MarkerVehicleSection extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: _MarkerBrandSection(
               brand: brand,
+              showTitle: section.brands.length > 1,
               selectedStyle: selectedStyle,
               onSelected: onSelected,
               l10n: l10n,
@@ -904,12 +905,14 @@ class _MarkerVehicleSection extends StatelessWidget {
 class _MarkerBrandSection extends StatelessWidget {
   const _MarkerBrandSection({
     required this.brand,
+    required this.showTitle,
     required this.selectedStyle,
     required this.onSelected,
     required this.l10n,
   });
 
   final _MarkerBrandGroup brand;
+  final bool showTitle;
   final MapMarkerStyle selectedStyle;
   final ValueChanged<MapMarkerStyle> onSelected;
   final AppLocalizations l10n;
@@ -919,15 +922,17 @@ class _MarkerBrandSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          brand.title,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.72),
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+        if (showTitle) ...[
+          Text(
+            brand.title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
         SizedBox(
           height: 96,
           child: ListView.separated(
@@ -1011,7 +1016,7 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
           options: byCategory(MapMarkerCategory.aixam),
         ),
         _MarkerBrandGroup(
-          title: l10n.settingsMapMarkerMicrocar,
+          title: 'Microcar',
           options: byCategory(MapMarkerCategory.microcar),
         ),
       ],
