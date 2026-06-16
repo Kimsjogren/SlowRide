@@ -981,12 +981,12 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
           options: byCategory(MapMarkerCategory.pickup),
         ),
         _MarkerBrandGroup(
-          title: l10n.settingsMapMarkerMini,
-          options: byStyles([MapMarkerStyle.miniOrange]),
-        ),
-        _MarkerBrandGroup(
           title: l10n.settingsMapMarkerBmw,
-          options: byStyles([MapMarkerStyle.bmwRed, MapMarkerStyle.bmwSilver]),
+          options: byStyles([
+            MapMarkerStyle.miniOrange,
+            MapMarkerStyle.bmwRed,
+            MapMarkerStyle.bmwSilver,
+          ]),
         ),
       ],
     ),

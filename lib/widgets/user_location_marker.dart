@@ -226,7 +226,7 @@ class UserLocationMarker extends StatelessWidget {
       style: MapMarkerStyle.miniOrange,
       category: MapMarkerCategory.atraktor,
       assetPath: 'assets/A-Traktor/E1FF4F62-5EAE-48E6-8711-CB9F3739EDA9.png',
-      labelBuilder: _miniLabel,
+      labelBuilder: _bmwLabel,
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
@@ -466,7 +466,6 @@ String _ligierLabel(AppLocalizations l10n) => l10n.settingsMapMarkerLigier;
 String _aixamLabel(AppLocalizations l10n) => l10n.settingsMapMarkerAixam;
 String _microcarLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMicrocar;
 String _pickupLabel(AppLocalizations l10n) => l10n.settingsMapMarkerPickup;
-String _miniLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMini;
 String _bmwLabel(AppLocalizations l10n) => l10n.settingsMapMarkerBmw;
 String _tractorLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTractor;
 String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
