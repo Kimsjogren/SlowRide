@@ -257,14 +257,22 @@ class UserLocationMarker extends StatelessWidget {
     MapMarkerOption(
       style: MapMarkerStyle.bmwRed,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/A-Traktor/529B6F72-70A3-43BD-833D-527E94192D06.png',
+      assetPath:
+          'assets/A-Traktor/00C1DD02-7ECB-4113-BEFF-25D50FB60232 2.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
+      style: MapMarkerStyle.bmwOrange,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/F0E868B6-F2D9-4166-8C27-E47034926C18.png',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _orangeLabel,
+    ),
+    MapMarkerOption(
       style: MapMarkerStyle.bmwSilver,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/A-Traktor/C625E0A8-C0D5-4BFD-9636-6219412BE9D3.png',
+      assetPath: 'assets/A-Traktor/19C25927-5A00-4010-8C52-56659BBA33C1.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _silverLabel,
     ),
@@ -300,8 +308,7 @@ class UserLocationMarker extends StatelessWidget {
 
   static MapMarkerOption optionFor(MapMarkerStyle style) {
     final resolvedStyle = switch (style) {
-      MapMarkerStyle.bmwBlack ||
-      MapMarkerStyle.bmwOrange => MapMarkerStyle.bmwRed,
+      MapMarkerStyle.bmwBlack => MapMarkerStyle.bmwRed,
       MapMarkerStyle.epaGold => MapMarkerStyle.epaWhite,
       _ => style,
     };

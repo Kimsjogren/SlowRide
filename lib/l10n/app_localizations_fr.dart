@@ -462,10 +462,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsVehicleAtractor => 'A-traktor';
 
   @override
-  String get settingsVehicleMopedCar => 'Voiture sans permis';
+  String get settingsVehicleMopedCar => 'Mopedbil';
 
   @override
-  String get settingsVehicleTractor => 'Tracteur';
+  String get settingsVehicleTractor => 'Traktor';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -535,7 +535,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCategoryClassic => 'Classiques';
 
   @override
-  String get settingsMapMarkerCategoryMicrocar => 'Voiturette';
+  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
 
   @override
   String get settingsMapMarkerCategoryEpa => 'EPA';
@@ -550,10 +550,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
-  String get settingsMapMarkerCategoryAtractor => 'A-tracteur';
+  String get settingsMapMarkerCategoryAtractor => 'A-traktor';
 
   @override
-  String get settingsMapMarkerCategoryTractor => 'Tracteur';
+  String get settingsMapMarkerCategoryTractor => 'Traktor';
 
   @override
   String get settingsMapMarkerArrow => 'Flèche';
@@ -568,7 +568,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerDot => 'Point';
 
   @override
-  String get settingsMapMarkerMicrocar => 'Voiturette';
+  String get settingsMapMarkerMicrocar => 'Mopedbil';
 
   @override
   String get settingsMapMarkerLigier => 'Ligier';
@@ -586,7 +586,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerBmw => 'BMW';
 
   @override
-  String get settingsMapMarkerTractor => 'Tracteur';
+  String get settingsMapMarkerTractor => 'Traktor';
 
   @override
   String get settingsColorRed => 'Rouge';

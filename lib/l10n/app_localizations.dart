@@ -984,19 +984,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsVehicleAtractor.
   ///
   /// In en, this message translates to:
-  /// **'A-tractor'**
+  /// **'A-traktor'**
   String get settingsVehicleAtractor;
 
   /// No description provided for @settingsVehicleMopedCar.
   ///
   /// In en, this message translates to:
-  /// **'Moped car'**
+  /// **'Mopedbil'**
   String get settingsVehicleMopedCar;
 
   /// No description provided for @settingsVehicleTractor.
   ///
   /// In en, this message translates to:
-  /// **'Tractor'**
+  /// **'Traktor'**
   String get settingsVehicleTractor;
 
   /// No description provided for @settingsSpeedUnitKmh.
@@ -1128,7 +1128,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerCategoryMicrocar.
   ///
   /// In en, this message translates to:
-  /// **'Microcar'**
+  /// **'Mopedbil'**
   String get settingsMapMarkerCategoryMicrocar;
 
   /// No description provided for @settingsMapMarkerCategoryEpa.
@@ -1158,13 +1158,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerCategoryAtractor.
   ///
   /// In en, this message translates to:
-  /// **'A-tractor'**
+  /// **'A-traktor'**
   String get settingsMapMarkerCategoryAtractor;
 
   /// No description provided for @settingsMapMarkerCategoryTractor.
   ///
   /// In en, this message translates to:
-  /// **'Tractor'**
+  /// **'Traktor'**
   String get settingsMapMarkerCategoryTractor;
 
   /// No description provided for @settingsMapMarkerArrow.
@@ -1194,7 +1194,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerMicrocar.
   ///
   /// In en, this message translates to:
-  /// **'Microcar'**
+  /// **'Mopedbil'**
   String get settingsMapMarkerMicrocar;
 
   /// No description provided for @settingsMapMarkerLigier.
@@ -1230,7 +1230,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerTractor.
   ///
   /// In en, this message translates to:
-  /// **'Tractor'**
+  /// **'Traktor'**
   String get settingsMapMarkerTractor;
 
   /// No description provided for @settingsColorRed.

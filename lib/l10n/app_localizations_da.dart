@@ -462,7 +462,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsVehicleAtractor => 'A-traktor';
 
   @override
-  String get settingsVehicleMopedCar => 'Knallertbil';
+  String get settingsVehicleMopedCar => 'Mopedbil';
 
   @override
   String get settingsVehicleTractor => 'Traktor';
@@ -535,7 +535,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsMapMarkerCategoryClassic => 'Klassiske';
 
   @override
-  String get settingsMapMarkerCategoryMicrocar => 'Knallertbil';
+  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
 
   @override
   String get settingsMapMarkerCategoryEpa => 'EPA';
@@ -568,7 +568,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsMapMarkerDot => 'Punkt';
 
   @override
-  String get settingsMapMarkerMicrocar => 'Knallertbil';
+  String get settingsMapMarkerMicrocar => 'Mopedbil';
 
   @override
   String get settingsMapMarkerLigier => 'Ligier';

@@ -991,7 +991,11 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
         ),
         _MarkerBrandGroup(
           title: l10n.settingsMapMarkerBmw,
-          options: byStyles([MapMarkerStyle.bmwRed, MapMarkerStyle.bmwSilver]),
+          options: byStyles([
+            MapMarkerStyle.bmwRed,
+            MapMarkerStyle.bmwOrange,
+            MapMarkerStyle.bmwSilver,
+          ]),
         ),
       ],
     ),
