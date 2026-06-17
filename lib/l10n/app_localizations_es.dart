@@ -296,6 +296,24 @@ class AppLocalizationsEs extends AppLocalizations {
   String get convoyHazardCustom => 'Pin personalizado';
 
   @override
+  String get convoyPoiMeetup => 'Punto de encuentro';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Marca un lugar claro donde se reunirá el convoy';
+
+  @override
+  String get convoyPoiParking => 'Aparcamiento';
+
+  @override
+  String get convoyPoiFoodStop => 'Parada para comer';
+
+  @override
+  String get convoyPoiCharging => 'Carga';
+
+  @override
+  String get convoyPoiHangout => 'Lugar de reunión';
+
+  @override
   String get convoyChatEmpty => 'Aún no hay mensajes.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'No se encontró ninguna ruta legalmente conforme para este tipo de vehículo.';
 
   @override
+  String get routeStopSheetSubtitle => 'Paradas más cercanas en la ruta actual';
+
+  @override
+  String get routeStopEmpty => 'No se encontraron buenas paradas cerca de la ruta ahora.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance de la ruta';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return 'a $distance';
+  }
+
+  @override
   String get routeBlockedTitle => 'Ruta no disponible';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Cuesta pronunciada';
+
+  @override
+  String get alertTypeMeetup => 'Punto de encuentro';
+
+  @override
+  String get alertTypeParking => 'Aparcamiento';
+
+  @override
+  String get alertTypeFoodStop => 'Parada para comer';
+
+  @override
+  String get alertTypeCharging => 'Carga';
+
+  @override
+  String get alertTypeHangout => 'Lugar de reunión';
 
   @override
   String get alertGpsUnavailable => 'GPS aún no disponible';

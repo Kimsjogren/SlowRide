@@ -296,6 +296,24 @@ class AppLocalizationsFi extends AppLocalizations {
   String get convoyHazardCustom => 'Mukautettu merkki';
 
   @override
+  String get convoyPoiMeetup => 'Tapaamispaikka';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Merkitse selkeä paikka, johon saattue kokoontuu';
+
+  @override
+  String get convoyPoiParking => 'Pysäköinti';
+
+  @override
+  String get convoyPoiFoodStop => 'Ruokatauko';
+
+  @override
+  String get convoyPoiCharging => 'Lataus';
+
+  @override
+  String get convoyPoiHangout => 'Kokoontumispaikka';
+
+  @override
   String get convoyChatEmpty => 'Ei viestejä vielä.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsFi extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'Laillisesti hyväksyttävää reittiä ei löytynyt tälle ajoneuvotyypille.';
 
   @override
+  String get routeStopSheetSubtitle => 'Lähimmät pysähdykset nykyisen reitin varrella';
+
+  @override
+  String get routeStopEmpty => 'Reitin läheltä ei löytynyt hyviä pysähdyksiä juuri nyt.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance reitiltä';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return '$distance päässä';
+  }
+
+  @override
   String get routeBlockedTitle => 'Reitti ei saatavilla';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Jyrkkä mäki';
+
+  @override
+  String get alertTypeMeetup => 'Tapaamispaikka';
+
+  @override
+  String get alertTypeParking => 'Pysäköinti';
+
+  @override
+  String get alertTypeFoodStop => 'Ruokatauko';
+
+  @override
+  String get alertTypeCharging => 'Lataus';
+
+  @override
+  String get alertTypeHangout => 'Kokoontumispaikka';
 
   @override
   String get alertGpsUnavailable => 'GPS ei ole vielä käytettävissä';

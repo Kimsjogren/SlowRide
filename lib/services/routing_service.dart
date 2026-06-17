@@ -153,6 +153,7 @@ class RoutingService {
   Map<String, dynamic> debugBuildValhallaRequestPayload({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -161,6 +162,7 @@ class RoutingService {
     return _buildValhallaRequestPayload(
       origin: origin,
       destination: destination,
+      waypoint: waypoint,
       vehicleType: vehicleType,
       userSpeedKmh: userSpeedKmh,
       countryCode: countryCode,
@@ -171,6 +173,7 @@ class RoutingService {
   Map<String, dynamic> _buildValhallaRequestPayload({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -202,6 +205,8 @@ class RoutingService {
     return <String, dynamic>{
       'locations': [
         {'lat': origin.latitude, 'lon': origin.longitude},
+        if (waypoint != null)
+          {'lat': waypoint.latitude, 'lon': waypoint.longitude},
         {'lat': destination.latitude, 'lon': destination.longitude},
       ],
       'costing': costing,
@@ -271,6 +276,7 @@ class RoutingService {
   Uri debugBuildGraphHopperUri({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required String countryCode,
     String apiKey = 'test-key',
@@ -279,6 +285,7 @@ class RoutingService {
     return _buildGraphHopperUri(
       origin: origin,
       destination: destination,
+      waypoint: waypoint,
       vehicleType: vehicleType,
       countryCode: countryCode,
       apiKey: apiKey,
@@ -289,6 +296,7 @@ class RoutingService {
   Uri _buildGraphHopperUri({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required String countryCode,
     required String apiKey,
@@ -301,6 +309,7 @@ class RoutingService {
     );
     buffer.write(
       '&point=${origin.latitude},${origin.longitude}'
+      '${waypoint == null ? '' : '&point=${waypoint.latitude},${waypoint.longitude}'}'
       '&point=${destination.latitude},${destination.longitude}',
     );
     if (avoidFeatures.isNotEmpty) {
@@ -327,6 +336,7 @@ class RoutingService {
   Map<String, dynamic> _buildOpenRouteServiceRequestPayload({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required String countryCode,
   }) {
@@ -334,6 +344,7 @@ class RoutingService {
     return <String, dynamic>{
       'coordinates': [
         [origin.longitude, origin.latitude],
+        if (waypoint != null) [waypoint.longitude, waypoint.latitude],
         [destination.longitude, destination.latitude],
       ],
       'options': {'avoid_features': constraints.openRouteServiceAvoidFeatures},
@@ -343,6 +354,7 @@ class RoutingService {
   Future<RouteResult> getRoute({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
@@ -363,6 +375,7 @@ class RoutingService {
           provider: provider,
           origin: origin,
           destination: destination,
+          waypoint: waypoint,
           vehicleType: vehicleType,
           userSpeedKmh: userSpeed,
           countryCode: country,
@@ -399,6 +412,7 @@ class RoutingService {
     required String provider,
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -407,6 +421,7 @@ class RoutingService {
       return _getRouteFromValhalla(
         origin: origin,
         destination: destination,
+        waypoint: waypoint,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
@@ -415,6 +430,7 @@ class RoutingService {
       final route = await _getRouteFromGraphHopper(
         origin: origin,
         destination: destination,
+        waypoint: waypoint,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
@@ -434,6 +450,7 @@ class RoutingService {
       final route = await _getRouteFromOpenRouteService(
         origin: origin,
         destination: destination,
+        waypoint: waypoint,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
@@ -454,6 +471,7 @@ class RoutingService {
       return _getRouteFromOsrm(
         origin: origin,
         destination: destination,
+        waypoint: waypoint,
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
@@ -465,6 +483,7 @@ class RoutingService {
   Future<RouteResult> _getRouteFromGraphHopper({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -480,6 +499,7 @@ class RoutingService {
     final url = _buildGraphHopperUri(
       origin: origin,
       destination: destination,
+      waypoint: waypoint,
       vehicleType: vehicleType,
       countryCode: countryCode,
       apiKey: apiKey,
@@ -555,6 +575,7 @@ class RoutingService {
   Future<RouteResult> _getRouteFromOsrm({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -564,6 +585,7 @@ class RoutingService {
     final url = Uri.parse(
       '${BackendConfig.osrmBaseUrl}/route/v1/driving/'
       '${origin.longitude},${origin.latitude};'
+      '${waypoint == null ? '' : '${waypoint.longitude},${waypoint.latitude};'}'
       '${destination.longitude},${destination.latitude}'
       '?overview=full&geometries=geojson',
     );
@@ -617,6 +639,7 @@ class RoutingService {
   Future<RouteResult> _getRouteFromOpenRouteService({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -637,6 +660,7 @@ class RoutingService {
         _buildOpenRouteServiceRequestPayload(
           origin: origin,
           destination: destination,
+          waypoint: waypoint,
           vehicleType: vehicleType,
           countryCode: countryCode,
         ),
@@ -691,6 +715,7 @@ class RoutingService {
   Future<RouteResult> _getRouteFromValhalla({
     required LatLng origin,
     required LatLng destination,
+    LatLng? waypoint,
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
@@ -706,6 +731,7 @@ class RoutingService {
     final requestPayload = _buildValhallaRequestPayload(
       origin: origin,
       destination: destination,
+      waypoint: waypoint,
       vehicleType: vehicleType,
       userSpeedKmh: userSpeedKmh,
       countryCode: countryCode,

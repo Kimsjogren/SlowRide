@@ -296,6 +296,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get convoyHazardCustom => 'Custom pin';
 
   @override
+  String get convoyPoiMeetup => 'Meetup spot';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Mark a clear place where the convoy should gather';
+
+  @override
+  String get convoyPoiParking => 'Parking';
+
+  @override
+  String get convoyPoiFoodStop => 'Food stop';
+
+  @override
+  String get convoyPoiCharging => 'Charging';
+
+  @override
+  String get convoyPoiHangout => 'Hangout spot';
+
+  @override
   String get convoyChatEmpty => 'No messages yet.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'No legally compliant route found for this vehicle type.';
 
   @override
+  String get routeStopSheetSubtitle => 'Nearest stops along your current route';
+
+  @override
+  String get routeStopEmpty => 'No good stops near the route right now.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance from route';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return '$distance away';
+  }
+
+  @override
   String get routeBlockedTitle => 'Route not available';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Steep hill';
+
+  @override
+  String get alertTypeMeetup => 'Meetup spot';
+
+  @override
+  String get alertTypeParking => 'Parking';
+
+  @override
+  String get alertTypeFoodStop => 'Food stop';
+
+  @override
+  String get alertTypeCharging => 'Charging';
+
+  @override
+  String get alertTypeHangout => 'Hangout spot';
 
   @override
   String get alertGpsUnavailable => 'GPS not available yet';

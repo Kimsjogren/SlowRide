@@ -675,6 +675,42 @@ abstract class AppLocalizations {
   /// **'Custom pin'**
   String get convoyHazardCustom;
 
+  /// No description provided for @convoyPoiMeetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Meetup spot'**
+  String get convoyPoiMeetup;
+
+  /// No description provided for @convoyPoiMeetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark a clear place where the convoy should gather'**
+  String get convoyPoiMeetupSubtitle;
+
+  /// No description provided for @convoyPoiParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get convoyPoiParking;
+
+  /// No description provided for @convoyPoiFoodStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Food stop'**
+  String get convoyPoiFoodStop;
+
+  /// No description provided for @convoyPoiCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get convoyPoiCharging;
+
+  /// No description provided for @convoyPoiHangout.
+  ///
+  /// In en, this message translates to:
+  /// **'Hangout spot'**
+  String get convoyPoiHangout;
+
   /// No description provided for @convoyChatEmpty.
   ///
   /// In en, this message translates to:
@@ -1437,6 +1473,30 @@ abstract class AppLocalizations {
   /// **'No legally compliant route found for this vehicle type.'**
   String get mapRouteNotAllowedForVehicle;
 
+  /// No description provided for @routeStopSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest stops along your current route'**
+  String get routeStopSheetSubtitle;
+
+  /// No description provided for @routeStopEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No good stops near the route right now.'**
+  String get routeStopEmpty;
+
+  /// No description provided for @routeStopFromRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} from route'**
+  String routeStopFromRoute(Object distance);
+
+  /// No description provided for @routeStopAway.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String routeStopAway(Object distance);
+
   /// No description provided for @routeBlockedTitle.
   ///
   /// In en, this message translates to:
@@ -1580,6 +1640,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Steep hill'**
   String get alertTypeSteepHill;
+
+  /// No description provided for @alertTypeMeetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Meetup spot'**
+  String get alertTypeMeetup;
+
+  /// No description provided for @alertTypeParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get alertTypeParking;
+
+  /// No description provided for @alertTypeFoodStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Food stop'**
+  String get alertTypeFoodStop;
+
+  /// No description provided for @alertTypeCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get alertTypeCharging;
+
+  /// No description provided for @alertTypeHangout.
+  ///
+  /// In en, this message translates to:
+  /// **'Hangout spot'**
+  String get alertTypeHangout;
 
   /// No description provided for @alertGpsUnavailable.
   ///

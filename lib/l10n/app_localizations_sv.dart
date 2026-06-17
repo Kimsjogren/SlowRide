@@ -296,6 +296,24 @@ class AppLocalizationsSv extends AppLocalizations {
   String get convoyHazardCustom => 'Egen markering';
 
   @override
+  String get convoyPoiMeetup => 'Mötesplats';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Lägg en tydlig plats där konvojen ska samlas';
+
+  @override
+  String get convoyPoiParking => 'Parkering';
+
+  @override
+  String get convoyPoiFoodStop => 'Matstopp';
+
+  @override
+  String get convoyPoiCharging => 'Laddning';
+
+  @override
+  String get convoyPoiHangout => 'Hängplats';
+
+  @override
   String get convoyChatEmpty => 'Inga meddelanden ännu.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsSv extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'Ingen lagligt godkänd rutt hittades för vald fordonstyp.';
 
   @override
+  String get routeStopSheetSubtitle => 'Närmaste stopp längs pågående rutt';
+
+  @override
+  String get routeStopEmpty => 'Hittade inga bra stopp nära rutten just nu.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance från rutten';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return '$distance bort';
+  }
+
+  @override
   String get routeBlockedTitle => 'Rutt ej tillgänglig';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Brant backe';
+
+  @override
+  String get alertTypeMeetup => 'Mötesplats';
+
+  @override
+  String get alertTypeParking => 'Parkering';
+
+  @override
+  String get alertTypeFoodStop => 'Matstopp';
+
+  @override
+  String get alertTypeCharging => 'Laddning';
+
+  @override
+  String get alertTypeHangout => 'Hängplats';
 
   @override
   String get alertGpsUnavailable => 'GPS inte tillgängligt ännu';

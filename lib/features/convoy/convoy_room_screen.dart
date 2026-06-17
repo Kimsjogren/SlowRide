@@ -136,6 +136,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const double _k3DArrowAlignmentY = 0.30;
   static const double _k3DLeadBaseDeg = 0.00042;
   static const Duration _pinTtl = Duration(minutes: 30);
+  static const Duration _poiPinTtl = Duration(hours: 6);
   static const Duration _etaPauseGrace = Duration(seconds: 25);
 
   double _wrap360(double angle) => (angle % 360 + 360) % 360;
@@ -230,7 +231,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   bool _isPinActive(ConvoyPin pin) {
-    return DateTime.now().difference(pin.createdAt) <= _pinTtl;
+    final ttl = switch (pin.type) {
+      'meetup' ||
+      'parking' ||
+      'food_stop' ||
+      'charging' ||
+      'hangout' => _poiPinTtl,
+      _ => _pinTtl,
+    };
+    return DateTime.now().difference(pin.createdAt) <= ttl;
   }
 
   Future<void> _maybeRefreshRoadSpeedLimit(LatLng pos) async {
@@ -2291,91 +2300,135 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     LatLng point,
     AppLocalizations l10n,
   ) async {
+    Future<void> addQuickPin({
+      required String label,
+      required String pinType,
+    }) async {
+      await _controller.addPin(
+        convoyId: widget.convoy.id,
+        position: point,
+        label: label,
+        pinType: pinType,
+      );
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: ListView(
+            shrinkWrap: true,
             children: [
+              ListTile(
+                leading: const Icon(Icons.place, color: Color(0xFF1E88E5)),
+                title: Text(l10n.convoyPoiMeetup),
+                subtitle: Text(l10n.convoyPoiMeetupSubtitle),
+                onTap: () async {
+                  await addQuickPin(
+                    label: l10n.convoyPoiMeetup,
+                    pinType: 'meetup',
+                  );
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.local_parking, color: Colors.blue),
+                title: Text(l10n.convoyPoiParking),
+                onTap: () async {
+                  await addQuickPin(
+                    label: l10n.convoyPoiParking,
+                    pinType: 'parking',
+                  );
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.restaurant, color: Colors.deepOrange),
+                title: Text(l10n.convoyPoiFoodStop),
+                onTap: () async {
+                  await addQuickPin(
+                    label: l10n.convoyPoiFoodStop,
+                    pinType: 'food_stop',
+                  );
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ev_station, color: Colors.green),
+                title: Text(l10n.convoyPoiCharging),
+                onTap: () async {
+                  await addQuickPin(
+                    label: l10n.convoyPoiCharging,
+                    pinType: 'charging',
+                  );
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.star, color: Colors.amber),
+                title: Text(l10n.convoyPoiHangout),
+                onTap: () async {
+                  await addQuickPin(
+                    label: l10n.convoyPoiHangout,
+                    pinType: 'hangout',
+                  );
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.local_police, color: Colors.blue),
                 title: Text(l10n.convoyHazardPolice),
                 onTap: () async {
-                  await _controller.addPin(
-                    convoyId: widget.convoy.id,
-                    position: point,
+                  await addQuickPin(
                     label: l10n.convoyHazardPolice,
                     pinType: 'police',
                   );
-                  if (!context.mounted) {
-                    return;
-                  }
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.construction, color: Colors.orange),
                 title: Text(l10n.convoyHazardRoadwork),
                 onTap: () async {
-                  await _controller.addPin(
-                    convoyId: widget.convoy.id,
-                    position: point,
+                  await addQuickPin(
                     label: l10n.convoyHazardRoadwork,
                     pinType: 'roadwork',
                   );
-                  if (!context.mounted) {
-                    return;
-                  }
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.car_crash, color: Colors.redAccent),
                 title: Text(l10n.convoyHazardAccident),
                 onTap: () async {
-                  await _controller.addPin(
-                    convoyId: widget.convoy.id,
-                    position: point,
+                  await addQuickPin(
                     label: l10n.convoyHazardAccident,
                     pinType: 'accident',
                   );
-                  if (!context.mounted) {
-                    return;
-                  }
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.traffic, color: Colors.amber),
                 title: Text(l10n.convoyHazardTrafficJam),
                 onTap: () async {
-                  await _controller.addPin(
-                    convoyId: widget.convoy.id,
-                    position: point,
+                  await addQuickPin(
                     label: l10n.convoyHazardTrafficJam,
                     pinType: 'traffic_jam',
                   );
-                  if (!context.mounted) {
-                    return;
-                  }
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.speed, color: Colors.deepPurple),
                 title: Text(l10n.convoyHazardSpeedCamera),
                 onTap: () async {
-                  await _controller.addPin(
-                    convoyId: widget.convoy.id,
-                    position: point,
+                  await addQuickPin(
                     label: l10n.convoyHazardSpeedCamera,
                     pinType: 'speed_camera',
                   );
-                  if (!context.mounted) {
-                    return;
-                  }
-                  Navigator.of(context).pop();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
               ),
               ListTile(
@@ -2400,6 +2453,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'accident' => Icons.car_crash,
       'traffic_jam' => Icons.traffic,
       'speed_camera' => Icons.speed,
+      'meetup' => Icons.place,
+      'parking' => Icons.local_parking,
+      'food_stop' => Icons.restaurant,
+      'charging' => Icons.ev_station,
+      'hangout' => Icons.star,
       _ => Icons.push_pin,
     };
   }
@@ -2411,6 +2469,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'accident' => Colors.redAccent,
       'traffic_jam' => Colors.amber,
       'speed_camera' => Colors.deepPurple,
+      'meetup' => const Color(0xFF1E88E5),
+      'parking' => Colors.blue,
+      'food_stop' => Colors.deepOrange,
+      'charging' => Colors.green,
+      'hangout' => Colors.amber,
       _ => Colors.red,
     };
   }
@@ -4141,6 +4204,11 @@ class _ConvoyAlertMarker extends StatelessWidget {
     AlertType.speedCamera => const Color(0xFF6A1B9A),
     AlertType.narrowRoad => const Color(0xFF00695C),
     AlertType.steepHill => const Color(0xFF37474F),
+    AlertType.meetup => const Color(0xFF1E88E5),
+    AlertType.parking => const Color(0xFF0277BD),
+    AlertType.foodStop => const Color(0xFFEF6C00),
+    AlertType.charging => const Color(0xFF00A86B),
+    AlertType.hangout => const Color(0xFFFFB300),
     _ => const Color(0xFF4A148C),
   };
 

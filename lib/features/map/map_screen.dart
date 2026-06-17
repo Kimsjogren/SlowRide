@@ -62,7 +62,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _useDarkMap = true;
   LatLng? _destination;
   String _destinationLabel = '';
+  LatLng? _routeStop;
+  String _routeStopLabel = '';
   List<LatLng> _routePoints = const [];
+  bool _isSearchingRouteStops = false;
 
   // ── Turn-by-turn instructions ─────────────────────────────────────
   List<RouteInstruction> _instructions = const [];
@@ -546,6 +549,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<List<Map<String, dynamic>>> _fetchMapboxResults(
     String query, {
     int limit = 10,
+    LatLng? proximity,
   }) async {
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
@@ -564,9 +568,10 @@ class _MapScreenState extends State<MapScreen> {
       'types': 'poi,address,street,place,locality,neighborhood',
     };
 
-    if (_currentLocation != null) {
+    final prox = proximity ?? _currentLocation;
+    if (prox != null) {
       params['proximity'] =
-          '${_currentLocation!.longitude},${_currentLocation!.latitude}';
+          '${prox.longitude},${prox.latitude}';
     }
 
     final uri = Uri.https('api.mapbox.com', path, params);
@@ -595,10 +600,19 @@ class _MapScreenState extends State<MapScreen> {
   Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
     String query, {
     int limit = 15,
+    LatLng? proximity,
   }) async {
-    var raw = await _fetchMapboxResults(query, limit: limit);
+    var raw = await _fetchMapboxResults(
+      query,
+      limit: limit,
+      proximity: proximity,
+    );
     if (raw.isEmpty) {
-      raw = await _fetchNominatimResults(query, limit: math.max(limit, 25));
+      raw = await _fetchNominatimResults(
+        query,
+        limit: math.max(limit, 25),
+        proximity: proximity,
+      );
     }
     return raw;
   }
@@ -606,6 +620,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<List<Map<String, dynamic>>> _fetchNominatimResults(
     String query, {
     int limit = 25,
+    LatLng? proximity,
   }) async {
     final codes = CountryVehicleRules.supportedCountries
         .join(',')
@@ -628,9 +643,10 @@ class _MapScreenState extends State<MapScreen> {
       structuredParams.remove('q');
     }
 
-    if (_currentLocation != null) {
-      final lat = _currentLocation!.latitude;
-      final lon = _currentLocation!.longitude;
+    final prox = proximity ?? _currentLocation;
+    if (prox != null) {
+      final lat = prox.latitude;
+      final lon = prox.longitude;
       baseParams['viewbox'] =
           '${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}';
       structuredParams['viewbox'] = baseParams['viewbox']!;
@@ -881,6 +897,295 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  List<LatLng> _routeSearchAnchors() {
+    if (_routePoints.isEmpty) return const [];
+    final start = _displayNearestIdx.clamp(0, _routePoints.length - 1);
+    final end = _routePoints.length - 1;
+    final currentLocation = _currentLocation;
+    final anchors = <LatLng>[];
+    if (currentLocation != null) {
+      anchors.add(currentLocation);
+    }
+    anchors.add(_routePoints[start]);
+    for (final fraction in const [0.18, 0.35, 0.55, 0.75]) {
+      final idx = start + ((end - start) * fraction).round();
+      if (idx > start && idx <= end) anchors.add(_routePoints[idx]);
+    }
+    return anchors;
+  }
+
+  int _nearestRouteIndexFull(LatLng point) {
+    if (_routePoints.isEmpty) return 0;
+    var bestIndex = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < _routePoints.length; i++) {
+      final dist = _segDist(point, _routePoints[i]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
+  Future<List<_RouteStopCandidate>> _findStopsAlongRoute({
+    required String query,
+    int limit = 8,
+  }) async {
+    final anchors = _routeSearchAnchors();
+    if (anchors.isEmpty || _routePoints.isEmpty || _currentLocation == null) {
+      return const [];
+    }
+
+    final seen = <String>{};
+    final candidates = <_RouteStopCandidate>[];
+    for (final anchor in anchors) {
+      final raw = await _fetchPrimaryGeocodingResults(
+        query,
+        limit: 8,
+        proximity: anchor,
+      );
+      for (final result in raw) {
+        final lat = double.tryParse(result['lat']?.toString() ?? '');
+        final lon = double.tryParse(result['lon']?.toString() ?? '');
+        if (lat == null || lon == null) continue;
+
+        final point = LatLng(lat, lon);
+        final title = _addressTitleFromResult(result, fallback: query);
+        final subtitle = _addressSubtitleFromResult(result);
+        final key =
+            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+        if (!seen.add(key)) continue;
+
+        final routeDistance = _distanceToRouteMeters(point, _routePoints);
+        if (routeDistance > 3500) continue;
+        final routeIndex = _nearestRouteIndexFull(point);
+        final isAhead = routeIndex >= (_displayNearestIdx - 5);
+        final distanceFromMe = _segDist(_currentLocation!, point);
+        candidates.add(
+          _RouteStopCandidate(
+            title: title,
+            subtitle: subtitle,
+            position: point,
+            routeDistanceMeters: routeDistance,
+            distanceFromMeMeters: distanceFromMe,
+            routeIndex: routeIndex,
+            isAhead: isAhead,
+          ),
+        );
+      }
+    }
+
+    candidates.sort((a, b) {
+      if (a.isAhead != b.isAhead) return a.isAhead ? -1 : 1;
+      final routeCompare = a.routeDistanceMeters.compareTo(
+        b.routeDistanceMeters,
+      );
+      if (routeCompare != 0) return routeCompare;
+      final progressCompare = a.routeIndex.compareTo(b.routeIndex);
+      if (progressCompare != 0) return progressCompare;
+      return a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters);
+    });
+    return candidates.take(limit).toList(growable: false);
+  }
+
+  String _formatStopDistance(double meters) {
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  Future<void> _showRouteStopSheet({
+    required String title,
+    required String query,
+    required IconData icon,
+  }) async {
+    if (_currentLocation == null || _destination == null || _routePoints.isEmpty) {
+      return;
+    }
+    setState(() => _isSearchingRouteStops = true);
+    final candidates = await _findStopsAlongRoute(query: query);
+    if (!mounted) return;
+    setState(() => _isSearchingRouteStops = false);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final l10n = AppLocalizations.of(context)!;
+        return SafeArea(
+          top: false,
+          child: Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.72,
+            ),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1C1C1E),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  leading: Icon(icon, color: const Color(0xFF3AA8FF)),
+                  title: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    l10n.routeStopSheetSubtitle,
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ),
+                if (candidates.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+                    child: Text(
+                      l10n.routeStopEmpty,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemCount: candidates.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, color: Colors.white12),
+                      itemBuilder: (context, index) {
+                        final candidate = candidates[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: const Color(0xFF303438),
+                            child: Text(
+                              '${index + 1}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          title: Text(
+                            candidate.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            [
+                              if (candidate.subtitle.isNotEmpty)
+                                candidate.subtitle,
+                              l10n.routeStopFromRoute(
+                                _formatStopDistance(
+                                  candidate.routeDistanceMeters,
+                                ),
+                              ),
+                              l10n.routeStopAway(
+                                _formatStopDistance(
+                                  candidate.distanceFromMeMeters,
+                                ),
+                              ),
+                            ].join(' · '),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white54),
+                          ),
+                          trailing: const Icon(
+                            Icons.add_circle,
+                            color: Color(0xFF3AA8FF),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            _selectRouteStop(candidate);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _selectRouteStop(_RouteStopCandidate candidate) async {
+    final destination = _destination;
+    final current = _currentLocation;
+    if (destination == null || current == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final preferences = UserPreferencesService.instance;
+
+    setState(() {
+      _isRouting = true;
+      _routeStop = candidate.position;
+      _routeStopLabel = candidate.title;
+      _routingStatus = l10n.mapCalculatingRoute;
+    });
+
+    try {
+      final route = await _routingService.getRoute(
+        origin: current,
+        waypoint: candidate.position,
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+      );
+      if (!mounted) return;
+      _applyRouteResult(route, l10n);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _routeStop = null;
+        _routeStopLabel = '';
+        _routingStatus = l10n.mapRouteFailed;
+      });
+    } finally {
+      if (mounted) setState(() => _isRouting = false);
+    }
+  }
+
+  Future<void> _removeRouteStop() async {
+    final destination = _destination;
+    final current = _currentLocation;
+    if (destination == null || current == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final preferences = UserPreferencesService.instance;
+    setState(() {
+      _routeStop = null;
+      _routeStopLabel = '';
+      _isRouting = true;
+      _routingStatus = l10n.mapCalculatingRoute;
+    });
+    try {
+      final route = await _routingService.getRoute(
+        origin: current,
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+      );
+      if (!mounted) return;
+      _applyRouteResult(route, l10n);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _routingStatus = l10n.mapRouteFailed);
+    } finally {
+      if (mounted) setState(() => _isRouting = false);
+    }
+  }
+
   // Scans a small window forward from last known index — O(window) not O(n).
   // Saves hundreds of iterations per GPS tick on long routes.
   int _nearestRoutePointIndex(LatLng pos) {
@@ -925,6 +1230,41 @@ class _MapScreenState extends State<MapScreen> {
     final dx = (b.latitude - a.latitude) * lat2m;
     final dy = (b.longitude - a.longitude) * lng2m;
     return math.sqrt(dx * dx + dy * dy);
+  }
+
+  double _distanceToRouteMeters(LatLng point, List<LatLng> route) {
+    if (route.isEmpty) return double.infinity;
+    if (route.length == 1) return _segDist(point, route.first);
+
+    var best = double.infinity;
+    for (var i = 0; i < route.length - 1; i++) {
+      final a = route[i];
+      final b = route[i + 1];
+      final dist = _distanceToSegmentMeters(point, a, b);
+      if (dist < best) best = dist;
+    }
+    return best;
+  }
+
+  double _distanceToSegmentMeters(LatLng p, LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+    final ax = a.longitude * lng2m;
+    final ay = a.latitude * lat2m;
+    final bx = b.longitude * lng2m;
+    final by = b.latitude * lat2m;
+    final px = p.longitude * lng2m;
+    final py = p.latitude * lat2m;
+    final dx = bx - ax;
+    final dy = by - ay;
+    if (dx == 0 && dy == 0) return _segDist(p, a);
+    final t = (((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)).clamp(
+      0.0,
+      1.0,
+    );
+    final cx = ax + dx * t;
+    final cy = ay + dy * t;
+    return math.sqrt(math.pow(px - cx, 2) + math.pow(py - cy, 2));
   }
 
   double _normalizeDeg(double angle) => (angle % 360 + 360) % 360;
@@ -1568,6 +1908,29 @@ class _MapScreenState extends State<MapScreen> {
     return const Color(0xFF274D94);
   }
 
+  void _applyRouteResult(RouteResult route, AppLocalizations l10n) {
+    final km = route.distanceMeters / 1000;
+    final minutes = route.durationSeconds / 60;
+    final cumDist = _buildCumulativeDist(route.points);
+    final totalDist = cumDist.isNotEmpty ? cumDist.last : 0.0;
+
+    setState(() {
+      _routePoints = route.points;
+      _cumulativeDist = cumDist;
+      _totalRouteDistM = totalDist;
+      _instructions = route.instructions;
+      _lastNearestIdx = 0;
+      _displayNearestIdx = 0;
+      _nextManeuverText = '';
+      _nextManeuverSign = 0;
+      _distToNextManeuver = 0;
+      _routingStatus = l10n.mapRouteReady(
+        km.toStringAsFixed(1),
+        minutes.toStringAsFixed(0),
+      );
+    });
+  }
+
   Future<void> _handleMapTap(LatLng destination) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
@@ -1594,6 +1957,8 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _isRouting = true;
       _destination = destination;
+      _routeStop = null;
+      _routeStopLabel = '';
       _routingStatus = l10n.mapCalculatingRoute;
     });
 
@@ -1608,26 +1973,7 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      final km = route.distanceMeters / 1000;
-      final minutes = route.durationSeconds / 60;
-      final cumDist = _buildCumulativeDist(route.points);
-      final totalDist = cumDist.isNotEmpty ? cumDist.last : 0.0;
-
-      setState(() {
-        _routePoints = route.points;
-        _cumulativeDist = cumDist;
-        _totalRouteDistM = totalDist;
-        _instructions = route.instructions;
-        _lastNearestIdx = 0; // reset forward-scan index for new route
-        _displayNearestIdx = 0;
-        _nextManeuverText = '';
-        _nextManeuverSign = 0;
-        _distToNextManeuver = 0;
-        _routingStatus = l10n.mapRouteReady(
-          km.toStringAsFixed(1),
-          minutes.toStringAsFixed(0),
-        );
-      });
+      _applyRouteResult(route, l10n);
       SubscriptionService.instance.recordRoute();
     } on RoutingException catch (error) {
       if (!mounted) {
@@ -1745,6 +2091,8 @@ class _MapScreenState extends State<MapScreen> {
       _displayNearestIdx = 0;
       _destination = null;
       _destinationLabel = '';
+      _routeStop = null;
+      _routeStopLabel = '';
       _isNavigating = false;
       _isFollowing = false;
       _instructions = const [];
@@ -2828,6 +3176,46 @@ class _MapScreenState extends State<MapScreen> {
                                     ),
                                   ),
                                 ),
+                                if (_routePoints.isNotEmpty) ...[
+                                  SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: Row(
+                                      children: [
+                                        _RouteStopChip(
+                                          icon: Icons.restaurant,
+                                          label: l10n.convoyPoiFoodStop,
+                                          loading: _isSearchingRouteStops,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.convoyPoiFoodStop,
+                                            query: 'restaurant food',
+                                            icon: Icons.restaurant,
+                                          ),
+                                        ),
+                                        _RouteStopChip(
+                                          icon: Icons.local_parking,
+                                          label: l10n.convoyPoiParking,
+                                          loading: _isSearchingRouteStops,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.convoyPoiParking,
+                                            query: 'parking',
+                                            icon: Icons.local_parking,
+                                          ),
+                                        ),
+                                        _RouteStopChip(
+                                          icon: Icons.ev_station,
+                                          label: l10n.convoyPoiCharging,
+                                          loading: _isSearchingRouteStops,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.convoyPoiCharging,
+                                            query: 'charging station',
+                                            icon: Icons.ev_station,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
@@ -2972,6 +3360,58 @@ class _MapScreenState extends State<MapScreen> {
                                               ],
                                             ),
                                             const SizedBox(height: 2),
+                                          ],
+                                          if (_routeStop != null &&
+                                              _routeStopLabel.isNotEmpty) ...[
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                bottom: 5,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 9,
+                                                    vertical: 5,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF303438),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.add_location_alt,
+                                                    color: Color(0xFF3AA8FF),
+                                                    size: 16,
+                                                  ),
+                                                  const SizedBox(width: 5),
+                                                  Flexible(
+                                                    child: Text(
+                                                      _routeStopLabel,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  GestureDetector(
+                                                    onTap: _removeRouteStop,
+                                                    child: const Icon(
+                                                      Icons.close,
+                                                      color: Colors.white54,
+                                                      size: 16,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                           Row(
                                             children: [
@@ -3308,6 +3748,84 @@ class _FavPreset {
   final IconData icon;
   final String label;
   const _FavPreset(this.key, this.icon, this.label);
+}
+
+class _RouteStopCandidate {
+  const _RouteStopCandidate({
+    required this.title,
+    required this.subtitle,
+    required this.position,
+    required this.routeDistanceMeters,
+    required this.distanceFromMeMeters,
+    required this.routeIndex,
+    required this.isAhead,
+  });
+
+  final String title;
+  final String subtitle;
+  final LatLng position;
+  final double routeDistanceMeters;
+  final double distanceFromMeMeters;
+  final int routeIndex;
+  final bool isAhead;
+}
+
+class _RouteStopChip extends StatelessWidget {
+  const _RouteStopChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.loading,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: loading ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0xFF303438),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (loading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xFF3AA8FF),
+                  ),
+                )
+              else
+                Icon(icon, color: const Color(0xFF3AA8FF), size: 18),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _SpeedBarsPainter extends CustomPainter {

@@ -11,6 +11,11 @@ enum AlertType {
   hazard,
   narrowRoad,
   steepHill,
+  meetup,
+  parking,
+  foodStop,
+  charging,
+  hangout,
 }
 
 extension AlertTypeX on AlertType {
@@ -23,6 +28,11 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => 'hazard',
     AlertType.narrowRoad => 'narrow_road',
     AlertType.steepHill => 'steep_hill',
+    AlertType.meetup => 'meetup',
+    AlertType.parking => 'parking',
+    AlertType.foodStop => 'food_stop',
+    AlertType.charging => 'charging',
+    AlertType.hangout => 'hangout',
   };
 
   String get label => switch (this) {
@@ -34,6 +44,11 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => 'Hazard',
     AlertType.narrowRoad => 'Narrow road',
     AlertType.steepHill => 'Steep hill',
+    AlertType.meetup => 'Meetup spot',
+    AlertType.parking => 'Parking',
+    AlertType.foodStop => 'Food stop',
+    AlertType.charging => 'Charging',
+    AlertType.hangout => 'Hangout',
   };
 
   String localizedLabel(AppLocalizations l10n) => switch (this) {
@@ -45,6 +60,11 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => l10n.alertTypeHazard,
     AlertType.narrowRoad => l10n.alertTypeNarrowRoad,
     AlertType.steepHill => l10n.alertTypeSteepHill,
+    AlertType.meetup => l10n.alertTypeMeetup,
+    AlertType.parking => l10n.alertTypeParking,
+    AlertType.foodStop => l10n.alertTypeFoodStop,
+    AlertType.charging => l10n.alertTypeCharging,
+    AlertType.hangout => l10n.alertTypeHangout,
   };
 
   String get emoji => switch (this) {
@@ -56,6 +76,11 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => '⚠️',
     AlertType.narrowRoad => '↔️',
     AlertType.steepHill => '⛰️',
+    AlertType.meetup => '📍',
+    AlertType.parking => '🅿️',
+    AlertType.foodStop => '🍔',
+    AlertType.charging => '🔌',
+    AlertType.hangout => '⭐',
   };
 
   static AlertType fromKey(String key) => switch (key) {
@@ -66,6 +91,11 @@ extension AlertTypeX on AlertType {
     'speed_camera' => AlertType.speedCamera,
     'narrow_road' => AlertType.narrowRoad,
     'steep_hill' => AlertType.steepHill,
+    'meetup' => AlertType.meetup,
+    'parking' => AlertType.parking,
+    'food_stop' => AlertType.foodStop,
+    'charging' => AlertType.charging,
+    'hangout' => AlertType.hangout,
     _ => AlertType.hazard,
   };
 }
@@ -89,10 +119,16 @@ class AlertModel {
   final DateTime createdAt;
   final String? userId;
 
-  /// Alerts expire after 2 h (roadworks: 24 h).
-  static Duration ttlFor(AlertType type) => type == AlertType.roadwork
-      ? const Duration(hours: 24)
-      : const Duration(hours: 2);
+  /// Alerts expire quickly, while community POIs live longer.
+  static Duration ttlFor(AlertType type) => switch (type) {
+    AlertType.roadwork => const Duration(hours: 24),
+    AlertType.meetup ||
+    AlertType.parking ||
+    AlertType.foodStop ||
+    AlertType.charging ||
+    AlertType.hangout => const Duration(days: 30),
+    _ => const Duration(hours: 2),
+  };
 
   bool get isExpired =>
       DateTime.now().difference(createdAt) > AlertModel.ttlFor(type);

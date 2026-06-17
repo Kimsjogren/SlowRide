@@ -296,6 +296,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get convoyHazardCustom => 'Repère personnalisé';
 
   @override
+  String get convoyPoiMeetup => 'Point de rendez-vous';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Marquez un lieu clair où le convoi doit se regrouper';
+
+  @override
+  String get convoyPoiParking => 'Parking';
+
+  @override
+  String get convoyPoiFoodStop => 'Pause repas';
+
+  @override
+  String get convoyPoiCharging => 'Recharge';
+
+  @override
+  String get convoyPoiHangout => 'Lieu de rassemblement';
+
+  @override
   String get convoyChatEmpty => 'Aucun message pour l\'instant.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'Aucun itinéraire légalement conforme trouvé pour ce type de véhicule.';
 
   @override
+  String get routeStopSheetSubtitle => 'Arrêts les plus proches le long de l\'itinéraire';
+
+  @override
+  String get routeStopEmpty => 'Aucun bon arrêt près de l\'itinéraire pour le moment.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance de l\'itinéraire';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return 'à $distance';
+  }
+
+  @override
   String get routeBlockedTitle => 'Itinéraire non disponible';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Pente raide';
+
+  @override
+  String get alertTypeMeetup => 'Point de rendez-vous';
+
+  @override
+  String get alertTypeParking => 'Parking';
+
+  @override
+  String get alertTypeFoodStop => 'Pause repas';
+
+  @override
+  String get alertTypeCharging => 'Recharge';
+
+  @override
+  String get alertTypeHangout => 'Lieu de rassemblement';
 
   @override
   String get alertGpsUnavailable => 'GPS pas encore disponible';

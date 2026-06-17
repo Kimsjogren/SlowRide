@@ -296,6 +296,24 @@ class AppLocalizationsNb extends AppLocalizations {
   String get convoyHazardCustom => 'Egendefinert markør';
 
   @override
+  String get convoyPoiMeetup => 'Møteplass';
+
+  @override
+  String get convoyPoiMeetupSubtitle => 'Marker et tydelig sted der kolonnen skal samles';
+
+  @override
+  String get convoyPoiParking => 'Parkering';
+
+  @override
+  String get convoyPoiFoodStop => 'Matstopp';
+
+  @override
+  String get convoyPoiCharging => 'Lading';
+
+  @override
+  String get convoyPoiHangout => 'Hengeplass';
+
+  @override
   String get convoyChatEmpty => 'Ingen meldinger ennå.';
 
   @override
@@ -693,6 +711,22 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mapRouteNotAllowedForVehicle => 'Ingen lovlig rute funnet for denne kjøretøytypen.';
 
   @override
+  String get routeStopSheetSubtitle => 'Nærmeste stopp langs pågående rute';
+
+  @override
+  String get routeStopEmpty => 'Fant ingen gode stopp nær ruten akkurat nå.';
+
+  @override
+  String routeStopFromRoute(Object distance) {
+    return '$distance fra ruten';
+  }
+
+  @override
+  String routeStopAway(Object distance) {
+    return '$distance unna';
+  }
+
+  @override
   String get routeBlockedTitle => 'Rute ikke tilgjengelig';
 
   @override
@@ -773,6 +807,21 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Bratt bakke';
+
+  @override
+  String get alertTypeMeetup => 'Møteplass';
+
+  @override
+  String get alertTypeParking => 'Parkering';
+
+  @override
+  String get alertTypeFoodStop => 'Matstopp';
+
+  @override
+  String get alertTypeCharging => 'Lading';
+
+  @override
+  String get alertTypeHangout => 'Hengeplass';
 
   @override
   String get alertGpsUnavailable => 'GPS ikke tilgjengelig ennå';
