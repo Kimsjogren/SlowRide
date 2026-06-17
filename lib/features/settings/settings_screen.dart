@@ -1003,16 +1003,16 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
       title: l10n.settingsVehicleMopedCar,
       brands: [
         _MarkerBrandGroup(
-          title: l10n.settingsMapMarkerCategoryLigier,
-          options: byCategory(MapMarkerCategory.ligier),
-        ),
-        _MarkerBrandGroup(
           title: l10n.settingsMapMarkerCategoryAixam,
           options: byCategory(MapMarkerCategory.aixam),
         ),
         _MarkerBrandGroup(
           title: 'Microcar',
           options: byCategory(MapMarkerCategory.microcar),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCategoryLigier,
+          options: byCategory(MapMarkerCategory.ligier),
         ),
       ],
     ),

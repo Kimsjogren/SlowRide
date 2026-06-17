@@ -91,18 +91,9 @@ class UserLocationMarker extends StatelessWidget {
       tint: Color(0xFF25C281),
     ),
     MapMarkerOption(
-      style: MapMarkerStyle.microcarRed,
-      category: MapMarkerCategory.ligier,
-      assetPath:
-          'assets/mopedbilar/ligier/105F87AA-6074-4B4A-A7CD-E127515E5CC4.png',
-      labelBuilder: _ligierLabel,
-      colorNameBuilder: _redLabel,
-    ),
-    MapMarkerOption(
       style: MapMarkerStyle.microcarBlue,
       category: MapMarkerCategory.ligier,
-      assetPath:
-          'assets/mopedbilar/ligier/AD4E2031-7011-471E-9E58-035D77DD0B48.png',
+      assetPath: 'assets/mopedbilar/ligier/IMG_8769.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _blueLabel,
     ),
@@ -110,23 +101,15 @@ class UserLocationMarker extends StatelessWidget {
       style: MapMarkerStyle.microcarBlack,
       category: MapMarkerCategory.ligier,
       assetPath:
-          'assets/mopedbilar/ligier/A5749156-12A5-4CE5-B25B-912ECD3965CD.png',
+          'assets/mopedbilar/ligier/0B2354C4-4074-4FC9-B461-7E773F54DF63.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _blackLabel,
-    ),
-    MapMarkerOption(
-      style: MapMarkerStyle.microcarWhite,
-      category: MapMarkerCategory.ligier,
-      assetPath:
-          'assets/mopedbilar/ligier/73F70485-0439-4968-9256-97E569628BBC.png',
-      labelBuilder: _ligierLabel,
-      colorNameBuilder: _whiteLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarGold,
       category: MapMarkerCategory.ligier,
       assetPath:
-          'assets/mopedbilar/ligier/8EE771CD-8380-40F9-8773-8FDFB0A6F372.png',
+          'assets/mopedbilar/ligier/DC861799-B006-4369-9BD9-F170EC9DCF9E.png',
       labelBuilder: _ligierLabel,
       colorNameBuilder: _goldLabel,
     ),
@@ -299,6 +282,8 @@ class UserLocationMarker extends StatelessWidget {
     final resolvedStyle = switch (style) {
       MapMarkerStyle.bmwBlack => MapMarkerStyle.bmwRed,
       MapMarkerStyle.epaGold => MapMarkerStyle.epaWhite,
+      MapMarkerStyle.microcarRed => MapMarkerStyle.microcarBlack,
+      MapMarkerStyle.microcarWhite => MapMarkerStyle.microcarBlue,
       MapMarkerStyle.aixamRed => MapMarkerStyle.aixamWhite,
       MapMarkerStyle.aixamGraphite => MapMarkerStyle.aixamBlack,
       _ => style,
