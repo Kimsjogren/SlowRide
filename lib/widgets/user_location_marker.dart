@@ -168,28 +168,32 @@ class UserLocationMarker extends StatelessWidget {
     MapMarkerOption(
       style: MapMarkerStyle.mgoOrange,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/mopedbilar/microcar/IMG_8658.png',
+      assetPath:
+          'assets/mopedbilar/microcar/F21F459C-B9C8-424A-AD4D-E557B404BA0D.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoRed,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/mopedbilar/microcar/IMG_8664.png',
+      assetPath:
+          'assets/mopedbilar/microcar/543B1A38-5F70-4648-A692-4841CC390E91.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoBlack,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/mopedbilar/microcar/IMG_8666.png',
+      assetPath:
+          'assets/mopedbilar/microcar/AF6505FA-A1BE-4473-A4FE-FA7F3A96EA7B.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.mgoYellow,
       category: MapMarkerCategory.microcar,
-      assetPath: 'assets/mopedbilar/microcar/IMG_8668.png',
+      assetPath:
+          'assets/mopedbilar/microcar/B3492F1A-99B3-494C-BE72-DA295A4898AF.png',
       labelBuilder: _microcarLabel,
       colorNameBuilder: _yellowLabel,
     ),
@@ -223,10 +227,31 @@ class UserLocationMarker extends StatelessWidget {
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
+      style: MapMarkerStyle.miniBlue,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/BAA3B7F2-D521-448A-945B-23C135CA577D.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.miniWhite,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/A57BEDF4-AC7A-4AF9-846B-D6D52265B8C0.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _whiteLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.miniGreen,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/826EFA5F-802B-4BAF-8489-7DFDDB113F5E.png',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _greenLabel,
+    ),
+    MapMarkerOption(
       style: MapMarkerStyle.miniOrange,
       category: MapMarkerCategory.atraktor,
-      assetPath: 'assets/A-Traktor/E1FF4F62-5EAE-48E6-8711-CB9F3739EDA9.png',
-      labelBuilder: _bmwLabel,
+      assetPath: 'assets/A-Traktor/59BCA6D8-AB43-43CF-9B49-B44947A049F1.png',
+      labelBuilder: _miniLabel,
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
@@ -275,8 +300,6 @@ class UserLocationMarker extends StatelessWidget {
 
   static MapMarkerOption optionFor(MapMarkerStyle style) {
     final resolvedStyle = switch (style) {
-      MapMarkerStyle.miniWhite ||
-      MapMarkerStyle.miniGreen => MapMarkerStyle.miniOrange,
       MapMarkerStyle.bmwBlack ||
       MapMarkerStyle.bmwOrange => MapMarkerStyle.bmwRed,
       MapMarkerStyle.epaGold => MapMarkerStyle.epaWhite,
@@ -466,10 +489,12 @@ String _ligierLabel(AppLocalizations l10n) => l10n.settingsMapMarkerLigier;
 String _aixamLabel(AppLocalizations l10n) => l10n.settingsMapMarkerAixam;
 String _microcarLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMicrocar;
 String _pickupLabel(AppLocalizations l10n) => l10n.settingsMapMarkerPickup;
+String _miniLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMini;
 String _bmwLabel(AppLocalizations l10n) => l10n.settingsMapMarkerBmw;
 String _tractorLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTractor;
 String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
 String _blueLabel(AppLocalizations l10n) => l10n.settingsColorBlue;
+String _greenLabel(AppLocalizations l10n) => l10n.settingsColorGreen;
 String _blackLabel(AppLocalizations l10n) => l10n.settingsColorBlack;
 String _whiteLabel(AppLocalizations l10n) => l10n.settingsColorWhite;
 String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;

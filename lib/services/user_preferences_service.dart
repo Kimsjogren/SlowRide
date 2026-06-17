@@ -30,6 +30,7 @@ enum MapMarkerStyle {
   tractorGold,
   miniWhite,
   miniGreen,
+  miniBlue,
   miniOrange,
   bmwRed,
   bmwBlack,
