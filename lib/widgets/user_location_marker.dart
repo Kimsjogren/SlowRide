@@ -133,35 +133,24 @@ class UserLocationMarker extends StatelessWidget {
     MapMarkerOption(
       style: MapMarkerStyle.aixamWhite,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/mopedbilar/aixam/IMG_8603.png',
+      assetPath:
+          'assets/mopedbilar/aixam/769AAE71-DB8C-4215-AFE9-679B33C3007A.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _whiteLabel,
     ),
     MapMarkerOption(
-      style: MapMarkerStyle.aixamRed,
-      category: MapMarkerCategory.aixam,
-      assetPath: 'assets/mopedbilar/aixam/IMG_8604.png',
-      labelBuilder: _aixamLabel,
-      colorNameBuilder: _redLabel,
-    ),
-    MapMarkerOption(
       style: MapMarkerStyle.aixamBlack,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/mopedbilar/aixam/IMG_8605.png',
+      assetPath:
+          'assets/mopedbilar/aixam/B4C91DA5-7FB2-4997-8890-C5B9C34F89F6.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
-      style: MapMarkerStyle.aixamGraphite,
-      category: MapMarkerCategory.aixam,
-      assetPath: 'assets/mopedbilar/aixam/IMG_8606.png',
-      labelBuilder: _aixamLabel,
-      colorNameBuilder: _graphiteLabel,
-    ),
-    MapMarkerOption(
       style: MapMarkerStyle.aixamYellow,
       category: MapMarkerCategory.aixam,
-      assetPath: 'assets/mopedbilar/aixam/IMG_8607.png',
+      assetPath:
+          'assets/mopedbilar/aixam/B73ED154-474F-43D8-B326-FE67D0F85297.png',
       labelBuilder: _aixamLabel,
       colorNameBuilder: _yellowLabel,
     ),
@@ -310,6 +299,8 @@ class UserLocationMarker extends StatelessWidget {
     final resolvedStyle = switch (style) {
       MapMarkerStyle.bmwBlack => MapMarkerStyle.bmwRed,
       MapMarkerStyle.epaGold => MapMarkerStyle.epaWhite,
+      MapMarkerStyle.aixamRed => MapMarkerStyle.aixamWhite,
+      MapMarkerStyle.aixamGraphite => MapMarkerStyle.aixamBlack,
       _ => style,
     };
     return options.firstWhere(
@@ -506,6 +497,5 @@ String _blackLabel(AppLocalizations l10n) => l10n.settingsColorBlack;
 String _whiteLabel(AppLocalizations l10n) => l10n.settingsColorWhite;
 String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;
 String _silverLabel(AppLocalizations l10n) => l10n.settingsColorSilver;
-String _graphiteLabel(AppLocalizations l10n) => l10n.settingsColorGraphite;
 String _yellowLabel(AppLocalizations l10n) => l10n.settingsColorYellow;
 String _orangeLabel(AppLocalizations l10n) => l10n.settingsColorOrange;
