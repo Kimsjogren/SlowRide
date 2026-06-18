@@ -705,6 +705,24 @@ abstract class AppLocalizations {
   /// **'Charging'**
   String get convoyPoiCharging;
 
+  /// No description provided for @routeStopFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get routeStopFuel;
+
+  /// No description provided for @routeStopCafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Café'**
+  String get routeStopCafe;
+
+  /// No description provided for @routeStopGrocery.
+  ///
+  /// In en, this message translates to:
+  /// **'Grocery'**
+  String get routeStopGrocery;
+
   /// No description provided for @convoyPoiHangout.
   ///
   /// In en, this message translates to:
@@ -1479,11 +1497,41 @@ abstract class AppLocalizations {
   /// **'Nearest stops along your current route'**
   String get routeStopSheetSubtitle;
 
+  /// No description provided for @routeStopNearbySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest options around you'**
+  String get routeStopNearbySubtitle;
+
   /// No description provided for @routeStopEmpty.
   ///
   /// In en, this message translates to:
   /// **'No good stops near the route right now.'**
   String get routeStopEmpty;
+
+  /// No description provided for @routeStopNearbyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No good options near you right now.'**
+  String get routeStopNearbyEmpty;
+
+  /// No description provided for @searchSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get searchSaved;
+
+  /// No description provided for @searchRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get searchRecent;
+
+  /// No description provided for @searchNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get searchNew;
 
   /// No description provided for @routeStopFromRoute.
   ///

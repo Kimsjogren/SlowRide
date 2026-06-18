@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
+import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
@@ -65,7 +66,7 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _routeStop;
   String _routeStopLabel = '';
   List<LatLng> _routePoints = const [];
-  bool _isSearchingRouteStops = false;
+  String? _searchingRouteStopKey;
 
   // ── Turn-by-turn instructions ─────────────────────────────────────
   List<RouteInstruction> _instructions = const [];
@@ -140,6 +141,7 @@ class _MapScreenState extends State<MapScreen> {
     // Lazy-load prefs for speed calibration (fire-and-forget).
     SpeedCalibrationService.instance.initialize();
     FavoritePlacesService.instance.initialize();
+    DestinationHistoryService.instance.initialize();
     // Start community alerts polling (immediate + every 30 s).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadAlerts();
@@ -436,20 +438,6 @@ class _MapScreenState extends State<MapScreen> {
     _alertsTimer?.cancel();
     _positionSubscription?.cancel();
     super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    _debounce?.cancel();
-    if (query.trim().length < 2) {
-      setState(() {
-        _suggestions = [];
-        _showSuggestions = false;
-      });
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 350), () {
-      _fetchSuggestions(query.trim());
-    });
   }
 
   String _normalizeSearchText(String input) {
@@ -815,18 +803,6 @@ class _MapScreenState extends State<MapScreen> {
     return deduped;
   }
 
-  Future<void> _fetchSuggestions(String query) async {
-    try {
-      final raw = await _fetchPrimaryGeocodingResults(query, limit: 15);
-      if (!mounted) return;
-      final ranked = _rankAndDedupeSuggestions(raw, query);
-      setState(() {
-        _suggestions = ranked;
-        _showSuggestions = _suggestions.isNotEmpty;
-      });
-    } catch (_) {}
-  }
-
   void _selectSuggestion(Map<String, dynamic> suggestion) {
     final lat = double.tryParse(suggestion['lat']?.toString() ?? '');
     final lon = double.tryParse(suggestion['lon']?.toString() ?? '');
@@ -840,6 +816,319 @@ class _MapScreenState extends State<MapScreen> {
     _destinationLabel = label;
     _searchFocus.unfocus();
     _handleMapTap(LatLng(lat, lon));
+  }
+
+  void _navigateToHistory(DestinationHistoryEntry entry) {
+    _addressController.text = entry.label;
+    _destinationLabel = entry.label;
+    _searchFocus.unfocus();
+    _handleMapTap(entry.position);
+  }
+
+  Future<void> _selectSearchSheetSuggestion(
+    BuildContext sheetContext,
+    Map<String, dynamic> suggestion,
+  ) async {
+    Navigator.of(sheetContext).pop();
+    _selectSuggestion(suggestion);
+  }
+
+  Future<void> _openSearchSheetPoi(
+    BuildContext sheetContext, {
+    required String title,
+    required String searchKey,
+    required List<String> queries,
+    required IconData icon,
+  }) async {
+    Navigator.of(sheetContext).pop();
+    await _showRouteStopSheet(
+      title: title,
+      searchKey: searchKey,
+      queries: queries,
+      icon: icon,
+    );
+  }
+
+  Future<void> _showDestinationSearchSheet() async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: _addressController.text);
+    Timer? searchDebounce;
+    var localSuggestions = <Map<String, dynamic>>[];
+    var isSearching = false;
+
+    Future<void> runSearch(String value, StateSetter setSheetState) async {
+      final query = value.trim();
+      if (query.length < 2) {
+        setSheetState(() {
+          localSuggestions = [];
+          isSearching = false;
+        });
+        return;
+      }
+      setSheetState(() => isSearching = true);
+      try {
+        final raw = await _fetchPrimaryGeocodingResults(query, limit: 15);
+        final ranked = _rankAndDedupeSuggestions(raw, query);
+        if (!mounted) return;
+        setSheetState(() {
+          localSuggestions = ranked;
+          isSearching = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setSheetState(() {
+          localSuggestions = [];
+          isSearching = false;
+        });
+      }
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            void onChanged(String value) {
+              searchDebounce?.cancel();
+              searchDebounce = Timer(
+                const Duration(milliseconds: 300),
+                () => runSearch(value, setSheetState),
+              );
+            }
+
+            final favorites = FavoritePlacesService.instance.places.value;
+            final home = FavoritePlacesService.instance.findByIcon('home');
+            final work = FavoritePlacesService.instance.findByIcon('work');
+            final school = FavoritePlacesService.instance.findByIcon('school');
+            final saved = <FavoritePlace>[
+              ...[home, work, school].whereType<FavoritePlace>(),
+              ...favorites.where(
+                (fav) =>
+                    fav.icon != 'home' &&
+                    fav.icon != 'work' &&
+                    fav.icon != 'school',
+              ),
+            ];
+            final hasQuery = controller.text.trim().isNotEmpty;
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.88,
+              minChildSize: 0.58,
+              maxChildSize: 0.96,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1C1C1E),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 26),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 18),
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        onChanged: onChanged,
+                        onSubmitted: (query) {
+                          Navigator.of(sheetContext).pop();
+                          _addressController.text = query;
+                          _searchAddress(query);
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: l10n.mapAddressFieldHint,
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: const Color(0xFF343A3E),
+                          prefixIcon: IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            color: Colors.white54,
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                          ),
+                          suffixIcon: isSearching
+                              ? const Padding(
+                                  padding: EdgeInsets.all(14),
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF3AA8FF),
+                                    ),
+                                  ),
+                                )
+                              : const Icon(Icons.mic, color: Colors.white70),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(26),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      if (!hasQuery) ...[
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _SearchShortcutCard(
+                                icon: Icons.bookmark,
+                                label: l10n.searchSaved,
+                              ),
+                              _SearchShortcutCard(
+                                icon: Icons.ev_station,
+                                label: l10n.convoyPoiCharging,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.convoyPoiCharging,
+                                  searchKey: 'charging',
+                                  queries: const [
+                                    'charging station',
+                                    'ev charging',
+                                    'laddstation',
+                                  ],
+                                  icon: Icons.ev_station,
+                                ),
+                              ),
+                              _SearchShortcutCard(
+                                icon: Icons.restaurant,
+                                label: l10n.convoyPoiFoodStop,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.convoyPoiFoodStop,
+                                  searchKey: 'food',
+                                  queries: const [
+                                    'restaurant',
+                                    'fast food',
+                                    'cafe',
+                                  ],
+                                  icon: Icons.restaurant,
+                                ),
+                              ),
+                              _SearchShortcutCard(
+                                icon: Icons.local_parking,
+                                label: l10n.convoyPoiParking,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.convoyPoiParking,
+                                  searchKey: 'parking',
+                                  queries: const [
+                                    'parking',
+                                    'car park',
+                                    'parkering',
+                                  ],
+                                  icon: Icons.local_parking,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        if (saved.isNotEmpty)
+                          ...saved.take(4).map(
+                            (fav) => _SearchDestinationRow(
+                              icon: fav.icon == 'work'
+                                  ? Icons.work
+                                  : fav.icon == 'school'
+                                  ? Icons.school
+                                  : fav.icon == 'home'
+                                  ? Icons.home
+                                  : Icons.star,
+                              title: fav.label,
+                              subtitle: fav.address,
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                _navigateToFavorite(fav);
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l10n.searchRecent,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ValueListenableBuilder<List<DestinationHistoryEntry>>(
+                          valueListenable:
+                              DestinationHistoryService.instance.entries,
+                          builder: (context, history, _) {
+                            return Column(
+                              children: history
+                                  .take(8)
+                                  .map(
+                                    (entry) => _SearchDestinationRow(
+                                      icon: Icons.history,
+                                      title: entry.label,
+                                      subtitle: entry.address,
+                                      onTap: () {
+                                        Navigator.of(sheetContext).pop();
+                                        _navigateToHistory(entry);
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            );
+                          },
+                        ),
+                      ] else
+                        ...localSuggestions.map((suggestion) {
+                          final title = _addressTitleFromResult(suggestion);
+                          final subtitle = _addressSubtitleFromResult(
+                            suggestion,
+                          );
+                          return _SearchDestinationRow(
+                            icon: Icons.location_on,
+                            title: title,
+                            subtitle: subtitle,
+                            onTap: () => _selectSearchSheetSuggestion(
+                              sheetContext,
+                              suggestion,
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    searchDebounce?.cancel();
+    controller.dispose();
+  }
+
+  Future<void> _saveDestinationHistory(LatLng destination) async {
+    final label = _destinationLabel.trim();
+    if (label.isEmpty) return;
+    await DestinationHistoryService.instance.add(
+      label: label,
+      address: _addressController.text.trim(),
+      position: destination,
+    );
   }
 
   Future<void> _searchAddress(String rawQuery) async {
@@ -907,11 +1196,23 @@ class _MapScreenState extends State<MapScreen> {
       anchors.add(currentLocation);
     }
     anchors.add(_routePoints[start]);
-    for (final fraction in const [0.18, 0.35, 0.55, 0.75]) {
-      final idx = start + ((end - start) * fraction).round();
-      if (idx > start && idx <= end) anchors.add(_routePoints[idx]);
+
+    const spacingMeters = 2500.0;
+    const maxAnchors = 12;
+    var distanceSinceAnchor = 0.0;
+    for (var index = start; index < end; index++) {
+      distanceSinceAnchor += _segDist(_routePoints[index], _routePoints[index + 1]);
+      if (distanceSinceAnchor < spacingMeters && index + 1 < end) continue;
+      anchors.add(_routePoints[index + 1]);
+      distanceSinceAnchor = 0.0;
+      if (anchors.length >= maxAnchors) break;
     }
-    return anchors;
+
+    final destinationPoint = _routePoints[end];
+    if (anchors.isEmpty || _segDist(anchors.last, destinationPoint) > 250) {
+      anchors.add(destinationPoint);
+    }
+    return anchors.toList(growable: false);
   }
 
   int _nearestRouteIndexFull(LatLng point) {
@@ -928,56 +1229,98 @@ class _MapScreenState extends State<MapScreen> {
     return bestIndex;
   }
 
+  double _remainingRouteDistanceToIndex(int routeIndex) {
+    if (_routePoints.length < 2) return 0;
+    final start = _displayNearestIdx.clamp(0, _routePoints.length - 1);
+    final end = routeIndex.clamp(start, _routePoints.length - 1);
+    var distance = 0.0;
+    for (var index = start; index < end; index++) {
+      distance += _segDist(_routePoints[index], _routePoints[index + 1]);
+    }
+    return distance;
+  }
+
+  List<List<T>> _chunks<T>(List<T> items, int size) {
+    final chunks = <List<T>>[];
+    for (var index = 0; index < items.length; index += size) {
+      chunks.add(items.sublist(index, math.min(index + size, items.length)));
+    }
+    return chunks;
+  }
+
   Future<List<_RouteStopCandidate>> _findStopsAlongRoute({
-    required String query,
-    int limit = 8,
+    required List<String> queries,
+    int limit = 20,
   }) async {
+    const maxDetourFromRouteMeters = 15000.0;
     final anchors = _routeSearchAnchors();
-    if (anchors.isEmpty || _routePoints.isEmpty || _currentLocation == null) {
+    final currentLocation = _currentLocation;
+    if (anchors.isEmpty || _routePoints.isEmpty || currentLocation == null) {
       return const [];
     }
 
     final seen = <String>{};
     final candidates = <_RouteStopCandidate>[];
-    for (final anchor in anchors) {
-      final raw = await _fetchPrimaryGeocodingResults(
-        query,
-        limit: 8,
-        proximity: anchor,
-      );
-      for (final result in raw) {
-        final lat = double.tryParse(result['lat']?.toString() ?? '');
-        final lon = double.tryParse(result['lon']?.toString() ?? '');
-        if (lat == null || lon == null) continue;
+    final requests = <({LatLng anchor, String query})>[
+      for (final anchor in anchors)
+        for (final query in queries) (anchor: anchor, query: query),
+    ];
 
-        final point = LatLng(lat, lon);
-        final title = _addressTitleFromResult(result, fallback: query);
-        final subtitle = _addressSubtitleFromResult(result);
-        final key =
-            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
-        if (!seen.add(key)) continue;
-
-        final routeDistance = _distanceToRouteMeters(point, _routePoints);
-        if (routeDistance > 3500) continue;
-        final routeIndex = _nearestRouteIndexFull(point);
-        final isAhead = routeIndex >= (_displayNearestIdx - 5);
-        final distanceFromMe = _segDist(_currentLocation!, point);
-        candidates.add(
-          _RouteStopCandidate(
-            title: title,
-            subtitle: subtitle,
-            position: point,
-            routeDistanceMeters: routeDistance,
-            distanceFromMeMeters: distanceFromMe,
-            routeIndex: routeIndex,
-            isAhead: isAhead,
+    for (final batch in _chunks(requests, 6)) {
+      final responses = await Future.wait(
+        batch.map(
+          (request) => _fetchPrimaryGeocodingResults(
+            request.query,
+            limit: 10,
+            proximity: request.anchor,
           ),
-        );
+        ),
+      );
+
+      for (var responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+        final query = batch[responseIndex].query;
+        for (final result in responses[responseIndex]) {
+          final lat = double.tryParse(result['lat']?.toString() ?? '');
+          final lon = double.tryParse(result['lon']?.toString() ?? '');
+          if (lat == null || lon == null) continue;
+
+          final point = LatLng(lat, lon);
+          final title = _addressTitleFromResult(result, fallback: query);
+          final subtitle = _addressSubtitleFromResult(result);
+          final key =
+              '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+          if (!seen.add(key)) continue;
+
+          final routeDistance = _distanceToRouteMeters(point, _routePoints);
+          if (routeDistance > maxDetourFromRouteMeters) continue;
+          final routeIndex = _nearestRouteIndexFull(point);
+          final isAhead = routeIndex >= (_displayNearestIdx - 5);
+          final distanceFromMe = _segDist(currentLocation, point);
+          final aheadDistance = isAhead
+              ? _remainingRouteDistanceToIndex(routeIndex)
+              : double.infinity;
+          candidates.add(
+            _RouteStopCandidate(
+              title: title,
+              subtitle: subtitle,
+              position: point,
+              routeDistanceMeters: routeDistance,
+              distanceFromMeMeters: distanceFromMe,
+              aheadDistanceMeters: aheadDistance,
+              routeIndex: routeIndex,
+              isAhead: isAhead,
+            ),
+          );
+        }
       }
     }
 
     candidates.sort((a, b) {
       if (a.isAhead != b.isAhead) return a.isAhead ? -1 : 1;
+      final aheadCompare = a.aheadDistanceMeters.compareTo(
+        b.aheadDistanceMeters,
+      );
+      if (aheadCompare != 0) return aheadCompare;
       final routeCompare = a.routeDistanceMeters.compareTo(
         b.routeDistanceMeters,
       );
@@ -989,6 +1332,62 @@ class _MapScreenState extends State<MapScreen> {
     return candidates.take(limit).toList(growable: false);
   }
 
+  Future<List<_RouteStopCandidate>> _findNearbyStops({
+    required List<String> queries,
+    int limit = 20,
+  }) async {
+    final currentLocation = _currentLocation;
+    if (currentLocation == null) return const [];
+
+    final seen = <String>{};
+    final candidates = <_RouteStopCandidate>[];
+    final requests = <String>[...queries];
+    final responses = await Future.wait(
+      requests.map(
+        (query) => _fetchPrimaryGeocodingResults(
+          query,
+          limit: 12,
+          proximity: currentLocation,
+        ),
+      ),
+    );
+
+    for (var responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+      final query = requests[responseIndex];
+      for (final result in responses[responseIndex]) {
+        final lat = double.tryParse(result['lat']?.toString() ?? '');
+        final lon = double.tryParse(result['lon']?.toString() ?? '');
+        if (lat == null || lon == null) continue;
+
+        final point = LatLng(lat, lon);
+        final title = _addressTitleFromResult(result, fallback: query);
+        final subtitle = _addressSubtitleFromResult(result);
+        final key =
+            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+        if (!seen.add(key)) continue;
+
+        final distanceFromMe = _segDist(currentLocation, point);
+        candidates.add(
+          _RouteStopCandidate(
+            title: title,
+            subtitle: subtitle,
+            position: point,
+            routeDistanceMeters: distanceFromMe,
+            distanceFromMeMeters: distanceFromMe,
+            aheadDistanceMeters: double.nan,
+            routeIndex: 0,
+            isAhead: true,
+          ),
+        );
+      }
+    }
+
+    candidates.sort(
+      (a, b) => a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters),
+    );
+    return candidates.take(limit).toList(growable: false);
+  }
+
   String _formatStopDistance(double meters) {
     if (meters < 1000) return '${meters.round()} m';
     return '${(meters / 1000).toStringAsFixed(1)} km';
@@ -996,16 +1395,28 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _showRouteStopSheet({
     required String title,
-    required String query,
+    required String searchKey,
+    required List<String> queries,
     required IconData icon,
   }) async {
-    if (_currentLocation == null || _destination == null || _routePoints.isEmpty) {
+    if (_currentLocation == null) {
       return;
     }
-    setState(() => _isSearchingRouteStops = true);
-    final candidates = await _findStopsAlongRoute(query: query);
+    final hasActiveRoute = _destination != null && _routePoints.isNotEmpty;
+    setState(() => _searchingRouteStopKey = searchKey);
+    List<_RouteStopCandidate> candidates;
+    try {
+      candidates = hasActiveRoute
+          ? await _findStopsAlongRoute(queries: queries)
+          : await _findNearbyStops(queries: queries);
+    } catch (_) {
+      candidates = const [];
+    } finally {
+      if (mounted) {
+        setState(() => _searchingRouteStopKey = null);
+      }
+    }
     if (!mounted) return;
-    setState(() => _isSearchingRouteStops = false);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -1045,7 +1456,9 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                   subtitle: Text(
-                    l10n.routeStopSheetSubtitle,
+                    hasActiveRoute
+                        ? l10n.routeStopSheetSubtitle
+                        : l10n.routeStopNearbySubtitle,
                     style: const TextStyle(color: Colors.white54),
                   ),
                 ),
@@ -1053,7 +1466,9 @@ class _MapScreenState extends State<MapScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
                     child: Text(
-                      l10n.routeStopEmpty,
+                      hasActiveRoute
+                          ? l10n.routeStopEmpty
+                          : l10n.routeStopNearbyEmpty,
                       style: const TextStyle(color: Colors.white70),
                     ),
                   )
@@ -1088,11 +1503,17 @@ class _MapScreenState extends State<MapScreen> {
                             [
                               if (candidate.subtitle.isNotEmpty)
                                 candidate.subtitle,
-                              l10n.routeStopFromRoute(
+                              if (hasActiveRoute &&
+                                  candidate.aheadDistanceMeters.isFinite)
                                 _formatStopDistance(
-                                  candidate.routeDistanceMeters,
+                                  candidate.aheadDistanceMeters,
                                 ),
-                              ),
+                              if (hasActiveRoute)
+                                l10n.routeStopFromRoute(
+                                  _formatStopDistance(
+                                    candidate.routeDistanceMeters,
+                                  ),
+                                ),
                               l10n.routeStopAway(
                                 _formatStopDistance(
                                   candidate.distanceFromMeMeters,
@@ -1109,7 +1530,11 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                           onTap: () {
                             Navigator.of(context).pop();
-                            _selectRouteStop(candidate);
+                            if (hasActiveRoute) {
+                              _selectRouteStop(candidate);
+                            } else {
+                              _selectStopAsDestination(candidate);
+                            }
                           },
                         );
                       },
@@ -1156,6 +1581,13 @@ class _MapScreenState extends State<MapScreen> {
     } finally {
       if (mounted) setState(() => _isRouting = false);
     }
+  }
+
+  void _selectStopAsDestination(_RouteStopCandidate candidate) {
+    _addressController.text = candidate.title;
+    _destinationLabel = candidate.title;
+    _searchFocus.unfocus();
+    _handleMapTap(candidate.position);
   }
 
   Future<void> _removeRouteStop() async {
@@ -1974,6 +2406,7 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       _applyRouteResult(route, l10n);
+      unawaited(_saveDestinationHistory(destination));
       SubscriptionService.instance.recordRoute();
     } on RoutingException catch (error) {
       if (!mounted) {
@@ -2707,14 +3140,9 @@ class _MapScreenState extends State<MapScreen> {
                   TextField(
                     controller: _addressController,
                     focusNode: _searchFocus,
+                    readOnly: true,
                     textInputAction: TextInputAction.search,
-                    onChanged: _onSearchChanged,
-                    onSubmitted: (q) {
-                      setState(() {
-                        _showSuggestions = false;
-                      });
-                      _searchAddress(q);
-                    },
+                    onTap: _showDestinationSearchSheet,
                     decoration: InputDecoration(
                       hintText: l10n.mapAddressFieldHint,
                       filled: true,
@@ -2733,12 +3161,7 @@ class _MapScreenState extends State<MapScreen> {
                             )
                           : IconButton(
                               icon: const Icon(Icons.arrow_forward),
-                              onPressed: () {
-                                setState(() {
-                                  _showSuggestions = false;
-                                });
-                                _searchAddress(_addressController.text);
-                              },
+                              onPressed: _showDestinationSearchSheet,
                             ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -3184,31 +3607,110 @@ class _MapScreenState extends State<MapScreen> {
                                         _RouteStopChip(
                                           icon: Icons.restaurant,
                                           label: l10n.convoyPoiFoodStop,
-                                          loading: _isSearchingRouteStops,
+                                          loading:
+                                              _searchingRouteStopKey == 'food',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
                                           onTap: () => _showRouteStopSheet(
                                             title: l10n.convoyPoiFoodStop,
-                                            query: 'restaurant food',
+                                            searchKey: 'food',
+                                            queries: const [
+                                              'restaurant',
+                                              'fast food',
+                                              'cafe',
+                                            ],
                                             icon: Icons.restaurant,
                                           ),
                                         ),
                                         _RouteStopChip(
                                           icon: Icons.local_parking,
                                           label: l10n.convoyPoiParking,
-                                          loading: _isSearchingRouteStops,
+                                          loading: _searchingRouteStopKey ==
+                                              'parking',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
                                           onTap: () => _showRouteStopSheet(
                                             title: l10n.convoyPoiParking,
-                                            query: 'parking',
+                                            searchKey: 'parking',
+                                            queries: const [
+                                              'parking',
+                                              'car park',
+                                              'parkering',
+                                            ],
                                             icon: Icons.local_parking,
                                           ),
                                         ),
                                         _RouteStopChip(
                                           icon: Icons.ev_station,
                                           label: l10n.convoyPoiCharging,
-                                          loading: _isSearchingRouteStops,
+                                          loading: _searchingRouteStopKey ==
+                                              'charging',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
                                           onTap: () => _showRouteStopSheet(
                                             title: l10n.convoyPoiCharging,
-                                            query: 'charging station',
+                                            searchKey: 'charging',
+                                            queries: const [
+                                              'charging station',
+                                              'ev charging',
+                                              'laddstation',
+                                            ],
                                             icon: Icons.ev_station,
+                                          ),
+                                        ),
+                                        _RouteStopChip(
+                                          icon: Icons.local_gas_station,
+                                          label: l10n.routeStopFuel,
+                                          loading:
+                                              _searchingRouteStopKey == 'fuel',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.routeStopFuel,
+                                            searchKey: 'fuel',
+                                            queries: const [
+                                              'gas station',
+                                              'fuel',
+                                              'petrol station',
+                                              'bensinstation',
+                                            ],
+                                            icon: Icons.local_gas_station,
+                                          ),
+                                        ),
+                                        _RouteStopChip(
+                                          icon: Icons.local_cafe,
+                                          label: l10n.routeStopCafe,
+                                          loading:
+                                              _searchingRouteStopKey == 'cafe',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.routeStopCafe,
+                                            searchKey: 'cafe',
+                                            queries: const [
+                                              'cafe',
+                                              'coffee',
+                                              'kafé',
+                                            ],
+                                            icon: Icons.local_cafe,
+                                          ),
+                                        ),
+                                        _RouteStopChip(
+                                          icon: Icons.local_grocery_store,
+                                          label: l10n.routeStopGrocery,
+                                          loading: _searchingRouteStopKey ==
+                                              'grocery',
+                                          enabled:
+                                              _searchingRouteStopKey == null,
+                                          onTap: () => _showRouteStopSheet(
+                                            title: l10n.routeStopGrocery,
+                                            searchKey: 'grocery',
+                                            queries: const [
+                                              'grocery',
+                                              'supermarket',
+                                              'livsmedel',
+                                            ],
+                                            icon: Icons.local_grocery_store,
                                           ),
                                         ),
                                       ],
@@ -3750,6 +4252,111 @@ class _FavPreset {
   const _FavPreset(this.key, this.icon, this.label);
 }
 
+class _SearchShortcutCard extends StatelessWidget {
+  const _SearchShortcutCard({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          width: 122,
+          height: 90,
+          decoration: BoxDecoration(
+            color: const Color(0xFF343A3E),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 30),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchDestinationRow extends StatelessWidget {
+  const _SearchDestinationRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
+                  ),
+                  if (subtitle.trim().isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RouteStopCandidate {
   const _RouteStopCandidate({
     required this.title,
@@ -3757,6 +4364,7 @@ class _RouteStopCandidate {
     required this.position,
     required this.routeDistanceMeters,
     required this.distanceFromMeMeters,
+    required this.aheadDistanceMeters,
     required this.routeIndex,
     required this.isAhead,
   });
@@ -3766,6 +4374,7 @@ class _RouteStopCandidate {
   final LatLng position;
   final double routeDistanceMeters;
   final double distanceFromMeMeters;
+  final double aheadDistanceMeters;
   final int routeIndex;
   final bool isAhead;
 }
@@ -3776,12 +4385,14 @@ class _RouteStopChip extends StatelessWidget {
     required this.label,
     required this.onTap,
     required this.loading,
+    required this.enabled,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool loading;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -3789,11 +4400,13 @@ class _RouteStopChip extends StatelessWidget {
       padding: const EdgeInsets.only(right: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: loading ? null : onTap,
+        onTap: enabled ? onTap : null,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            color: const Color(0xFF303438),
+            color: enabled || loading
+                ? const Color(0xFF303438)
+                : const Color(0xFF25282B),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white12),
           ),
@@ -3810,12 +4423,18 @@ class _RouteStopChip extends StatelessWidget {
                   ),
                 )
               else
-                Icon(icon, color: const Color(0xFF3AA8FF), size: 18),
+                Icon(
+                  icon,
+                  color: enabled
+                      ? const Color(0xFF3AA8FF)
+                      : Colors.white38,
+                  size: 18,
+                ),
               const SizedBox(width: 7),
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: enabled || loading ? Colors.white : Colors.white38,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),

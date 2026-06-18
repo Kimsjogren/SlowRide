@@ -311,6 +311,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get convoyPoiCharging => 'Recharge';
 
   @override
+  String get routeStopFuel => 'Carburant';
+
+  @override
+  String get routeStopCafe => 'Café';
+
+  @override
+  String get routeStopGrocery => 'Courses';
+
+  @override
   String get convoyPoiHangout => 'Lieu de rassemblement';
 
   @override
@@ -714,7 +723,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeStopSheetSubtitle => 'Arrêts les plus proches le long de l\'itinéraire';
 
   @override
+  String get routeStopNearbySubtitle => 'Options les plus proches autour de vous';
+
+  @override
   String get routeStopEmpty => 'Aucun bon arrêt près de l\'itinéraire pour le moment.';
+
+  @override
+  String get routeStopNearbyEmpty => 'Aucune bonne option près de vous pour le moment.';
+
+  @override
+  String get searchSaved => 'Enregistré';
+
+  @override
+  String get searchRecent => 'Récent';
+
+  @override
+  String get searchNew => 'Nouveau';
 
   @override
   String routeStopFromRoute(Object distance) {
