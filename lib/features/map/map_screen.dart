@@ -366,9 +366,9 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<LatLng?> _ensureCurrentLocation() async {
+  Future<LatLng?> _ensureCurrentLocation({bool forceRefresh = false}) async {
     final existing = _currentLocation;
-    if (existing != null) return existing;
+    if (existing != null && !forceRefresh) return existing;
 
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -749,7 +749,7 @@ class _MapScreenState extends State<MapScreen> {
     if (normalized.contains('grocery') ||
         normalized.contains('supermarket') ||
         normalized.contains('livsmedel')) {
-      add('shop', 'supermarket|convenience|greengrocer|deli');
+      add('shop', 'supermarket|convenience|greengrocer|deli|general|organic');
     }
     if (normalized.contains('restaurant') ||
         normalized.contains('food') ||
@@ -800,8 +800,7 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final query =
-        '[out:json][timeout:9];(${clauses.join()});out center tags 80;';
+    final query = '[out:json][timeout:7];(${clauses.join()});out center 100;';
 
     try {
       final response = await http
@@ -1587,7 +1586,7 @@ class _MapScreenState extends State<MapScreen> {
     required List<String> queries,
     int limit = 20,
   }) async {
-    final currentLocation = _currentLocation;
+    final currentLocation = await _ensureCurrentLocation(forceRefresh: true);
     if (currentLocation == null) return const [];
 
     final seen = <String>{};
@@ -1626,6 +1625,12 @@ class _MapScreenState extends State<MapScreen> {
     );
     for (final result in poiResults) {
       addCandidate(result, queries.first);
+    }
+    if (candidates.isNotEmpty) {
+      candidates.sort(
+        (a, b) => a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters),
+      );
+      return candidates.take(limit).toList(growable: false);
     }
 
     final requests = <String>[...queries];
@@ -1679,150 +1684,35 @@ class _MapScreenState extends State<MapScreen> {
       }
       return;
     }
+    if (!mounted) return;
     final hasActiveRoute = _destination != null && _routePoints.isNotEmpty;
     setState(() => _searchingRouteStopKey = searchKey);
-    List<_RouteStopCandidate> candidates;
-    try {
-      candidates = hasActiveRoute
-          ? await _findStopsAlongRoute(queries: queries)
-          : await _findNearbyStops(queries: queries);
-    } catch (_) {
-      candidates = const [];
-    } finally {
-      if (mounted) {
-        setState(() => _searchingRouteStopKey = null);
-      }
-    }
-    if (!mounted) return;
 
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) {
-        final l10n = AppLocalizations.of(context)!;
-        return SafeArea(
-          top: false,
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.72,
-            ),
-            decoration: const BoxDecoration(
-              color: Color(0xF0071739),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Color(0x663AA8FF),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                ListTile(
-                  leading: Icon(icon, color: const Color(0xFF3AA8FF)),
-                  title: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    hasActiveRoute
-                        ? l10n.routeStopSheetSubtitle
-                        : l10n.routeStopNearbySubtitle,
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ),
-                if (candidates.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-                    child: Text(
-                      hasActiveRoute
-                          ? l10n.routeStopEmpty
-                          : l10n.routeStopNearbyEmpty,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: candidates.length,
-                      separatorBuilder: (_, _) =>
-                          const Divider(height: 1, color: Colors.white12),
-                      itemBuilder: (context, index) {
-                        final candidate = candidates[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(0xEE0A1F63),
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: Text(
-                            candidate.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            [
-                              if (candidate.subtitle.isNotEmpty)
-                                candidate.subtitle,
-                              if (hasActiveRoute &&
-                                  candidate.aheadDistanceMeters.isFinite)
-                                _formatStopDistance(
-                                  candidate.aheadDistanceMeters,
-                                ),
-                              if (hasActiveRoute)
-                                l10n.routeStopFromRoute(
-                                  _formatStopDistance(
-                                    candidate.routeDistanceMeters,
-                                  ),
-                                ),
-                              l10n.routeStopAway(
-                                _formatStopDistance(
-                                  candidate.distanceFromMeMeters,
-                                ),
-                              ),
-                            ].join(' · '),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.white54),
-                          ),
-                          trailing: const Icon(
-                            Icons.add_circle,
-                            color: Color(0xFF3AA8FF),
-                          ),
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            if (hasActiveRoute) {
-                              _selectRouteStop(candidate);
-                            } else {
-                              _selectStopAsDestination(candidate);
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (context) => _RouteStopResultsSheet(
+        title: title,
+        icon: icon,
+        hasActiveRoute: hasActiveRoute,
+        loadCandidates: () => hasActiveRoute
+            ? _findStopsAlongRoute(queries: queries)
+            : _findNearbyStops(queries: queries),
+        formatStopDistance: _formatStopDistance,
+        onCandidateSelected: (candidate) {
+          if (hasActiveRoute) {
+            _selectRouteStop(candidate);
+          } else {
+            _selectStopAsDestination(candidate);
+          }
+        },
+      ),
     );
+
+    if (mounted) {
+      setState(() => _searchingRouteStopKey = null);
+    }
   }
 
   Future<void> _selectRouteStop(_RouteStopCandidate candidate) async {
@@ -4908,6 +4798,177 @@ class _RouteStopCandidate {
   final double aheadDistanceMeters;
   final int routeIndex;
   final bool isAhead;
+}
+
+class _RouteStopResultsSheet extends StatefulWidget {
+  const _RouteStopResultsSheet({
+    required this.title,
+    required this.icon,
+    required this.hasActiveRoute,
+    required this.loadCandidates,
+    required this.formatStopDistance,
+    required this.onCandidateSelected,
+  });
+
+  final String title;
+  final IconData icon;
+  final bool hasActiveRoute;
+  final Future<List<_RouteStopCandidate>> Function() loadCandidates;
+  final String Function(double meters) formatStopDistance;
+  final void Function(_RouteStopCandidate candidate) onCandidateSelected;
+
+  @override
+  State<_RouteStopResultsSheet> createState() => _RouteStopResultsSheetState();
+}
+
+class _RouteStopResultsSheetState extends State<_RouteStopResultsSheet> {
+  late final Future<List<_RouteStopCandidate>> _candidatesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _candidatesFuture = widget.loadCandidates();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.72,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xF0071739),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Color(0x663AA8FF),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(widget.icon, color: const Color(0xFF3AA8FF)),
+              title: Text(
+                widget.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                widget.hasActiveRoute
+                    ? l10n.routeStopSheetSubtitle
+                    : l10n.routeStopNearbySubtitle,
+                style: const TextStyle(color: Colors.white54),
+              ),
+            ),
+            Flexible(
+              child: FutureBuilder<List<_RouteStopCandidate>>(
+                future: _candidatesFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 34),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF3AA8FF),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final candidates = snapshot.data ?? const [];
+                  if (candidates.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+                      child: Text(
+                        widget.hasActiveRoute
+                            ? l10n.routeStopEmpty
+                            : l10n.routeStopNearbyEmpty,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: candidates.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: Colors.white12),
+                    itemBuilder: (context, index) {
+                      final candidate = candidates[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xEE0A1F63),
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Text(
+                          candidate.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (candidate.subtitle.isNotEmpty)
+                              candidate.subtitle,
+                            if (widget.hasActiveRoute &&
+                                candidate.aheadDistanceMeters.isFinite)
+                              widget.formatStopDistance(
+                                candidate.aheadDistanceMeters,
+                              ),
+                            if (widget.hasActiveRoute)
+                              l10n.routeStopFromRoute(
+                                widget.formatStopDistance(
+                                  candidate.routeDistanceMeters,
+                                ),
+                              ),
+                            l10n.routeStopAway(
+                              widget.formatStopDistance(
+                                candidate.distanceFromMeMeters,
+                              ),
+                            ),
+                          ].join(' · '),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                        trailing: const Icon(
+                          Icons.add_circle,
+                          color: Color(0xFF3AA8FF),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onCandidateSelected(candidate);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _RouteStopChip extends StatelessWidget {
