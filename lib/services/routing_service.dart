@@ -356,6 +356,7 @@ class RoutingService {
     required LatLng destination,
     LatLng? waypoint,
     required String vehicleType,
+    bool relaxedLegalChecks = false,
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
@@ -379,6 +380,7 @@ class RoutingService {
           vehicleType: vehicleType,
           userSpeedKmh: userSpeed,
           countryCode: country,
+          relaxedLegalChecks: relaxedLegalChecks,
         );
         lastUsedProvider = provider;
         return route;
@@ -416,6 +418,7 @@ class RoutingService {
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
+    required bool relaxedLegalChecks,
   }) async {
     if (provider == _providerValhalla) {
       return _getRouteFromValhalla(
@@ -425,6 +428,7 @@ class RoutingService {
         vehicleType: vehicleType,
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
+        relaxedLegalChecks: relaxedLegalChecks,
       );
     } else if (provider == _providerGraphHopper) {
       final route = await _getRouteFromGraphHopper(
@@ -435,16 +439,18 @@ class RoutingService {
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
       );
-      _validateRouteSpeed(
-        route: route,
-        vehicleType: vehicleType,
-        countryCode: countryCode,
-      );
-      _assertNoMotorwayForSlowVehicle(
-        route: route,
-        vehicleType: vehicleType,
-        countryCode: countryCode,
-      );
+      if (!relaxedLegalChecks) {
+        _validateRouteSpeed(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
+        _assertNoMotorwayForSlowVehicle(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
+      }
       return route;
     } else if (provider == _providerOpenRouteService) {
       final route = await _getRouteFromOpenRouteService(
@@ -455,16 +461,18 @@ class RoutingService {
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
       );
-      _validateRouteSpeed(
-        route: route,
-        vehicleType: vehicleType,
-        countryCode: countryCode,
-      );
-      _assertNoMotorwayForSlowVehicle(
-        route: route,
-        vehicleType: vehicleType,
-        countryCode: countryCode,
-      );
+      if (!relaxedLegalChecks) {
+        _validateRouteSpeed(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
+        _assertNoMotorwayForSlowVehicle(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
+      }
       return route;
     } else if (provider == _providerOsrmSelfHosted ||
         provider == _providerOsrmPublic) {
@@ -719,6 +727,7 @@ class RoutingService {
     required String vehicleType,
     required double userSpeedKmh,
     required String countryCode,
+    required bool relaxedLegalChecks,
   }) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
     final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
@@ -807,7 +816,7 @@ class RoutingService {
         // Reject immediately — don't rely on instruction-text keywords which
         // can miss motorways referred to by road number (E4, E18, etc.).
         final isOnHighway = m['highway'] as bool? ?? false;
-        if (isOnHighway) {
+        if (isOnHighway && !relaxedLegalChecks) {
           final maxLegal = CountryVehicleRules.maxLegalSpeedFor(
             countryCode,
             vehicleType,
@@ -844,7 +853,9 @@ class RoutingService {
 
     // Valhalla returns summary with length in km and time in seconds
     final summary = trip['summary'] as Map<String, dynamic>?;
-    if (isSlowVehicle && (summary?['has_highway'] as bool? ?? false)) {
+    if (isSlowVehicle &&
+        !relaxedLegalChecks &&
+        (summary?['has_highway'] as bool? ?? false)) {
       throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
     }
     final distanceKm = (summary?['length'] as num?)?.toDouble() ?? 0;
@@ -863,12 +874,13 @@ class RoutingService {
       durationSeconds: calculatedDurationSeconds,
       instructions: allInstructions,
     );
-    // Hard-reject routes that include motorway segments for slow vehicles.
-    _assertNoMotorwayForSlowVehicle(
-      route: result,
-      vehicleType: vehicleType,
-      countryCode: countryCode,
-    );
+    if (!relaxedLegalChecks) {
+      _assertNoMotorwayForSlowVehicle(
+        route: result,
+        vehicleType: vehicleType,
+        countryCode: countryCode,
+      );
+    }
     return result;
   }
 

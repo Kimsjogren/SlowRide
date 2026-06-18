@@ -765,6 +765,51 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeBlockedTryOther => 'Essayer une autre destination';
 
   @override
+  String get routeFallbackTitle => 'Itinéraire non vérifié trouvé';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'Nous avons trouvé un itinéraire possible, mais il n\'a pas pu être entièrement vérifié pour votre $vehicleType. Il peut inclure des routes à contrôler. Respectez toujours la signalisation et les règles locales.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Annuler';
+
+  @override
+  String get routeFallbackUse => 'Afficher quand même';
+
+  @override
+  String get routeFallbackActive => 'Itinéraire non vérifié – suivez toujours la signalisation';
+
+  @override
+  String get routeOptionsTitle => 'Choisir un itinéraire';
+
+  @override
+  String get routeOptionRecommended => 'Recommandé';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Vérifié selon les règles CruizX pour le véhicule sélectionné.';
+
+  @override
+  String get routeOptionUnverified => 'Itinéraire alternatif non vérifié';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'Impossible à vérifier entièrement pour votre $vehicleType. Vérifiez la signalisation avant de conduire.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Choisir';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX n\'approuve jamais automatiquement les routes interdites. Respectez toujours la signalisation et les règles locales.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override

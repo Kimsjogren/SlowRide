@@ -758,11 +758,12 @@ class _MapWidgetState extends State<MapWidget>
                   if (_markerLocation != null && !widget.followUser)
                     Marker(
                       point: _markerLocation!,
-                      width: 48,
-                      height: 48,
+                      width: 40,
+                      height: 40,
                       child: _LocationDot(
                         headingNotifier: _arrowHdg,
                         lockNorthUp: false,
+                        size: 34,
                       ),
                     ),
                 ],
@@ -841,6 +842,7 @@ class _MapWidgetState extends State<MapWidget>
                     child: _LocationDot(
                       headingNotifier: _arrowHdg,
                       lockNorthUp: false,
+                      size: 34,
                     ),
                   ),
                 ),
@@ -955,16 +957,19 @@ class _LocationDot extends StatelessWidget {
   const _LocationDot({
     required this.headingNotifier,
     required this.lockNorthUp,
+    this.size = 34,
   });
 
   final ValueNotifier<double> headingNotifier;
   final bool lockNorthUp;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return UserLocationMarker(
       headingNotifier: headingNotifier,
       lockNorthUp: lockNorthUp,
+      size: size,
     );
   }
 }

@@ -765,6 +765,51 @@ class AppLocalizationsSv extends AppLocalizations {
   String get routeBlockedTryOther => 'Pröva en annan destination';
 
   @override
+  String get routeFallbackTitle => 'Osäker rutt hittad';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'Vi hittade en möjlig rutt, men den kunde inte verifieras helt för $vehicleType. Den kan innehålla vägar som behöver kontrolleras. Följ alltid skyltning och lokala regler.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Avbryt';
+
+  @override
+  String get routeFallbackUse => 'Visa ändå';
+
+  @override
+  String get routeFallbackActive => 'Osäker rutt – följ alltid skyltning';
+
+  @override
+  String get routeOptionsTitle => 'Välj rutt';
+
+  @override
+  String get routeOptionRecommended => 'Rekommenderad';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Verifierad enligt CruizX regler för valt fordon.';
+
+  @override
+  String get routeOptionUnverified => 'Osäker alternativ rutt';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'Kan inte verifieras helt för $vehicleType. Kontrollera skyltning innan du kör.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Välj';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX godkänner aldrig otillåtna vägar automatiskt. Följ alltid skyltning och lokala regler.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override

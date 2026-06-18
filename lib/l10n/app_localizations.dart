@@ -1569,6 +1569,84 @@ abstract class AppLocalizations {
   /// **'Try a different destination'**
   String get routeBlockedTryOther;
 
+  /// No description provided for @routeFallbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified route found'**
+  String get routeFallbackTitle;
+
+  /// No description provided for @routeFallbackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We found a possible route, but it could not be fully verified for your {vehicleType}. It may include roads that need checking. Always follow signs and local rules.'**
+  String routeFallbackBody(Object vehicleType);
+
+  /// No description provided for @routeFallbackCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get routeFallbackCancel;
+
+  /// No description provided for @routeFallbackUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Show anyway'**
+  String get routeFallbackUse;
+
+  /// No description provided for @routeFallbackActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified route – always follow signs'**
+  String get routeFallbackActive;
+
+  /// No description provided for @routeOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose route'**
+  String get routeOptionsTitle;
+
+  /// No description provided for @routeOptionRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get routeOptionRecommended;
+
+  /// No description provided for @routeOptionRecommendedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified by CruizX rules for the selected vehicle.'**
+  String get routeOptionRecommendedSubtitle;
+
+  /// No description provided for @routeOptionUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified alternative route'**
+  String get routeOptionUnverified;
+
+  /// No description provided for @routeOptionUnverifiedSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot be fully verified for your {vehicleType}. Check signs before driving.'**
+  String routeOptionUnverifiedSubtitle(Object vehicleType);
+
+  /// No description provided for @routeOptionChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose'**
+  String get routeOptionChoose;
+
+  /// No description provided for @routeOptionMetrics.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km · {minutes} min'**
+  String routeOptionMetrics(Object km, Object minutes);
+
+  /// No description provided for @routeOptionWarningFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX never automatically approves restricted roads. Always follow signs and local rules.'**
+  String get routeOptionWarningFooter;
+
   /// No description provided for @mapModeLabel2d.
   ///
   /// In en, this message translates to:

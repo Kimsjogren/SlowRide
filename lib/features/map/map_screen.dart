@@ -1097,6 +1097,52 @@ class _MapScreenState extends State<MapScreen> {
                                   icon: Icons.local_parking,
                                 ),
                               ),
+                              _SearchShortcutCard(
+                                icon: Icons.local_gas_station,
+                                label: l10n.routeStopFuel,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.routeStopFuel,
+                                  searchKey: 'fuel',
+                                  queries: const [
+                                    'gas station',
+                                    'fuel',
+                                    'petrol station',
+                                    'bensinstation',
+                                  ],
+                                  icon: Icons.local_gas_station,
+                                ),
+                              ),
+                              _SearchShortcutCard(
+                                icon: Icons.local_cafe,
+                                label: l10n.routeStopCafe,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.routeStopCafe,
+                                  searchKey: 'cafe',
+                                  queries: const [
+                                    'cafe',
+                                    'coffee',
+                                    'kafé',
+                                  ],
+                                  icon: Icons.local_cafe,
+                                ),
+                              ),
+                              _SearchShortcutCard(
+                                icon: Icons.local_grocery_store,
+                                label: l10n.routeStopGrocery,
+                                onTap: () => _openSearchSheetPoi(
+                                  sheetContext,
+                                  title: l10n.routeStopGrocery,
+                                  searchKey: 'grocery',
+                                  queries: const [
+                                    'grocery',
+                                    'supermarket',
+                                    'livsmedel',
+                                  ],
+                                  icon: Icons.local_grocery_store,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1657,6 +1703,204 @@ class _MapScreenState extends State<MapScreen> {
     _destinationLabel = candidate.title;
     _searchFocus.unfocus();
     _handleMapTap(candidate.position);
+  }
+
+  Future<RouteResult?> _tryRelaxedRoute({
+    required LatLng destination,
+    required String vehicleType,
+  }) async {
+    final origin = _currentLocation;
+    if (origin == null) return null;
+
+    try {
+      return await _routingService.getRoute(
+        origin: origin,
+        destination: destination,
+        vehicleType: vehicleType,
+        relaxedLegalChecks: true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _routesLookSimilar(RouteResult a, RouteResult b) {
+    final distanceDelta =
+        (a.distanceMeters - b.distanceMeters).abs() /
+        math.max(a.distanceMeters, 1);
+    final durationDelta =
+        (a.durationSeconds - b.durationSeconds).abs() /
+        math.max(a.durationSeconds, 1);
+    return distanceDelta < 0.04 && durationDelta < 0.08;
+  }
+
+  Future<List<_RouteOption>> _buildRouteOptions({
+    required LatLng destination,
+    required String vehicleType,
+    RouteResult? strictRoute,
+  }) async {
+    final options = <_RouteOption>[
+      if (strictRoute != null)
+        _RouteOption(
+          route: strictRoute,
+          type: _RouteOptionType.recommended,
+        ),
+    ];
+
+    final relaxedRoute = await _tryRelaxedRoute(
+      destination: destination,
+      vehicleType: vehicleType,
+    );
+    if (relaxedRoute != null &&
+        (strictRoute == null || !_routesLookSimilar(strictRoute, relaxedRoute))) {
+      options.add(
+        _RouteOption(
+          route: relaxedRoute,
+          type: _RouteOptionType.unverified,
+        ),
+      );
+    }
+
+    return options;
+  }
+
+  String _routeOptionDistanceText(AppLocalizations l10n, RouteResult route) {
+    final km = route.distanceMeters / 1000;
+    final minutes = route.durationSeconds / 60;
+    return l10n.routeOptionMetrics(
+      km.toStringAsFixed(1),
+      minutes.toStringAsFixed(0),
+    );
+  }
+
+  Future<_RouteOption?> _showRouteOptionsSheet({
+    required String vehicleName,
+    required List<_RouteOption> options,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    return showModalBottomSheet<_RouteOption>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xF0071739),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0x663AA8FF),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.alt_route,
+                      color: Color(0xFF3AA8FF),
+                      size: 28,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.routeOptionsTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 19,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...options.map((option) {
+                  final isUnverified =
+                      option.type == _RouteOptionType.unverified;
+                  final title = isUnverified
+                      ? l10n.routeOptionUnverified
+                      : l10n.routeOptionRecommended;
+                  final subtitle = isUnverified
+                      ? l10n.routeOptionUnverifiedSubtitle(vehicleName)
+                      : l10n.routeOptionRecommendedSubtitle;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0A1F63),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isUnverified
+                            ? const Color(0x88FFCC02)
+                            : const Color(0x663AA8FF),
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isUnverified
+                            ? const Color(0x33FFCC02)
+                            : const Color(0x333AA8FF),
+                        child: Icon(
+                          isUnverified
+                              ? Icons.warning_amber_rounded
+                              : Icons.verified_rounded,
+                          color: isUnverified
+                              ? const Color(0xFFFFCC02)
+                              : const Color(0xFF3AA8FF),
+                        ),
+                      ),
+                      title: Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${_routeOptionDistanceText(l10n, option.route)}\n$subtitle',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      isThreeLine: true,
+                      trailing: Text(
+                        l10n.routeOptionChoose,
+                        style: TextStyle(
+                          color: isUnverified
+                              ? const Color(0xFFFFCC02)
+                              : const Color(0xFF3AA8FF),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onTap: () => Navigator.of(ctx).pop(option),
+                    ),
+                  );
+                }),
+                if (options.any((o) => o.type == _RouteOptionType.unverified))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      l10n.routeOptionWarningFooter,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _removeRouteStop() async {
@@ -2474,7 +2718,29 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      _applyRouteResult(route, l10n);
+      final options = await _buildRouteOptions(
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+        strictRoute: route,
+      );
+      if (!mounted) return;
+      final selected = options.length > 1
+          ? await _showRouteOptionsSheet(
+              vehicleName: switch (preferences.vehicleType.value) {
+                'A-tractor' => l10n.settingsVehicleAtractor,
+                'Moped car' => l10n.settingsVehicleMopedCar,
+                'Tractor' => l10n.settingsVehicleTractor,
+                _ => preferences.vehicleType.value,
+              },
+              options: options,
+            )
+          : options.first;
+      if (!mounted || selected == null) return;
+
+      _applyRouteResult(selected.route, l10n);
+      if (selected.type == _RouteOptionType.unverified) {
+        setState(() => _routingStatus = l10n.routeFallbackActive);
+      }
       unawaited(_saveDestinationHistory(destination));
       SubscriptionService.instance.recordRoute();
     } on RoutingException catch (error) {
@@ -2513,40 +2779,68 @@ class _MapScreenState extends State<MapScreen> {
           _ => preferences.vehicleType.value,
         };
 
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF0A1F63),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                const Icon(Icons.block, color: Colors.redAccent, size: 28),
-                const SizedBox(width: 10),
-                Expanded(
+        final fallbackRoute = await _tryRelaxedRoute(
+          destination: destination,
+          vehicleType: preferences.vehicleType.value,
+        );
+        if (!mounted) return;
+
+        if (fallbackRoute != null) {
+          final selected = await _showRouteOptionsSheet(
+            vehicleName: vehicleName,
+            options: [
+              _RouteOption(
+                route: fallbackRoute,
+                type: _RouteOptionType.unverified,
+              ),
+            ],
+          );
+          if (!mounted) return;
+          if (selected != null) {
+            _applyRouteResult(selected.route, l10n);
+            setState(() => _routingStatus = l10n.routeFallbackActive);
+            unawaited(_saveDestinationHistory(destination));
+            SubscriptionService.instance.recordRoute();
+          }
+        } else {
+          showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF0A1F63),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.block, color: Colors.redAccent, size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.routeBlockedTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                l10n.routeBlockedBody(vehicleName),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
                   child: Text(
-                    l10n.routeBlockedTitle,
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                    l10n.routeBlockedOk,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
             ),
-            content: Text(
-              l10n.routeBlockedBody(vehicleName),
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(
-                  l10n.routeBlockedOk,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        );
+          );
+        }
       }
     } catch (_) {
       if (!mounted) {
@@ -4322,6 +4616,21 @@ class _FavPreset {
   const _FavPreset(this.key, this.icon, this.label);
 }
 
+enum _RouteOptionType {
+  recommended,
+  unverified,
+}
+
+class _RouteOption {
+  const _RouteOption({
+    required this.route,
+    required this.type,
+  });
+
+  final RouteResult route;
+  final _RouteOptionType type;
+}
+
 class _SearchShortcutCard extends StatelessWidget {
   const _SearchShortcutCard({
     required this.icon,
@@ -4341,8 +4650,8 @@ class _SearchShortcutCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          width: 122,
-          height: 90,
+          width: 106,
+          height: 82,
           decoration: BoxDecoration(
             color: const Color(0xEE0A1F63),
             borderRadius: BorderRadius.circular(18),
@@ -4351,8 +4660,8 @@ class _SearchShortcutCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: Colors.white, size: 30),
-              const SizedBox(height: 8),
+              Icon(icon, color: Colors.white, size: 27),
+              const SizedBox(height: 7),
               Text(
                 label,
                 maxLines: 1,
@@ -4360,7 +4669,7 @@ class _SearchShortcutCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: 13,
                 ),
               ),
             ],

@@ -765,6 +765,51 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeBlockedTryOther => 'Probar otro destino';
 
   @override
+  String get routeFallbackTitle => 'Ruta no verificada encontrada';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'Encontramos una ruta posible, pero no se pudo verificar por completo para tu $vehicleType. Puede incluir vías que deben comprobarse. Sigue siempre las señales y las normas locales.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Cancelar';
+
+  @override
+  String get routeFallbackUse => 'Mostrar de todos modos';
+
+  @override
+  String get routeFallbackActive => 'Ruta no verificada – sigue siempre las señales';
+
+  @override
+  String get routeOptionsTitle => 'Elegir ruta';
+
+  @override
+  String get routeOptionRecommended => 'Recomendada';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Verificada según las reglas de CruizX para el vehículo seleccionado.';
+
+  @override
+  String get routeOptionUnverified => 'Ruta alternativa no verificada';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'No se puede verificar por completo para tu $vehicleType. Comprueba las señales antes de conducir.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Elegir';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX nunca aprueba automáticamente vías restringidas. Sigue siempre las señales y las normas locales.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override

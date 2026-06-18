@@ -765,6 +765,51 @@ class AppLocalizationsFi extends AppLocalizations {
   String get routeBlockedTryOther => 'Kokeile toista kohdetta';
 
   @override
+  String get routeFallbackTitle => 'Varmistamaton reitti löytyi';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'Löysimme mahdollisen reitin, mutta sitä ei voitu täysin varmistaa ajoneuvollesi $vehicleType. Se voi sisältää teitä, jotka pitää tarkistaa. Noudata aina liikennemerkkejä ja paikallisia sääntöjä.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Peruuta';
+
+  @override
+  String get routeFallbackUse => 'Näytä silti';
+
+  @override
+  String get routeFallbackActive => 'Varmistamaton reitti – noudata aina merkkejä';
+
+  @override
+  String get routeOptionsTitle => 'Valitse reitti';
+
+  @override
+  String get routeOptionRecommended => 'Suositeltu';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Varmistettu CruizX-sääntöjen mukaan valitulle ajoneuvolle.';
+
+  @override
+  String get routeOptionUnverified => 'Varmistamaton vaihtoehtoinen reitti';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'Ei voida täysin varmistaa ajoneuvollesi $vehicleType. Tarkista liikennemerkit ennen ajoa.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Valitse';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX ei koskaan hyväksy kiellettyjä teitä automaattisesti. Noudata aina merkkejä ja paikallisia sääntöjä.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override

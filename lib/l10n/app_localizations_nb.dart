@@ -765,6 +765,51 @@ class AppLocalizationsNb extends AppLocalizations {
   String get routeBlockedTryOther => 'Prøv en annen destinasjon';
 
   @override
+  String get routeFallbackTitle => 'Usikker rute funnet';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'Vi fant en mulig rute, men den kunne ikke verifiseres helt for din $vehicleType. Den kan inneholde veier som må kontrolleres. Følg alltid skilt og lokale regler.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Avbryt';
+
+  @override
+  String get routeFallbackUse => 'Vis likevel';
+
+  @override
+  String get routeFallbackActive => 'Usikker rute – følg alltid skilting';
+
+  @override
+  String get routeOptionsTitle => 'Velg rute';
+
+  @override
+  String get routeOptionRecommended => 'Anbefalt';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Verifisert etter CruizX-regler for valgt kjøretøy.';
+
+  @override
+  String get routeOptionUnverified => 'Usikker alternativ rute';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'Kan ikke verifiseres helt for din $vehicleType. Kontroller skilting før du kjører.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Velg';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX godkjenner aldri forbudte veier automatisk. Følg alltid skilting og lokale regler.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override

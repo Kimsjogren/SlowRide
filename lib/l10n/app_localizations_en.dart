@@ -765,6 +765,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get routeBlockedTryOther => 'Try a different destination';
 
   @override
+  String get routeFallbackTitle => 'Unverified route found';
+
+  @override
+  String routeFallbackBody(Object vehicleType) {
+    return 'We found a possible route, but it could not be fully verified for your $vehicleType. It may include roads that need checking. Always follow signs and local rules.';
+  }
+
+  @override
+  String get routeFallbackCancel => 'Cancel';
+
+  @override
+  String get routeFallbackUse => 'Show anyway';
+
+  @override
+  String get routeFallbackActive => 'Unverified route – always follow signs';
+
+  @override
+  String get routeOptionsTitle => 'Choose route';
+
+  @override
+  String get routeOptionRecommended => 'Recommended';
+
+  @override
+  String get routeOptionRecommendedSubtitle => 'Verified by CruizX rules for the selected vehicle.';
+
+  @override
+  String get routeOptionUnverified => 'Unverified alternative route';
+
+  @override
+  String routeOptionUnverifiedSubtitle(Object vehicleType) {
+    return 'Cannot be fully verified for your $vehicleType. Check signs before driving.';
+  }
+
+  @override
+  String get routeOptionChoose => 'Choose';
+
+  @override
+  String routeOptionMetrics(Object km, Object minutes) {
+    return '$km km · $minutes min';
+  }
+
+  @override
+  String get routeOptionWarningFooter => 'CruizX never automatically approves restricted roads. Always follow signs and local rules.';
+
+  @override
   String get mapModeLabel2d => '2D';
 
   @override
