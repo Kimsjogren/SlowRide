@@ -161,7 +161,8 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _loadAlerts() async {
-    final center = _currentLocation ?? const LatLng(59.3293, 18.0686);
+    final center = _currentLocation;
+    if (center == null) return;
     try {
       final result = await _alertsController.fetchNearby(center);
       if (!mounted) return;
@@ -176,7 +177,8 @@ class _MapScreenState extends State<MapScreen> {
       }
       return;
     }
-    final center = _currentLocation ?? const LatLng(59.3293, 18.0686);
+    final center = _currentLocation;
+    if (center == null) return;
     try {
       final stations = await ChargingStationService.instance.fetchNearby(
         center,
@@ -331,6 +333,69 @@ class _MapScreenState extends State<MapScreen> {
     return null;
   }
 
+  void _applyGpsPosition(Position position, {required bool hadLocation}) {
+    if (!mounted || _isSimulating) return;
+
+    final currentPos = LatLng(position.latitude, position.longitude);
+    final newSpeed = (position.speed < 0 ? 0 : position.speed) * 3.6;
+    final heading = (position.speed > 0.5 && position.heading >= 0)
+        ? position.heading
+        : _headingNotifier.value;
+
+    _processLocationUpdate(currentPos, newSpeed, heading);
+
+    if (!_countryAutoDetected) {
+      _countryAutoDetected = true;
+      final detected = CountryVehicleRules.countryFromCoordinates(
+        currentPos.latitude,
+        currentPos.longitude,
+      );
+      if (detected != null) {
+        UserPreferencesService.instance.countryCode.value = detected;
+      }
+    }
+
+    unawaited(_loadAlerts());
+    unawaited(_loadChargingStations());
+
+    if (!hadLocation &&
+        _destination != null &&
+        _routePoints.isEmpty &&
+        !_isRouting) {
+      _handleMapTap(_destination!);
+    }
+  }
+
+  Future<LatLng?> _ensureCurrentLocation() async {
+    final existing = _currentLocation;
+    if (existing != null) return existing;
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _applyGpsPosition(position, hadLocation: false);
+      return LatLng(position.latitude, position.longitude);
+    } catch (_) {
+      return _currentLocation;
+    }
+  }
+
   Future<void> _showReportAlertSheet() async {
     final pos = _currentLocation;
     if (pos == null) return;
@@ -369,6 +434,27 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
+      try {
+        final hadLocation = _currentLocation != null;
+        final currentPosition = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.bestForNavigation,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+        _applyGpsPosition(currentPosition, hadLocation: hadLocation);
+      } catch (_) {
+        try {
+          final lastPosition = await Geolocator.getLastKnownPosition();
+          if (lastPosition != null) {
+            _applyGpsPosition(
+              lastPosition,
+              hadLocation: _currentLocation != null,
+            );
+          }
+        } catch (_) {}
+      }
+
       // distanceFilter:0 fires on every OS GPS sample (~1Hz).
       // bestForNavigation squeezes extra accuracy from the GPS chip.
       // automotiveNavigation tells iOS to keep GPS hot and never pause.
@@ -385,36 +471,8 @@ class _MapScreenState extends State<MapScreen> {
           Geolocator.getPositionStream(locationSettings: settings).listen((
             position,
           ) {
-            if (!mounted || _isSimulating) return;
-
             final hadLocation = _currentLocation != null;
-            final currentPos = LatLng(position.latitude, position.longitude);
-            final newSpeed = (position.speed < 0 ? 0 : position.speed) * 3.6;
-            final heading = (position.speed > 0.5 && position.heading >= 0)
-                ? position.heading
-                : _headingNotifier.value;
-
-            _processLocationUpdate(currentPos, newSpeed, heading);
-
-            // First GPS fix: auto-detect country from coordinates.
-            if (!_countryAutoDetected) {
-              _countryAutoDetected = true;
-              final detected = CountryVehicleRules.countryFromCoordinates(
-                currentPos.latitude,
-                currentPos.longitude,
-              );
-              if (detected != null) {
-                UserPreferencesService.instance.countryCode.value = detected;
-              }
-            }
-
-            // First GPS fix: auto-start routing if destination was set early.
-            if (!hadLocation &&
-                _destination != null &&
-                _routePoints.isEmpty &&
-                !_isRouting) {
-              _handleMapTap(_destination!);
-            }
+            _applyGpsPosition(position, hadLocation: hadLocation);
           });
     } catch (_) {
       if (!mounted) {
@@ -636,8 +694,10 @@ class _MapScreenState extends State<MapScreen> {
       final lat = prox.latitude;
       final lon = prox.longitude;
       baseParams['viewbox'] =
-          '${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}';
+          '${lon - 0.35},${lat + 0.35},${lon + 0.35},${lat - 0.35}';
+      baseParams['bounded'] = '1';
       structuredParams['viewbox'] = baseParams['viewbox']!;
+      structuredParams['bounded'] = '1';
     }
 
     final response = await http.get(
@@ -922,7 +982,7 @@ class _MapScreenState extends State<MapScreen> {
               builder: (context, scrollController) {
                 return Container(
                   decoration: const BoxDecoration(
-                    color: Color(0xFF1C1C1E),
+                    color: Color(0xF0071739),
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(28),
                     ),
@@ -937,7 +997,7 @@ class _MapScreenState extends State<MapScreen> {
                           height: 5,
                           margin: const EdgeInsets.only(bottom: 18),
                           decoration: BoxDecoration(
-                            color: Colors.white24,
+                            color: Color(0x663AA8FF),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -957,7 +1017,7 @@ class _MapScreenState extends State<MapScreen> {
                           hintText: l10n.mapAddressFieldHint,
                           hintStyle: const TextStyle(color: Colors.white38),
                           filled: true,
-                          fillColor: const Color(0xFF343A3E),
+                          fillColor: const Color(0xEE0A1F63),
                           prefixIcon: IconButton(
                             icon: const Icon(Icons.chevron_left),
                             color: Colors.white54,
@@ -1399,7 +1459,16 @@ class _MapScreenState extends State<MapScreen> {
     required List<String> queries,
     required IconData icon,
   }) async {
-    if (_currentLocation == null) {
+    final ensuredLocation = await _ensureCurrentLocation();
+    if (ensuredLocation == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.mapWaitingForGps),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
     final hasActiveRoute = _destination != null && _routePoints.isNotEmpty;
@@ -1431,7 +1500,7 @@ class _MapScreenState extends State<MapScreen> {
               maxHeight: MediaQuery.of(context).size.height * 0.72,
             ),
             decoration: const BoxDecoration(
-              color: Color(0xFF1C1C1E),
+              color: Color(0xF0071739),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
@@ -1442,7 +1511,7 @@ class _MapScreenState extends State<MapScreen> {
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: Color(0x663AA8FF),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1484,7 +1553,7 @@ class _MapScreenState extends State<MapScreen> {
                         final candidate = candidates[index];
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: const Color(0xFF303438),
+                            backgroundColor: const Color(0xEE0A1F63),
                             child: Text(
                               '${index + 1}',
                               style: const TextStyle(color: Colors.white),
@@ -2640,6 +2709,9 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
+      if (!_isFollowing && !_isNavigating && _routePoints.isEmpty) {
+        _isFollowing = true;
+      }
       if (_isNavigating) {
         _tripDistanceM = newTripDist;
         _lastNavPos = currentPos;
@@ -2804,12 +2876,10 @@ class _MapScreenState extends State<MapScreen> {
                     nextManeuverSign: _isNavigating ? _nextManeuverSign : null,
                     alerts: _alerts,
                     onTap: _isNavigating ? null : _handleMapTap,
-                    followUser: _isNavigating && _isFollowing,
-                    use3D: _use3DMap,
+                    followUser: _isFollowing && _currentLocation != null,
+                    use3D: _isNavigating && _use3DMap,
                     darkMode: _useDarkMap,
-                    onUserPanned: _isNavigating
-                        ? () => setState(() => _isFollowing = false)
-                        : null,
+                    onUserPanned: () => setState(() => _isFollowing = false),
                   ),
                 ),
               ),
@@ -4274,8 +4344,9 @@ class _SearchShortcutCard extends StatelessWidget {
           width: 122,
           height: 90,
           decoration: BoxDecoration(
-            color: const Color(0xFF343A3E),
+            color: const Color(0xEE0A1F63),
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x553AA8FF)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -4405,10 +4476,10 @@ class _RouteStopChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color: enabled || loading
-                ? const Color(0xFF303438)
-                : const Color(0xFF25282B),
+                ? const Color(0xEE0A1F63)
+                : const Color(0x880A1F63),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white12),
+            border: Border.all(color: const Color(0x553AA8FF)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
