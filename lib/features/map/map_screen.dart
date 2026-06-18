@@ -616,8 +616,7 @@ class _MapScreenState extends State<MapScreen> {
 
     final prox = proximity ?? _currentLocation;
     if (prox != null) {
-      params['proximity'] =
-          '${prox.longitude},${prox.latitude}';
+      params['proximity'] = '${prox.longitude},${prox.latitude}';
     }
 
     final uri = Uri.https('api.mapbox.com', path, params);
@@ -733,6 +732,147 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     return raw;
+  }
+
+  List<({String key, String values})> _overpassFiltersForQueries(
+    List<String> queries,
+  ) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final filters = <({String key, String values})>[];
+
+    void add(String key, String values) {
+      if (!filters.any((f) => f.key == key && f.values == values)) {
+        filters.add((key: key, values: values));
+      }
+    }
+
+    if (normalized.contains('grocery') ||
+        normalized.contains('supermarket') ||
+        normalized.contains('livsmedel')) {
+      add('shop', 'supermarket|convenience|greengrocer|deli');
+    }
+    if (normalized.contains('restaurant') ||
+        normalized.contains('food') ||
+        normalized.contains('fast food') ||
+        normalized.contains('mat')) {
+      add('amenity', 'restaurant|fast_food|cafe');
+      add('shop', 'bakery');
+    }
+    if (normalized.contains('cafe') ||
+        normalized.contains('coffee') ||
+        normalized.contains('kafe')) {
+      add('amenity', 'cafe');
+      add('shop', 'bakery');
+    }
+    if (normalized.contains('fuel') ||
+        normalized.contains('gas station') ||
+        normalized.contains('petrol') ||
+        normalized.contains('bensinstation')) {
+      add('amenity', 'fuel');
+    }
+    if (normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging')) {
+      add('amenity', 'charging_station');
+    }
+    if (normalized.contains('parking') || normalized.contains('parkering')) {
+      add('amenity', 'parking');
+    }
+
+    return filters;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchOverpassPoiResults({
+    required List<String> queries,
+    required LatLng center,
+    int radiusMeters = 8000,
+  }) async {
+    final filters = _overpassFiltersForQueries(queries);
+    if (filters.isEmpty) return const [];
+
+    final clauses = <String>[];
+    for (final filter in filters) {
+      for (final type in const ['node', 'way', 'relation']) {
+        clauses.add(
+          '$type(around:$radiusMeters,${center.latitude},${center.longitude})'
+          '["${filter.key}"~"^(${filter.values})\$"];',
+        );
+      }
+    }
+
+    final query =
+        '[out:json][timeout:9];(${clauses.join()});out center tags 80;';
+
+    try {
+      final response = await http
+          .post(
+            Uri.https('overpass-api.de', '/api/interpreter'),
+            headers: const {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+              'User-Agent': 'CruizX/1.0 (nearby-poi-search)',
+            },
+            body: {'data': query},
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return const [];
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final elements =
+          (decoded['elements'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          const <Map<String, dynamic>>[];
+
+      final results = <Map<String, dynamic>>[];
+      for (final element in elements) {
+        final tags = element['tags'] as Map<String, dynamic>? ?? const {};
+        final lat =
+            (element['lat'] as num?)?.toDouble() ??
+            ((element['center'] as Map?)?['lat'] as num?)?.toDouble();
+        final lon =
+            (element['lon'] as num?)?.toDouble() ??
+            ((element['center'] as Map?)?['lon'] as num?)?.toDouble();
+        if (lat == null || lon == null) continue;
+
+        final name =
+            (tags['name'] ?? tags['brand'] ?? tags['operator'] ?? queries.first)
+                .toString()
+                .trim();
+        final street = (tags['addr:street'] ?? '').toString().trim();
+        final houseNumber = (tags['addr:housenumber'] ?? '').toString().trim();
+        final city = (tags['addr:city'] ?? tags['addr:suburb'] ?? '')
+            .toString()
+            .trim();
+        final addressParts = <String>[
+          if (street.isNotEmpty)
+            houseNumber.isNotEmpty ? '$street $houseNumber' : street,
+          if (city.isNotEmpty) city,
+        ];
+        final address = <String, String>{
+          if (street.isNotEmpty) 'road': street,
+          if (houseNumber.isNotEmpty) 'house_number': houseNumber,
+          if (city.isNotEmpty) 'city': city,
+        };
+
+        results.add({
+          'lat': lat,
+          'lon': lon,
+          'place_id': '${element['type']}_${element['id']}',
+          'importance': 1.0,
+          'name': name.isNotEmpty ? name : queries.first,
+          'display_name': [
+            if (name.isNotEmpty) name,
+            if (addressParts.isNotEmpty) addressParts.join(', '),
+          ].join(', '),
+          'address': address,
+          '_source': 'overpass',
+        });
+      }
+      return results;
+    } catch (_) {
+      return const [];
+    }
   }
 
   String _roadFromResult(Map<String, dynamic> result) {
@@ -1120,11 +1260,7 @@ class _MapScreenState extends State<MapScreen> {
                                   sheetContext,
                                   title: l10n.routeStopCafe,
                                   searchKey: 'cafe',
-                                  queries: const [
-                                    'cafe',
-                                    'coffee',
-                                    'kafé',
-                                  ],
+                                  queries: const ['cafe', 'coffee', 'kafé'],
                                   icon: Icons.local_cafe,
                                 ),
                               ),
@@ -1148,23 +1284,25 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         const SizedBox(height: 22),
                         if (saved.isNotEmpty)
-                          ...saved.take(4).map(
-                            (fav) => _SearchDestinationRow(
-                              icon: fav.icon == 'work'
-                                  ? Icons.work
-                                  : fav.icon == 'school'
-                                  ? Icons.school
-                                  : fav.icon == 'home'
-                                  ? Icons.home
-                                  : Icons.star,
-                              title: fav.label,
-                              subtitle: fav.address,
-                              onTap: () {
-                                Navigator.of(sheetContext).pop();
-                                _navigateToFavorite(fav);
-                              },
-                            ),
-                          ),
+                          ...saved
+                              .take(4)
+                              .map(
+                                (fav) => _SearchDestinationRow(
+                                  icon: fav.icon == 'work'
+                                      ? Icons.work
+                                      : fav.icon == 'school'
+                                      ? Icons.school
+                                      : fav.icon == 'home'
+                                      ? Icons.home
+                                      : Icons.star,
+                                  title: fav.label,
+                                  subtitle: fav.address,
+                                  onTap: () {
+                                    Navigator.of(sheetContext).pop();
+                                    _navigateToFavorite(fav);
+                                  },
+                                ),
+                              ),
                         const SizedBox(height: 14),
                         Text(
                           l10n.searchRecent,
@@ -1307,7 +1445,10 @@ class _MapScreenState extends State<MapScreen> {
     const maxAnchors = 12;
     var distanceSinceAnchor = 0.0;
     for (var index = start; index < end; index++) {
-      distanceSinceAnchor += _segDist(_routePoints[index], _routePoints[index + 1]);
+      distanceSinceAnchor += _segDist(
+        _routePoints[index],
+        _routePoints[index + 1],
+      );
       if (distanceSinceAnchor < spacingMeters && index + 1 < end) continue;
       anchors.add(_routePoints[index + 1]);
       distanceSinceAnchor = 0.0;
@@ -1383,7 +1524,11 @@ class _MapScreenState extends State<MapScreen> {
         ),
       );
 
-      for (var responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+      for (
+        var responseIndex = 0;
+        responseIndex < responses.length;
+        responseIndex++
+      ) {
         final query = batch[responseIndex].query;
         for (final result in responses[responseIndex]) {
           final lat = double.tryParse(result['lat']?.toString() ?? '');
@@ -1447,6 +1592,42 @@ class _MapScreenState extends State<MapScreen> {
 
     final seen = <String>{};
     final candidates = <_RouteStopCandidate>[];
+
+    void addCandidate(Map<String, dynamic> result, String fallback) {
+      final lat = double.tryParse(result['lat']?.toString() ?? '');
+      final lon = double.tryParse(result['lon']?.toString() ?? '');
+      if (lat == null || lon == null) return;
+
+      final point = LatLng(lat, lon);
+      final title = _addressTitleFromResult(result, fallback: fallback);
+      final subtitle = _addressSubtitleFromResult(result);
+      final key =
+          '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+      if (!seen.add(key)) return;
+
+      final distanceFromMe = _segDist(currentLocation, point);
+      candidates.add(
+        _RouteStopCandidate(
+          title: title,
+          subtitle: subtitle,
+          position: point,
+          routeDistanceMeters: distanceFromMe,
+          distanceFromMeMeters: distanceFromMe,
+          aheadDistanceMeters: double.nan,
+          routeIndex: 0,
+          isAhead: true,
+        ),
+      );
+    }
+
+    final poiResults = await _fetchOverpassPoiResults(
+      queries: queries,
+      center: currentLocation,
+    );
+    for (final result in poiResults) {
+      addCandidate(result, queries.first);
+    }
+
     final requests = <String>[...queries];
     final responses = await Future.wait(
       requests.map(
@@ -1458,33 +1639,14 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
 
-    for (var responseIndex = 0; responseIndex < responses.length; responseIndex++) {
+    for (
+      var responseIndex = 0;
+      responseIndex < responses.length;
+      responseIndex++
+    ) {
       final query = requests[responseIndex];
       for (final result in responses[responseIndex]) {
-        final lat = double.tryParse(result['lat']?.toString() ?? '');
-        final lon = double.tryParse(result['lon']?.toString() ?? '');
-        if (lat == null || lon == null) continue;
-
-        final point = LatLng(lat, lon);
-        final title = _addressTitleFromResult(result, fallback: query);
-        final subtitle = _addressSubtitleFromResult(result);
-        final key =
-            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
-        if (!seen.add(key)) continue;
-
-        final distanceFromMe = _segDist(currentLocation, point);
-        candidates.add(
-          _RouteStopCandidate(
-            title: title,
-            subtitle: subtitle,
-            position: point,
-            routeDistanceMeters: distanceFromMe,
-            distanceFromMeMeters: distanceFromMe,
-            aheadDistanceMeters: double.nan,
-            routeIndex: 0,
-            isAhead: true,
-          ),
-        );
+        addCandidate(result, query);
       }
     }
 
@@ -1741,10 +1903,7 @@ class _MapScreenState extends State<MapScreen> {
   }) async {
     final options = <_RouteOption>[
       if (strictRoute != null)
-        _RouteOption(
-          route: strictRoute,
-          type: _RouteOptionType.recommended,
-        ),
+        _RouteOption(route: strictRoute, type: _RouteOptionType.recommended),
     ];
 
     final relaxedRoute = await _tryRelaxedRoute(
@@ -1752,12 +1911,10 @@ class _MapScreenState extends State<MapScreen> {
       vehicleType: vehicleType,
     );
     if (relaxedRoute != null &&
-        (strictRoute == null || !_routesLookSimilar(strictRoute, relaxedRoute))) {
+        (strictRoute == null ||
+            !_routesLookSimilar(strictRoute, relaxedRoute))) {
       options.add(
-        _RouteOption(
-          route: relaxedRoute,
-          type: _RouteOptionType.unverified,
-        ),
+        _RouteOption(route: relaxedRoute, type: _RouteOptionType.unverified),
       );
     }
 
@@ -2817,10 +2974,7 @@ class _MapScreenState extends State<MapScreen> {
                   Expanded(
                     child: Text(
                       l10n.routeBlockedTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ),
                 ],
@@ -3989,7 +4143,8 @@ class _MapScreenState extends State<MapScreen> {
                                         _RouteStopChip(
                                           icon: Icons.local_parking,
                                           label: l10n.convoyPoiParking,
-                                          loading: _searchingRouteStopKey ==
+                                          loading:
+                                              _searchingRouteStopKey ==
                                               'parking',
                                           enabled:
                                               _searchingRouteStopKey == null,
@@ -4007,7 +4162,8 @@ class _MapScreenState extends State<MapScreen> {
                                         _RouteStopChip(
                                           icon: Icons.ev_station,
                                           label: l10n.convoyPoiCharging,
-                                          loading: _searchingRouteStopKey ==
+                                          loading:
+                                              _searchingRouteStopKey ==
                                               'charging',
                                           enabled:
                                               _searchingRouteStopKey == null,
@@ -4062,7 +4218,8 @@ class _MapScreenState extends State<MapScreen> {
                                         _RouteStopChip(
                                           icon: Icons.local_grocery_store,
                                           label: l10n.routeStopGrocery,
-                                          loading: _searchingRouteStopKey ==
+                                          loading:
+                                              _searchingRouteStopKey ==
                                               'grocery',
                                           enabled:
                                               _searchingRouteStopKey == null,
@@ -4616,16 +4773,10 @@ class _FavPreset {
   const _FavPreset(this.key, this.icon, this.label);
 }
 
-enum _RouteOptionType {
-  recommended,
-  unverified,
-}
+enum _RouteOptionType { recommended, unverified }
 
 class _RouteOption {
-  const _RouteOption({
-    required this.route,
-    required this.type,
-  });
+  const _RouteOption({required this.route, required this.type});
 
   final RouteResult route;
   final _RouteOptionType type;
@@ -4805,9 +4956,7 @@ class _RouteStopChip extends StatelessWidget {
               else
                 Icon(
                   icon,
-                  color: enabled
-                      ? const Color(0xFF3AA8FF)
-                      : Colors.white38,
+                  color: enabled ? const Color(0xFF3AA8FF) : Colors.white38,
                   size: 18,
                 ),
               const SizedBox(width: 7),
