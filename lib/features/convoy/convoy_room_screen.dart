@@ -3871,6 +3871,176 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
+                          // ── Speed bubble (left side, like regular map) ─
+                          if (!_isNavigating)
+                            Positioned(
+                              left: 14,
+                              bottom: 155,
+                              child: ValueListenableBuilder<double>(
+                                valueListenable: _speedNotifier,
+                                builder: (context, speedKmh, _) {
+                                  return ValueListenableBuilder<SpeedUnit>(
+                                    valueListenable: UserPreferencesService
+                                        .instance
+                                        .speedUnit,
+                                    builder: (context, speedUnit, _) {
+                                      final prefs =
+                                          UserPreferencesService.instance;
+                                      final roadLimitKmh = _roadSpeedLimitKmh;
+                                      final over = roadLimitKmh != null &&
+                                          speedKmh > roadLimitKmh;
+                                      final speedDisplay =
+                                          prefs.toDisplaySpeed(
+                                            speedKmh: speedKmh,
+                                            unit: speedUnit,
+                                          );
+                                      final limitDisplay = roadLimitKmh == null
+                                          ? null
+                                          : prefs.toDisplaySpeed(
+                                              speedKmh: roadLimitKmh,
+                                              unit: speedUnit,
+                                            );
+                                      final limitRatio = limitDisplay != null &&
+                                              limitDisplay > 0
+                                          ? (speedDisplay / limitDisplay)
+                                              .clamp(0.0, 1.25)
+                                          : 0.0;
+                                      final unitLabel =
+                                          speedUnit == SpeedUnit.kmh
+                                          ? l10n.settingsSpeedUnitKmh
+                                          : l10n.settingsSpeedUnitMph;
+                                      return Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 64,
+                                            height: 64,
+                                            child: Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                CustomPaint(
+                                                  size: const Size(64, 64),
+                                                  painter:
+                                                      _ConvoySpeedBarsPainter(
+                                                        ratio: limitRatio,
+                                                        activeColor: over
+                                                            ? const Color(
+                                                                0xFFFF5A5F,
+                                                              )
+                                                            : const Color(
+                                                                0xFFFF9A2F,
+                                                              ),
+                                                        inactiveColor:
+                                                            const Color(
+                                                              0x40FFFFFF,
+                                                            ),
+                                                        strokeWidth: 4.0,
+                                                        segments: 30,
+                                                      ),
+                                                ),
+                                                Container(
+                                                  width: 58,
+                                                  height: 58,
+                                                  decoration: BoxDecoration(
+                                                    color: over
+                                                        ? const Color(
+                                                            0xFFD32F2F,
+                                                          )
+                                                        : const Color(
+                                                            0xEE0A1F63,
+                                                          ),
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: over
+                                                          ? Colors.red.shade300
+                                                          : const Color(
+                                                              0x883AA8FF,
+                                                            ),
+                                                      width: 1.5,
+                                                    ),
+                                                    boxShadow: const [
+                                                      BoxShadow(
+                                                        color: Colors.black45,
+                                                        blurRadius: 8,
+                                                        offset: Offset(0, 3),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text(
+                                                        speedDisplay
+                                                            .toStringAsFixed(0),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 22,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          height: 1.0,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        unitLabel,
+                                                        style: const TextStyle(
+                                                          color: Colors.white54,
+                                                          fontSize: 9,
+                                                          height: 1.2,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            width: 34,
+                                            height: 34,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: limitDisplay != null
+                                                    ? Colors.red.shade700
+                                                    : Colors.grey.shade500,
+                                                width: 3,
+                                              ),
+                                              boxShadow: const [
+                                                BoxShadow(
+                                                  color: Colors.black38,
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                limitDisplay != null
+                                                    ? limitDisplay
+                                                        .toStringAsFixed(0)
+                                                    : '--',
+                                                style: TextStyle(
+                                                  color: limitDisplay != null
+                                                      ? Colors.black
+                                                      : Colors.black45,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  height: 1.0,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
                           // Buttons overlay
                           Positioned(
                             right: 14,

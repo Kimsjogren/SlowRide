@@ -2400,6 +2400,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget _mapCircleButton({
     required VoidCallback onTap,
     required Widget child,
+    Color? color,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -2407,7 +2408,7 @@ class _MapScreenState extends State<MapScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xEE0A1F63),
+          color: color ?? const Color(0xEE0A1F63),
           shape: BoxShape.circle,
           border: Border.all(color: const Color(0x883AA8FF), width: 1.5),
           boxShadow: const [
@@ -3919,6 +3920,19 @@ class _MapScreenState extends State<MapScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // GPS / re-center button
+                _mapCircleButton(
+                  onTap: () => setState(() => _isFollowing = true),
+                  color: _isFollowing ? const Color(0xFF1E6BFF) : null,
+                  child: Icon(
+                    _isFollowing
+                        ? Icons.my_location
+                        : Icons.location_searching,
+                    color: Colors.white70,
+                    size: 19,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 // 2D / 3D toggle
                 _mapCircleButton(
                   onTap: () {
