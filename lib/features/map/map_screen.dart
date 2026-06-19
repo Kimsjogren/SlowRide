@@ -755,8 +755,8 @@ class _MapScreenState extends State<MapScreen> {
         normalized.contains('food') ||
         normalized.contains('fast food') ||
         normalized.contains('mat')) {
-      add('amenity', 'restaurant|fast_food|cafe');
-      add('shop', 'bakery');
+      add('amenity', 'restaurant|fast_food|cafe|food_court|bar|pub');
+      add('shop', 'bakery|deli');
     }
     if (normalized.contains('cafe') ||
         normalized.contains('coffee') ||
@@ -785,7 +785,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<List<Map<String, dynamic>>> _fetchOverpassPoiResults({
     required List<String> queries,
     required LatLng center,
-    int radiusMeters = 8000,
+    int radiusMeters = 5000,
   }) async {
     final filters = _overpassFiltersForQueries(queries);
     if (filters.isEmpty) return const [];
@@ -800,7 +800,7 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final query = '[out:json][timeout:7];(${clauses.join()});out center 100;';
+    final query = '[out:json][timeout:7];(${clauses.join()});out center 120;';
 
     try {
       final response = await http
@@ -809,9 +809,10 @@ class _MapScreenState extends State<MapScreen> {
             headers: const {
               'Content-Type':
                   'application/x-www-form-urlencoded; charset=UTF-8',
+              'Accept': 'application/json',
               'User-Agent': 'CruizX/1.0 (nearby-poi-search)',
             },
-            body: {'data': query},
+            body: 'data=${Uri.encodeQueryComponent(query)}',
           )
           .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return const [];
@@ -834,10 +835,13 @@ class _MapScreenState extends State<MapScreen> {
             ((element['center'] as Map?)?['lon'] as num?)?.toDouble();
         if (lat == null || lon == null) continue;
 
-        final name =
-            (tags['name'] ?? tags['brand'] ?? tags['operator'] ?? queries.first)
-                .toString()
-                .trim();
+        final name = _overpassPoiTitle(tags, queries: queries);
+        final brand = (tags['brand'] ?? '').toString().trim();
+        final operator = (tags['operator'] ?? '').toString().trim();
+        final network = (tags['network'] ?? '').toString().trim();
+        final category = (tags['amenity'] ?? tags['shop'] ?? '')
+            .toString()
+            .trim();
         final street = (tags['addr:street'] ?? '').toString().trim();
         final houseNumber = (tags['addr:housenumber'] ?? '').toString().trim();
         final city = (tags['addr:city'] ?? tags['addr:suburb'] ?? '')
@@ -860,6 +864,10 @@ class _MapScreenState extends State<MapScreen> {
           'place_id': '${element['type']}_${element['id']}',
           'importance': 1.0,
           'name': name.isNotEmpty ? name : queries.first,
+          'category': category,
+          'brand': brand,
+          'operator': operator,
+          'network': network,
           'display_name': [
             if (name.isNotEmpty) name,
             if (addressParts.isNotEmpty) addressParts.join(', '),
@@ -872,6 +880,38 @@ class _MapScreenState extends State<MapScreen> {
     } catch (_) {
       return const [];
     }
+  }
+
+  String _overpassPoiTitle(
+    Map<String, dynamic> tags, {
+    required List<String> queries,
+  }) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final name = (tags['name'] ?? '').toString().trim();
+    final brand = (tags['brand'] ?? '').toString().trim();
+    final operator = (tags['operator'] ?? '').toString().trim();
+    final network = (tags['network'] ?? '').toString().trim();
+    final ref = (tags['ref'] ?? '').toString().trim();
+    final preferBrand =
+        normalized.contains('fuel') ||
+        normalized.contains('gas station') ||
+        normalized.contains('petrol') ||
+        normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('supermarket') ||
+        normalized.contains('grocery') ||
+        normalized.contains('livsmedel');
+
+    if (preferBrand) {
+      for (final value in [brand, operator, network, name, ref]) {
+        if (value.isNotEmpty) return value;
+      }
+    }
+
+    for (final value in [name, brand, operator, network, ref]) {
+      if (value.isNotEmpty) return value;
+    }
+    return queries.first;
   }
 
   String _roadFromResult(Map<String, dynamic> result) {
@@ -1582,6 +1622,19 @@ class _MapScreenState extends State<MapScreen> {
     return candidates.take(limit).toList(growable: false);
   }
 
+  double _maxFallbackPoiDistanceMeters(List<String> queries) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    if (normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging')) {
+      return 25000;
+    }
+    if (normalized.contains('parking') || normalized.contains('parkering')) {
+      return 12000;
+    }
+    return 6000;
+  }
+
   Future<List<_RouteStopCandidate>> _findNearbyStops({
     required List<String> queries,
     int limit = 20,
@@ -1658,7 +1711,13 @@ class _MapScreenState extends State<MapScreen> {
     candidates.sort(
       (a, b) => a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters),
     );
-    return candidates.take(limit).toList(growable: false);
+    final maxFallbackDistance = _maxFallbackPoiDistanceMeters(queries);
+    return candidates
+        .where(
+          (candidate) => candidate.distanceFromMeMeters <= maxFallbackDistance,
+        )
+        .take(limit)
+        .toList(growable: false);
   }
 
   String _formatStopDistance(double meters) {
@@ -2098,9 +2157,11 @@ class _MapScreenState extends State<MapScreen> {
   }) {
     final name = (result['name']?.toString() ?? '').trim();
     final category = (result['category']?.toString() ?? '').trim();
+    final source = (result['_source']?.toString() ?? '').trim();
     final mapboxPlaceType = (result['_mapbox_place_type']?.toString() ?? '')
         .trim();
     final isPoi =
+        source == 'overpass' ||
         mapboxPlaceType == 'poi' ||
         (category.isNotEmpty && category != 'highway');
 
@@ -2158,8 +2219,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _addressSubtitleFromResult(Map<String, dynamic> result) {
+    final source = (result['_source']?.toString() ?? '').trim();
     final address = result['address'];
     if (address is Map) {
+      final title = _addressTitleFromResult(result);
+      final brand = (result['brand']?.toString() ?? '').trim();
+      final operator = (result['operator']?.toString() ?? '').trim();
+      final network = (result['network']?.toString() ?? '').trim();
       String getPart(String key) => (address[key] ?? '').toString().trim();
       final road = [
         getPart('road'),
@@ -2176,12 +2242,27 @@ class _MapScreenState extends State<MapScreen> {
         getPart('municipality'),
       ].firstWhere((v) => v.isNotEmpty, orElse: () => '');
       final suburb = getPart('suburb');
-      final parts = <String>[
-        if (road.isNotEmpty)
-          houseNumber.isNotEmpty ? '$road $houseNumber' : road,
-        if (suburb.isNotEmpty) suburb,
-        if (city.isNotEmpty) city,
-      ];
+      final parts = <String>[];
+      final seenParts = <String>{};
+      void addPart(String value) {
+        final trimmed = value.trim();
+        final normalized = _normalizeSearchText(trimmed);
+        if (trimmed.isEmpty || !seenParts.add(normalized)) return;
+        parts.add(trimmed);
+      }
+
+      if (source == 'overpass') {
+        for (final value in [brand, operator, network]) {
+          if (_normalizeSearchText(value) != _normalizeSearchText(title)) {
+            addPart(value);
+          }
+        }
+      }
+      if (road.isNotEmpty) {
+        addPart(houseNumber.isNotEmpty ? '$road $houseNumber' : road);
+      }
+      addPart(suburb);
+      addPart(city);
       if (parts.isNotEmpty) return parts.join(', ');
     }
     final display = (result['display_name']?.toString() ?? '').trim();
