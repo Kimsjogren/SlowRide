@@ -1592,10 +1592,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     var localSuggestions = <Map<String, dynamic>>[];
     var isSearching = false;
 
-    Future<void> runSearch(
-      String value,
-      StateSetter setSheetState,
-    ) async {
+    Future<void> runSearch(String value, StateSetter setSheetState) async {
       final query = value.trim();
       if (query.length < 2) {
         setSheetState(() {
@@ -1640,14 +1637,16 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               );
             }
 
-            final favorites =
-                ConvoyFavoritePlacesService.instance.places.value;
-            final home =
-                ConvoyFavoritePlacesService.instance.findByIcon('home');
-            final work =
-                ConvoyFavoritePlacesService.instance.findByIcon('work');
-            final school =
-                ConvoyFavoritePlacesService.instance.findByIcon('school');
+            final favorites = ConvoyFavoritePlacesService.instance.places.value;
+            final home = ConvoyFavoritePlacesService.instance.findByIcon(
+              'home',
+            );
+            final work = ConvoyFavoritePlacesService.instance.findByIcon(
+              'work',
+            );
+            final school = ConvoyFavoritePlacesService.instance.findByIcon(
+              'school',
+            );
             final saved = <FavoritePlace>[
               ...[home, work, school].whereType<FavoritePlace>(),
               ...favorites.where(
@@ -1721,10 +1720,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     ),
                                   ),
                                 )
-                              : const Icon(
-                                  Icons.mic,
-                                  color: Colors.white70,
-                                ),
+                              : const Icon(Icons.mic, color: Colors.white70),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(26),
                             borderSide: BorderSide.none,
@@ -1732,25 +1728,112 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                         ),
                       ),
                       const SizedBox(height: 18),
-                      if (!hasQuery) ...[      
-                        if (saved.isNotEmpty)
-                          ...saved.take(5).map(
-                            (fav) => _ConvoySearchDestRow(
-                              icon: fav.icon == 'work'
-                                  ? Icons.work
-                                  : fav.icon == 'school'
-                                  ? Icons.school
-                                  : fav.icon == 'home'
-                                  ? Icons.home
-                                  : Icons.star,
-                              title: fav.label,
-                              subtitle: fav.address,
-                              onTap: () {
-                                Navigator.of(sheetContext).pop();
-                                _navigateToFavorite(fav);
-                              },
-                            ),
+                      if (!hasQuery) ...[
+                        // ── POI shortcut cards ──────────────────────────
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.bookmark,
+                                label: l10n.searchSaved,
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.ev_station,
+                                label: l10n.convoyPoiCharging,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.convoyPoiCharging,
+                                  queries: const [
+                                    'charging station',
+                                    'ev charging',
+                                    'laddstation',
+                                  ],
+                                  icon: Icons.ev_station,
+                                ),
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.restaurant,
+                                label: l10n.convoyPoiFoodStop,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.convoyPoiFoodStop,
+                                  queries: const ['restaurant', 'fast food'],
+                                  icon: Icons.restaurant,
+                                ),
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.local_parking,
+                                label: l10n.convoyPoiParking,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.convoyPoiParking,
+                                  queries: const ['parking', 'parkering'],
+                                  icon: Icons.local_parking,
+                                ),
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.local_gas_station,
+                                label: l10n.routeStopFuel,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.routeStopFuel,
+                                  queries: const [
+                                    'gas station',
+                                    'fuel',
+                                    'bensinstation',
+                                  ],
+                                  icon: Icons.local_gas_station,
+                                ),
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.local_cafe,
+                                label: l10n.routeStopCafe,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.routeStopCafe,
+                                  queries: const ['cafe', 'coffee', 'kafé'],
+                                  icon: Icons.local_cafe,
+                                ),
+                              ),
+                              _ConvoySearchShortcutCard(
+                                icon: Icons.local_grocery_store,
+                                label: l10n.routeStopGrocery,
+                                onTap: () => _showConvoyPoiSheet(
+                                  sheetCtx: sheetContext,
+                                  title: l10n.routeStopGrocery,
+                                  queries: const [
+                                    'grocery',
+                                    'supermarket',
+                                    'livsmedel',
+                                  ],
+                                  icon: Icons.local_grocery_store,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(height: 22),
+                        if (saved.isNotEmpty)
+                          ...saved
+                              .take(5)
+                              .map(
+                                (fav) => _ConvoySearchDestRow(
+                                  icon: fav.icon == 'work'
+                                      ? Icons.work
+                                      : fav.icon == 'school'
+                                      ? Icons.school
+                                      : fav.icon == 'home'
+                                      ? Icons.home
+                                      : Icons.star,
+                                  title: fav.label,
+                                  subtitle: fav.address,
+                                  onTap: () {
+                                    Navigator.of(sheetContext).pop();
+                                    _navigateToFavorite(fav);
+                                  },
+                                ),
+                              ),
                         const SizedBox(height: 14),
                         Text(
                           l10n.searchRecent,
@@ -1789,8 +1872,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                       ] else
                         ...localSuggestions.map((suggestion) {
                           final title = _addressTitleFromResult(suggestion);
-                          final subtitle =
-                              _addressSubtitleFromResult(suggestion);
+                          final subtitle = _addressSubtitleFromResult(
+                            suggestion,
+                          );
                           return _ConvoySearchDestRow(
                             icon: Icons.location_on,
                             title: title,
@@ -1815,6 +1899,272 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
     searchDebounce?.cancel();
     controller.dispose();
+  }
+
+  // ── Overpass POI helpers ────────────────────────────────────────────────
+  List<({String key, String values})> _overpassFiltersForQueries(
+    List<String> queries,
+  ) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final filters = <({String key, String values})>[];
+    void add(String key, String values) {
+      if (!filters.any((f) => f.key == key && f.values == values)) {
+        filters.add((key: key, values: values));
+      }
+    }
+
+    if (normalized.contains('grocery') ||
+        normalized.contains('supermarket') ||
+        normalized.contains('livsmedel')) {
+      add('shop', 'supermarket|convenience|greengrocer|deli|general|organic');
+    }
+    if (normalized.contains('restaurant') ||
+        normalized.contains('food') ||
+        normalized.contains('fast food') ||
+        normalized.contains('mat')) {
+      add('amenity', 'restaurant|fast_food|food_court');
+      add('shop', 'deli');
+    }
+    if (normalized.contains('cafe') ||
+        normalized.contains('coffee') ||
+        normalized.contains('kafe')) {
+      add('amenity', 'cafe');
+      add('shop', 'bakery');
+    }
+    if (normalized.contains('fuel') ||
+        normalized.contains('gas station') ||
+        normalized.contains('petrol') ||
+        normalized.contains('bensinstation')) {
+      add('amenity', 'fuel');
+    }
+    if (normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging')) {
+      add('amenity', 'charging_station');
+    }
+    if (normalized.contains('parking') || normalized.contains('parkering')) {
+      add('amenity', 'parking');
+    }
+    return filters;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchOverpassPoiResults({
+    required List<String> queries,
+    required LatLng center,
+    int radiusMeters = 5000,
+  }) async {
+    final filters = _overpassFiltersForQueries(queries);
+    if (filters.isEmpty) return const [];
+    final clauses = <String>[];
+    for (final filter in filters) {
+      for (final type in const ['node', 'way', 'relation']) {
+        clauses.add(
+          '$type(around:$radiusMeters,${center.latitude},${center.longitude})'
+          '["${filter.key}"~"^(${filter.values})\$"];',
+        );
+      }
+    }
+    final query =
+        '[out:json][timeout:10];(${clauses.join()});out center 300 qt;';
+    try {
+      final response = await http
+          .post(
+            Uri.https('overpass-api.de', '/api/interpreter'),
+            headers: const {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+              'Accept': 'application/json',
+              'User-Agent': 'CruizX/1.0 (nearby-poi-search)',
+            },
+            body: 'data=${Uri.encodeQueryComponent(query)}',
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return const [];
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final elements =
+          (decoded['elements'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .toList() ??
+          const <Map<String, dynamic>>[];
+      final results = <Map<String, dynamic>>[];
+      for (final element in elements) {
+        final tags = element['tags'] as Map<String, dynamic>? ?? const {};
+        if (!_includeOverpassPoi(tags, queries: queries)) continue;
+        final lat =
+            (element['lat'] as num?)?.toDouble() ??
+            ((element['center'] as Map?)?['lat'] as num?)?.toDouble();
+        final lon =
+            (element['lon'] as num?)?.toDouble() ??
+            ((element['center'] as Map?)?['lon'] as num?)?.toDouble();
+        if (lat == null || lon == null) continue;
+        final name = _overpassPoiTitle(tags, queries: queries);
+        final street = (tags['addr:street'] ?? '').toString().trim();
+        final houseNumber = (tags['addr:housenumber'] ?? '').toString().trim();
+        final city = (tags['addr:city'] ?? tags['addr:suburb'] ?? '')
+            .toString()
+            .trim();
+        results.add({
+          'lat': lat,
+          'lon': lon,
+          'name': name.isNotEmpty ? name : queries.first,
+          'address': {
+            if (street.isNotEmpty) 'road': street,
+            if (houseNumber.isNotEmpty) 'house_number': houseNumber,
+            if (city.isNotEmpty) 'city': city,
+          },
+          '_source': 'overpass',
+        });
+      }
+      return results;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  bool _includeOverpassPoi(
+    Map<String, dynamic> tags, {
+    required List<String> queries,
+  }) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final amenity = _normalizeSearchText((tags['amenity'] ?? '').toString());
+    final shop = _normalizeSearchText((tags['shop'] ?? '').toString());
+    final access = _normalizeSearchText((tags['access'] ?? '').toString());
+    final motorcar = _normalizeSearchText((tags['motorcar'] ?? '').toString());
+    final name = (tags['name'] ?? '').toString().trim();
+    final brand = (tags['brand'] ?? '').toString().trim();
+    final operator = (tags['operator'] ?? '').toString().trim();
+    final network = (tags['network'] ?? '').toString().trim();
+    final hasIdentity = [
+      name,
+      brand,
+      operator,
+      network,
+    ].any((v) => v.isNotEmpty);
+    final isFoodStop =
+        normalized.contains('restaurant') ||
+        normalized.contains('food') ||
+        normalized.contains('fast food');
+    if (isFoodStop) {
+      if (amenity == 'cafe' ||
+          amenity == 'pub' ||
+          amenity == 'bar' ||
+          shop == 'bakery')
+        return false;
+      return hasIdentity;
+    }
+    final isCharging =
+        normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging');
+    if (isCharging) {
+      if (motorcar == 'no') return false;
+      if (access == 'private' ||
+          access == 'residents' ||
+          access == 'no' ||
+          access == 'permit')
+        return false;
+      return hasIdentity;
+    }
+    return true;
+  }
+
+  String _overpassPoiTitle(
+    Map<String, dynamic> tags, {
+    required List<String> queries,
+  }) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final name = (tags['name'] ?? '').toString().trim();
+    final brand = (tags['brand'] ?? '').toString().trim();
+    final operator = (tags['operator'] ?? '').toString().trim();
+    final network = (tags['network'] ?? '').toString().trim();
+    final preferBrand =
+        normalized.contains('fuel') ||
+        normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('supermarket') ||
+        normalized.contains('grocery') ||
+        normalized.contains('livsmedel');
+    if (preferBrand) {
+      for (final v in [brand, operator, network, name]) {
+        if (v.isNotEmpty) return v;
+      }
+    }
+    for (final v in [name, brand, operator, network]) {
+      if (v.isNotEmpty) return v;
+    }
+    return queries.first;
+  }
+
+  Future<List<_ConvoyPoiCandidate>> _findConvoyNearbyPoi({
+    required List<String> queries,
+  }) async {
+    final me = _myLocation;
+    if (me == null) return const [];
+    var results = await _fetchOverpassPoiResults(
+      queries: queries,
+      center: me,
+      radiusMeters: 2500,
+    );
+    if (results.length < 5) {
+      results = await _fetchOverpassPoiResults(
+        queries: queries,
+        center: me,
+        radiusMeters: 7000,
+      );
+    }
+    final seen = <String>{};
+    final candidates = <_ConvoyPoiCandidate>[];
+    for (final r in results) {
+      final lat = (r['lat'] as num).toDouble();
+      final lon = (r['lon'] as num).toDouble();
+      final point = LatLng(lat, lon);
+      final title = (r['name'] ?? queries.first).toString().trim();
+      final subtitle = _addressSubtitleFromResult(r);
+      final key =
+          '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+      if (!seen.add(key)) continue;
+      candidates.add(
+        _ConvoyPoiCandidate(
+          title: title,
+          subtitle: subtitle,
+          position: point,
+          distanceMeters: _segDist(me, point),
+        ),
+      );
+    }
+    candidates.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    return candidates.take(20).toList();
+  }
+
+  String _formatPoiDistance(double meters) {
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  Future<void> _showConvoyPoiSheet({
+    required BuildContext sheetCtx,
+    required String title,
+    required List<String> queries,
+    required IconData icon,
+  }) async {
+    Navigator.of(sheetCtx).pop();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _ConvoyPoiResultsSheet(
+        title: title,
+        icon: icon,
+        loadCandidates: () => _findConvoyNearbyPoi(queries: queries),
+        formatDistance: _formatPoiDistance,
+        onSelected: (candidate) {
+          _addressSearchController.text = candidate.title;
+          _destinationLabel = candidate.title;
+          _routeToDestination(candidate.position);
+        },
+      ),
+    );
   }
 
   Color _memberColor(String userId) {
@@ -4467,6 +4817,211 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConvoyPoiCandidate {
+  const _ConvoyPoiCandidate({
+    required this.title,
+    required this.subtitle,
+    required this.position,
+    required this.distanceMeters,
+  });
+  final String title;
+  final String subtitle;
+  final LatLng position;
+  final double distanceMeters;
+}
+
+class _ConvoyPoiResultsSheet extends StatefulWidget {
+  const _ConvoyPoiResultsSheet({
+    required this.title,
+    required this.icon,
+    required this.loadCandidates,
+    required this.formatDistance,
+    required this.onSelected,
+  });
+  final String title;
+  final IconData icon;
+  final Future<List<_ConvoyPoiCandidate>> Function() loadCandidates;
+  final String Function(double) formatDistance;
+  final void Function(_ConvoyPoiCandidate) onSelected;
+  @override
+  State<_ConvoyPoiResultsSheet> createState() => _ConvoyPoiResultsSheetState();
+}
+
+class _ConvoyPoiResultsSheetState extends State<_ConvoyPoiResultsSheet> {
+  late final Future<List<_ConvoyPoiCandidate>> _future;
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.loadCandidates();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.72,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xF0071739),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0x663AA8FF),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(widget.icon, color: const Color(0xFF3AA8FF)),
+              title: Text(
+                widget.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                l10n.routeStopNearbySubtitle,
+                style: const TextStyle(color: Colors.white54),
+              ),
+            ),
+            Flexible(
+              child: FutureBuilder<List<_ConvoyPoiCandidate>>(
+                future: _future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 34),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF3AA8FF),
+                        ),
+                      ),
+                    );
+                  }
+                  final candidates = snapshot.data ?? const [];
+                  if (candidates.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
+                      child: Text(
+                        l10n.routeStopNearbyEmpty,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: candidates.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1, color: Colors.white12),
+                    itemBuilder: (context, index) {
+                      final c = candidates[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: const Color(0xEE0A1F63),
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Text(
+                          c.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (c.subtitle.isNotEmpty) c.subtitle,
+                            l10n.routeStopAway(
+                              widget.formatDistance(c.distanceMeters),
+                            ),
+                          ].join(' · '),
+                          maxLines: 2,
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                        trailing: const Icon(
+                          Icons.add_circle,
+                          color: Color(0xFF3AA8FF),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onSelected(c);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConvoySearchShortcutCard extends StatelessWidget {
+  const _ConvoySearchShortcutCard({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          width: 106,
+          height: 82,
+          decoration: BoxDecoration(
+            color: const Color(0xEE0A1F63),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x553AA8FF)),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 27),
+              const SizedBox(height: 7),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

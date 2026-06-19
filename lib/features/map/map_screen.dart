@@ -3925,9 +3925,7 @@ class _MapScreenState extends State<MapScreen> {
                   onTap: () => setState(() => _isFollowing = true),
                   color: _isFollowing ? const Color(0xFF1E6BFF) : null,
                   child: Icon(
-                    _isFollowing
-                        ? Icons.my_location
-                        : Icons.location_searching,
+                    _isFollowing ? Icons.my_location : Icons.location_searching,
                     color: Colors.white70,
                     size: 19,
                   ),
