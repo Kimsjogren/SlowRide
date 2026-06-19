@@ -2034,22 +2034,31 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final brand = (tags['brand'] ?? '').toString().trim();
     final operator = (tags['operator'] ?? '').toString().trim();
     final network = (tags['network'] ?? '').toString().trim();
+    final ref = (tags['ref'] ?? '').toString().trim();
+    final street = (tags['addr:street'] ?? '').toString().trim();
+    final city = (tags['addr:city'] ?? tags['addr:suburb'] ?? '')
+        .toString()
+        .trim();
     final hasIdentity = [
       name,
       brand,
       operator,
       network,
+      ref,
     ].any((v) => v.isNotEmpty);
+    final hasAddress = street.isNotEmpty || city.isNotEmpty;
     final isFoodStop =
         normalized.contains('restaurant') ||
         normalized.contains('food') ||
-        normalized.contains('fast food');
+        normalized.contains('fast food') ||
+        normalized.contains('mat');
     if (isFoodStop) {
       if (amenity == 'cafe' ||
           amenity == 'pub' ||
           amenity == 'bar' ||
-          shop == 'bakery')
+          shop == 'bakery') {
         return false;
+      }
       return hasIdentity;
     }
     final isCharging =
@@ -2061,9 +2070,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       if (access == 'private' ||
           access == 'residents' ||
           access == 'no' ||
-          access == 'permit')
+          access == 'permit') {
         return false;
-      return hasIdentity;
+      }
+      return hasIdentity || hasAddress;
     }
     return true;
   }
@@ -2095,34 +2105,39 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return queries.first;
   }
 
+  double _maxConvoyPoiFallbackDistanceMeters(List<String> queries) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    if (normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging')) {
+      return 25000;
+    }
+    if (normalized.contains('parking') || normalized.contains('parkering')) {
+      return 12000;
+    }
+    return 6000;
+  }
+
   Future<List<_ConvoyPoiCandidate>> _findConvoyNearbyPoi({
     required List<String> queries,
+    int limit = 20,
   }) async {
     final me = _myLocation;
     if (me == null) return const [];
-    var results = await _fetchOverpassPoiResults(
-      queries: queries,
-      center: me,
-      radiusMeters: 2500,
-    );
-    if (results.length < 5) {
-      results = await _fetchOverpassPoiResults(
-        queries: queries,
-        center: me,
-        radiusMeters: 7000,
-      );
-    }
+
     final seen = <String>{};
     final candidates = <_ConvoyPoiCandidate>[];
-    for (final r in results) {
-      final lat = (r['lat'] as num).toDouble();
-      final lon = (r['lon'] as num).toDouble();
+
+    void addCandidate(Map<String, dynamic> r, String fallback) {
+      final lat = double.tryParse(r['lat']?.toString() ?? '');
+      final lon = double.tryParse(r['lon']?.toString() ?? '');
+      if (lat == null || lon == null) return;
       final point = LatLng(lat, lon);
-      final title = (r['name'] ?? queries.first).toString().trim();
+      final title = (r['name'] ?? fallback).toString().trim();
       final subtitle = _addressSubtitleFromResult(r);
       final key =
           '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
-      if (!seen.add(key)) continue;
+      if (!seen.add(key)) return;
       candidates.add(
         _ConvoyPoiCandidate(
           title: title,
@@ -2132,8 +2147,45 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         ),
       );
     }
+
+    // Tiered Overpass radius: 2.5 km first, expand to 7 km if sparse.
+    var poiResults = await _fetchOverpassPoiResults(
+      queries: queries,
+      center: me,
+      radiusMeters: 2500,
+    );
+    if (poiResults.length < 5) {
+      poiResults = await _fetchOverpassPoiResults(
+        queries: queries,
+        center: me,
+        radiusMeters: 7000,
+      );
+    }
+    for (final r in poiResults) {
+      addCandidate(r, queries.first);
+    }
+
+    // Geocoding fallback when Overpass comes up empty.
+    if (candidates.isEmpty) {
+      final responses = await Future.wait(
+        queries.map(
+          (q) => _fetchMapboxResults(
+            q,
+            limit: 12,
+          ).catchError((_) => <Map<String, dynamic>>[]),
+        ),
+      );
+      for (var i = 0; i < responses.length; i++) {
+        for (final r in responses[i]) {
+          addCandidate(r, queries[i]);
+        }
+      }
+      final maxDist = _maxConvoyPoiFallbackDistanceMeters(queries);
+      candidates.removeWhere((c) => c.distanceMeters > maxDist);
+    }
+
     candidates.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
-    return candidates.take(20).toList();
+    return candidates.take(limit).toList(growable: false);
   }
 
   String _formatPoiDistance(double meters) {
