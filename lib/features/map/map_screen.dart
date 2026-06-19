@@ -800,7 +800,7 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final query = '[out:json][timeout:7];(${clauses.join()});out center 120;';
+    final query = '[out:json][timeout:10];(${clauses.join()});out center 300 qt;';
 
     try {
       final response = await http
@@ -1588,98 +1588,77 @@ class _MapScreenState extends State<MapScreen> {
     return distance;
   }
 
-  List<List<T>> _chunks<T>(List<T> items, int size) {
-    final chunks = <List<T>>[];
-    for (var index = 0; index < items.length; index += size) {
-      chunks.add(items.sublist(index, math.min(index + size, items.length)));
-    }
-    return chunks;
-  }
-
   Future<List<_RouteStopCandidate>> _findStopsAlongRoute({
     required List<String> queries,
     int limit = 20,
   }) async {
-    const maxDetourFromRouteMeters = 15000.0;
-    final anchors = _routeSearchAnchors();
+    // Max 2 km off-route — tighter than before to keep results relevant.
+    const maxDetourFromRouteMeters = 2000.0;
+    // Use up to 5 evenly-spaced anchors along the remaining route.
+    final anchors = _routeSearchAnchors().take(5).toList();
     final currentLocation = _currentLocation;
     if (anchors.isEmpty || _routePoints.isEmpty || currentLocation == null) {
       return const [];
     }
 
+    // Parallel Overpass POI calls — one per anchor, 3 km radius.
+    // This is far more reliable than text geocoding for POI categories.
+    final poiLists = await Future.wait(
+      anchors.map(
+        (anchor) => _fetchOverpassPoiResults(
+          queries: queries,
+          center: anchor,
+          radiusMeters: 3000,
+        ),
+      ),
+    );
+
     final seen = <String>{};
     final candidates = <_RouteStopCandidate>[];
-    final requests = <({LatLng anchor, String query})>[
-      for (final anchor in anchors)
-        for (final query in queries) (anchor: anchor, query: query),
-    ];
 
-    for (final batch in _chunks(requests, 6)) {
-      final responses = await Future.wait(
-        batch.map(
-          (request) => _fetchPrimaryGeocodingResults(
-            request.query,
-            limit: 10,
-            proximity: request.anchor,
+    for (final poiResults in poiLists) {
+      for (final result in poiResults) {
+        final lat = double.tryParse(result['lat']?.toString() ?? '');
+        final lon = double.tryParse(result['lon']?.toString() ?? '');
+        if (lat == null || lon == null) continue;
+
+        final point = LatLng(lat, lon);
+        final title = _addressTitleFromResult(
+          result,
+          fallback: queries.first,
+        );
+        final subtitle = _addressSubtitleFromResult(result);
+        final key =
+            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+        if (!seen.add(key)) continue;
+
+        final routeDistance = _distanceToRouteMeters(point, _routePoints);
+        if (routeDistance > maxDetourFromRouteMeters) continue;
+        final routeIndex = _nearestRouteIndexFull(point);
+        final isAhead = routeIndex >= (_displayNearestIdx - 5);
+        final distanceFromMe = _segDist(currentLocation, point);
+        final aheadDistance = isAhead
+            ? _remainingRouteDistanceToIndex(routeIndex)
+            : double.infinity;
+        candidates.add(
+          _RouteStopCandidate(
+            title: title,
+            subtitle: subtitle,
+            position: point,
+            routeDistanceMeters: routeDistance,
+            distanceFromMeMeters: distanceFromMe,
+            aheadDistanceMeters: aheadDistance,
+            routeIndex: routeIndex,
+            isAhead: isAhead,
           ),
-        ),
-      );
-
-      for (
-        var responseIndex = 0;
-        responseIndex < responses.length;
-        responseIndex++
-      ) {
-        final query = batch[responseIndex].query;
-        for (final result in responses[responseIndex]) {
-          final lat = double.tryParse(result['lat']?.toString() ?? '');
-          final lon = double.tryParse(result['lon']?.toString() ?? '');
-          if (lat == null || lon == null) continue;
-
-          final point = LatLng(lat, lon);
-          final title = _addressTitleFromResult(result, fallback: query);
-          final subtitle = _addressSubtitleFromResult(result);
-          final key =
-              '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
-          if (!seen.add(key)) continue;
-
-          final routeDistance = _distanceToRouteMeters(point, _routePoints);
-          if (routeDistance > maxDetourFromRouteMeters) continue;
-          final routeIndex = _nearestRouteIndexFull(point);
-          final isAhead = routeIndex >= (_displayNearestIdx - 5);
-          final distanceFromMe = _segDist(currentLocation, point);
-          final aheadDistance = isAhead
-              ? _remainingRouteDistanceToIndex(routeIndex)
-              : double.infinity;
-          candidates.add(
-            _RouteStopCandidate(
-              title: title,
-              subtitle: subtitle,
-              position: point,
-              routeDistanceMeters: routeDistance,
-              distanceFromMeMeters: distanceFromMe,
-              aheadDistanceMeters: aheadDistance,
-              routeIndex: routeIndex,
-              isAhead: isAhead,
-            ),
-          );
-        }
+        );
       }
     }
 
+    // Sort: ahead-of-me first, then by distance along remaining route.
     candidates.sort((a, b) {
       if (a.isAhead != b.isAhead) return a.isAhead ? -1 : 1;
-      final aheadCompare = a.aheadDistanceMeters.compareTo(
-        b.aheadDistanceMeters,
-      );
-      if (aheadCompare != 0) return aheadCompare;
-      final routeCompare = a.routeDistanceMeters.compareTo(
-        b.routeDistanceMeters,
-      );
-      if (routeCompare != 0) return routeCompare;
-      final progressCompare = a.routeIndex.compareTo(b.routeIndex);
-      if (progressCompare != 0) return progressCompare;
-      return a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters);
+      return a.aheadDistanceMeters.compareTo(b.aheadDistanceMeters);
     });
     return candidates.take(limit).toList(growable: false);
   }
@@ -1734,10 +1713,20 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    final poiResults = await _fetchOverpassPoiResults(
+    // Tiered radius: try 2.5 km first so the result cap (300) easily covers
+    // everything nearby. Only expand to 7 km when the area is sparse.
+    var poiResults = await _fetchOverpassPoiResults(
       queries: queries,
       center: currentLocation,
+      radiusMeters: 2500,
     );
+    if (poiResults.length < 5) {
+      poiResults = await _fetchOverpassPoiResults(
+        queries: queries,
+        center: currentLocation,
+        radiusMeters: 7000,
+      );
+    }
     for (final result in poiResults) {
       addCandidate(result, queries.first);
     }
