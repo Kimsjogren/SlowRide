@@ -3157,7 +3157,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   ),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF1C1C1E),
+                                      color: const Color(0xFF071739),
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: const [
                                         BoxShadow(
@@ -3415,7 +3415,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               bottom: 0,
                               child: Container(
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFF1C1C1E),
+                                  color: Color(0xFF071739),
                                   borderRadius: BorderRadius.vertical(
                                     top: Radius.circular(22),
                                   ),

@@ -800,7 +800,8 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final query = '[out:json][timeout:10];(${clauses.join()});out center 300 qt;';
+    final query =
+        '[out:json][timeout:10];(${clauses.join()});out center 300 qt;';
 
     try {
       final response = await http
@@ -1623,10 +1624,7 @@ class _MapScreenState extends State<MapScreen> {
         if (lat == null || lon == null) continue;
 
         final point = LatLng(lat, lon);
-        final title = _addressTitleFromResult(
-          result,
-          fallback: queries.first,
-        );
+        final title = _addressTitleFromResult(result, fallback: queries.first);
         final subtitle = _addressSubtitleFromResult(result);
         final key =
             '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
@@ -3727,7 +3725,7 @@ class _MapScreenState extends State<MapScreen> {
                       // Urgency tint improves readability during close/complex turns.
                       // Major apps shift color closer to maneuver for attention.
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1C1C1E),
+                        color: const Color(0xFF071739),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: const [
                           BoxShadow(
@@ -4075,7 +4073,7 @@ class _MapScreenState extends State<MapScreen> {
               bottom: 0,
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFF1C1C1E),
+                  color: Color(0xFF071739),
                   borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
                   boxShadow: [
                     BoxShadow(
