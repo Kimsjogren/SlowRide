@@ -755,8 +755,8 @@ class _MapScreenState extends State<MapScreen> {
         normalized.contains('food') ||
         normalized.contains('fast food') ||
         normalized.contains('mat')) {
-      add('amenity', 'restaurant|fast_food|cafe|food_court|bar|pub');
-      add('shop', 'bakery|deli');
+      add('amenity', 'restaurant|fast_food|food_court');
+      add('shop', 'deli');
     }
     if (normalized.contains('cafe') ||
         normalized.contains('coffee') ||
@@ -827,6 +827,7 @@ class _MapScreenState extends State<MapScreen> {
       final results = <Map<String, dynamic>>[];
       for (final element in elements) {
         final tags = element['tags'] as Map<String, dynamic>? ?? const {};
+        if (!_includeOverpassPoi(tags, queries: queries)) continue;
         final lat =
             (element['lat'] as num?)?.toDouble() ??
             ((element['center'] as Map?)?['lat'] as num?)?.toDouble();
@@ -882,6 +883,66 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  bool _includeOverpassPoi(
+    Map<String, dynamic> tags, {
+    required List<String> queries,
+  }) {
+    final normalized = queries.map(_normalizeSearchText).join(' ');
+    final amenity = _normalizeSearchText((tags['amenity'] ?? '').toString());
+    final shop = _normalizeSearchText((tags['shop'] ?? '').toString());
+    final access = _normalizeSearchText((tags['access'] ?? '').toString());
+    final motorcar = _normalizeSearchText((tags['motorcar'] ?? '').toString());
+    final name = (tags['name'] ?? '').toString().trim();
+    final brand = (tags['brand'] ?? '').toString().trim();
+    final operator = (tags['operator'] ?? '').toString().trim();
+    final network = (tags['network'] ?? '').toString().trim();
+    final ref = (tags['ref'] ?? '').toString().trim();
+    final street = (tags['addr:street'] ?? '').toString().trim();
+    final city = (tags['addr:city'] ?? tags['addr:suburb'] ?? '')
+        .toString()
+        .trim();
+    final hasIdentity = [
+      name,
+      brand,
+      operator,
+      network,
+      ref,
+    ].any((value) => value.isNotEmpty);
+    final hasAddress = street.isNotEmpty || city.isNotEmpty;
+
+    final isFoodStop =
+        normalized.contains('restaurant') ||
+        normalized.contains('food') ||
+        normalized.contains('fast food') ||
+        normalized.contains('mat');
+    if (isFoodStop) {
+      if (amenity == 'cafe' ||
+          amenity == 'pub' ||
+          amenity == 'bar' ||
+          shop == 'bakery') {
+        return false;
+      }
+      return hasIdentity;
+    }
+
+    final isCharging =
+        normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging');
+    if (isCharging) {
+      if (motorcar == 'no') return false;
+      if (access == 'private' ||
+          access == 'residents' ||
+          access == 'no' ||
+          access == 'permit') {
+        return false;
+      }
+      return hasIdentity || hasAddress;
+    }
+
+    return true;
+  }
+
   String _overpassPoiTitle(
     Map<String, dynamic> tags, {
     required List<String> queries,
@@ -910,6 +971,11 @@ class _MapScreenState extends State<MapScreen> {
 
     for (final value in [name, brand, operator, network, ref]) {
       if (value.isNotEmpty) return value;
+    }
+    if (normalized.contains('charging') ||
+        normalized.contains('laddstation') ||
+        normalized.contains('ev charging')) {
+      return 'Laddstation';
     }
     return queries.first;
   }
