@@ -29,6 +29,7 @@ import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
+import 'package:slowride/services/destination_history_service.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -1204,20 +1205,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
-  void _onSearchChanged(String query) {
-    _searchDebounce?.cancel();
-    if (query.trim().length < 2) {
-      setState(() {
-        _suggestions = [];
-        _showSuggestions = false;
-      });
-      return;
-    }
-    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
-      _fetchSuggestions(query.trim());
-    });
-  }
-
   String _normalizeSearchText(String input) {
     return input
         .toLowerCase()
@@ -1550,21 +1537,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return deduped;
   }
 
-  Future<void> _fetchSuggestions(String query) async {
-    try {
-      var raw = await _fetchMapboxResults(query, limit: 12);
-      if (raw.isEmpty) {
-        raw = await _fetchNominatimResults(query, limit: 20);
-      }
-      if (!mounted) return;
-      final ranked = _rankAndDedupeSuggestions(raw, query);
-      setState(() {
-        _suggestions = ranked;
-        _showSuggestions = _suggestions.isNotEmpty;
-      });
-    } catch (_) {}
-  }
-
   Future<void> _searchAddress(String rawQuery) async {
     final l10n = AppLocalizations.of(context)!;
     final query = rawQuery.trim();
@@ -1609,6 +1581,240 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _showSuggestions = false;
     });
     _routeToDestination(LatLng(lat, lon));
+  }
+
+  Future<void> _showConvoySearchSheet() async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(
+      text: _addressSearchController.text,
+    );
+    Timer? searchDebounce;
+    var localSuggestions = <Map<String, dynamic>>[];
+    var isSearching = false;
+
+    Future<void> runSearch(
+      String value,
+      StateSetter setSheetState,
+    ) async {
+      final query = value.trim();
+      if (query.length < 2) {
+        setSheetState(() {
+          localSuggestions = [];
+          isSearching = false;
+        });
+        return;
+      }
+      setSheetState(() => isSearching = true);
+      try {
+        var raw = await _fetchMapboxResults(query, limit: 12);
+        if (raw.isEmpty) raw = await _fetchNominatimResults(query, limit: 15);
+        final ranked = _rankAndDedupeSuggestions(raw, query);
+        if (!mounted) return;
+        setSheetState(() {
+          localSuggestions = ranked;
+          isSearching = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setSheetState(() {
+          localSuggestions = [];
+          isSearching = false;
+        });
+      }
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            void onChanged(String value) {
+              searchDebounce?.cancel();
+              setSheetState(() {});
+              searchDebounce = Timer(
+                const Duration(milliseconds: 300),
+                () => runSearch(value, setSheetState),
+              );
+            }
+
+            final favorites =
+                ConvoyFavoritePlacesService.instance.places.value;
+            final home =
+                ConvoyFavoritePlacesService.instance.findByIcon('home');
+            final work =
+                ConvoyFavoritePlacesService.instance.findByIcon('work');
+            final school =
+                ConvoyFavoritePlacesService.instance.findByIcon('school');
+            final saved = <FavoritePlace>[
+              ...[home, work, school].whereType<FavoritePlace>(),
+              ...favorites.where(
+                (fav) =>
+                    fav.icon != 'home' &&
+                    fav.icon != 'work' &&
+                    fav.icon != 'school',
+              ),
+            ];
+            final hasQuery = controller.text.trim().isNotEmpty;
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.88,
+              minChildSize: 0.58,
+              maxChildSize: 0.96,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xF0071739),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 26),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 18),
+                          decoration: BoxDecoration(
+                            color: const Color(0x663AA8FF),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        onChanged: onChanged,
+                        onSubmitted: (query) {
+                          Navigator.of(sheetContext).pop();
+                          _addressSearchController.text = query;
+                          _destinationLabel = query;
+                          _searchAddress(query);
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: l10n.mapAddressFieldHint,
+                          hintStyle: const TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: const Color(0xEE0A1F63),
+                          prefixIcon: IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            color: Colors.white54,
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                          ),
+                          suffixIcon: isSearching
+                              ? const Padding(
+                                  padding: EdgeInsets.all(14),
+                                  child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFF3AA8FF),
+                                    ),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.mic,
+                                  color: Colors.white70,
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(26),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      if (!hasQuery) ...[      
+                        if (saved.isNotEmpty)
+                          ...saved.take(5).map(
+                            (fav) => _ConvoySearchDestRow(
+                              icon: fav.icon == 'work'
+                                  ? Icons.work
+                                  : fav.icon == 'school'
+                                  ? Icons.school
+                                  : fav.icon == 'home'
+                                  ? Icons.home
+                                  : Icons.star,
+                              title: fav.label,
+                              subtitle: fav.address,
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                _navigateToFavorite(fav);
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l10n.searchRecent,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ValueListenableBuilder<List<DestinationHistoryEntry>>(
+                          valueListenable:
+                              DestinationHistoryService.instance.entries,
+                          builder: (context, history, _) {
+                            return Column(
+                              children: history
+                                  .take(8)
+                                  .map(
+                                    (entry) => _ConvoySearchDestRow(
+                                      icon: Icons.history,
+                                      title: entry.label,
+                                      subtitle: entry.address,
+                                      onTap: () {
+                                        Navigator.of(sheetContext).pop();
+                                        _addressSearchController.text =
+                                            entry.label;
+                                        _destinationLabel = entry.label;
+                                        _routeToDestination(entry.position);
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            );
+                          },
+                        ),
+                      ] else
+                        ...localSuggestions.map((suggestion) {
+                          final title = _addressTitleFromResult(suggestion);
+                          final subtitle =
+                              _addressSubtitleFromResult(suggestion);
+                          return _ConvoySearchDestRow(
+                            icon: Icons.location_on,
+                            title: title,
+                            subtitle: subtitle,
+                            onTap: () {
+                              Navigator.of(sheetContext).pop();
+                              _addressSearchController.text = title;
+                              _destinationLabel = title;
+                              _selectSuggestion(suggestion);
+                            },
+                          );
+                        }),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    searchDebounce?.cancel();
+    controller.dispose();
   }
 
   Color _memberColor(String userId) {
@@ -3060,46 +3266,19 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     child: TextField(
                                       controller: _addressSearchController,
                                       focusNode: _searchFocus,
-                                      textInputAction: TextInputAction.search,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
-                                      onChanged: _onSearchChanged,
-                                      onSubmitted: (q) {
-                                        setState(
-                                          () => _showSuggestions = false,
-                                        );
-                                        _searchAddress(q);
-                                      },
+                                      readOnly: true,
+                                      onTap: _showConvoySearchSheet,
                                       decoration: InputDecoration(
                                         hintText: l10n.mapAddressFieldHint,
-                                        hintStyle: const TextStyle(
-                                          color: Colors.white38,
-                                          fontSize: 13,
-                                        ),
                                         filled: true,
-                                        fillColor: const Color(0xDD071739),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 0,
-                                            ),
-                                        prefixIcon: const Icon(
-                                          Icons.search,
-                                          color: Colors.white54,
-                                          size: 20,
-                                        ),
+                                        fillColor: const Color(0xCC081B4F),
+                                        prefixIcon: const Icon(Icons.search),
                                         suffixIcon:
                                             _addressSearchController
                                                 .text
                                                 .isNotEmpty
                                             ? IconButton(
-                                                icon: const Icon(
-                                                  Icons.close,
-                                                  size: 18,
-                                                  color: Colors.white54,
-                                                ),
+                                                icon: const Icon(Icons.close),
                                                 onPressed: () {
                                                   _addressSearchController
                                                       .clear();
@@ -3109,29 +3288,16 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   });
                                                 },
                                               )
-                                            : null,
+                                            : IconButton(
+                                                icon: const Icon(
+                                                  Icons.arrow_forward,
+                                                ),
+                                                onPressed:
+                                                    _showConvoySearchSheet,
+                                              ),
                                         border: OutlineInputBorder(
                                           borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0x553AA8FF),
-                                          ),
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0x553AA8FF),
-                                          ),
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          borderSide: const BorderSide(
-                                            color: Color(0xFF3AA8FF),
+                                            12,
                                           ),
                                         ),
                                       ),
@@ -3887,23 +4053,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       final prefs =
                                           UserPreferencesService.instance;
                                       final roadLimitKmh = _roadSpeedLimitKmh;
-                                      final over = roadLimitKmh != null &&
+                                      final over =
+                                          roadLimitKmh != null &&
                                           speedKmh > roadLimitKmh;
-                                      final speedDisplay =
-                                          prefs.toDisplaySpeed(
-                                            speedKmh: speedKmh,
-                                            unit: speedUnit,
-                                          );
+                                      final speedDisplay = prefs.toDisplaySpeed(
+                                        speedKmh: speedKmh,
+                                        unit: speedUnit,
+                                      );
                                       final limitDisplay = roadLimitKmh == null
                                           ? null
                                           : prefs.toDisplaySpeed(
                                               speedKmh: roadLimitKmh,
                                               unit: speedUnit,
                                             );
-                                      final limitRatio = limitDisplay != null &&
+                                      final limitRatio =
+                                          limitDisplay != null &&
                                               limitDisplay > 0
-                                          ? (speedDisplay / limitDisplay)
-                                              .clamp(0.0, 1.25)
+                                          ? (speedDisplay / limitDisplay).clamp(
+                                              0.0,
+                                              1.25,
+                                            )
                                           : 0.0;
                                       final unitLabel =
                                           speedUnit == SpeedUnit.kmh
@@ -4021,7 +4190,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               child: Text(
                                                 limitDisplay != null
                                                     ? limitDisplay
-                                                        .toStringAsFixed(0)
+                                                          .toStringAsFixed(0)
                                                     : '--',
                                                 style: TextStyle(
                                                   color: limitDisplay != null
@@ -4296,6 +4465,63 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConvoySearchDestRow extends StatelessWidget {
+  const _ConvoySearchDestRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 28),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
+                  ),
+                  if (subtitle.trim().isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
