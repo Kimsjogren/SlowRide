@@ -2625,12 +2625,36 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         vehicleType: UserPreferencesService.instance.vehicleType.value,
       );
       if (!mounted) return;
-      final km = route.distanceMeters / 1000;
-      final minutes = (route.durationSeconds / 60).round();
-      final cumDist = _buildCumulativeDist(route.points);
+
+      // Build route options — strict + optional relaxed alternative.
+      final relaxedRoute = await _tryConvoyRelaxedRoute(destination);
+      if (!mounted) return;
+
+      final options = [
+        _ConvoyRouteOption(
+          route: route,
+          type: _ConvoyRouteOptionType.recommended,
+        ),
+        if (relaxedRoute != null &&
+            !_convoyRoutesLookSimilar(route, relaxedRoute))
+          _ConvoyRouteOption(
+            route: relaxedRoute,
+            type: _ConvoyRouteOptionType.unverified,
+          ),
+      ];
+
+      final selected = options.length > 1
+          ? await _showConvoyRouteOptionsSheet(options: options)
+          : options.first;
+      if (!mounted || selected == null) return;
+
+      final chosenRoute = selected.route;
+      final km = chosenRoute.distanceMeters / 1000;
+      final minutes = (chosenRoute.durationSeconds / 60).round();
+      final cumDist = _buildCumulativeDist(chosenRoute.points);
       setState(() {
-        _routePoints = route.points;
-        _routeInstructions = route.instructions;
+        _routePoints = chosenRoute.points;
+        _routeInstructions = chosenRoute.instructions;
         _cumulativeDist = cumDist;
         _totalRouteDistM = cumDist.isNotEmpty ? cumDist.last : 0;
         _remainingDistM = _totalRouteDistM;
@@ -2645,8 +2669,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _isFollowingMyPosition = false;
       });
       // Zoom to fit the full route so the driver sees start→destination.
-      if (route.points.length >= 2) {
-        final bounds = LatLngBounds.fromPoints(route.points);
+      if (chosenRoute.points.length >= 2) {
+        final bounds = LatLngBounds.fromPoints(chosenRoute.points);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _mapController.fitCamera(
@@ -2740,6 +2764,183 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     } finally {
       if (mounted) setState(() => _isRouting = false);
     }
+  }
+
+  // ── Alternative route helpers ───────────────────────────────────────────
+
+  Future<RouteResult?> _tryConvoyRelaxedRoute(LatLng destination) async {
+    final origin = _myLocation;
+    if (origin == null) return null;
+    try {
+      return await _routingService.getRoute(
+        origin: origin,
+        destination: destination,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+        relaxedLegalChecks: true,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _convoyRoutesLookSimilar(RouteResult a, RouteResult b) {
+    final distanceDelta =
+        (a.distanceMeters - b.distanceMeters).abs() /
+        math.max(a.distanceMeters, 1);
+    final durationDelta =
+        (a.durationSeconds - b.durationSeconds).abs() /
+        math.max(a.durationSeconds, 1);
+    return distanceDelta < 0.04 && durationDelta < 0.08;
+  }
+
+  String _convoyRouteOptionDistanceText(
+    AppLocalizations l10n,
+    RouteResult route,
+  ) {
+    final km = route.distanceMeters / 1000;
+    final minutes = route.durationSeconds / 60;
+    return l10n.routeOptionMetrics(
+      km.toStringAsFixed(1),
+      minutes.toStringAsFixed(0),
+    );
+  }
+
+  Future<_ConvoyRouteOption?> _showConvoyRouteOptionsSheet({
+    required List<_ConvoyRouteOption> options,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    final vehicleType = UserPreferencesService.instance.vehicleType.value;
+    final vehicleName = switch (vehicleType) {
+      'A-tractor' => l10n.settingsVehicleAtractor,
+      'Moped car' => l10n.settingsVehicleMopedCar,
+      'Tractor' => l10n.settingsVehicleTractor,
+      _ => vehicleType,
+    };
+    return showModalBottomSheet<_ConvoyRouteOption>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xF0071739),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0x663AA8FF),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.alt_route,
+                      color: Color(0xFF3AA8FF),
+                      size: 28,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.routeOptionsTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 19,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...options.map((option) {
+                  final isUnverified =
+                      option.type == _ConvoyRouteOptionType.unverified;
+                  final title = isUnverified
+                      ? l10n.routeOptionUnverified
+                      : l10n.routeOptionRecommended;
+                  final subtitle = isUnverified
+                      ? l10n.routeOptionUnverifiedSubtitle(vehicleName)
+                      : l10n.routeOptionRecommendedSubtitle;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xEE0A1F63),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isUnverified
+                            ? const Color(0x88FFCC02)
+                            : const Color(0x663AA8FF),
+                      ),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isUnverified
+                            ? const Color(0x33FFCC02)
+                            : const Color(0x333AA8FF),
+                        child: Icon(
+                          isUnverified
+                              ? Icons.warning_amber_rounded
+                              : Icons.verified_rounded,
+                          color: isUnverified
+                              ? const Color(0xFFFFCC02)
+                              : const Color(0xFF3AA8FF),
+                        ),
+                      ),
+                      title: Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${_convoyRouteOptionDistanceText(l10n, option.route)}\n$subtitle',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      isThreeLine: true,
+                      trailing: Text(
+                        l10n.routeOptionChoose,
+                        style: TextStyle(
+                          color: isUnverified
+                              ? const Color(0xFFFFCC02)
+                              : const Color(0xFF3AA8FF),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onTap: () => Navigator.of(ctx).pop(option),
+                    ),
+                  );
+                }),
+                if (options.any(
+                  (o) => o.type == _ConvoyRouteOptionType.unverified,
+                ))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      l10n.routeOptionWarningFooter,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _clearConvoyRoute() {
@@ -4873,6 +5074,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       ),
     );
   }
+}
+
+enum _ConvoyRouteOptionType { recommended, unverified }
+
+class _ConvoyRouteOption {
+  const _ConvoyRouteOption({required this.route, required this.type});
+  final RouteResult route;
+  final _ConvoyRouteOptionType type;
 }
 
 class _ConvoyPoiCandidate {
