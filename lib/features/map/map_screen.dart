@@ -1319,11 +1319,7 @@ class _MapScreenState extends State<MapScreen> {
                                   sheetContext,
                                   title: l10n.convoyPoiFoodStop,
                                   searchKey: 'food',
-                                  queries: const [
-                                    'restaurant',
-                                    'fast food',
-                                    'cafe',
-                                  ],
+                                  queries: const ['restaurant', 'fast food'],
                                   icon: Icons.restaurant,
                                 ),
                               ),
@@ -4172,7 +4168,6 @@ class _MapScreenState extends State<MapScreen> {
                                             queries: const [
                                               'restaurant',
                                               'fast food',
-                                              'cafe',
                                             ],
                                             icon: Icons.restaurant,
                                           ),
