@@ -683,7 +683,11 @@ class SettingsScreen extends StatelessWidget {
                               builder: (_, price, _) {
                                 final displayPrice =
                                     (price != null && price.isNotEmpty)
-                                    ? l10n.settingsProPricePerMonth(price)
+                                    ? (SubscriptionService
+                                              .instance
+                                              .isWebCheckout
+                                          ? l10n.settingsProPricePerMonth(price)
+                                          : l10n.settingsProPriceOneTime(price))
                                     : (SubscriptionService
                                               .instance
                                               .isWebCheckout
@@ -769,7 +773,9 @@ class SettingsScreen extends StatelessWidget {
                           if (!isPro && !kIsWeb) ...[
                             const SizedBox(height: 14),
                             Text(
-                              l10n.settingsProSubscriptionNote,
+                              SubscriptionService.instance.isWebCheckout
+                                  ? l10n.settingsProSubscriptionNote
+                                  : l10n.settingsProOneTimeNote,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.35),
                                 fontSize: 11,

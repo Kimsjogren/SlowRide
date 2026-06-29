@@ -541,6 +541,14 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
+  String settingsProPriceOneTime(Object price) {
+    return '$price (engangskjøp)';
+  }
+
+  @override
+  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes din Apple ID én gang. Ingen abonnement og ingen automatisk fornyelse.';
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Personvernregler';
 
   @override
@@ -791,6 +799,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get routeOptionRecommendedSubtitle => 'Verifisert etter CruizX-regler for valgt kjøretøy.';
 
   @override
+  String get routeOptionAlternative => 'Alternativ rute';
+
+  @override
+  String get routeOptionAlternativeSubtitle => 'Lovlig rute — andre veier eller litt lengre.';
+
+  @override
   String get routeOptionUnverified => 'Usikker alternativ rute';
 
   @override
@@ -1007,6 +1021,14 @@ class AppLocalizationsNb extends AppLocalizations {
   @override
   String paywallDisclosureAndroid(Object price) {
     return 'CruizX Pro · $price/måned · fornyes automatisk. Administreres og faktureres via Stripe. Avslutt når som helst på cruizx.com eller kontakt support.';
+  }
+
+  @override
+  String get paywallPriceOneTime => '79 kr (engangskjøp)';
+
+  @override
+  String paywallDisclosureOneTime(Object price) {
+    return 'CruizX Pro · $price · engangskjøp. Belastes din Apple ID én gang. Ingen abonnement og ingen fornyelse.';
   }
 
   @override

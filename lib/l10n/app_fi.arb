@@ -213,7 +213,12 @@
   "settingsProPricePerMonth": "{price} / kuukausi",
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
-  },  "settingsPrivacyPolicyLabel": "Tietosuojakäytäntö",
+  },
+  "settingsProPriceOneTime": "{price} (kertaosto)",
+  "@settingsProPriceOneTime": {
+    "placeholders": { "price": {} }
+  },
+  "settingsProOneTimeNote": "Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä automaattista uusimista.",  "settingsPrivacyPolicyLabel": "Tietosuojakäytäntö",
   "settingsTermsOfUseLabel": "Käyttöehdot (EULA)",
   "settingsSupportLabel": "Tuki",
   "settingsLinkOpenFailed": "Linkkiä ei voitu avata juuri nyt.",
@@ -308,6 +313,8 @@
   "routeOptionsTitle": "Valitse reitti",
   "routeOptionRecommended": "Suositeltu",
   "routeOptionRecommendedSubtitle": "Varmistettu CruizX-sääntöjen mukaan valitulle ajoneuvolle.",
+  "routeOptionAlternative": "Vaihtoehtoinen reitti",
+  "routeOptionAlternativeSubtitle": "Laillinen reitti — eri teitä tai hieman pidempi.",
   "routeOptionUnverified": "Varmistamaton vaihtoehtoinen reitti",
   "routeOptionUnverifiedSubtitle": "Ei voida täysin varmistaa ajoneuvollesi {vehicleType}. Tarkista liikennemerkit ennen ajoa.",
   "@routeOptionUnverifiedSubtitle": { "placeholders": { "vehicleType": {} } },
@@ -416,7 +423,7 @@
   "paywallSubtitle": "Ei rajoituksia. Ei mainoksia. Täysi pääsy.",
   "paywallPrice": "3,49 € / kuukausi",
   "paywallUpgradeButton": "Päivitä Prohon",
-  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallDisclosureAndroid": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.",  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
+  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallDisclosureAndroid": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.",  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },  "paywallPriceOneTime": "79 kr (kertaosto)",  "paywallDisclosureOneTime": "CruizX Pro · {price} · kertaosto. Veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä uusimista.",  "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Reittejä päivässä",
   "paywallFreeRouteLimit": "4 reittiä",

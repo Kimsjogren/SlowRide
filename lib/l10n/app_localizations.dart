@@ -1137,6 +1137,18 @@ abstract class AppLocalizations {
   /// **'{price} / month'**
   String settingsProPricePerMonth(Object price);
 
+  /// No description provided for @settingsProPriceOneTime.
+  ///
+  /// In en, this message translates to:
+  /// **'{price} (one-time)'**
+  String settingsProPriceOneTime(Object price);
+
+  /// No description provided for @settingsProOneTimeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time purchase: CruizX Pro (lifetime). Payment is charged once to your Apple ID. No subscription and no auto-renewal.'**
+  String get settingsProOneTimeNote;
+
   /// No description provided for @settingsPrivacyPolicyLabel.
   ///
   /// In en, this message translates to:
@@ -1617,6 +1629,18 @@ abstract class AppLocalizations {
   /// **'Verified by CruizX rules for the selected vehicle.'**
   String get routeOptionRecommendedSubtitle;
 
+  /// No description provided for @routeOptionAlternative.
+  ///
+  /// In en, this message translates to:
+  /// **'Alternative route'**
+  String get routeOptionAlternative;
+
+  /// No description provided for @routeOptionAlternativeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal route — different roads or slightly longer.'**
+  String get routeOptionAlternativeSubtitle;
+
   /// No description provided for @routeOptionUnverified.
   ///
   /// In en, this message translates to:
@@ -1994,6 +2018,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CruizX Pro · {price}/month · auto-renewing. Managed and billed via Stripe. Cancel anytime at cruizx.com or by contacting support.'**
   String paywallDisclosureAndroid(Object price);
+
+  /// No description provided for @paywallPriceOneTime.
+  ///
+  /// In en, this message translates to:
+  /// **'79 kr (one-time)'**
+  String get paywallPriceOneTime;
+
+  /// No description provided for @paywallDisclosureOneTime.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Pro · {price} · one-time purchase. Charged once to your Apple ID. No subscription and no renewal.'**
+  String paywallDisclosureOneTime(Object price);
 
   /// No description provided for @paywallFreeLabel.
   ///

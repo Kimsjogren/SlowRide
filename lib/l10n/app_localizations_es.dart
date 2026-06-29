@@ -541,6 +541,14 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String settingsProPriceOneTime(Object price) {
+    return '$price (pago único)';
+  }
+
+  @override
+  String get settingsProOneTimeNote => 'Pago único: CruizX Pro (de por vida). El pago se carga una vez en tu Apple ID. Sin suscripción y sin renovación automática.';
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Política de privacidad';
 
   @override
@@ -791,6 +799,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeOptionRecommendedSubtitle => 'Verificada según las reglas de CruizX para el vehículo seleccionado.';
 
   @override
+  String get routeOptionAlternative => 'Ruta alternativa';
+
+  @override
+  String get routeOptionAlternativeSubtitle => 'Ruta legal: otras carreteras o un poco más larga.';
+
+  @override
   String get routeOptionUnverified => 'Ruta alternativa no verificada';
 
   @override
@@ -1007,6 +1021,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String paywallDisclosureAndroid(Object price) {
     return 'CruizX Pro · $price/mes · renovación automática. Gestionado y facturado a través de Stripe. Cancela en cualquier momento en cruizx.com o contacta con soporte.';
+  }
+
+  @override
+  String get paywallPriceOneTime => '79 kr (pago único)';
+
+  @override
+  String paywallDisclosureOneTime(Object price) {
+    return 'CruizX Pro · $price · pago único. Se cobra una vez a tu cuenta de Apple ID. Sin suscripción y sin renovación.';
   }
 
   @override

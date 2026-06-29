@@ -19,8 +19,8 @@ class SubscriptionService {
   static const int freeMaxDailyRoutes = 4;
   static const int freeMaxConvoyMembers = 2;
 
-  /// App Store Connect product ID for monthly subscription.
-  static const String _monthlyProductId = 'cruizx_pro_monthly_v2';
+  /// App Store Connect product ID for the one-time (non-consumable) Pro unlock.
+  static const String _lifetimeProductId = 'cruizx_pro_lifetime';
 
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
@@ -30,7 +30,7 @@ class SubscriptionService {
   late SharedPreferences _prefs;
   bool _initialized = false;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
-  ProductDetails? _monthlyProduct;
+  ProductDetails? _proProduct;
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
   Timer? _webSyncTimer;
@@ -296,13 +296,13 @@ class SubscriptionService {
 
   Future<void> _loadProductDetails() async {
     try {
-      final response = await _iap.queryProductDetails({_monthlyProductId});
+      final response = await _iap.queryProductDetails({_lifetimeProductId});
       if (response.productDetails.isEmpty) {
-        debugPrint('IAP product not found: $_monthlyProductId');
+        debugPrint('IAP product not found: $_lifetimeProductId');
         return;
       }
-      _monthlyProduct = response.productDetails.first;
-      localizedPrice.value = _monthlyProduct!.price;
+      _proProduct = response.productDetails.first;
+      localizedPrice.value = _proProduct!.price;
     } catch (e) {
       debugPrint('Failed to fetch IAP product details: $e');
     }
@@ -310,7 +310,7 @@ class SubscriptionService {
 
   Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
     for (final purchase in updates) {
-      if (purchase.productID != _monthlyProductId) {
+      if (purchase.productID != _lifetimeProductId) {
         continue;
       }
 
@@ -377,8 +377,8 @@ class SubscriptionService {
 
   // ── Purchase ─────────────────────────────────────────────────────────────
 
-  /// Starts native store purchase flow for monthly Pro subscription.
-  Future<bool> purchaseProMonthly() async {
+  /// Starts the native store purchase flow for the one-time Pro unlock.
+  Future<bool> purchasePro() async {
     if (kIsWeb) return false;
     if (BackendConfig.forceFree) return false;
     if (BackendConfig.forcePro) {
@@ -389,16 +389,16 @@ class SubscriptionService {
     final available = await _iap.isAvailable();
     if (!available) return false;
 
-    if (_monthlyProduct == null) {
+    if (_proProduct == null) {
       await _loadProductDetails();
-      if (_monthlyProduct == null) return false;
+      if (_proProduct == null) return false;
     }
 
     final completer = Completer<bool>();
     _purchaseCompleter = completer;
 
     final started = await _iap.buyNonConsumable(
-      purchaseParam: PurchaseParam(productDetails: _monthlyProduct!),
+      purchaseParam: PurchaseParam(productDetails: _proProduct!),
     );
     if (!started) {
       _purchaseCompleter = null;

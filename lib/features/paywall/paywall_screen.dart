@@ -93,7 +93,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _loading = true);
     try {
-      final purchased = await SubscriptionService.instance.purchaseProMonthly();
+      final purchased = await SubscriptionService.instance.purchasePro();
       if (!mounted) return;
       if (purchased) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -321,12 +321,14 @@ class _PaywallScreenState extends State<PaywallScreen> {
                       final isWebCheckout =
                           SubscriptionService.instance.isWebCheckout;
                       final priceText = (price != null && price.isNotEmpty)
-                          ? l10n.settingsProPricePerMonth(price)
+                          ? (isWebCheckout
+                                ? l10n.settingsProPricePerMonth(price)
+                                : l10n.settingsProPriceOneTime(price))
                           : (isWebCheckout
                                 ? l10n.settingsProPricePerMonth(
                                     BackendConfig.webCheckoutDisplayPrice,
                                   )
-                                : l10n.paywallPrice);
+                                : l10n.paywallPriceOneTime);
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -435,7 +437,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                     ? price
                                     : BackendConfig.webCheckoutDisplayPrice,
                               )
-                            : l10n.paywallDisclosure(price ?? '–');
+                            : l10n.paywallDisclosureOneTime(price ?? '–');
                         return Text(
                           text,
                           textAlign: TextAlign.center,

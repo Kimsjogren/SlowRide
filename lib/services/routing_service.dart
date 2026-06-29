@@ -729,7 +729,6 @@ class RoutingService {
     required String countryCode,
     required bool relaxedLegalChecks,
   }) async {
-    final baseUrl = BackendConfig.valhallaBaseUrl;
     final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
       countryCode,
       vehicleType,
@@ -755,8 +754,28 @@ class RoutingService {
       }
     }
 
-    final requestBody = jsonEncode(requestPayload);
+    final body = await _postValhallaRoute(requestPayload);
+    final trip = body['trip'] as Map<String, dynamic>?;
+    if (trip == null) {
+      throw const RoutingException(RoutingErrorCode.noRouteFound);
+    }
+    return _parseValhallaTrip(
+      trip,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+      relaxedLegalChecks: relaxedLegalChecks,
+      vehicleMaxSpeedKmh: vehicleMaxSpeedKmh,
+      isSlowVehicle: isSlowVehicle,
+    );
+  }
 
+  /// POSTs a Valhalla route request and returns the decoded JSON body.
+  /// Retries once on timeout before surfacing a provider-unavailable error.
+  Future<Map<String, dynamic>> _postValhallaRoute(
+    Map<String, dynamic> requestPayload,
+  ) async {
+    final baseUrl = BackendConfig.valhallaBaseUrl;
+    final requestBody = jsonEncode(requestPayload);
     final url = Uri.parse('$baseUrl/route');
     http.Response? response;
     for (int attempt = 0; attempt < 2; attempt++) {
@@ -776,20 +795,24 @@ class RoutingService {
       }
     }
 
-    if (response == null) {
+    if (response == null || response.statusCode != 200) {
       throw const RoutingException(RoutingErrorCode.providerUnavailable);
     }
 
-    if (response.statusCode != 200) {
-      throw const RoutingException(RoutingErrorCode.providerUnavailable);
-    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final trip = body['trip'] as Map<String, dynamic>?;
-    if (trip == null) {
-      throw const RoutingException(RoutingErrorCode.noRouteFound);
-    }
-
+  /// Parses a single Valhalla `trip` object into a [RouteResult].
+  /// Applies the same slow-vehicle legal checks as the primary route: throws
+  /// [RoutingException] when the trip uses a motorway and checks aren't relaxed.
+  RouteResult _parseValhallaTrip(
+    Map<String, dynamic> trip, {
+    required String vehicleType,
+    required String countryCode,
+    required bool relaxedLegalChecks,
+    required double vehicleMaxSpeedKmh,
+    required bool isSlowVehicle,
+  }) {
     final legs = trip['legs'] as List<dynamic>?;
     if (legs == null || legs.isEmpty) {
       throw const RoutingException(RoutingErrorCode.noRouteFound);
@@ -882,6 +905,123 @@ class RoutingService {
       );
     }
     return result;
+  }
+
+  /// Generates Waze-style alternative routes by re-routing while excluding a
+  /// point on the [primaryRoute], which forces Valhalla onto a structurally
+  /// different path. Valhalla's built-in `alternates` returns nothing on most
+  /// servers, so we derive distinct alternatives ourselves. Each candidate is
+  /// re-validated by [_parseValhallaTrip], so routes that violate slow-vehicle
+  /// legal checks (e.g. use a motorway) are dropped. Returns an empty list when
+  /// Valhalla isn't the active provider — callers fall back to the single
+  /// route from [getRoute].
+  Future<List<RouteResult>> getValhallaAlternatives({
+    required LatLng origin,
+    required LatLng destination,
+    LatLng? waypoint,
+    required String vehicleType,
+    required RouteResult primaryRoute,
+    int maxAlternatives = 2,
+  }) async {
+    if (BackendConfig.routingProvider != _providerValhalla) {
+      return const [];
+    }
+    final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
+    final country = UserPreferencesService.instance.countryCode.value;
+    final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
+      country,
+      vehicleType,
+    );
+    final isSlowVehicle = maxLegalSpeedKmh <= 45;
+
+    final basePayload = _buildValhallaRequestPayload(
+      origin: origin,
+      destination: destination,
+      waypoint: waypoint,
+      vehicleType: vehicleType,
+      userSpeedKmh: userSpeed,
+      countryCode: country,
+      language: _valhallaLanguage(),
+    );
+    if (UserPreferencesService.instance.hasStuddedTires.value) {
+      final excludePolygons = StuddedTireZones.toValhallaExcludePolygons();
+      if (excludePolygons.isNotEmpty) {
+        basePayload['exclude_polygons'] = excludePolygons;
+      }
+    }
+
+    // Always derive exclusion points from a fresh Valhalla route for the same
+    // origin/destination. If the displayed primary route came from a fallback
+    // provider, reusing its geometry here can place exclude_locations on the
+    // wrong edges and collapse alternatives back to a single option.
+    var primaryPoints = primaryRoute.points;
+    try {
+      final primaryBody = await _postValhallaRoute(basePayload);
+      final primaryTrip = primaryBody['trip'] as Map<String, dynamic>?;
+      final primaryLegs = primaryTrip?['legs'] as List<dynamic>?;
+      final primaryShape = primaryLegs != null && primaryLegs.isNotEmpty
+          ? (primaryLegs.first as Map<String, dynamic>)['shape'] as String?
+          : null;
+      if (primaryShape != null && primaryShape.isNotEmpty) {
+        primaryPoints = _decodePolyline6(primaryShape);
+      }
+    } catch (_) {
+      // Fall back to the provided primary route geometry if the direct
+      // Valhalla probe fails for any reason.
+    }
+    if (primaryPoints.length < 4) return const [];
+
+    // Spread the excluded points along the primary route. Excluding a
+    // mid-route point forces Valhalla to find a different path around it.
+    final fractions = maxAlternatives <= 1
+        ? const <double>[0.5]
+        : const <double>[0.3, 0.5, 0.7];
+
+    final results = <RouteResult>[];
+    for (final fraction in fractions) {
+      final idx = (primaryPoints.length * fraction).round().clamp(
+        1,
+        primaryPoints.length - 2,
+      );
+      // Exclude a short window of points (not just one) so Valhalla can't skirt
+      // a single edge and rejoin the same road — forces a real detour.
+      final excludeIdx = <int>{
+        (idx - 2).clamp(1, primaryPoints.length - 2),
+        idx,
+        (idx + 2).clamp(1, primaryPoints.length - 2),
+      };
+      basePayload['exclude_locations'] = [
+        for (final i in excludeIdx)
+          {'lat': primaryPoints[i].latitude, 'lon': primaryPoints[i].longitude},
+      ];
+
+      Map<String, dynamic> body;
+      try {
+        body = await _postValhallaRoute(basePayload);
+      } catch (_) {
+        continue;
+      }
+      final trip = body['trip'] as Map<String, dynamic>?;
+      if (trip == null) continue;
+      try {
+        results.add(
+          _parseValhallaTrip(
+            trip,
+            vehicleType: vehicleType,
+            countryCode: country,
+            // Alternatives are already generated with use_primary:0 and no
+            // highways/tolls, so they stay legal. Use relaxed checks here so a
+            // single brush against a bigger road doesn't drop the whole option.
+            relaxedLegalChecks: true,
+            vehicleMaxSpeedKmh: userSpeed,
+            isSlowVehicle: isSlowVehicle,
+          ),
+        );
+      } on RoutingException {
+        // Skip illegal/invalid alternate — never surface restricted roads.
+      }
+    }
+    return results;
   }
 
   /// Decode Valhalla's polyline6 format (precision 1e-6) to LatLng list.

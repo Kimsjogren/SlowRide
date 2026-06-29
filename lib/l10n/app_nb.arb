@@ -215,6 +215,11 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
+  "settingsProPriceOneTime": "{price} (engangskjøp)",
+  "@settingsProPriceOneTime": {
+    "placeholders": { "price": {} }
+  },
+  "settingsProOneTimeNote": "Engangskjøp: CruizX Pro (livstid). Betalingen belastes din Apple ID én gang. Ingen abonnement og ingen automatisk fornyelse.",
   "settingsPrivacyPolicyLabel": "Personvernregler",
   "settingsTermsOfUseLabel": "Bruksvilkår (EULA)",
   "settingsSupportLabel": "Support",
@@ -310,6 +315,8 @@
   "routeOptionsTitle": "Velg rute",
   "routeOptionRecommended": "Anbefalt",
   "routeOptionRecommendedSubtitle": "Verifisert etter CruizX-regler for valgt kjøretøy.",
+  "routeOptionAlternative": "Alternativ rute",
+  "routeOptionAlternativeSubtitle": "Lovlig rute — andre veier eller litt lengre.",
   "routeOptionUnverified": "Usikker alternativ rute",
   "routeOptionUnverifiedSubtitle": "Kan ikke verifiseres helt for din {vehicleType}. Kontroller skilting før du kjører.",
   "@routeOptionUnverifiedSubtitle": { "placeholders": { "vehicleType": {} } },
@@ -423,6 +430,9 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/måned · fornyes automatisk. Administreres og faktureres via Stripe. Avslutt når som helst på cruizx.com eller kontakt support.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
+  "paywallPriceOneTime": "79 kr (engangskjøp)",
+  "paywallDisclosureOneTime": "CruizX Pro · {price} · engangskjøp. Belastes din Apple ID én gang. Ingen abonnement og ingen fornyelse.",
+  "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Ruter per dag",

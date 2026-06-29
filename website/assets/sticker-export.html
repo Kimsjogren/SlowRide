@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&family=Nunito:ital,wght@1,800;1,900&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:#fff; }
+
+  /* 10x15 cm @ 300dpi = 1181 x 1772 px */
+  .sticker {
+    width: 1181px;
+    height: 1772px;
+    border-radius: 0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Montserrat', sans-serif;
+    background: radial-gradient(circle at 50% 30%, #1b4fd6 0%, #0a2a8c 45%, #061a55 100%);
+  }
+  .sticker::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at 50% 28%, rgba(80,150,255,0.35) 0%, transparent 55%);
+  }
+  .roads {
+    position:absolute; inset:0; opacity:0.10;
+    background-image:
+      linear-gradient(115deg, transparent 48%, #fff 49%, #fff 50%, transparent 51%),
+      linear-gradient(200deg, transparent 60%, #fff 61%, #fff 62%, transparent 63%),
+      linear-gradient(70deg, transparent 30%, #fff 31%, #fff 32%, transparent 33%);
+  }
+  .content {
+    position:relative; z-index:2; flex:1;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:flex-start;
+    gap: 50px;
+    padding: 110px 94px;
+    text-align:center;
+  }
+  .hook {
+    margin-top:25px;
+    font-size: 94px; font-weight:900; color:#fff;
+    line-height:1.12; letter-spacing:-0.02em;
+    text-shadow: 0 6px 50px rgba(0,0,0,0.4);
+  }
+  .hook .hl { color:#ff9d3d; }
+  .logo {
+    margin-top:45px;
+    width: 800px;
+    filter: drop-shadow(0 24px 88px rgba(0,0,0,0.45));
+  }
+  .bottom { display:flex; flex-direction:column; align-items:center; gap:30px; margin-top:50px; }
+  .scan {
+    font-family:'Nunito', sans-serif; font-style:italic; font-weight:900;
+    font-size:54px; color:#fff;
+    letter-spacing:-0.01em;
+    text-shadow:0 4px 24px rgba(0,0,0,0.35);
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .scan .arrow { width:96px; height:auto; margin-top:4px; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35)); }
+  .qr { background:#fff; padding:0; border-radius:0; box-shadow:0 0 60px rgba(255,255,255,0.22); line-height:0; }
+  .qr img { width:250px; height:auto; display:block; }
+  .free {
+    font-family:'Nunito', sans-serif; font-style:italic; font-weight:900;
+    font-size:54px; color:#fff; letter-spacing:-0.01em;
+    text-shadow:0 4px 24px rgba(0,0,0,0.35);
+  }
+  .free .hl { color:#ff9d3d; }
+  .types {
+    margin-top:45px;
+    font-family:'Montserrat', sans-serif; font-weight:700;
+    font-size:34px; color:#cfe0ff; letter-spacing:0.02em;
+    display:flex; align-items:center; justify-content:center; gap:24px;
+    white-space:nowrap;
+  }
+  .types .dot { color:#ff9d3d; font-weight:900; }
+</style>
+</head>
+<body>
+  <div class="sticker">
+    <div class="roads"></div>
+    <div class="content">
+      <div class="hook">CruizX tar dig <span class="hl">hem</span></div>
+      <img class="logo" src="cruizx-logo-nobg.png" alt="CruizX" />
+      <div class="bottom">
+        <div class="scan">Scanna mig</div>
+        <div class="qr">
+          <img src="qr-apple.png" alt="QR" />
+        </div>
+        <div class="free"><span class="hl">7 dagar gratis Pro</span></div>
+        <div class="types"><span class="dot">•</span> A-Traktor <span class="dot">•</span> Mopedbil <span class="dot">•</span> Traktor</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

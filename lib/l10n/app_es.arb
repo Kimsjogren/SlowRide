@@ -213,6 +213,11 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
+  "settingsProPriceOneTime": "{price} (pago único)",
+  "@settingsProPriceOneTime": {
+    "placeholders": { "price": {} }
+  },
+  "settingsProOneTimeNote": "Pago único: CruizX Pro (de por vida). El pago se carga una vez en tu Apple ID. Sin suscripción y sin renovación automática.",
   "settingsPrivacyPolicyLabel": "Política de privacidad",
   "settingsTermsOfUseLabel": "Términos de uso (EULA)",
   "settingsSupportLabel": "Soporte",
@@ -308,6 +313,8 @@
   "routeOptionsTitle": "Elegir ruta",
   "routeOptionRecommended": "Recomendada",
   "routeOptionRecommendedSubtitle": "Verificada según las reglas de CruizX para el vehículo seleccionado.",
+  "routeOptionAlternative": "Ruta alternativa",
+  "routeOptionAlternativeSubtitle": "Ruta legal: otras carreteras o un poco más larga.",
   "routeOptionUnverified": "Ruta alternativa no verificada",
   "routeOptionUnverifiedSubtitle": "No se puede verificar por completo para tu {vehicleType}. Comprueba las señales antes de conducir.",
   "@routeOptionUnverifiedSubtitle": { "placeholders": { "vehicleType": {} } },
@@ -421,6 +428,9 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/mes · renovación automática. Gestionado y facturado a través de Stripe. Cancela en cualquier momento en cruizx.com o contacta con soporte.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
+  "paywallPriceOneTime": "79 kr (pago único)",
+  "paywallDisclosureOneTime": "CruizX Pro · {price} · pago único. Se cobra una vez a tu cuenta de Apple ID. Sin suscripción y sin renovación.",
+  "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Gratis",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Rutas por día",

@@ -541,6 +541,14 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
+  String settingsProPriceOneTime(Object price) {
+    return '$price (kertaosto)';
+  }
+
+  @override
+  String get settingsProOneTimeNote => 'Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä automaattista uusimista.';
+
+  @override
   String get settingsPrivacyPolicyLabel => 'Tietosuojakäytäntö';
 
   @override
@@ -791,6 +799,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get routeOptionRecommendedSubtitle => 'Varmistettu CruizX-sääntöjen mukaan valitulle ajoneuvolle.';
 
   @override
+  String get routeOptionAlternative => 'Vaihtoehtoinen reitti';
+
+  @override
+  String get routeOptionAlternativeSubtitle => 'Laillinen reitti — eri teitä tai hieman pidempi.';
+
+  @override
   String get routeOptionUnverified => 'Varmistamaton vaihtoehtoinen reitti';
 
   @override
@@ -1007,6 +1021,14 @@ class AppLocalizationsFi extends AppLocalizations {
   @override
   String paywallDisclosureAndroid(Object price) {
     return 'CruizX Pro · $price/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.';
+  }
+
+  @override
+  String get paywallPriceOneTime => '79 kr (kertaosto)';
+
+  @override
+  String paywallDisclosureOneTime(Object price) {
+    return 'CruizX Pro · $price · kertaosto. Veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä uusimista.';
   }
 
   @override

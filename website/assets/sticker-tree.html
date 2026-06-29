@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Nunito:ital,wght@1,900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: transparent;
+  }
+
+  .stage {
+    position: relative;
+    width: 1120px;
+    height: 1717px;
+    background: transparent;
+  }
+
+  svg.tree {
+    position: absolute;
+    inset: 0;
+    width: 1120px;
+    height: 1717px;
+    display: block;
+    filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.35));
+  }
+
+  /* ── Content overlay ─────────────────────────────── */
+  .content {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .item {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .logo {
+    top: 30%;
+    width: 360px;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+  }
+
+  .scan {
+    top: 49%;
+    font-family: 'Nunito', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 46px;
+    color: #fff;
+    text-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .qr {
+    top: 54%;
+    background: #fff;
+    padding: 16px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  }
+  .qr img { width: 236px; height: 236px; display: block; }
+
+  .free {
+    top: 75.5%;
+    font-family: 'Nunito', sans-serif;
+    font-style: italic;
+    font-weight: 900;
+    font-size: 42px;
+    color: #fff;
+    white-space: nowrap;
+    text-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  }
+  .free .hl { color: #ff9d3d; }
+
+  .types {
+    top: 81%;
+    width: 66%;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 0.3px;
+    color: #cfe0ff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .types .dot { color: #ff9d3d; padding: 0 6px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <svg class="tree" viewBox="0 0 600 920" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="treeFill" cx="50%" cy="40%" r="72%">
+          <stop offset="0%" stop-color="#1b4fd6" />
+          <stop offset="48%" stop-color="#0a2a8c" />
+          <stop offset="100%" stop-color="#061a55" />
+        </radialGradient>
+        <linearGradient id="trunkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7a4a1f" />
+          <stop offset="100%" stop-color="#4d2e12" />
+        </linearGradient>
+      </defs>
+
+      <!-- trunk -->
+      <rect x="262" y="800" width="76" height="96" rx="8" fill="url(#trunkFill)" />
+
+      <!-- classic 3-tier fir tree (Wunderbaum-style) -->
+      <path d="M 300 20
+               Q 348 110 388 195
+               Q 408 240 330 256
+               Q 410 305 470 415
+               Q 495 470 366 488
+               Q 480 555 545 690
+               Q 565 765 425 800
+               L 340 800 L 340 892 L 260 892 L 260 800 L 175 800
+               Q 35 765 55 690
+               Q 120 555 234 488
+               Q 105 470 130 415
+               Q 190 305 270 256
+               Q 192 240 212 195
+               Q 252 110 300 20 Z"
+            fill="url(#treeFill)"
+            stroke="#ffffff"
+            stroke-width="10"
+            stroke-opacity="0.9"
+            stroke-linejoin="round" />
+
+      <!-- hanging hole -->
+      <circle cx="300" cy="92" r="19" fill="none" stroke="#ffffff" stroke-width="9" stroke-opacity="0.9" />
+    </svg>
+
+    <div class="content">
+      <img class="item logo" src="cruizx-logo-nobg.png" alt="CruizX" />
+      <div class="item scan">Scanna mig</div>
+      <div class="item qr"><img src="qr-apple.png" alt="QR" /></div>
+      <div class="item free"><span class="hl">7 dagar gratis Pro</span></div>
+      <div class="item types">
+        <span class="dot">•</span>A-Traktor<span class="dot">•</span>Mopedbil<span class="dot">•</span>Traktor
+      </div>
+    </div>
+  </div>
+</body>
+</html>

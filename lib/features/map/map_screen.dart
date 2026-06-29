@@ -61,6 +61,8 @@ class _MapScreenState extends State<MapScreen> {
   bool _isFollowing = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
+  // When true, the map style follows time of day; a manual toggle disables it.
+  bool _autoMapTheme = true;
   LatLng? _destination;
   String _destinationLabel = '';
   LatLng? _routeStop;
@@ -138,6 +140,8 @@ class _MapScreenState extends State<MapScreen> {
       _onExternalNavigationRequest,
     );
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    // Auto-pick a dark map at night and a light map during the day.
+    _useDarkMap = _isNightTime();
     // Lazy-load prefs for speed calibration (fire-and-forget).
     SpeedCalibrationService.instance.initialize();
     FavoritePlacesService.instance.initialize();
@@ -149,7 +153,71 @@ class _MapScreenState extends State<MapScreen> {
     _alertsTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadAlerts();
       if (mounted) _loadChargingStations();
+      if (mounted && _autoMapTheme) {
+        final night = _isNightTime();
+        if (night != _useDarkMap) setState(() => _useDarkMap = night);
+      }
     });
+  }
+
+  // Dark map between sunset and sunrise at the current location. Falls back to
+  // 19:00–06:59 when there's no GPS fix yet or during polar day/night.
+  bool _isNightTime() {
+    final now = DateTime.now();
+    final loc = _currentLocation;
+    if (loc != null) {
+      final sun = _sunriseSunset(now, loc.latitude, loc.longitude);
+      if (sun != null) {
+        final nowUtc = now.toUtc();
+        return nowUtc.isBefore(sun.$1) || nowUtc.isAfter(sun.$2);
+      }
+    }
+    final hour = now.hour;
+    return hour < 7 || hour >= 19;
+  }
+
+  // Sunrise/sunset (UTC) via the standard sunrise equation. Returns null at
+  // high latitudes when the sun never rises/sets on the given day.
+  (DateTime, DateTime)? _sunriseSunset(DateTime date, double lat, double lng) {
+    const deg = math.pi / 180;
+    const zenith = 90.833 * deg;
+    final n = date.difference(DateTime(date.year, 1, 1)).inDays + 1;
+    final lngHour = lng / 15.0;
+    final sinLat = math.sin(lat * deg);
+    final cosLat = math.cos(lat * deg);
+
+    DateTime? compute(bool rise) {
+      final t = n + ((rise ? 6 : 18) - lngHour) / 24;
+      final m = 0.9856 * t - 3.289;
+      var l =
+          m +
+          1.916 * math.sin(m * deg) +
+          0.020 * math.sin(2 * m * deg) +
+          282.634;
+      l %= 360;
+      var ra = math.atan(0.91764 * math.tan(l * deg)) / deg;
+      ra %= 360;
+      ra += ((l / 90).floor() - (ra / 90).floor()) * 90;
+      ra /= 15;
+      final sinDec = 0.39782 * math.sin(l * deg);
+      final cosDec = math.cos(math.asin(sinDec));
+      final cosH = (math.cos(zenith) - sinDec * sinLat) / (cosDec * cosLat);
+      if (cosH > 1 || cosH < -1) return null; // sun never rises/sets
+      final h =
+          (rise ? 360 - math.acos(cosH) / deg : math.acos(cosH) / deg) / 15;
+      final ut = (h + ra - 0.06571 * t - 6.622 - lngHour) % 24;
+      final mins = (((ut + 24) % 24) * 60).round();
+      return DateTime.utc(
+        date.year,
+        date.month,
+        date.day,
+      ).add(Duration(minutes: mins));
+    }
+
+    final sunrise = compute(true);
+    final sunset = compute(false);
+    if (sunrise == null || sunset == null) return null;
+    return (sunrise, sunset);
   }
 
   void _onExternalNavigationRequest() {
@@ -1884,14 +1952,34 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  bool _routesLookSimilar(RouteResult a, RouteResult b) {
-    final distanceDelta =
-        (a.distanceMeters - b.distanceMeters).abs() /
-        math.max(a.distanceMeters, 1);
-    final durationDelta =
-        (a.durationSeconds - b.durationSeconds).abs() /
-        math.max(a.durationSeconds, 1);
-    return distanceDelta < 0.04 && durationDelta < 0.08;
+  // Coarse geometry fingerprint: the set of ~100 m grid cells the route
+  // passes through. Lets us compare the actual shape of two routes instead of
+  // just their length.
+  Set<String> _routeCells(RouteResult route) {
+    const cell = 0.0009; // ~100 m
+    final cells = <String>{};
+    for (final p in route.points) {
+      final latKey = (p.latitude / cell).round();
+      final lngKey = (p.longitude / cell).round();
+      cells.add('$latKey:$lngKey');
+    }
+    return cells;
+  }
+
+  // Two routes are "the same" when most of the shorter route's path coincides
+  // with the other. Geometry-based so genuinely different roads stay distinct
+  // even when the total distance is nearly identical (Waze-style alternates).
+  bool _routesOverlapHeavily(RouteResult a, RouteResult b) {
+    final ca = _routeCells(a);
+    final cb = _routeCells(b);
+    if (ca.isEmpty || cb.isEmpty) return false;
+    final smaller = ca.length <= cb.length ? ca : cb;
+    final larger = identical(smaller, ca) ? cb : ca;
+    var intersection = 0;
+    for (final c in smaller) {
+      if (larger.contains(c)) intersection++;
+    }
+    return intersection / smaller.length > 0.9;
   }
 
   Future<List<_RouteOption>> _buildRouteOptions({
@@ -1904,13 +1992,43 @@ class _MapScreenState extends State<MapScreen> {
         _RouteOption(route: strictRoute, type: _RouteOptionType.recommended),
     ];
 
+    // Waze-style: always surface genuinely different legal routes when they
+    // exist. We force alternatives by re-routing around the primary route and
+    // dedupe by geometry so only distinct paths are shown. Cap at 2.
+    final origin = _currentLocation;
+    if (origin != null && strictRoute != null) {
+      final alternatives = await _routingService.getValhallaAlternatives(
+        origin: origin,
+        destination: destination,
+        vehicleType: vehicleType,
+        primaryRoute: strictRoute,
+      );
+      for (final alt in alternatives) {
+        if (options
+                .where((o) => o.type == _RouteOptionType.alternative)
+                .length >=
+            2) {
+          break;
+        }
+        final isDuplicate = options.any(
+          (option) => _routesOverlapHeavily(option.route, alt),
+        );
+        if (!isDuplicate) {
+          options.add(
+            _RouteOption(route: alt, type: _RouteOptionType.alternative),
+          );
+        }
+      }
+    }
+
     final relaxedRoute = await _tryRelaxedRoute(
       destination: destination,
       vehicleType: vehicleType,
     );
     if (relaxedRoute != null &&
-        (strictRoute == null ||
-            !_routesLookSimilar(strictRoute, relaxedRoute))) {
+        options.every(
+          (option) => !_routesOverlapHeavily(option.route, relaxedRoute),
+        )) {
       options.add(
         _RouteOption(route: relaxedRoute, type: _RouteOptionType.unverified),
       );
@@ -1982,12 +2100,31 @@ class _MapScreenState extends State<MapScreen> {
                 ...options.map((option) {
                   final isUnverified =
                       option.type == _RouteOptionType.unverified;
-                  final title = isUnverified
-                      ? l10n.routeOptionUnverified
-                      : l10n.routeOptionRecommended;
-                  final subtitle = isUnverified
-                      ? l10n.routeOptionUnverifiedSubtitle(vehicleName)
-                      : l10n.routeOptionRecommendedSubtitle;
+                  final accent = isUnverified
+                      ? const Color(0xFFFFCC02)
+                      : const Color(0xFF3AA8FF);
+                  final String title;
+                  final String subtitle;
+                  final IconData icon;
+                  switch (option.type) {
+                    case _RouteOptionType.recommended:
+                      title = l10n.routeOptionRecommended;
+                      subtitle = l10n.routeOptionRecommendedSubtitle;
+                      icon = Icons.verified_rounded;
+                      break;
+                    case _RouteOptionType.alternative:
+                      title = l10n.routeOptionAlternative;
+                      subtitle = l10n.routeOptionAlternativeSubtitle;
+                      icon = Icons.alt_route_rounded;
+                      break;
+                    case _RouteOptionType.unverified:
+                      title = l10n.routeOptionUnverified;
+                      subtitle = l10n.routeOptionUnverifiedSubtitle(
+                        vehicleName,
+                      );
+                      icon = Icons.warning_amber_rounded;
+                      break;
+                  }
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
@@ -2004,14 +2141,7 @@ class _MapScreenState extends State<MapScreen> {
                         backgroundColor: isUnverified
                             ? const Color(0x33FFCC02)
                             : const Color(0x333AA8FF),
-                        child: Icon(
-                          isUnverified
-                              ? Icons.warning_amber_rounded
-                              : Icons.verified_rounded,
-                          color: isUnverified
-                              ? const Color(0xFFFFCC02)
-                              : const Color(0xFF3AA8FF),
-                        ),
+                        child: Icon(icon, color: accent),
                       ),
                       title: Text(
                         title,
@@ -2028,9 +2158,7 @@ class _MapScreenState extends State<MapScreen> {
                       trailing: Text(
                         l10n.routeOptionChoose,
                         style: TextStyle(
-                          color: isUnverified
-                              ? const Color(0xFFFFCC02)
-                              : const Color(0xFF3AA8FF),
+                          color: accent,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -3949,7 +4077,10 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 8),
                 // Light / Dark map style toggle
                 _mapCircleButton(
-                  onTap: () => setState(() => _useDarkMap = !_useDarkMap),
+                  onTap: () => setState(() {
+                    _autoMapTheme = false;
+                    _useDarkMap = !_useDarkMap;
+                  }),
                   child: Icon(
                     _useDarkMap ? Icons.dark_mode : Icons.light_mode,
                     color: Colors.white70,
@@ -4804,7 +4935,7 @@ class _FavPreset {
   const _FavPreset(this.key, this.icon, this.label);
 }
 
-enum _RouteOptionType { recommended, unverified }
+enum _RouteOptionType { recommended, alternative, unverified }
 
 class _RouteOption {
   const _RouteOption({required this.route, required this.type});

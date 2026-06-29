@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CruizX – Klistermärken</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1c1c1e;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Montserrat', sans-serif;
+      gap: 48px;
+      padding: 48px 24px;
+    }
+
+    .frame {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .label {
+      color: #8e8e93;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* 10x15 cm @ ~96dpi → 378 x 567 */
+    .sticker {
+      width: 378px;
+      height: 567px;
+      border-radius: 22px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+
+    /* ============ CONCEPT A — Mörkblå premium ============ */
+    .a {
+      background:
+        radial-gradient(circle at 50% 30%, #1b4fd6 0%, #0a2a8c 45%, #061a55 100%);
+    }
+
+    .a::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 28%, rgba(80,150,255,0.35) 0%, transparent 55%);
+      pointer-events: none;
+    }
+
+    /* subtila kartlinjer */
+    .a .roads {
+      position: absolute;
+      inset: 0;
+      opacity: 0.10;
+      background-image:
+        linear-gradient(115deg, transparent 48%, #fff 49%, #fff 50%, transparent 51%),
+        linear-gradient(200deg, transparent 60%, #fff 61%, #fff 62%, transparent 63%),
+        linear-gradient(70deg, transparent 30%, #fff 31%, #fff 32%, transparent 33%);
+      background-size: 100% 100%;
+      pointer-events: none;
+    }
+
+    .a-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 46px 30px 34px;
+      text-align: center;
+    }
+
+    .a-hook {
+      font-size: 30px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.4);
+    }
+    .a-hook .hl { color: #ff9d3d; }
+
+    .a-logo {
+      width: 230px;
+      filter: drop-shadow(0 8px 28px rgba(0,0,0,0.45));
+    }
+
+    .a-bottom { display:flex; flex-direction:column; align-items:center; gap:12px; }
+
+    .a-scan {
+      font-size: 12px;
+      font-weight: 700;
+      color: #cde0ff;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .qr {
+      background:#fff;
+      padding:9px;
+      border-radius:12px;
+      box-shadow: 0 0 24px rgba(255,255,255,0.25);
+    }
+    .qr img { width:96px; height:96px; display:block; }
+
+    .a-url { font-size:13px; font-weight:700; color:#9fc0ff; letter-spacing:0.08em; }
+
+    /* ============ CONCEPT B — Nattsvart / fokus ============ */
+    .b {
+      background:
+        radial-gradient(circle at 50% 38%, #14233f 0%, #0b1626 50%, #05080f 100%);
+    }
+    .b::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      background: radial-gradient(circle at 50% 40%, rgba(40,110,255,0.20) 0%, transparent 55%);
+      pointer-events:none;
+    }
+    .b::after {
+      content:'';
+      position:absolute;
+      bottom:-70px; left:50%; transform:translateX(-50%);
+      width:300px; height:300px;
+      background: radial-gradient(circle, rgba(40,110,255,0.18) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    .b-content {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 48px 30px 34px;
+      text-align: center;
+    }
+
+    .b-hook {
+      font-size: 27px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+    }
+    .b-hook .hl { color: #4d9bff; }
+
+    .b-sub {
+      font-size: 14px;
+      font-weight: 600;
+      color: #8fa6c9;
+      margin-top: 14px;
+      line-height: 1.55;
+    }
+
+    .b-logo {
+      width: 215px;
+      filter: drop-shadow(0 10px 28px rgba(0,0,0,0.55));
+    }
+
+    .b-bottom { display:flex; flex-direction:column; align-items:center; gap:11px; }
+
+    .b-scan {
+      font-size: 12px;
+      font-weight: 700;
+      color: #9fc0ff;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .qr-b {
+      background:#fff;
+      padding:9px;
+      border-radius:12px;
+      box-shadow: 0 0 24px rgba(40,110,255,0.25);
+    }
+    .qr-b img { width:96px; height:96px; display:block; }
+
+    .b-url { font-size:13px; font-weight:800; color:#7fa8ff; letter-spacing:0.06em; }
+
+    /* Print */
+    .print-bar {
+      width:100%;
+      display:flex;
+      justify-content:center;
+      gap:16px;
+      margin-bottom: 8px;
+    }
+    .print-btn {
+      background:#1b4fd6; color:#fff; border:none;
+      padding:13px 30px; border-radius:10px;
+      font-size:14px; font-weight:700; cursor:pointer;
+      letter-spacing:0.04em; font-family:'Montserrat',sans-serif;
+    }
+    .print-btn:hover { background:#143ba8; }
+
+    @media print {
+      body { background:#fff; gap:20px; padding:0; }
+      .label, .print-bar { display:none; }
+      .sticker { box-shadow:none; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="print-bar">
+    <button class="print-btn" onclick="window.print()">🖨️ Skriv ut</button>
+  </div>
+
+  <!-- CONCEPT A -->
+  <div class="frame">
+    <div class="label">Koncept A — Mörkblå premium</div>
+    <div class="sticker a">
+      <div class="roads"></div>
+      <div class="a-content">
+        <div class="a-hook">Andra appar tar <span class="hl">motorvägen.</span><br>CruizX tar dig <span class="hl">hem.</span></div>
+        <img class="a-logo" src="cruizx-logo-nobg.png" alt="CruizX" />
+        <div class="a-bottom">
+          <div class="a-scan">Skanna · ladda ner gratis</div>
+          <div class="qr">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=https://apple.co/4uSQbpG&margin=0" alt="QR" />
+          </div>
+          <div class="a-url">cruizx.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONCEPT B -->
+  <div class="frame">
+    <div class="label">Koncept B — Nattsvart &amp; fokus</div>
+    <div class="sticker b">
+      <div class="b-content">
+        <div>
+          <div class="b-hook">Andra appar tar<br><span class="hl">motorvägen.</span><br>CruizX tar dig hem.</div>
+          <div class="b-sub">Byggd för A-traktor, mopedbil &amp; traktor</div>
+        </div>
+        <img class="b-logo" src="cruizx-logo-nobg.png" alt="CruizX" />
+        <div class="b-bottom">
+          <div class="b-scan">Skanna · ladda ner gratis</div>
+          <div class="qr-b">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=https://apple.co/4uSQbpG&margin=0" alt="QR" />
+          </div>
+          <div class="b-url">cruizx.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
