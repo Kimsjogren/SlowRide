@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Loading preferences...",
   "splashFinalizingStartup": "Finalizing startup...",
   "splashReady": "Ready",
-  "splashVersionLine": "v1.0.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.0.8 | CruizX by KimTechTool",
   "alertsTitle": "Community Alerts",
   "alertsSubtitle": "Report and view road hazards, checks, and road conditions.",
   "convoyRequiresSignInTitle": "Convoy requires sign in",
@@ -215,7 +215,7 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
-  "settingsProPriceOneTime": "{price} (one-time)",
+  "settingsProPriceOneTime": "{price}",
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },
@@ -429,7 +429,7 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/month · auto-renewing. Managed and billed via Stripe. Cancel anytime at cruizx.com or by contacting support.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
-  "paywallPriceOneTime": "79 kr (one-time)",
+  "paywallPriceOneTime": "79 kr",
   "paywallDisclosureOneTime": "CruizX Pro · {price} · one-time purchase. Charged once to your Apple ID. No subscription and no renewal.",
   "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Laddar inställningar...",
   "splashFinalizingStartup": "Slutför uppstart...",
   "splashReady": "Klar",
-  "splashVersionLine": "v1.0.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.0.8 | CruizX by KimTechTool",
   "alertsTitle": "Community-varningar",
   "alertsSubtitle": "Rapportera och visa vägfaror, kontroller och vägstatus.",
   "convoyRequiresSignInTitle": "Konvoj kräver inloggning",
@@ -215,7 +215,7 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
-  "settingsProPriceOneTime": "{price} (engångs)",
+  "settingsProPriceOneTime": "{price}",
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },
@@ -430,7 +430,7 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/månad · förnyas automatiskt. Hanteras och faktureras via Stripe. Avsluta när som helst på cruizx.com eller kontakta support.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
-  "paywallPriceOneTime": "79 kr (engångs)",
+  "paywallPriceOneTime": "79 kr",
   "paywallDisclosureOneTime": "CruizX Pro · {price} · engångsköp. Debiteras ditt Apple ID en gång. Ingen prenumeration och ingen förnyelse.",
   "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",

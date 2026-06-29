@@ -180,7 +180,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.0.7 | CruizX by KimTechTool'**
+  /// **'v1.0.8 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @alertsTitle.
@@ -1140,7 +1140,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProPriceOneTime.
   ///
   /// In en, this message translates to:
-  /// **'{price} (one-time)'**
+  /// **'{price}'**
   String settingsProPriceOneTime(Object price);
 
   /// No description provided for @settingsProOneTimeNote.
@@ -2022,7 +2022,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPriceOneTime.
   ///
   /// In en, this message translates to:
-  /// **'79 kr (one-time)'**
+  /// **'79 kr'**
   String get paywallPriceOneTime;
 
   /// No description provided for @paywallDisclosureOneTime.

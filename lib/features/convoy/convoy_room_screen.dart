@@ -80,6 +80,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Timer? _pinRefreshTimer;
   Timer? _locationPollTimer;
   Timer? _alertsTimer;
+  Timer? _themeTimer;
   List<ConvoyMemberLocation> _memberLocations = [];
   List<AlertModel> _alerts = const [];
   AlertModel? _nearbyAlert;
@@ -94,6 +95,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isFollowingMyPosition = true;
   bool _use3DMap = true;
   bool _useDarkMap = true;
+  // When true, the map style follows time of day; a manual toggle disables it.
+  bool _autoMapTheme = true;
   String? _myUserId;
   String _destinationLabel = '';
 
@@ -194,6 +197,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _myUserId = AuthService.instance.userId.value;
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     ConvoyFavoritePlacesService.instance.initialize();
+    // Auto-pick a dark map at night and a light map during the day.
+    _useDarkMap = _isNightTime();
+    _themeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _autoMapTheme) {
+        final night = _isNightTime();
+        if (night != _useDarkMap) setState(() => _useDarkMap = night);
+      }
+    });
     // Delay GPS request until after first frame (avoids InheritedWidget issue)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startLocationSync();
@@ -384,6 +395,66 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       return 7;
     }
     return null;
+  }
+
+  // Dark map between sunset and sunrise at the current location. Falls back to
+  // 19:00–06:59 when there's no GPS fix yet or during polar day/night.
+  bool _isNightTime() {
+    final now = DateTime.now();
+    final loc = _myLocation;
+    if (loc != null) {
+      final sun = _sunriseSunset(now, loc.latitude, loc.longitude);
+      if (sun != null) {
+        final nowUtc = now.toUtc();
+        return nowUtc.isBefore(sun.$1) || nowUtc.isAfter(sun.$2);
+      }
+    }
+    final hour = now.hour;
+    return hour < 7 || hour >= 19;
+  }
+
+  // Sunrise/sunset (UTC) via the standard sunrise equation. Returns null at
+  // high latitudes when the sun never rises/sets on the given day.
+  (DateTime, DateTime)? _sunriseSunset(DateTime date, double lat, double lng) {
+    const deg = math.pi / 180;
+    const zenith = 90.833 * deg;
+    final n = date.difference(DateTime(date.year, 1, 1)).inDays + 1;
+    final lngHour = lng / 15.0;
+    final sinLat = math.sin(lat * deg);
+    final cosLat = math.cos(lat * deg);
+
+    DateTime? compute(bool rise) {
+      final t = n + ((rise ? 6 : 18) - lngHour) / 24;
+      final m = 0.9856 * t - 3.289;
+      var l =
+          m +
+          1.916 * math.sin(m * deg) +
+          0.020 * math.sin(2 * m * deg) +
+          282.634;
+      l %= 360;
+      var ra = math.atan(0.91764 * math.tan(l * deg)) / deg;
+      ra %= 360;
+      ra += ((l / 90).floor() - (ra / 90).floor()) * 90;
+      ra /= 15;
+      final sinDec = 0.39782 * math.sin(l * deg);
+      final cosDec = math.cos(math.asin(sinDec));
+      final cosH = (math.cos(zenith) - sinDec * sinLat) / (cosDec * cosLat);
+      if (cosH > 1 || cosH < -1) return null; // sun never rises/sets
+      final h =
+          (rise ? 360 - math.acos(cosH) / deg : math.acos(cosH) / deg) / 15;
+      final ut = (h + ra - 0.06571 * t - 6.622 - lngHour) % 24;
+      final mins = (((ut + 24) % 24) * 60).round();
+      return DateTime.utc(
+        date.year,
+        date.month,
+        date.day,
+      ).add(Duration(minutes: mins));
+    }
+
+    final sunrise = compute(true);
+    final sunset = compute(false);
+    if (sunrise == null || sunset == null) return null;
+    return (sunrise, sunset);
   }
 
   Future<void> _startLocationSync() async {
@@ -671,6 +742,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
+    _themeTimer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _speedNotifier.dispose();
@@ -2626,22 +2698,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       );
       if (!mounted) return;
 
-      // Build route options — strict + optional relaxed alternative.
-      final relaxedRoute = await _tryConvoyRelaxedRoute(destination);
+      // Build route options — recommended + Valhalla alternatives + optional relaxed fallback.
+      final options = await _buildConvoyRouteOptions(
+        destination: destination,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+        strictRoute: route,
+      );
       if (!mounted) return;
-
-      final options = [
-        _ConvoyRouteOption(
-          route: route,
-          type: _ConvoyRouteOptionType.recommended,
-        ),
-        if (relaxedRoute != null &&
-            !_convoyRoutesLookSimilar(route, relaxedRoute))
-          _ConvoyRouteOption(
-            route: relaxedRoute,
-            type: _ConvoyRouteOptionType.unverified,
-          ),
-      ];
 
       final selected = options.length > 1
           ? await _showConvoyRouteOptionsSheet(options: options)
@@ -2783,6 +2846,36 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     }
   }
 
+  // Coarse geometry fingerprint: the set of ~100 m grid cells the route
+  // passes through. Lets us compare the actual shape of two routes instead of
+  // just their length.
+  Set<String> _routeCells(RouteResult route) {
+    const cell = 0.0009; // ~100 m
+    final cells = <String>{};
+    for (final p in route.points) {
+      final latKey = (p.latitude / cell).round();
+      final lngKey = (p.longitude / cell).round();
+      cells.add('$latKey:$lngKey');
+    }
+    return cells;
+  }
+
+  // Two routes are "the same" when most of the shorter route's path coincides
+  // with the other. Geometry-based so genuinely different roads stay distinct
+  // even when the total distance is nearly identical (Waze-style alternates).
+  bool _convoyRoutesOverlapHeavily(RouteResult a, RouteResult b) {
+    final ca = _routeCells(a);
+    final cb = _routeCells(b);
+    if (ca.isEmpty || cb.isEmpty) return false;
+    final smaller = ca.length <= cb.length ? ca : cb;
+    final larger = identical(smaller, ca) ? cb : ca;
+    var intersection = 0;
+    for (final c in smaller) {
+      if (larger.contains(c)) intersection++;
+    }
+    return intersection / smaller.length > 0.9;
+  }
+
   bool _convoyRoutesLookSimilar(RouteResult a, RouteResult b) {
     final distanceDelta =
         (a.distanceMeters - b.distanceMeters).abs() /
@@ -2791,6 +2884,67 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         (a.durationSeconds - b.durationSeconds).abs() /
         math.max(a.durationSeconds, 1);
     return distanceDelta < 0.04 && durationDelta < 0.08;
+  }
+
+  Future<List<_ConvoyRouteOption>> _buildConvoyRouteOptions({
+    required LatLng destination,
+    required String vehicleType,
+    RouteResult? strictRoute,
+  }) async {
+    final options = <_ConvoyRouteOption>[
+      if (strictRoute != null)
+        _ConvoyRouteOption(
+          route: strictRoute,
+          type: _ConvoyRouteOptionType.recommended,
+        ),
+    ];
+
+    // Waze-style: always surface genuinely different legal routes when they
+    // exist. We force alternatives by re-routing around the primary route and
+    // dedupe by geometry so only distinct paths are shown. Cap at 2.
+    final origin = _myLocation;
+    if (origin != null && strictRoute != null) {
+      final alternatives = await _routingService.getValhallaAlternatives(
+        origin: origin,
+        destination: destination,
+        vehicleType: vehicleType,
+        primaryRoute: strictRoute,
+      );
+      for (final alt in alternatives) {
+        if (options
+                .where((o) => o.type == _ConvoyRouteOptionType.alternative)
+                .length >=
+            2) {
+          break;
+        }
+        final isDuplicate = options.any(
+          (option) => _convoyRoutesOverlapHeavily(option.route, alt),
+        );
+        if (!isDuplicate) {
+          options.add(
+            _ConvoyRouteOption(
+              route: alt,
+              type: _ConvoyRouteOptionType.alternative,
+            ),
+          );
+        }
+      }
+    }
+
+    final relaxedRoute = await _tryConvoyRelaxedRoute(destination);
+    if (relaxedRoute != null &&
+        options.every(
+          (option) => !_convoyRoutesOverlapHeavily(option.route, relaxedRoute),
+        )) {
+      options.add(
+        _ConvoyRouteOption(
+          route: relaxedRoute,
+          type: _ConvoyRouteOptionType.unverified,
+        ),
+      );
+    }
+
+    return options;
   }
 
   String _convoyRouteOptionDistanceText(
@@ -2865,36 +3019,46 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 ...options.map((option) {
                   final isUnverified =
                       option.type == _ConvoyRouteOptionType.unverified;
-                  final title = isUnverified
-                      ? l10n.routeOptionUnverified
-                      : l10n.routeOptionRecommended;
-                  final subtitle = isUnverified
-                      ? l10n.routeOptionUnverifiedSubtitle(vehicleName)
-                      : l10n.routeOptionRecommendedSubtitle;
+                  final accent = isUnverified
+                      ? const Color(0xFFFFCC02)
+                      : const Color(0xFF3AA8FF);
+                  final String title;
+                  final String subtitle;
+                  final IconData icon;
+                  switch (option.type) {
+                    case _ConvoyRouteOptionType.recommended:
+                      title = l10n.routeOptionRecommended;
+                      subtitle = l10n.routeOptionRecommendedSubtitle;
+                      icon = Icons.verified_rounded;
+                      break;
+                    case _ConvoyRouteOptionType.alternative:
+                      title = l10n.routeOptionAlternative;
+                      subtitle = l10n.routeOptionAlternativeSubtitle;
+                      icon = Icons.alt_route_rounded;
+                      break;
+                    case _ConvoyRouteOptionType.unverified:
+                      title = l10n.routeOptionUnverified;
+                      subtitle = l10n.routeOptionUnverifiedSubtitle(
+                        vehicleName,
+                      );
+                      icon = Icons.warning_amber_rounded;
+                      break;
+                  }
                   return Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     decoration: BoxDecoration(
                       color: const Color(0xEE0A1F63),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isUnverified
-                            ? const Color(0x88FFCC02)
-                            : const Color(0x663AA8FF),
+                        color: accent.withAlpha((accent.alpha * 0.4).toInt()),
                       ),
                     ),
                     child: ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: isUnverified
-                            ? const Color(0x33FFCC02)
-                            : const Color(0x333AA8FF),
-                        child: Icon(
-                          isUnverified
-                              ? Icons.warning_amber_rounded
-                              : Icons.verified_rounded,
-                          color: isUnverified
-                              ? const Color(0xFFFFCC02)
-                              : const Color(0xFF3AA8FF),
+                        backgroundColor: accent.withAlpha(
+                          (accent.alpha * 0.2).toInt(),
                         ),
+                        child: Icon(icon, color: accent),
                       ),
                       title: Text(
                         title,
@@ -2911,9 +3075,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                       trailing: Text(
                         l10n.routeOptionChoose,
                         style: TextStyle(
-                          color: isUnverified
-                              ? const Color(0xFFFFCC02)
-                              : const Color(0xFF3AA8FF),
+                          color: accent,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -4892,7 +5054,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 // Light / Dark map style toggle
                                 _convoyCircleButton(
                                   onTap: () {
-                                    setState(() => _useDarkMap = !_useDarkMap);
+                                    setState(() {
+                                      _useDarkMap = !_useDarkMap;
+                                      _autoMapTheme = false;
+                                    });
                                   },
                                   child: Icon(
                                     _useDarkMap
@@ -5076,7 +5241,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 }
 
-enum _ConvoyRouteOptionType { recommended, unverified }
+enum _ConvoyRouteOptionType { recommended, alternative, unverified }
 
 class _ConvoyRouteOption {
   const _ConvoyRouteOption({required this.route, required this.type});

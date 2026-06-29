@@ -45,7 +45,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.0.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.8 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Fællesskabsadvarsler';

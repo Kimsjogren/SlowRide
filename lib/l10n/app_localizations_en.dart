@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.0.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.0.8 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Community Alerts';
@@ -542,7 +542,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsProPriceOneTime(Object price) {
-    return '$price (one-time)';
+    return '$price';
   }
 
   @override
@@ -1024,7 +1024,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr (one-time)';
+  String get paywallPriceOneTime => '79 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
