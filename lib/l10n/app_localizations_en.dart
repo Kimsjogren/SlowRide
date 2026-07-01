@@ -1038,6 +1038,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallProLabel => 'Pro';
 
   @override
+  String get paywallStartTrialButton => 'Start 7-day free trial';
+
+  @override
+  String paywallTrialNote(Object price) {
+    return '7 days free, then $price as a one-time purchase.';
+  }
+
+  @override
   String get paywallFeatureRoutes => 'Routes per day';
 
   @override

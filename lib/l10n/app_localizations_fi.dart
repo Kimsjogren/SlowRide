@@ -1038,6 +1038,14 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallProLabel => 'Pro';
 
   @override
+  String get paywallStartTrialButton => 'Aloita 7 päivän ilmainen kokeilu';
+
+  @override
+  String paywallTrialNote(Object price) {
+    return '7 päivää ilmaiseksi, sitten $price kertamaksuna.';
+  }
+
+  @override
   String get paywallFeatureRoutes => 'Reittejä päivässä';
 
   @override

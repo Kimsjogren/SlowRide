@@ -23,6 +23,9 @@ class SubscriptionService {
   static const String _lifetimeProductId = 'cruizx_pro_lifetime';
 
   static const String _isProKey = 'sub_is_pro';
+  static const String _trialStartKey = 'sub_trial_start';
+  static const String _trialEndKey = 'sub_trial_end';
+  static const String _trialUsedKey = 'sub_trial_used';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
 
@@ -34,6 +37,7 @@ class SubscriptionService {
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
   Timer? _webSyncTimer;
+  Timer? _trialExpiryTimer;
   bool _authListenersAttached = false;
   bool _webSyncInFlight = false;
   bool _languageListenerAttached = false;
@@ -115,14 +119,16 @@ class SubscriptionService {
 
     // FORCE_FREE clears saved Pro and sets free mode (for testing ads etc.)
     if (BackendConfig.forceFree) {
+      _cancelTrialExpiryTimer();
+      await _clearTrialState();
       await _prefs.setBool(_isProKey, false);
       isPro.value = false;
     } else if (BackendConfig.forcePro) {
       // FORCE_PRO overrides to Pro mode
+      _cancelTrialExpiryTimer();
       isPro.value = true;
     } else {
-      // Normal: read from stored preferences
-      isPro.value = _prefs.getBool(_isProKey) ?? false;
+      await _refreshLocalEntitlementState();
     }
 
     if (kIsWeb) {
@@ -139,6 +145,82 @@ class SubscriptionService {
     }
 
     _initialized = true;
+  }
+
+  Future<void> _refreshLocalEntitlementState() async {
+    final hasPermanentPro = _prefs.getBool(_isProKey) ?? false;
+    final trialEnd = _readTrialEnd();
+    final nowUtc = DateTime.now().toUtc();
+
+    if (hasPermanentPro) {
+      _cancelTrialExpiryTimer();
+      isPro.value = true;
+      return;
+    }
+
+    if (trialEnd != null && trialEnd.isAfter(nowUtc)) {
+      isPro.value = true;
+      _scheduleTrialExpiryTimer(trialEnd.difference(nowUtc));
+      return;
+    }
+
+    _cancelTrialExpiryTimer();
+    if (trialEnd != null || (_prefs.getBool(_trialUsedKey) ?? false)) {
+      await _clearTrialState();
+    }
+    isPro.value = false;
+  }
+
+  DateTime? _readTrialEnd() {
+    final raw = _prefs.getString(_trialEndKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toUtc();
+  }
+
+  bool get canStartTrial {
+    if (!_initialized) return false;
+    if (BackendConfig.forceFree || BackendConfig.forcePro) return false;
+    if (_prefs.getBool(_isProKey) ?? false) return false;
+
+    final trialEnd = _readTrialEnd();
+    if (trialEnd != null && trialEnd.isAfter(DateTime.now().toUtc())) {
+      return false;
+    }
+
+    return !(_prefs.getBool(_trialUsedKey) ?? false);
+  }
+
+  void _scheduleTrialExpiryTimer(Duration remaining) {
+    _trialExpiryTimer?.cancel();
+    if (remaining.isNegative || remaining == Duration.zero) {
+      unawaited(_expireTrial());
+      return;
+    }
+    _trialExpiryTimer = Timer(remaining, () {
+      unawaited(_expireTrial());
+    });
+  }
+
+  void _cancelTrialExpiryTimer() {
+    _trialExpiryTimer?.cancel();
+    _trialExpiryTimer = null;
+  }
+
+  Future<void> _expireTrial() async {
+    _cancelTrialExpiryTimer();
+    if (_prefs.getBool(_isProKey) ?? false) {
+      isPro.value = true;
+      return;
+    }
+
+    await _clearTrialState();
+    isPro.value = false;
+  }
+
+  Future<void> _clearTrialState() async {
+    await _prefs.remove(_trialStartKey);
+    await _prefs.remove(_trialEndKey);
+    await _prefs.setBool(_trialUsedKey, true);
   }
 
   void _attachAuthListeners() {
@@ -382,6 +464,7 @@ class SubscriptionService {
     if (kIsWeb) return false;
     if (BackendConfig.forceFree) return false;
     if (BackendConfig.forcePro) {
+      _cancelTrialExpiryTimer();
       await activatePro();
       return true;
     }
@@ -417,8 +500,44 @@ class SubscriptionService {
 
   /// Activates Pro after successful verified purchase.
   Future<void> activatePro() async {
+    _cancelTrialExpiryTimer();
     isPro.value = true;
     await _prefs.setBool(_isProKey, true);
+  }
+
+  /// Starts a 7-day free trial locally on this device.
+  Future<bool> startSevenDayTrial() async {
+    if (kIsWeb) return false;
+    if (BackendConfig.forceFree) return false;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+
+    if (_prefs.getBool(_isProKey) ?? false) {
+      return true;
+    }
+
+    final nowUtc = DateTime.now().toUtc();
+    final trialEnd = _readTrialEnd();
+    if (trialEnd != null && trialEnd.isAfter(nowUtc)) {
+      isPro.value = true;
+      _scheduleTrialExpiryTimer(trialEnd.difference(nowUtc));
+      return true;
+    }
+
+    if (_prefs.getBool(_trialUsedKey) ?? false) {
+      return false;
+    }
+
+    final end = nowUtc.add(const Duration(days: 7));
+    await _prefs.setString(_trialStartKey, nowUtc.toIso8601String());
+    await _prefs.setString(_trialEndKey, end.toIso8601String());
+    await _prefs.setBool(_trialUsedKey, true);
+
+    isPro.value = true;
+    _scheduleTrialExpiryTimer(const Duration(days: 7));
+    return true;
   }
 
   /// Restores previous store purchases and reapplies Pro entitlement.
@@ -448,6 +567,7 @@ class SubscriptionService {
 
   /// Deactivates Pro (for testing / subscription lapse).
   Future<void> deactivatePro() async {
+    _cancelTrialExpiryTimer();
     isPro.value = false;
     await _prefs.setBool(_isProKey, false);
   }

@@ -78,6 +78,27 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
+  Future<void> _startTrial() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _loading = true);
+    try {
+      final started = await SubscriptionService.instance.startSevenDayTrial();
+      if (!mounted) return;
+      if (started) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.paywallPurchaseFailed),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _upgrade() async {
     if (SubscriptionService.instance.isWebCheckout &&
         AuthService.instance.userId.value == null) {
@@ -149,6 +170,15 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final trialAvailable =
+        !kIsWeb &&
+        !SubscriptionService.instance.isWebCheckout &&
+        SubscriptionService.instance.canStartTrial;
+    final trialNotePrice =
+        (SubscriptionService.instance.localizedPrice.value != null &&
+            SubscriptionService.instance.localizedPrice.value!.isNotEmpty)
+        ? SubscriptionService.instance.localizedPrice.value!
+        : BackendConfig.webCheckoutDisplayPrice;
 
     final String? reasonTitle;
     final String? reasonBody;
@@ -361,6 +391,18 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     },
                   ),
 
+                  if (trialAvailable) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n.paywallTrialNote(trialNotePrice),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 24),
 
                   // Feature comparison table
@@ -373,7 +415,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     width: double.infinity,
                     height: 54,
                     child: FilledButton(
-                      onPressed: _loading ? null : _upgrade,
+                      onPressed: _loading
+                          ? null
+                          : (trialAvailable ? _startTrial : _upgrade),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF1E6BFF),
                         shape: RoundedRectangleBorder(
@@ -390,7 +434,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               ),
                             )
                           : Text(
-                              l10n.paywallUpgradeButton,
+                              trialAvailable
+                                  ? l10n.paywallStartTrialButton
+                                  : l10n.paywallUpgradeButton,
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,

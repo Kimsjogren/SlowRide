@@ -2043,6 +2043,18 @@ abstract class AppLocalizations {
   /// **'Pro'**
   String get paywallProLabel;
 
+  /// No description provided for @paywallStartTrialButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Start 7-day free trial'**
+  String get paywallStartTrialButton;
+
+  /// No description provided for @paywallTrialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days free, then {price} as a one-time purchase.'**
+  String paywallTrialNote(Object price);
+
   /// No description provided for @paywallFeatureRoutes.
   ///
   /// In en, this message translates to:
