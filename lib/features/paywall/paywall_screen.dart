@@ -78,27 +78,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
     );
   }
 
-  Future<void> _startTrial() async {
-    final l10n = AppLocalizations.of(context)!;
-    setState(() => _loading = true);
-    try {
-      final started = await SubscriptionService.instance.startSevenDayTrial();
-      if (!mounted) return;
-      if (started) {
-        Navigator.of(context).pop(true);
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.paywallPurchaseFailed),
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   Future<void> _upgrade() async {
     if (SubscriptionService.instance.isWebCheckout &&
         AuthService.instance.userId.value == null) {
@@ -170,15 +149,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final trialAvailable =
-        !kIsWeb &&
-        !SubscriptionService.instance.isWebCheckout &&
-        SubscriptionService.instance.canStartTrial;
-    final trialNotePrice =
-        (SubscriptionService.instance.localizedPrice.value != null &&
-            SubscriptionService.instance.localizedPrice.value!.isNotEmpty)
-        ? SubscriptionService.instance.localizedPrice.value!
-        : BackendConfig.webCheckoutDisplayPrice;
 
     final String? reasonTitle;
     final String? reasonBody;
@@ -348,17 +318,11 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     valueListenable:
                         SubscriptionService.instance.localizedPrice,
                     builder: (_, price, _) {
-                      final isWebCheckout =
-                          SubscriptionService.instance.isWebCheckout;
                       final priceText = (price != null && price.isNotEmpty)
-                          ? (isWebCheckout
-                                ? l10n.settingsProPricePerMonth(price)
-                                : l10n.settingsProPriceOneTime(price))
-                          : (isWebCheckout
-                                ? l10n.settingsProPricePerMonth(
-                                    BackendConfig.webCheckoutDisplayPrice,
-                                  )
-                                : l10n.paywallPriceOneTime);
+                          ? l10n.settingsProPricePerMonth(price)
+                          : l10n.settingsProPricePerMonth(
+                              BackendConfig.webCheckoutDisplayPrice,
+                            );
                       return Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -391,18 +355,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     },
                   ),
 
-                  if (trialAvailable) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      l10n.paywallTrialNote(trialNotePrice),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-
                   const SizedBox(height: 24),
 
                   // Feature comparison table
@@ -410,7 +362,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Upgrade button — always shown so Apple can test IAP flow.
+                  // Upgrade button — starts the subscription; Apple shows the
+                  // 7-day free trial in the StoreKit sheet automatically.
                   SizedBox(
                     width: double.infinity,
                     height: 54,
@@ -440,32 +393,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                     ),
                   ),
-
-                  // Trial button — secondary option shown below the purchase button.
-                  if (trialAvailable) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton(
-                        onPressed: _loading ? null : _startTrial,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0x883AA8FF)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Text(
-                          l10n.paywallStartTrialButton,
-                          style: const TextStyle(
-                            color: Color(0xFF3AA8FF),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
 
                   const SizedBox(height: 14),
 
@@ -505,7 +432,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                                     ? price
                                     : BackendConfig.webCheckoutDisplayPrice,
                               )
-                            : l10n.paywallDisclosureOneTime(price ?? '–');
+                            : l10n.paywallDisclosure(price ?? '–');
                         return Text(
                           text,
                           textAlign: TextAlign.center,

@@ -77,6 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final resetEmailController = TextEditingController(
       text: _emailController.text,
     );
+    final codeController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -86,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       builder: (ctx) {
         bool sending = false;
+        bool codeSent = false;
         String? resultMessage;
         bool success = false;
         return StatefulBuilder(
@@ -102,7 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    l10n.authForgotPasswordTitle,
+                    codeSent
+                        ? l10n.authResetPasswordTitle
+                        : l10n.authForgotPasswordTitle,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -111,21 +117,52 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    l10n.authForgotPasswordDescription,
+                    codeSent
+                        ? l10n.authResetPasswordDescription
+                        : l10n.authForgotPasswordDescription,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 13,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _GlassField(
-                    controller: resetEmailController,
-                    label: l10n.authEmailLabel,
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.done,
-                    validator: null,
-                  ),
+                  if (!codeSent)
+                    _GlassField(
+                      controller: resetEmailController,
+                      label: l10n.authEmailLabel,
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.done,
+                      validator: null,
+                    )
+                  else ...[
+                    _GlassField(
+                      controller: codeController,
+                      label: l10n.signInOtpFieldLabel,
+                      icon: Icons.pin_outlined,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.next,
+                      validator: null,
+                    ),
+                    const SizedBox(height: 12),
+                    _GlassField(
+                      controller: newPasswordController,
+                      label: l10n.authNewPasswordLabel,
+                      icon: Icons.lock_outline,
+                      obscureText: true,
+                      textInputAction: TextInputAction.next,
+                      validator: null,
+                    ),
+                    const SizedBox(height: 12),
+                    _GlassField(
+                      controller: confirmPasswordController,
+                      label: l10n.authConfirmPasswordLabel,
+                      icon: Icons.lock_outline,
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      validator: null,
+                    ),
+                  ],
                   if (resultMessage != null) ...[
                     const SizedBox(height: 12),
                     Text(
@@ -145,32 +182,85 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: sending
                           ? null
                           : () async {
-                              final email = resetEmailController.text.trim();
-                              if (email.isEmpty || !email.contains('@')) {
+                              if (!codeSent) {
+                                final email = resetEmailController.text.trim();
+                                if (email.isEmpty || !email.contains('@')) {
+                                  setSheetState(() {
+                                    resultMessage = l10n.authEmailInvalid;
+                                    success = false;
+                                  });
+                                  return;
+                                }
+                                setSheetState(() => sending = true);
+                                try {
+                                  await AuthService.instance.resetPassword(
+                                    email: email,
+                                  );
+                                } catch (_) {
+                                  // Ignore to avoid revealing whether the email
+                                  // exists; still advance to the code step.
+                                }
                                 setSheetState(() {
-                                  resultMessage = l10n.authEmailInvalid;
+                                  sending = false;
+                                  codeSent = true;
+                                  resultMessage = l10n.signInOtpSent;
+                                  success = true;
+                                });
+                                return;
+                              }
+
+                              // Step 2: verify code and set the new password.
+                              final code = codeController.text.trim();
+                              final pw = newPasswordController.text;
+                              final pw2 = confirmPasswordController.text;
+                              if (code.isEmpty) {
+                                setSheetState(() {
+                                  resultMessage = l10n.signInOtpInvalid;
+                                  success = false;
+                                });
+                                return;
+                              }
+                              if (pw.length < 6) {
+                                setSheetState(() {
+                                  resultMessage =
+                                      l10n.authErrorPasswordTooShort;
+                                  success = false;
+                                });
+                                return;
+                              }
+                              if (pw != pw2) {
+                                setSheetState(() {
+                                  resultMessage = l10n.authPasswordsDoNotMatch;
                                   success = false;
                                 });
                                 return;
                               }
                               setSheetState(() => sending = true);
                               try {
-                                await AuthService.instance.resetPassword(
-                                  email: email,
+                                await AuthService.instance.verifyRecoveryCode(
+                                  code: code,
                                 );
-                                setSheetState(() {
-                                  resultMessage =
-                                      l10n.authForgotPasswordSuccess;
-                                  success = true;
-                                });
+                                await AuthService.instance.updatePassword(
+                                  newPassword: pw,
+                                );
+                                if (!ctx.mounted) return;
+                                Navigator.of(ctx).pop();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        l10n.authResetPasswordSuccess,
+                                      ),
+                                      backgroundColor: const Color(0xFF00913F),
+                                    ),
+                                  );
+                                }
                               } catch (_) {
                                 setSheetState(() {
-                                  resultMessage =
-                                      l10n.authForgotPasswordSuccess;
-                                  success = true;
+                                  sending = false;
+                                  resultMessage = l10n.signInOtpInvalid;
+                                  success = false;
                                 });
-                              } finally {
-                                setSheetState(() => sending = false);
                               }
                             },
                       style: FilledButton.styleFrom(
@@ -189,7 +279,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             )
                           : Text(
-                              l10n.authForgotPasswordButton,
+                              codeSent
+                                  ? l10n.authResetPasswordButton
+                                  : l10n.authForgotPasswordButton,
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -205,6 +297,9 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
     resetEmailController.dispose();
+    codeController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
   }
 
   @override

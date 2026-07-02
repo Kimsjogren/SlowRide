@@ -12,6 +12,12 @@ import 'package:slowride/services/user_preferences_service.dart';
 
 enum PaywallReason { routeLimit, convoyLimit, memberLimit }
 
+/// Thrown when the store connection or product cannot be reached so the UI can
+/// show a clear message instead of a silent failure.
+class StoreUnavailableException implements Exception {
+  const StoreUnavailableException();
+}
+
 class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
@@ -19,13 +25,12 @@ class SubscriptionService {
   static const int freeMaxDailyRoutes = 4;
   static const int freeMaxConvoyMembers = 2;
 
-  /// App Store Connect product ID for the one-time (non-consumable) Pro unlock.
-  static const String _lifetimeProductId = 'cruizx_pro_lifetime';
+  /// App Store Connect product ID for the auto-renewable monthly subscription.
+  /// The 7-day free trial is configured as an Introductory Offer on this
+  /// product in App Store Connect, so Apple handles the trial natively.
+  static const String _monthlyProductId = 'cruizx_pro_monthly_v2';
 
   static const String _isProKey = 'sub_is_pro';
-  static const String _trialStartKey = 'sub_trial_start';
-  static const String _trialEndKey = 'sub_trial_end';
-  static const String _trialUsedKey = 'sub_trial_used';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
 
@@ -37,17 +42,12 @@ class SubscriptionService {
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
   Timer? _webSyncTimer;
-  Timer? _trialExpiryTimer;
   bool _authListenersAttached = false;
   bool _webSyncInFlight = false;
   bool _languageListenerAttached = false;
   Map<String, String> _webPriceByLocale = const {};
 
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
-
-  /// Fires once (true) when the local 7-day trial expires while the app is
-  /// running. UI layers should listen and show the paywall, then reset to false.
-  final ValueNotifier<bool> trialJustExpired = ValueNotifier<bool>(false);
 
   /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
@@ -123,16 +123,15 @@ class SubscriptionService {
 
     // FORCE_FREE clears saved Pro and sets free mode (for testing ads etc.)
     if (BackendConfig.forceFree) {
-      _cancelTrialExpiryTimer();
-      await _clearTrialState();
       await _prefs.setBool(_isProKey, false);
       isPro.value = false;
     } else if (BackendConfig.forcePro) {
       // FORCE_PRO overrides to Pro mode
-      _cancelTrialExpiryTimer();
       isPro.value = true;
     } else {
-      await _refreshLocalEntitlementState();
+      // Normal: read stored entitlement (refreshed by the store on
+      // purchase/restore via the purchase stream).
+      isPro.value = _prefs.getBool(_isProKey) ?? false;
     }
 
     if (kIsWeb) {
@@ -149,84 +148,6 @@ class SubscriptionService {
     }
 
     _initialized = true;
-  }
-
-  Future<void> _refreshLocalEntitlementState() async {
-    final hasPermanentPro = _prefs.getBool(_isProKey) ?? false;
-    final trialEnd = _readTrialEnd();
-    final nowUtc = DateTime.now().toUtc();
-
-    if (hasPermanentPro) {
-      _cancelTrialExpiryTimer();
-      isPro.value = true;
-      return;
-    }
-
-    if (trialEnd != null && trialEnd.isAfter(nowUtc)) {
-      isPro.value = true;
-      _scheduleTrialExpiryTimer(trialEnd.difference(nowUtc));
-      return;
-    }
-
-    _cancelTrialExpiryTimer();
-    if (trialEnd != null || (_prefs.getBool(_trialUsedKey) ?? false)) {
-      await _clearTrialState();
-    }
-    isPro.value = false;
-  }
-
-  DateTime? _readTrialEnd() {
-    final raw = _prefs.getString(_trialEndKey);
-    if (raw == null || raw.isEmpty) return null;
-    return DateTime.tryParse(raw)?.toUtc();
-  }
-
-  bool get canStartTrial {
-    if (!_initialized) return false;
-    if (BackendConfig.forceFree || BackendConfig.forcePro) return false;
-    if (_prefs.getBool(_isProKey) ?? false) return false;
-
-    final trialEnd = _readTrialEnd();
-    if (trialEnd != null && trialEnd.isAfter(DateTime.now().toUtc())) {
-      return false;
-    }
-
-    return !(_prefs.getBool(_trialUsedKey) ?? false);
-  }
-
-  void _scheduleTrialExpiryTimer(Duration remaining) {
-    _trialExpiryTimer?.cancel();
-    if (remaining.isNegative || remaining == Duration.zero) {
-      unawaited(_expireTrial());
-      return;
-    }
-    _trialExpiryTimer = Timer(remaining, () {
-      unawaited(_expireTrial());
-    });
-  }
-
-  void _cancelTrialExpiryTimer() {
-    _trialExpiryTimer?.cancel();
-    _trialExpiryTimer = null;
-  }
-
-  Future<void> _expireTrial() async {
-    _cancelTrialExpiryTimer();
-    if (_prefs.getBool(_isProKey) ?? false) {
-      isPro.value = true;
-      return;
-    }
-
-    await _clearTrialState();
-    isPro.value = false;
-    // Notify UI that trial has just expired so a paywall can be shown.
-    trialJustExpired.value = true;
-  }
-
-  Future<void> _clearTrialState() async {
-    await _prefs.remove(_trialStartKey);
-    await _prefs.remove(_trialEndKey);
-    await _prefs.setBool(_trialUsedKey, true);
   }
 
   void _attachAuthListeners() {
@@ -384,9 +305,9 @@ class SubscriptionService {
 
   Future<void> _loadProductDetails() async {
     try {
-      final response = await _iap.queryProductDetails({_lifetimeProductId});
+      final response = await _iap.queryProductDetails({_monthlyProductId});
       if (response.productDetails.isEmpty) {
-        debugPrint('IAP product not found: $_lifetimeProductId');
+        debugPrint('IAP product not found: $_monthlyProductId');
         return;
       }
       _proProduct = response.productDetails.first;
@@ -398,7 +319,7 @@ class SubscriptionService {
 
   Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
     for (final purchase in updates) {
-      if (purchase.productID != _lifetimeProductId) {
+      if (purchase.productID != _monthlyProductId) {
         continue;
       }
 
@@ -465,22 +386,35 @@ class SubscriptionService {
 
   // ── Purchase ─────────────────────────────────────────────────────────────
 
-  /// Starts the native store purchase flow for the one-time Pro unlock.
+  /// Starts the native store purchase flow for the monthly Pro subscription.
+  /// Apple presents the 7-day free trial in the StoreKit sheet automatically.
   Future<bool> purchasePro() async {
     if (kIsWeb) return false;
     if (BackendConfig.forceFree) return false;
     if (BackendConfig.forcePro) {
-      _cancelTrialExpiryTimer();
       await activatePro();
       return true;
     }
 
-    final available = await _iap.isAvailable();
-    if (!available) return false;
+    // Make sure the store connection is up (App Review devices can be slow to
+    // initialise StoreKit, which previously caused the purchase prompt to never
+    // appear).
+    if (!await _ensureStoreReady()) {
+      throw const StoreUnavailableException();
+    }
 
+    // Retry loading the product a few times before giving up so the purchase
+    // prompt reliably triggers even when product details arrive late.
     if (_proProduct == null) {
-      await _loadProductDetails();
-      if (_proProduct == null) return false;
+      for (var attempt = 0; attempt < 3 && _proProduct == null; attempt++) {
+        await _loadProductDetails();
+        if (_proProduct == null) {
+          await Future<void>.delayed(const Duration(milliseconds: 800));
+        }
+      }
+      if (_proProduct == null) {
+        throw const StoreUnavailableException();
+      }
     }
 
     final completer = Completer<bool>();
@@ -491,7 +425,7 @@ class SubscriptionService {
     );
     if (!started) {
       _purchaseCompleter = null;
-      return false;
+      throw const StoreUnavailableException();
     }
 
     final result = await completer.future.timeout(
@@ -504,46 +438,29 @@ class SubscriptionService {
     return result;
   }
 
-  /// Activates Pro after successful verified purchase.
-  Future<void> activatePro() async {
-    _cancelTrialExpiryTimer();
-    isPro.value = true;
-    await _prefs.setBool(_isProKey, true);
+  /// Ensures the store connection is available and the purchase stream is
+  /// listening. Retries briefly to cover slow StoreKit initialisation.
+  Future<bool> _ensureStoreReady() async {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (await _iap.isAvailable()) {
+          if (_purchaseSub == null) {
+            await _startIap();
+          }
+          return true;
+        }
+      } catch (_) {
+        // Ignore and retry.
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+    }
+    return false;
   }
 
-  /// Starts a 7-day free trial locally on this device.
-  Future<bool> startSevenDayTrial() async {
-    if (kIsWeb) return false;
-    if (BackendConfig.forceFree) return false;
-    if (BackendConfig.forcePro) {
-      await activatePro();
-      return true;
-    }
-
-    if (_prefs.getBool(_isProKey) ?? false) {
-      return true;
-    }
-
-    final nowUtc = DateTime.now().toUtc();
-    final trialEnd = _readTrialEnd();
-    if (trialEnd != null && trialEnd.isAfter(nowUtc)) {
-      isPro.value = true;
-      _scheduleTrialExpiryTimer(trialEnd.difference(nowUtc));
-      return true;
-    }
-
-    if (_prefs.getBool(_trialUsedKey) ?? false) {
-      return false;
-    }
-
-    final end = nowUtc.add(const Duration(days: 7));
-    await _prefs.setString(_trialStartKey, nowUtc.toIso8601String());
-    await _prefs.setString(_trialEndKey, end.toIso8601String());
-    await _prefs.setBool(_trialUsedKey, true);
-
+  /// Activates Pro after successful verified purchase.
+  Future<void> activatePro() async {
     isPro.value = true;
-    _scheduleTrialExpiryTimer(const Duration(days: 7));
-    return true;
+    await _prefs.setBool(_isProKey, true);
   }
 
   /// Restores previous store purchases and reapplies Pro entitlement.
@@ -573,7 +490,6 @@ class SubscriptionService {
 
   /// Deactivates Pro (for testing / subscription lapse).
   Future<void> deactivatePro() async {
-    _cancelTrialExpiryTimer();
     isPro.value = false;
     await _prefs.setBool(_isProKey, false);
   }

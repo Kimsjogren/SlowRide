@@ -139,7 +139,6 @@ class _MapScreenState extends State<MapScreen> {
     NavigationRequestService.instance.pendingDestination.addListener(
       _onExternalNavigationRequest,
     );
-    SubscriptionService.instance.trialJustExpired.addListener(_onTrialExpired);
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Auto-pick a dark map at night and a light map during the day.
     _useDarkMap = _isNightTime();
@@ -227,17 +226,6 @@ class _MapScreenState extends State<MapScreen> {
       NavigationRequestService.instance.consume();
       _handleMapTap(dest);
     }
-  }
-
-  void _onTrialExpired() {
-    if (!SubscriptionService.instance.trialJustExpired.value) return;
-    // Reset the flag immediately so it only fires once.
-    SubscriptionService.instance.trialJustExpired.value = false;
-    if (!mounted) return;
-    // Show paywall so the user can purchase after the free trial.
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<bool>(builder: (_) => const PaywallScreen()));
   }
 
   Future<void> _loadAlerts() async {
@@ -566,9 +554,6 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     NavigationRequestService.instance.pendingDestination.removeListener(
       _onExternalNavigationRequest,
-    );
-    SubscriptionService.instance.trialJustExpired.removeListener(
-      _onTrialExpired,
     );
     _locationNotifier.dispose();
     _headingNotifier.dispose();

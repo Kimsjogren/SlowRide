@@ -215,7 +215,7 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
-  "settingsProPriceOneTime": "{price} (achat unique)",
+  "settingsProPriceOneTime": "{price}",
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },

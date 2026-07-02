@@ -542,7 +542,7 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String settingsProPriceOneTime(Object price) {
-    return '$price (kertaosto)';
+    return '$price';
   }
 
   @override

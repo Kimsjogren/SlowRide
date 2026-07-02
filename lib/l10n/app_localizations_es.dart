@@ -542,7 +542,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String settingsProPriceOneTime(Object price) {
-    return '$price (pago único)';
+    return '$price';
   }
 
   @override

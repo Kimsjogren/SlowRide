@@ -29,6 +29,7 @@ class AuthService {
   SharedPreferences? _prefs;
   bool _listenersAttached = false;
   String? _pendingOtpEmail;
+  String? _pendingRecoveryEmail;
 
   Future<void> initialize() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -183,10 +184,32 @@ class AuthService {
     }
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty) return;
+    // Sends the "Reset Password" email. With the Supabase email template
+    // including {{ .Token }}, the user receives a 6-digit recovery code they
+    // enter directly in the app — no website or deep link needed.
     await SupabaseService.instance.client.auth.resetPasswordForEmail(
       normalizedEmail,
-      redirectTo: 'com.cruizx.mobile://reset-password',
     );
+    _pendingRecoveryEmail = normalizedEmail;
+  }
+
+  /// Verifies the 6-digit recovery code from the reset email and establishes a
+  /// temporary recovery session so the password can be updated.
+  Future<void> verifyRecoveryCode({required String code}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    final normalizedCode = code.trim();
+    final email = _pendingRecoveryEmail;
+    if (normalizedCode.isEmpty || email == null || email.isEmpty) {
+      throw StateError('otp_verification_failed');
+    }
+    final response = await SupabaseService.instance.client.auth.verifyOTP(
+      email: email,
+      token: normalizedCode,
+      type: OtpType.recovery,
+    );
+    if (response.user == null) throw StateError('otp_verification_failed');
   }
 
   Future<void> updatePassword({required String newPassword}) async {

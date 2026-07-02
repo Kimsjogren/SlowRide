@@ -213,7 +213,7 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
-  "settingsProPriceOneTime": "{price} (pago único)",
+  "settingsProPriceOneTime": "{price}",
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },

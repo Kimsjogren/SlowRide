@@ -214,7 +214,7 @@
   "@settingsProPricePerMonth": {
     "placeholders": { "price": {} }
   },
-  "settingsProPriceOneTime": "{price} (kertaosto)",
+  "settingsProPriceOneTime": "{price}",
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },
