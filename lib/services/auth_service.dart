@@ -212,6 +212,17 @@ class AuthService {
     if (response.user == null) throw StateError('otp_verification_failed');
   }
 
+  Future<void> resendRecoveryCode() async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    final email = _pendingRecoveryEmail;
+    if (email == null || email.isEmpty) {
+      throw StateError('recovery_email_missing');
+    }
+    await SupabaseService.instance.client.auth.resetPasswordForEmail(email);
+  }
+
   Future<void> updatePassword({required String newPassword}) async {
     if (!SupabaseService.instance.isEnabled) {
       throw StateError('realtime_backend_missing');
@@ -312,6 +323,19 @@ class AuthService {
     );
   }
 
+  /// Completes MFA for the current authenticated session using the first
+  /// verified TOTP factor.
+  Future<void> verifyCurrentSessionMfa({required String code}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
+    }
+    final factorId = await verifiedFactorId;
+    if (factorId == null) {
+      throw StateError('mfa_factor_missing');
+    }
+    await verifyMfa(factorId: factorId, code: code);
+  }
+
   /// Remove (unenroll) a TOTP factor — effectively disables 2FA.
   Future<void> unenrollMfa() async {
     if (!SupabaseService.instance.isEnabled) return;
@@ -345,6 +369,7 @@ class AuthService {
     avatarUrl.value = null;
     isLoggedIn.value = false;
     _pendingOtpEmail = null;
+    _pendingRecoveryEmail = null;
   }
 
   // ── Avatar upload ─────────────────────────────────────────────────────────

@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
-import 'package:slowride/features/auth/reset_password_screen.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
 import 'package:slowride/features/map/map_screen.dart';
 import 'package:slowride/features/profile/profile_screen.dart';
@@ -56,7 +55,6 @@ class CruizXApp extends StatefulWidget {
 
 class _CruizXAppState extends State<CruizXApp> {
   StreamSubscription<AuthState>? _authSub;
-  bool _pendingPasswordRecovery = false;
 
   @override
   void initState() {
@@ -71,37 +69,15 @@ class _CruizXAppState extends State<CruizXApp> {
         debugPrint(
           'Auth event: ${data.event}, session: ${data.session != null}',
         );
-        if (data.event == AuthChangeEvent.passwordRecovery) {
-          _pendingPasswordRecovery = true;
-          _tryNavigateToReset();
-        }
+        // Password recovery is handled fully in-app via the OTP reset sheet,
+        // so we intentionally do not navigate here (avoids a duplicate reset
+        // screen and unnecessary MFA prompts).
       },
       onError: (Object e, StackTrace st) {
         debugPrint('Auth stream error: $e\n$st');
         _showErrorDialog(e.toString());
       },
     );
-  }
-
-  void _tryNavigateToReset() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_pendingPasswordRecovery) return;
-      final nav = navigatorKey.currentState;
-      if (nav == null) {
-        debugPrint('Auth: navigatorKey null, retrying in 200ms…');
-        Future.delayed(const Duration(milliseconds: 200), _tryNavigateToReset);
-        return;
-      }
-      _pendingPasswordRecovery = false;
-      try {
-        nav.push(
-          MaterialPageRoute<void>(builder: (_) => const ResetPasswordScreen()),
-        );
-      } catch (e, st) {
-        debugPrint('Auth navigation error: $e\n$st');
-        _showErrorDialog(e.toString());
-      }
-    });
   }
 
   void _showErrorDialog(String message) {

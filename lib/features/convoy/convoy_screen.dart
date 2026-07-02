@@ -28,6 +28,8 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
   final TextEditingController _joinCodeController = TextEditingController();
   int _streamKey = 0;
   int _joinedConvoyCount = 0;
+  List<ConvoyModel> _stableConvoys = const <ConvoyModel>[];
+  DateTime? _stableConvoysUpdatedAt;
 
   @override
   void dispose() {
@@ -564,7 +566,34 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                             stream: _controller.watchConvoys(),
                             builder: (context, snapshot) {
                               final allConvoys = snapshot.data ?? const [];
-                              final joinedCount = allConvoys.length;
+                              if (allConvoys.isNotEmpty) {
+                                _stableConvoys = allConvoys;
+                                _stableConvoysUpdatedAt = DateTime.now();
+                              }
+
+                              final stableAge = _stableConvoysUpdatedAt == null
+                                  ? null
+                                  : DateTime.now().difference(
+                                      _stableConvoysUpdatedAt!,
+                                    );
+                              final useStableConvoys =
+                                  allConvoys.isEmpty &&
+                                  _stableConvoys.isNotEmpty &&
+                                  (snapshot.connectionState ==
+                                          ConnectionState.waiting ||
+                                      stableAge != null &&
+                                          stableAge <
+                                              const Duration(seconds: 10));
+
+                              if (!useStableConvoys && allConvoys.isEmpty) {
+                                _stableConvoys = const <ConvoyModel>[];
+                                _stableConvoysUpdatedAt = null;
+                              }
+
+                              final effectiveConvoys = useStableConvoys
+                                  ? _stableConvoys
+                                  : allConvoys;
+                              final joinedCount = effectiveConvoys.length;
                               WidgetsBinding.instance.addPostFrameCallback((_) {
                                 if (mounted &&
                                     _joinedConvoyCount != joinedCount) {
@@ -573,7 +602,7 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                   );
                                 }
                               });
-                              final convoys = allConvoys;
+                              final convoys = effectiveConvoys;
 
                               if (convoys.isEmpty) {
                                 return Center(

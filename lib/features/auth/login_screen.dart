@@ -73,233 +73,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _showForgotPasswordDialog() async {
-    final l10n = AppLocalizations.of(context)!;
-    final resetEmailController = TextEditingController(
-      text: _emailController.text,
-    );
-    final codeController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    await showModalBottomSheet<void>(
+    final sent = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: const Color(0xFF0A1A3A),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) {
-        bool sending = false;
-        bool codeSent = false;
-        String? resultMessage;
-        bool success = false;
-        return StatefulBuilder(
-          builder: (ctx, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                24,
-                24,
-                24 + MediaQuery.of(ctx).viewInsets.bottom,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    codeSent
-                        ? l10n.authResetPasswordTitle
-                        : l10n.authForgotPasswordTitle,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    codeSent
-                        ? l10n.authResetPasswordDescription
-                        : l10n.authForgotPasswordDescription,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!codeSent)
-                    _GlassField(
-                      controller: resetEmailController,
-                      label: l10n.authEmailLabel,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.done,
-                      validator: null,
-                    )
-                  else ...[
-                    _GlassField(
-                      controller: codeController,
-                      label: l10n.signInOtpFieldLabel,
-                      icon: Icons.pin_outlined,
-                      keyboardType: TextInputType.number,
-                      textInputAction: TextInputAction.next,
-                      validator: null,
-                    ),
-                    const SizedBox(height: 12),
-                    _GlassField(
-                      controller: newPasswordController,
-                      label: l10n.authNewPasswordLabel,
-                      icon: Icons.lock_outline,
-                      obscureText: true,
-                      textInputAction: TextInputAction.next,
-                      validator: null,
-                    ),
-                    const SizedBox(height: 12),
-                    _GlassField(
-                      controller: confirmPasswordController,
-                      label: l10n.authConfirmPasswordLabel,
-                      icon: Icons.lock_outline,
-                      obscureText: true,
-                      textInputAction: TextInputAction.done,
-                      validator: null,
-                    ),
-                  ],
-                  if (resultMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      resultMessage!,
-                      style: TextStyle(
-                        color: success
-                            ? const Color(0xFF3AA8FF)
-                            : Colors.redAccent,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 46,
-                    child: FilledButton(
-                      onPressed: sending
-                          ? null
-                          : () async {
-                              if (!codeSent) {
-                                final email = resetEmailController.text.trim();
-                                if (email.isEmpty || !email.contains('@')) {
-                                  setSheetState(() {
-                                    resultMessage = l10n.authEmailInvalid;
-                                    success = false;
-                                  });
-                                  return;
-                                }
-                                setSheetState(() => sending = true);
-                                try {
-                                  await AuthService.instance.resetPassword(
-                                    email: email,
-                                  );
-                                } catch (_) {
-                                  // Ignore to avoid revealing whether the email
-                                  // exists; still advance to the code step.
-                                }
-                                setSheetState(() {
-                                  sending = false;
-                                  codeSent = true;
-                                  resultMessage = l10n.signInOtpSent;
-                                  success = true;
-                                });
-                                return;
-                              }
-
-                              // Step 2: verify code and set the new password.
-                              final code = codeController.text.trim();
-                              final pw = newPasswordController.text;
-                              final pw2 = confirmPasswordController.text;
-                              if (code.isEmpty) {
-                                setSheetState(() {
-                                  resultMessage = l10n.signInOtpInvalid;
-                                  success = false;
-                                });
-                                return;
-                              }
-                              if (pw.length < 6) {
-                                setSheetState(() {
-                                  resultMessage =
-                                      l10n.authErrorPasswordTooShort;
-                                  success = false;
-                                });
-                                return;
-                              }
-                              if (pw != pw2) {
-                                setSheetState(() {
-                                  resultMessage = l10n.authPasswordsDoNotMatch;
-                                  success = false;
-                                });
-                                return;
-                              }
-                              setSheetState(() => sending = true);
-                              try {
-                                await AuthService.instance.verifyRecoveryCode(
-                                  code: code,
-                                );
-                                await AuthService.instance.updatePassword(
-                                  newPassword: pw,
-                                );
-                                if (!ctx.mounted) return;
-                                Navigator.of(ctx).pop();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        l10n.authResetPasswordSuccess,
-                                      ),
-                                      backgroundColor: const Color(0xFF00913F),
-                                    ),
-                                  );
-                                }
-                              } catch (_) {
-                                setSheetState(() {
-                                  sending = false;
-                                  resultMessage = l10n.signInOtpInvalid;
-                                  success = false;
-                                });
-                              }
-                            },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E6BFF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: sending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              codeSent
-                                  ? l10n.authResetPasswordButton
-                                  : l10n.authForgotPasswordButton,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (ctx) => _ForgotEmailSheet(initialEmail: _emailController.text),
     );
-    resetEmailController.dispose();
-    codeController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
+    if (sent != true || !mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: const Color(0xFF0A1A3A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => const _ResetCodeSheet(),
+    );
   }
 
   @override
@@ -604,6 +398,489 @@ class _GlassField extends StatelessWidget {
           borderSide: BorderSide(color: Colors.red.withValues(alpha: 0.9)),
         ),
         errorStyle: const TextStyle(color: Colors.redAccent),
+      ),
+    );
+  }
+}
+
+class _ForgotEmailSheet extends StatefulWidget {
+  const _ForgotEmailSheet({required this.initialEmail});
+
+  final String initialEmail;
+
+  @override
+  State<_ForgotEmailSheet> createState() => _ForgotEmailSheetState();
+}
+
+class _ForgotEmailSheetState extends State<_ForgotEmailSheet> {
+  late final TextEditingController _emailController;
+  bool _sending = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final l10n = AppLocalizations.of(context)!;
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = l10n.authEmailInvalid);
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await AuthService.instance.resetPassword(email: email);
+    } catch (_) {
+      // Ignore to avoid revealing whether the email exists.
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        24,
+        24,
+        24 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.authForgotPasswordTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.authForgotPasswordDescription,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _GlassField(
+              controller: _emailController,
+              label: l10n.authEmailLabel,
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 46,
+              child: FilledButton(
+                onPressed: _sending ? null : _send,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E6BFF),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _sending
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        l10n.authForgotPasswordButton,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResetCodeSheet extends StatefulWidget {
+  const _ResetCodeSheet();
+
+  @override
+  State<_ResetCodeSheet> createState() => _ResetCodeSheetState();
+}
+
+class _ResetCodeSheetState extends State<_ResetCodeSheet> {
+  final _codeController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _totpController = TextEditingController();
+  bool _showRecoveryCode = false;
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
+  bool _saving = false;
+  bool _resending = false;
+  String? _message;
+  bool _success = false;
+  bool _needsMfa = false;
+  bool _recoveryVerified = false;
+  String? _verifiedRecoveryCode;
+  bool _recoveryCodeExpired = false;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _totpController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
+    final code = _codeController.text.trim();
+    final pw = _newPasswordController.text;
+    final pw2 = _confirmPasswordController.text;
+    if (code.isEmpty) {
+      setState(() {
+        _message = l10n.signInOtpInvalid;
+        _success = false;
+      });
+      return;
+    }
+    setState(() {
+      _message = null;
+      _recoveryCodeExpired = false;
+    });
+    final recoveryOk = await _ensureRecoverySession(code, l10n);
+    if (!recoveryOk) return;
+    if (pw.length < 6) {
+      setState(() {
+        _message = l10n.authErrorPasswordTooShort;
+        _success = false;
+      });
+      return;
+    }
+    if (pw != pw2) {
+      setState(() {
+        _message = l10n.authPasswordsDoNotMatch;
+        _success = false;
+      });
+      return;
+    }
+    if (_needsMfa && _totpController.text.trim().length != 6) {
+      setState(() {
+        _message = l10n.mfaInvalidCode;
+        _success = false;
+      });
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      if (AuthService.instance.mfaRequired) {
+        final totp = _totpController.text.trim();
+        if (totp.length != 6) {
+          setState(() {
+            _saving = false;
+            _needsMfa = true;
+            _message = l10n.mfaVerifySubtitle;
+            _success = false;
+          });
+          return;
+        }
+        await AuthService.instance.verifyCurrentSessionMfa(code: totp);
+      }
+      await AuthService.instance.updatePassword(newPassword: pw);
+      // Sign out of the temporary recovery session so the user logs in fresh
+      // with the new password (avoids a lingering half-authenticated state).
+      await AuthService.instance.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.authResetPasswordSuccess),
+          backgroundColor: const Color(0xFF00913F),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final detail = e is AuthException ? e.message : e.toString();
+      final needsMfaFromError =
+          detail.contains('insufficient_aal') ||
+          detail.contains('AAL2 session is required');
+      setState(() {
+        _saving = false;
+        _needsMfa = _needsMfa || needsMfaFromError;
+        _message = needsMfaFromError
+            ? l10n.mfaVerifySubtitle
+            : '${l10n.signInOtpInvalid} ($detail)';
+        _success = false;
+      });
+    }
+  }
+
+  Future<bool> _ensureRecoverySession(
+    String code,
+    AppLocalizations l10n,
+  ) async {
+    if (_recoveryVerified && _verifiedRecoveryCode == code) {
+      return true;
+    }
+    try {
+      await AuthService.instance.verifyRecoveryCode(code: code);
+      if (!mounted) return false;
+      setState(() {
+        _recoveryVerified = true;
+        _verifiedRecoveryCode = code;
+        _recoveryCodeExpired = false;
+      });
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      final detail = e is AuthException ? e.message : e.toString();
+      final expired =
+          detail.contains('otp_expired') ||
+          detail.contains('Token has expired');
+      setState(() {
+        _recoveryVerified = false;
+        _verifiedRecoveryCode = null;
+        _recoveryCodeExpired = expired;
+        _message = expired
+            ? '${l10n.signInOtpInvalid} (Koden har gått ut. Skicka ny kod.)'
+            : '${l10n.signInOtpInvalid} ($detail)';
+        _success = false;
+      });
+      return false;
+    }
+  }
+
+  Future<void> _resendRecoveryCode() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _resending = true;
+      _message = null;
+    });
+    try {
+      await AuthService.instance.resendRecoveryCode();
+      if (!mounted) return;
+      setState(() {
+        _recoveryVerified = false;
+        _verifiedRecoveryCode = null;
+        _recoveryCodeExpired = false;
+        _message =
+            '${l10n.authForgotPasswordButton}: OK. Kontrollera din e-post för ny kod.';
+        _success = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _message = '${l10n.authGenericError} (${e.toString()})';
+        _success = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _resending = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        12,
+        24,
+        24 + MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.authResetPasswordTitle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close, color: Colors.white70),
+                ),
+              ],
+            ),
+            Text(
+              l10n.authResetPasswordDescription,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _GlassField(
+              controller: _codeController,
+              label: l10n.signInOtpFieldLabel,
+              icon: Icons.pin_outlined,
+              obscureText: !_showRecoveryCode,
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showRecoveryCode
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Colors.white54,
+                ),
+                onPressed: () =>
+                    setState(() => _showRecoveryCode = !_showRecoveryCode),
+              ),
+              onFieldSubmitted: (_) async {
+                final value = _codeController.text.trim();
+                if (value.isNotEmpty) {
+                  await _ensureRecoverySession(value, l10n);
+                }
+              },
+            ),
+            if (_recoveryCodeExpired) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: _resending ? null : _resendRecoveryCode,
+                  child: _resending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(l10n.authForgotPasswordButton),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            _GlassField(
+              controller: _newPasswordController,
+              label: l10n.authNewPasswordLabel,
+              icon: Icons.lock_outline,
+              obscureText: !_showNewPassword,
+              textInputAction: TextInputAction.next,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showNewPassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Colors.white54,
+                ),
+                onPressed: () =>
+                    setState(() => _showNewPassword = !_showNewPassword),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _GlassField(
+              controller: _confirmPasswordController,
+              label: l10n.authConfirmPasswordLabel,
+              icon: Icons.lock_outline,
+              obscureText: !_showConfirmPassword,
+              textInputAction: TextInputAction.done,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _showConfirmPassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Colors.white54,
+                ),
+                onPressed: () => setState(
+                  () => _showConfirmPassword = !_showConfirmPassword,
+                ),
+              ),
+            ),
+            if (_needsMfa) ...[
+              const SizedBox(height: 12),
+              _GlassField(
+                controller: _totpController,
+                label: l10n.mfaVerifyTitle,
+                icon: Icons.security,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+              ),
+            ],
+            if (_message != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                _message!,
+                style: TextStyle(
+                  color: _success ? const Color(0xFF3AA8FF) : Colors.redAccent,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 46,
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E6BFF),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        l10n.authResetPasswordButton,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
