@@ -180,7 +180,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.0.8 | CruizX by KimTechTool'**
+  /// **'v1.0.9 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @alertsTitle.

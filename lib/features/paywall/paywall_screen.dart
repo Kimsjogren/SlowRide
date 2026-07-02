@@ -410,14 +410,12 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
                   const SizedBox(height: 28),
 
-                  // Upgrade button
+                  // Upgrade button — always shown so Apple can test IAP flow.
                   SizedBox(
                     width: double.infinity,
                     height: 54,
                     child: FilledButton(
-                      onPressed: _loading
-                          ? null
-                          : (trialAvailable ? _startTrial : _upgrade),
+                      onPressed: _loading ? null : _upgrade,
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF1E6BFF),
                         shape: RoundedRectangleBorder(
@@ -434,9 +432,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                               ),
                             )
                           : Text(
-                              trialAvailable
-                                  ? l10n.paywallStartTrialButton
-                                  : l10n.paywallUpgradeButton,
+                              l10n.paywallUpgradeButton,
                               style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
@@ -444,6 +440,32 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                     ),
                   ),
+
+                  // Trial button — secondary option shown below the purchase button.
+                  if (trialAvailable) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: _loading ? null : _startTrial,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0x883AA8FF)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          l10n.paywallStartTrialButton,
+                          style: const TextStyle(
+                            color: Color(0xFF3AA8FF),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 14),
 

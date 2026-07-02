@@ -45,6 +45,10 @@ class SubscriptionService {
 
   final ValueNotifier<bool> isPro = ValueNotifier<bool>(false);
 
+  /// Fires once (true) when the local 7-day trial expires while the app is
+  /// running. UI layers should listen and show the paywall, then reset to false.
+  final ValueNotifier<bool> trialJustExpired = ValueNotifier<bool>(false);
+
   /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
@@ -215,6 +219,8 @@ class SubscriptionService {
 
     await _clearTrialState();
     isPro.value = false;
+    // Notify UI that trial has just expired so a paywall can be shown.
+    trialJustExpired.value = true;
   }
 
   Future<void> _clearTrialState() async {
