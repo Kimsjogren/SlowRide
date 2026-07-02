@@ -1024,7 +1024,7 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr (kertaosto)';
+  String get paywallPriceOneTime => '79 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {

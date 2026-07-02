@@ -428,7 +428,7 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/mes · renovación automática. Gestionado y facturado a través de Stripe. Cancela en cualquier momento en cruizx.com o contacta con soporte.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
-  "paywallPriceOneTime": "79 kr (pago único)",
+  "paywallPriceOneTime": "79 kr",
   "paywallDisclosureOneTime": "CruizX Pro · {price} · pago único. Se cobra una vez a tu cuenta de Apple ID. Sin suscripción y sin renovación.",
   "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Gratis",

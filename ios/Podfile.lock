@@ -1,25 +1,19 @@
 PODS:
-  - app_tracking_transparency (0.0.1):
-    - Flutter
   - Flutter (1.0.0)
   - flutter_tts (0.0.1):
     - Flutter
 
 DEPENDENCIES:
-  - app_tracking_transparency (from `.symlinks/plugins/app_tracking_transparency/ios`)
   - Flutter (from `Flutter`)
   - flutter_tts (from `.symlinks/plugins/flutter_tts/ios`)
 
 EXTERNAL SOURCES:
-  app_tracking_transparency:
-    :path: ".symlinks/plugins/app_tracking_transparency/ios"
   Flutter:
     :path: Flutter
   flutter_tts:
     :path: ".symlinks/plugins/flutter_tts/ios"
 
 SPEC CHECKSUMS:
-  app_tracking_transparency: 3d84f147f67ca82d3c15355c36b1fa6b66ca7c92
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_tts: 35ac3c7d42412733e795ea96ad2d7e05d0a75113
 

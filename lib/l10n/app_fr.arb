@@ -430,7 +430,7 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/mois · renouvellement automatique. Géré et facturé via Stripe. Annulez à tout moment sur cruizx.com ou contactez le support.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
-  "paywallPriceOneTime": "79 kr (achat unique)",
+  "paywallPriceOneTime": "79 kr",
   "paywallDisclosureOneTime": "CruizX Pro · {price} · achat unique. Débité une seule fois sur votre compte Apple ID. Aucun abonnement ni renouvellement.",
   "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",

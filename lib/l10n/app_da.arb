@@ -430,7 +430,7 @@
   "@paywallDisclosure": { "placeholders": { "price": {} } },
   "paywallDisclosureAndroid": "CruizX Pro · {price}/måned · fornyes automatisk. Administreres og faktureres via Stripe. Annuller til enhver tid på cruizx.com eller kontakt support.",
   "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },
-  "paywallPriceOneTime": "79 kr (engangskøb)",
+  "paywallPriceOneTime": "79 kr",
   "paywallDisclosureOneTime": "CruizX Pro · {price} · engangskøb. Opkræves én gang på din Apple ID. Ingen abonnement og ingen fornyelse.",
   "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },
   "paywallFreeLabel": "Free",
