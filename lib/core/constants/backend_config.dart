@@ -126,4 +126,11 @@ class BackendConfig {
     'TRAFIKVERKET_KEY',
     defaultValue: '',
   );
+
+  /// Enable the route simulation button in release builds.
+  /// Build with: --dart-define=ENABLE_SIMULATION=true
+  static const bool enableSimulation = bool.fromEnvironment(
+    'ENABLE_SIMULATION',
+    defaultValue: false,
+  );
 }

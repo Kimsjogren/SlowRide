@@ -29,7 +29,8 @@ class TrafikverketService {
     final minLng = center.longitude - _radiusDeg;
     final maxLng = center.longitude + _radiusDeg;
 
-    final query = '''
+    final query =
+        '''
 <REQUEST>
   <LOGIN authenticationkey="${BackendConfig.trafikverketKey}" />
   <QUERY objecttype="Situation" schemaversion="1.5" limit="100">
@@ -47,10 +48,7 @@ class TrafikverketService {
       final response = await http
           .post(
             Uri.parse(_endpoint),
-            headers: {
-              'Content-Type': 'text/xml',
-              'Accept': 'application/json',
-            },
+            headers: {'Content-Type': 'text/xml', 'Accept': 'application/json'},
             body: query,
           )
           .timeout(const Duration(seconds: 10));
@@ -68,8 +66,7 @@ class TrafikverketService {
       for (final sit in situations) {
         final deviations = sit['Deviation'];
         if (deviations == null) continue;
-        final devList =
-            deviations is List ? deviations : [deviations];
+        final devList = deviations is List ? deviations : [deviations];
 
         for (final dev in devList) {
           final alert = _parseDeviation(dev as Map<String, dynamic>);

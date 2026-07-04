@@ -318,14 +318,10 @@ class _MapWidgetState extends State<MapWidget>
           final shouldMoveCameraTarget =
               _gpsSpeedMps > 2.0 || distToTarget > 2.0;
           if (shouldMoveCameraTarget) {
-            // Blend new GPS fix into the (possibly dead-reckoned) target
-            // instead of snapping. This avoids the visible "tick-tick" jump
-            // that comes from 1Hz GPS samples teleporting the target.
-            // The ticker handles smooth interpolation toward this point, and
-            // between GPS samples we extrapolate forward (see _onTick) so the
-            // marker keeps flowing instead of freezing for ~1s at a time.
+            // Blend new GPS fix into the (possibly dead-reckoned) target.
+            // Lower blend (0.22) = trust dead reckoning more → smoother ride.
             if (_gpsSpeedMps > 3.0 && distToTarget < 25.0) {
-              const blend = 0.35; // 35% snap, 65% keep predicted heading
+              const blend = 0.22;
               _tgtLat = _tgtLat * (1 - blend) + loc.latitude * blend;
               _tgtLng = _tgtLng * (1 - blend) + loc.longitude * blend;
             } else {
@@ -351,7 +347,7 @@ class _MapWidgetState extends State<MapWidget>
 
           // ROUTE-LOCKED HEADING: When navigating on a route, use route
           // direction exclusively. This is how Google Maps/Waze work.
-          if (routeHeading != null && (distToRouteM ?? 999) < 20) {
+          if (routeHeading != null && (distToRouteM ?? 999) < 45) {
             // Full route lock when on route - no compass, no motion blending.
             _tgtHdg = routeHeading;
           } else if (motionHeading != null) {
@@ -362,13 +358,18 @@ class _MapWidgetState extends State<MapWidget>
             _tgtHdg = _filteredTgtHdg;
           }
 
-          // POSITION SNAPPING: When close to route, snap displayed position
-          // to the projected point on the route so the arrow rides on the
-          // blue line instead of floating beside it due to GPS drift.
-          if ((distToRouteM ?? 999) < 15 && widget.routePoints.length >= 2) {
+          // POSITION SNAPPING: Progressive blend toward road when nearby.
+          // Uses wider zone (45m) to handle typical phone GPS inaccuracy.
+          // Gradual blend avoids hard teleports when the projected segment changes.
+          final snapDist = distToRouteM ?? 999;
+          if (snapDist < 45 && widget.routePoints.length >= 2) {
             final (snappedPos, _, _) = _projectOntoRoute(loc);
-            _tgtLat = snappedPos.latitude;
-            _tgtLng = snappedPos.longitude;
+            // snapBlend: 1.0 at 0m → 0.0 at 45m (keeps arrow on road firmly)
+            final snapBlend = ((45.0 - snapDist) / 45.0).clamp(0.0, 1.0);
+            _tgtLat =
+                _tgtLat * (1 - snapBlend) + snappedPos.latitude * snapBlend;
+            _tgtLng =
+                _tgtLng * (1 - snapBlend) + snappedPos.longitude * snapBlend;
           }
         }
         _lastLocForBearing = loc;
@@ -422,7 +423,7 @@ class _MapWidgetState extends State<MapWidget>
     // camera glides continuously. Only kick in when we're clearly moving and
     // have a recent GPS fix (avoid runaway if GPS is lost).
     final lastGps = _lastGpsAt;
-    if (_gpsSpeedMps > 1.5 &&
+    if (_gpsSpeedMps > 0.8 &&
         lastGps != null &&
         DateTime.now().difference(lastGps).inMilliseconds < 2500) {
       final hdgRad = _filteredTgtHdg * math.pi / 180.0;
@@ -435,8 +436,8 @@ class _MapWidgetState extends State<MapWidget>
 
     // Speed-adaptive smoothing: stable at low speed, responsive at higher speed.
     final speedN = (_gpsSpeedMps / 16.0).clamp(0.0, 1.0);
-    final posAlpha = (dtSec * (1.5 + speedN * 2.0)).clamp(0.02, 0.22);
-    final hdgAlpha = (dtSec * (1.2 + speedN * 2.4)).clamp(0.02, 0.25);
+    final posAlpha = (dtSec * (2.0 + speedN * 2.5)).clamp(0.03, 0.30);
+    final hdgAlpha = (dtSec * (1.5 + speedN * 2.8)).clamp(0.03, 0.30);
     final maxTurnPerSec = 35.0 + speedN * 75.0;
     final maxTurnThisTick = maxTurnPerSec * dtSec;
 
@@ -665,7 +666,7 @@ class _MapWidgetState extends State<MapWidget>
             children: [
               TileLayer(
                 urlTemplate: BackendConfig.hasSelfHostedTiles
-                    ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
+                    ? '${BackendConfig.tileServerUrl}/styles/${widget.darkMode ? "cruizx-dark" : "cruizx-light"}/512/{z}/{x}/{y}.png'
                     : widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -686,6 +687,20 @@ class _MapWidgetState extends State<MapWidget>
                 panBuffer: 1,
                 tileDisplay: const TileDisplay.instantaneous(),
               ),
+              // Hillshade overlay — free ESRI terrain shading, subtle 3D depth.
+              // Note: ESRI uses {z}/{y}/{x} order (reversed vs OSM).
+              if (!widget.darkMode)
+                Opacity(
+                  opacity: 0.14,
+                  child: TileLayer(
+                    urlTemplate:
+                        'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+                    userAgentPackageName: 'com.cruizx.mobile',
+                    keepBuffer: 2,
+                    panBuffer: 1,
+                    tileDisplay: const TileDisplay.instantaneous(),
+                  ),
+                ),
               if (widget.darkMode && !BackendConfig.hasSelfHostedTiles)
                 TileLayer(
                   urlTemplate:

@@ -5,10 +5,10 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:slowride/l10n/app_localizations.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/routing_service.dart';
@@ -113,7 +113,8 @@ class _MapScreenState extends State<MapScreen> {
   Timer? _simTimer;
   int _simPtIdx = 0;
   double _simSegOffsetM = 0;
-  static const double _simSpeedKmh = 50.0;
+  double _simCurrentSpeedKmh = 0; // varies realistically during simulation
+  double _simMaxSpeedKmh = 30;
   static const Duration _simInterval = Duration(milliseconds: 200);
 
   bool _countryAutoDetected = false;
@@ -3301,8 +3302,8 @@ class _MapScreenState extends State<MapScreen> {
           nearestPointDistM != null) {
         // ROUTE-LOCKED: When on route, use route direction exclusively.
         // This is how Google Maps/Waze work — no GPS/compass blending.
-        if (nearestPointDistM < 20) {
-          // Full route lock when within 20m of route.
+        if (nearestPointDistM < 45) {
+          // Full route lock within 45m — handles typical phone GPS inaccuracy.
           headingForArrow = _routeHeadingAt(nearestIdxForHeading);
         }
         // Otherwise keep GPS heading (off-route).
@@ -3374,7 +3375,14 @@ class _MapScreenState extends State<MapScreen> {
     _positionSubscription = null;
     _simPtIdx = 0;
     _simSegOffsetM = 0;
+    _simCurrentSpeedKmh = 0; // start from rest
     final vt = UserPreferencesService.instance.vehicleType.value;
+    _simMaxSpeedKmh = switch (vt) {
+      'a-traktor' => 30.0,
+      'tractor' => 30.0,
+      'moped_car' => 45.0,
+      _ => 50.0,
+    };
     SlowRoadService.instance.startSession(vt);
     setState(() {
       _isSimulating = true;
@@ -3386,15 +3394,68 @@ class _MapScreenState extends State<MapScreen> {
       _currentLocation = _routePoints[0];
     });
     _locationNotifier.value = _routePoints[0];
-    _simTimer = Timer.periodic(_simInterval, (_) => _simStep());
+    _simTimer = Timer.periodic(
+      _simInterval,
+      (_) => _simStepWithSpeed(_simMaxSpeedKmh),
+    );
   }
 
-  void _simStep() {
+  void _simStepWithSpeed(double maxSpeedKmh) {
     if (!mounted || _routePoints.isEmpty) {
       _clearRoute();
       return;
     }
-    const metersPerSec = _simSpeedKmh / 3.6;
+
+    // ── Realistic speed calculation ───────────────────────────────────────
+    // Look ahead ~40m to detect upcoming turn sharpness.
+    double lookaheadAngle = 0;
+    if (_simPtIdx < _routePoints.length - 2) {
+      double accum = 0;
+      final curHdg = () {
+        final a = _routePoints[_simPtIdx];
+        final b = _routePoints[_simPtIdx + 1];
+        return (math.atan2(b.longitude - a.longitude, b.latitude - a.latitude) *
+                    180 /
+                    math.pi +
+                360) %
+            360;
+      }();
+      for (
+        int i = _simPtIdx + 1;
+        i < _routePoints.length - 1 && accum < 40;
+        i++
+      ) {
+        accum += _segDist(_routePoints[i], _routePoints[i + 1]);
+        final hdg =
+            (math.atan2(
+                      _routePoints[i + 1].longitude - _routePoints[i].longitude,
+                      _routePoints[i + 1].latitude - _routePoints[i].latitude,
+                    ) *
+                    180 /
+                    math.pi +
+                360) %
+            360;
+        final diff = ((hdg - curHdg + 540) % 360) - 180;
+        if (diff.abs() > lookaheadAngle.abs()) lookaheadAngle = diff;
+      }
+    }
+
+    // Speed target: reduce in proportion to turn sharpness.
+    // 0°=full speed, 90°=60% speed, 180°=40% speed
+    final turnFactor = 1.0 - (lookaheadAngle.abs() / 180.0) * 0.6;
+    final targetSpeed = maxSpeedKmh * turnFactor.clamp(0.4, 1.0);
+
+    // Smooth speed change + tiny random noise for realism (±1.5 km/h).
+    final noise = (math.Random().nextDouble() - 0.5) * 3.0;
+    final accelRate = 8.0; // km/h per 200ms tick
+    final diff = (targetSpeed + noise) - _simCurrentSpeedKmh;
+    _simCurrentSpeedKmh =
+        (_simCurrentSpeedKmh + diff.clamp(-accelRate, accelRate)).clamp(
+          0.0,
+          maxSpeedKmh,
+        );
+
+    final metersPerSec = _simCurrentSpeedKmh / 3.6;
     final intervalSec = _simInterval.inMilliseconds / 1000.0;
     double toAdvance = metersPerSec * intervalSec;
 
@@ -3434,7 +3495,7 @@ class _MapScreenState extends State<MapScreen> {
     final dLng = ptB.longitude - ptA.longitude;
     final heading = (math.atan2(dLng, dLat) * 180 / math.pi + 360) % 360;
 
-    _processLocationUpdate(simPos, _simSpeedKmh, heading);
+    _processLocationUpdate(simPos, _simCurrentSpeedKmh, heading);
   }
 
   @override
@@ -4740,7 +4801,9 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                               ),
                                             ),
-                                            if (!kReleaseMode) ...[
+                                            if (!kReleaseMode ||
+                                                BackendConfig
+                                                    .enableSimulation) ...[
                                               const SizedBox(height: 8),
                                               GestureDetector(
                                                 onTap: _startSimulation,

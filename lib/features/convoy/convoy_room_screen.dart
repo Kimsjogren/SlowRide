@@ -550,8 +550,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               // ROUTE-LOCKED HEADING: Use route direction exclusively when
               // on route. This is how Google Maps/Waze work — no blending.
               final routeHeading = _routeHeadingAt(nearestIdx);
-              if (distToRouteM < 20) {
-                // Full route lock when on route.
+              if (distToRouteM < 45) {
+                // Full route lock within 45m — handles typical GPS inaccuracy.
                 headingForArrow = routeHeading;
               } else {
                 // Off-route: use GPS heading.
@@ -660,7 +660,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                       ),
                 );
                 if (rawSpeed > 3.0 && distToTarget < 25.0) {
-                  const blend = 0.35;
+                  // Lower blend = trust dead reckoning more → smoother ride.
+                  const blend = 0.22;
                   _tgtLat = _tgtLat * (1 - blend) + point.latitude * blend;
                   _tgtLng = _tgtLng * (1 - blend) + point.longitude * blend;
                 } else {
@@ -679,12 +680,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 if (onRoute) {
                   _tgtHdg = headingForArrow;
 
-                  // POSITION SNAPPING: snap displayed position to nearest
-                  // point on route when close (< 15m) to eliminate GPS drift.
+                  // POSITION SNAPPING: progressive blend toward route.
+                  // Wider zone (45m) handles phone GPS inaccuracy reliably.
                   final (snapped, _, distM) = _projectOntoRoute(point);
-                  if (distM < 15) {
-                    _tgtLat = snapped.latitude;
-                    _tgtLng = snapped.longitude;
+                  if (distM < 45) {
+                    final snapBlend = ((45.0 - distM) / 45.0).clamp(0.0, 1.0);
+                    _tgtLat =
+                        _tgtLat * (1 - snapBlend) +
+                        snapped.latitude * snapBlend;
+                    _tgtLng =
+                        _tgtLng * (1 - snapBlend) +
+                        snapped.longitude * snapBlend;
                   }
                 } else {
                   // Movement-derived bearing is much stabler than raw compass.
@@ -1222,7 +1228,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     // Dead reckoning: extrapolate target forward between 1Hz GPS samples so
     // the camera glides instead of freezing for ~1s and then jumping.
     final lastGps = _lastGpsAt;
-    if (_gpsSpeedMps > 1.5 &&
+    if (_gpsSpeedMps > 0.8 &&
         lastGps != null &&
         DateTime.now().difference(lastGps).inMilliseconds < 2500) {
       final hdgRad = _filteredTgtHdg * math.pi / 180.0;
@@ -3566,7 +3572,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   urlTemplate:
                                                       BackendConfig
                                                           .hasSelfHostedTiles
-                                                      ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
+                                                      ? '${BackendConfig.tileServerUrl}/styles/${_useDarkMap ? "cruizx-dark" : "cruizx-light"}/512/{z}/{x}/{y}.png'
                                                       : _useDarkMap
                                                       ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                       : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -3600,6 +3606,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   tileDisplay:
                                                       const TileDisplay.instantaneous(),
                                                 ),
+                                                if (!_useDarkMap)
+                                                  Opacity(
+                                                    opacity: 0.14,
+                                                    child: TileLayer(
+                                                      urlTemplate:
+                                                          'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+                                                      userAgentPackageName:
+                                                          'com.cruizx.mobile',
+                                                      keepBuffer: 2,
+                                                      panBuffer: 1,
+                                                      tileDisplay:
+                                                          const TileDisplay.instantaneous(),
+                                                    ),
+                                                  ),
                                                 if (_useDarkMap &&
                                                     !BackendConfig
                                                         .hasSelfHostedTiles)
