@@ -1,0 +1,29 @@
+version: '3.8'
+
+# Side-by-side stack that adds tile serving + one gateway
+# without changing the existing Valhalla service definition.
+#
+# Start with:
+#   docker compose -f docker-compose.yml -f docker-compose.side-by-side.yml up -d tileserver nginx
+
+services:
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: slowride-tileserver
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./tiles:/data
+
+  nginx:
+    image: nginx:alpine
+    container_name: slowride-gateway
+    restart: unless-stopped
+    depends_on:
+      - valhalla
+      - tileserver
+    ports:
+      - "8088:80"
+    volumes:
+      - ./nginx/side-by-side.conf:/etc/nginx/conf.d/default.conf:ro

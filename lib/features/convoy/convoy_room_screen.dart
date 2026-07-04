@@ -92,7 +92,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const double _roadLimitLookupMinMoveMeters = 55;
   LatLng? _myLocation;
   double _myHeading = 0;
-  bool _isFollowingMyPosition = true;
+  bool _isFollowingMyPosition = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
   // When true, the map style follows time of day; a manual toggle disables it.
@@ -178,7 +178,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       headingDeg: headingDeg,
       zoom: zoom,
     );
-    _mapController.moveAndRotate(center, zoom, _use3DMap ? -headingDeg : 0);
+    try {
+      _mapController.moveAndRotate(center, zoom, _use3DMap ? -headingDeg : 0);
+    } catch (e) {
+      debugPrint('Convoy map moveAndRotate skipped: $e');
+    }
   }
 
   @override
@@ -3559,9 +3563,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               mapController: _mapController,
                                               children: [
                                                 TileLayer(
-                                                  urlTemplate: _useDarkMap
+                                                  urlTemplate:
+                                                      BackendConfig
+                                                          .hasSelfHostedTiles
+                                                      ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
+                                                      : _useDarkMap
                                                       ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png',
+                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                                  fallbackUrl:
+                                                      BackendConfig
+                                                          .hasSelfHostedTiles
+                                                      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                                                      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                                   subdomains: const [
                                                     'a',
                                                     'b',
@@ -3587,35 +3600,72 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   tileDisplay:
                                                       const TileDisplay.instantaneous(),
                                                 ),
-                                                TileLayer(
-                                                  urlTemplate: _useDarkMap
-                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png'
-                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-                                                  subdomains: const [
-                                                    'a',
-                                                    'b',
-                                                    'c',
-                                                    'd',
-                                                  ],
-                                                  userAgentPackageName:
-                                                      'com.cruizx.mobile',
-                                                  tileProvider: _tileProvider,
-                                                  tileUpdateTransformer:
-                                                      TileUpdateTransformers.throttle(
-                                                        const Duration(
-                                                          milliseconds: 28,
+                                                if (_useDarkMap &&
+                                                    !BackendConfig
+                                                        .hasSelfHostedTiles)
+                                                  TileLayer(
+                                                    urlTemplate:
+                                                        'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                                                    fallbackUrl:
+                                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                    subdomains: const [
+                                                      'a',
+                                                      'b',
+                                                      'c',
+                                                      'd',
+                                                    ],
+                                                    userAgentPackageName:
+                                                        'com.cruizx.mobile',
+                                                    tileProvider: _tileProvider,
+                                                    tileUpdateTransformer:
+                                                        TileUpdateTransformers.throttle(
+                                                          const Duration(
+                                                            milliseconds: 28,
+                                                          ),
                                                         ),
-                                                      ),
-                                                  retinaMode:
-                                                      RetinaMode.isHighDensity(
-                                                        context,
-                                                      ),
-                                                  maxNativeZoom: 20,
-                                                  keepBuffer: 2,
-                                                  panBuffer: 1,
-                                                  tileDisplay:
-                                                      const TileDisplay.instantaneous(),
-                                                ),
+                                                    retinaMode:
+                                                        RetinaMode.isHighDensity(
+                                                          context,
+                                                        ),
+                                                    maxNativeZoom: 20,
+                                                    keepBuffer: 2,
+                                                    panBuffer: 1,
+                                                    tileDisplay:
+                                                        const TileDisplay.instantaneous(),
+                                                  ),
+                                                if (!_useDarkMap &&
+                                                    !BackendConfig
+                                                        .hasSelfHostedTiles)
+                                                  TileLayer(
+                                                    urlTemplate:
+                                                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+                                                    fallbackUrl:
+                                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                    subdomains: const [
+                                                      'a',
+                                                      'b',
+                                                      'c',
+                                                      'd',
+                                                    ],
+                                                    userAgentPackageName:
+                                                        'com.cruizx.mobile',
+                                                    tileProvider: _tileProvider,
+                                                    tileUpdateTransformer:
+                                                        TileUpdateTransformers.throttle(
+                                                          const Duration(
+                                                            milliseconds: 28,
+                                                          ),
+                                                        ),
+                                                    retinaMode:
+                                                        RetinaMode.isHighDensity(
+                                                          context,
+                                                        ),
+                                                    maxNativeZoom: 20,
+                                                    keepBuffer: 2,
+                                                    panBuffer: 1,
+                                                    tileDisplay:
+                                                        const TileDisplay.instantaneous(),
+                                                  ),
                                                 MarkerLayer(
                                                   markers: [
                                                     // Alert markers
@@ -4998,24 +5048,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   onTap: () {
                                     final me = _myLocation;
                                     if (me == null) return;
-                                    _curLat = _tgtLat = me.latitude;
-                                    _curLng = _tgtLng = me.longitude;
-                                    _curHdg = _tgtHdg = _filteredTgtHdg =
-                                        _myHeading;
-                                    _rawCompassHdg = _myHeading;
-                                    _lastLocForBearing = me;
-                                    _lastCamTick = null;
-                                    _camInitialized = true;
-                                    setState(
-                                      () => _isFollowingMyPosition = true,
-                                    );
-                                    final zoom = _targetZoom();
-                                    _moveCameraForNav(
-                                      lat: me.latitude,
-                                      lng: me.longitude,
-                                      headingDeg: _myHeading,
-                                      zoom: zoom,
-                                    );
+                                    setState(() {
+                                      if (_isNavigating ||
+                                          _routePoints.isNotEmpty) {
+                                        _isFollowingMyPosition = true;
+                                      } else {
+                                        _isFollowingMyPosition =
+                                            !_isFollowingMyPosition;
+                                      }
+                                    });
+
+                                    if (_isFollowingMyPosition) {
+                                      _curLat = _tgtLat = me.latitude;
+                                      _curLng = _tgtLng = me.longitude;
+                                      _curHdg = _tgtHdg = _filteredTgtHdg =
+                                          _myHeading;
+                                      _rawCompassHdg = _myHeading;
+                                      _lastLocForBearing = me;
+                                      _lastCamTick = null;
+                                      _camInitialized = true;
+                                      final zoom = _targetZoom();
+                                      _moveCameraForNav(
+                                        lat: me.latitude,
+                                        lng: me.longitude,
+                                        headingDeg: _myHeading,
+                                        zoom: zoom,
+                                      );
+                                    }
                                   },
                                   color: _isFollowingMyPosition
                                       ? const Color(0xFF1E6BFF)

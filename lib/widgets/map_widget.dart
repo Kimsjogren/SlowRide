@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 
@@ -522,7 +523,11 @@ class _MapWidgetState extends State<MapWidget>
       headingDeg: headingDeg,
       zoom: zoom,
     );
-    _mapController.moveAndRotate(center, zoom, -headingDeg);
+    try {
+      _mapController.moveAndRotate(center, zoom, -headingDeg);
+    } catch (e) {
+      debugPrint('MapWidget moveAndRotate skipped: $e');
+    }
   }
 
   @override
@@ -659,9 +664,14 @@ class _MapWidgetState extends State<MapWidget>
             ),
             children: [
               TileLayer(
-                urlTemplate: widget.darkMode
+                urlTemplate: BackendConfig.hasSelfHostedTiles
+                    ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
+                    : widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                fallbackUrl: BackendConfig.hasSelfHostedTiles
+                    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.cruizx.mobile',
                 tileProvider: _tileProvider,
@@ -676,10 +686,28 @@ class _MapWidgetState extends State<MapWidget>
                 panBuffer: 1,
                 tileDisplay: const TileDisplay.instantaneous(),
               ),
-              if (widget.darkMode)
+              if (widget.darkMode && !BackendConfig.hasSelfHostedTiles)
                 TileLayer(
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                  fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.cruizx.mobile',
+                  tileProvider: _tileProvider,
+                  tileUpdateTransformer: TileUpdateTransformers.throttle(
+                    const Duration(milliseconds: 28),
+                  ),
+                  retinaMode: RetinaMode.isHighDensity(context),
+                  maxNativeZoom: 20,
+                  keepBuffer: 2,
+                  panBuffer: 1,
+                  tileDisplay: const TileDisplay.instantaneous(),
+                ),
+              if (!widget.darkMode)
+                TileLayer(
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+                  fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.cruizx.mobile',
                   tileProvider: _tileProvider,

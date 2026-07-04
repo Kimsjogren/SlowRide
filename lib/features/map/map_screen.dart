@@ -23,6 +23,7 @@ import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
+import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
 
@@ -59,6 +60,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _isNavigating = false;
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
+  bool _didInitialAutoFollow = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
   // When true, the map style follows time of day; a manual toggle disables it.
@@ -232,9 +234,14 @@ class _MapScreenState extends State<MapScreen> {
     final center = _currentLocation;
     if (center == null) return;
     try {
-      final result = await _alertsController.fetchNearby(center);
+      final futures = [
+        _alertsController.fetchNearby(center),
+        TrafikverketService.instance.fetchNearby(center),
+      ];
+      final results = await Future.wait(futures);
       if (!mounted) return;
-      setState(() => _alerts = result);
+      final combined = [...results[0], ...results[1]];
+      setState(() => _alerts = combined);
     } catch (_) {}
   }
 
@@ -3306,8 +3313,9 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
-      if (!_isFollowing && !_isNavigating && _routePoints.isEmpty) {
+      if (!_didInitialAutoFollow && !_isNavigating && _routePoints.isEmpty) {
         _isFollowing = true;
+        _didInitialAutoFollow = true;
       }
       if (_isNavigating) {
         _tripDistanceM = newTripDist;
@@ -4050,7 +4058,13 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 // GPS / re-center button
                 _mapCircleButton(
-                  onTap: () => setState(() => _isFollowing = true),
+                  onTap: () => setState(() {
+                    if (_isNavigating || _routePoints.isNotEmpty) {
+                      _isFollowing = true;
+                    } else {
+                      _isFollowing = !_isFollowing;
+                    }
+                  }),
                   color: _isFollowing ? const Color(0xFF1E6BFF) : null,
                   child: Icon(
                     _isFollowing ? Icons.my_location : Icons.location_searching,

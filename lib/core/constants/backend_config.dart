@@ -105,4 +105,25 @@ class BackendConfig {
     'WEB_CHECKOUT_SESSION_URL',
     defaultValue: 'https://cruizx.com/api/web/checkout-session',
   );
+
+  /// Self-hosted tile server base URL.
+  /// When set, the app uses your own TileServer GL instead of Carto CDN.
+  /// Light tiles:  $tileServerUrl/styles/basic-preview/512/{z}/{x}/{y}.png
+  /// Dark tiles:   $tileServerUrl/styles/basic-preview/512/{z}/{x}/{y}.png
+  /// Build with:   --dart-define=TILE_SERVER_URL=https://api.cruizx.com/tiles
+  static const String tileServerUrl = String.fromEnvironment(
+    'TILE_SERVER_URL',
+    defaultValue: '',
+  );
+
+  /// Returns true when a self-hosted tile server is configured.
+  static bool get hasSelfHostedTiles => tileServerUrl.trim().isNotEmpty;
+
+  /// Trafikverket Open API key for live traffic incidents (Sweden).
+  /// Register free at: https://api.trafikinfo.trafikverket.se/
+  /// Build with: --dart-define=TRAFIKVERKET_KEY=your_key_here
+  static const String trafikverketKey = String.fromEnvironment(
+    'TRAFIKVERKET_KEY',
+    defaultValue: '',
+  );
 }

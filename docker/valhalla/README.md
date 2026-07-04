@@ -275,3 +275,52 @@ rm -rf data/valhalla_tiles  # Keep downloaded .pbf files
 rm -f data/merged.osm.pbf
 docker-compose up -d
 ```
+
+## Side-by-Side Tiles + Gateway (Without Touching Valhalla)
+
+If you want to add map tile serving on the same server without changing the
+existing Valhalla service, use the side-by-side compose file.
+
+This keeps Valhalla as-is on port `8002` and adds:
+
+- `tileserver` on `8081` (direct access, optional)
+- `nginx` gateway on `8088`
+  - `/routing/*` -> Valhalla (`valhalla:8002`)
+  - `/tiles/*` -> Tileserver (`tileserver:8080`)
+
+### 1. Add tile data
+
+Put at least one `.mbtiles` file in:
+
+```bash
+docker/valhalla/tiles/
+```
+
+### 2. Start side-by-side services
+
+From `docker/valhalla`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.side-by-side.yml up -d tileserver nginx
+```
+
+This does not modify the original `docker-compose.yml` service definitions.
+
+### 3. Verify endpoints
+
+```bash
+# Existing Valhalla direct
+curl http://localhost:8002/status
+
+# Through gateway
+curl http://localhost:8088/status
+
+# Tile service through gateway (example path)
+curl -I http://localhost:8088/tiles/
+```
+
+### 4. Stop only side-by-side extras
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.side-by-side.yml stop tileserver nginx
+```
