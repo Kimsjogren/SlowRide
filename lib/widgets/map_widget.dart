@@ -665,13 +665,14 @@ class _MapWidgetState extends State<MapWidget>
             ),
             children: [
               TileLayer(
-                urlTemplate: BackendConfig.hasSelfHostedTiles
-                    ? '${BackendConfig.tileServerUrl}/styles/${widget.darkMode ? "cruizx-dark" : "cruizx-light"}/512/{z}/{x}/{y}.png'
+                urlTemplate:
+                    (BackendConfig.hasSelfHostedTiles && !widget.darkMode)
+                    ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
                     : widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                fallbackUrl: BackendConfig.hasSelfHostedTiles
-                    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                fallbackUrl: widget.darkMode
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                     : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.cruizx.mobile',
@@ -701,7 +702,8 @@ class _MapWidgetState extends State<MapWidget>
                     tileDisplay: const TileDisplay.instantaneous(),
                   ),
                 ),
-              if (widget.darkMode && !BackendConfig.hasSelfHostedTiles)
+              // Always show dark labels in dark mode (self-hosted has no dark raster style).
+              if (widget.darkMode)
                 TileLayer(
                   urlTemplate:
                       'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',

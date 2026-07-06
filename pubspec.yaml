@@ -54,6 +54,7 @@ dependencies:
   flutter_tts: ^4.2.5
   flutter_svg: any
   in_app_purchase: any
+  maplibre_gl: ^0.26.2
 
 dev_dependencies:
   flutter_test:

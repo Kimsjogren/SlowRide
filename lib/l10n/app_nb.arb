@@ -592,5 +592,8 @@
   "favSetAs": "Lagre som {type}",
   "favCustom": "Annen favoritt",
   "ttsVoiceHint": "Tips: Last ned bedre stemmer i Innstillinger → Tilgjengelighet → Opplest innhold → Stemmer",
-  "ttsVoiceHintDismiss": "OK"
+  "ttsVoiceHintDismiss": "OK",
+  "settingsVectorMap": "Vektorkart",
+  "settingsVectorMapOn": "Skarp gjengivelse på alle zoomnivåer, myk zoom",
+  "settingsVectorMapOff": "Standard — rask og offline-bufret"
 }

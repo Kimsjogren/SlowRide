@@ -582,5 +582,8 @@
   "favSetAs": "Tallenna kohteeksi {type}",
   "favCustom": "Muu suosikki",
   "ttsVoiceHint": "Vinkki: Lataa parempia ääniä kohdasta Asetukset → Esteettömyys → Puhuttu sisältö → Äänet",
-  "ttsVoiceHintDismiss": "OK"
+  "ttsVoiceHintDismiss": "OK",
+  "settingsVectorMap": "Vektorikartta",
+  "settingsVectorMapOn": "Tarkka renderöinti kaikilla zoomitasoilla, pehmeä zoom",
+  "settingsVectorMapOff": "Vakio — nopea ja offline-välimuistissa"
 }

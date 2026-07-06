@@ -238,6 +238,7 @@
   "settingsMapMarkerCompass": "Compass",
   "settingsMapMarkerTriangle": "Triangle",
   "settingsMapMarkerDot": "Dot",
+  "settingsMapMarkerEpa": "EPA",
   "settingsMapMarkerMicrocar": "Mopedbil",
   "settingsMapMarkerLigier": "Ligier",
   "settingsMapMarkerAixam": "Aixam",
@@ -591,5 +592,8 @@
   "favSetAs": "Save as {type}",
   "favCustom": "Other favorite",
   "ttsVoiceHint": "Tip: Download better voices in Settings → Accessibility → Spoken Content → Voices",
-  "ttsVoiceHintDismiss": "OK"
+  "ttsVoiceHintDismiss": "OK",
+  "settingsVectorMap": "Vector map",
+  "settingsVectorMapOn": "Sharp rendering at all zoom levels, smooth zoom",
+  "settingsVectorMapOff": "Standard — fast and offline-cached"
 }

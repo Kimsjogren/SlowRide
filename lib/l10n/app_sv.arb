@@ -592,5 +592,8 @@
   "favSetAs": "Spara som {type}",
   "favCustom": "Annan favorit",
   "ttsVoiceHint": "Tips: Ladda ner bättre röster i Inställningar → Hjälpmedel → Uppläsning och tal → Röster",
-  "ttsVoiceHintDismiss": "OK"
+  "ttsVoiceHintDismiss": "OK",
+  "settingsVectorMap": "Vektorkarta",
+  "settingsVectorMapOn": "Skarp rendering i alla zoomnivåer, mjuk zoom",
+  "settingsVectorMapOff": "Standard — snabb och offline-cachad"
 }

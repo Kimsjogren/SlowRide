@@ -22,6 +22,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
+import 'package:slowride/widgets/vector_map_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/subscription_service.dart';
@@ -61,6 +62,7 @@ class _MapScreenState extends State<MapScreen> {
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
   bool _didInitialAutoFollow = false;
+  bool _useVectorMap = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
   // When true, the map style follows time of day; a manual toggle disables it.
@@ -143,6 +145,13 @@ class _MapScreenState extends State<MapScreen> {
       _onExternalNavigationRequest,
     );
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    // Default vector mode on when self-hosted tiles are available.
+    _useVectorMap = BackendConfig.hasSelfHostedTiles
+        ? true
+        : UserPreferencesService.instance.useVectorMap.value;
+    UserPreferencesService.instance.useVectorMap.addListener(
+      _onUseVectorMapChanged,
+    );
     // Auto-pick a dark map at night and a light map during the day.
     _useDarkMap = _isNightTime();
     // Lazy-load prefs for speed calibration (fire-and-forget).
@@ -571,7 +580,18 @@ class _MapScreenState extends State<MapScreen> {
     _simTimer?.cancel();
     _alertsTimer?.cancel();
     _positionSubscription?.cancel();
+    UserPreferencesService.instance.useVectorMap.removeListener(
+      _onUseVectorMapChanged,
+    );
     super.dispose();
+  }
+
+  void _onUseVectorMapChanged() {
+    if (mounted)
+      setState(
+        () =>
+            _useVectorMap = UserPreferencesService.instance.useVectorMap.value,
+      );
   }
 
   String _normalizeSearchText(String input) {
@@ -3522,30 +3542,67 @@ class _MapScreenState extends State<MapScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(mapRadius),
                 child: RepaintBoundary(
-                  child: MapWidget(
-                    locationNotifier: _locationNotifier,
-                    headingNotifier: _headingNotifier,
-                    destination: _destination,
-                    routePoints: _isNavigating && _displayNearestIdx > 0
-                        ? _routePoints.sublist(
-                            _displayNearestIdx.clamp(0, _routePoints.length),
-                          )
-                        : _routePoints,
-                    studdedTireBanZones:
-                        UserPreferencesService.instance.hasStuddedTires.value
-                        ? StuddedTireZones.all.map((z) => z.polygon).toList()
-                        : const [],
-                    chargingStations: _chargingStations,
-                    nextManeuverDistanceMeters: _isNavigating
-                        ? _distToNextManeuver
-                        : null,
-                    nextManeuverSign: _isNavigating ? _nextManeuverSign : null,
-                    alerts: _alerts,
-                    onTap: _isNavigating ? null : _handleMapTap,
-                    followUser: _isFollowing && _currentLocation != null,
-                    use3D: _isNavigating && _use3DMap,
-                    darkMode: _useDarkMap,
-                    onUserPanned: () => setState(() => _isFollowing = false),
+                  child: Builder(
+                    builder: (context) {
+                      final routeForMap =
+                          _isNavigating && _displayNearestIdx > 0
+                          ? _routePoints.sublist(
+                              _displayNearestIdx.clamp(0, _routePoints.length),
+                            )
+                          : _routePoints;
+                      if (_useVectorMap && BackendConfig.hasSelfHostedTiles) {
+                        return VectorMapWidget(
+                          key: const ValueKey('vector'),
+                          locationNotifier: _locationNotifier,
+                          headingNotifier: _headingNotifier,
+                          destination: _destination,
+                          routePoints: routeForMap,
+                          alerts: _alerts,
+                          nextManeuverDistanceMeters: _isNavigating
+                              ? _distToNextManeuver
+                              : null,
+                          nextManeuverSign: _isNavigating
+                              ? _nextManeuverSign
+                              : null,
+                          onTap: _isNavigating ? null : _handleMapTap,
+                          followUser: _isFollowing && _currentLocation != null,
+                          use3D: _isNavigating && _use3DMap,
+                          darkMode: _useDarkMap,
+                          onUserPanned: () =>
+                              setState(() => _isFollowing = false),
+                        );
+                      }
+                      return MapWidget(
+                        key: const ValueKey('raster'),
+                        locationNotifier: _locationNotifier,
+                        headingNotifier: _headingNotifier,
+                        destination: _destination,
+                        routePoints: routeForMap,
+                        studdedTireBanZones:
+                            UserPreferencesService
+                                .instance
+                                .hasStuddedTires
+                                .value
+                            ? StuddedTireZones.all
+                                  .map((z) => z.polygon)
+                                  .toList()
+                            : const [],
+                        chargingStations: _chargingStations,
+                        nextManeuverDistanceMeters: _isNavigating
+                            ? _distToNextManeuver
+                            : null,
+                        nextManeuverSign: _isNavigating
+                            ? _nextManeuverSign
+                            : null,
+                        alerts: _alerts,
+                        onTap: _isNavigating ? null : _handleMapTap,
+                        followUser: _isFollowing && _currentLocation != null,
+                        use3D: _isNavigating && _use3DMap,
+                        darkMode: _useDarkMap,
+                        onUserPanned: () =>
+                            setState(() => _isFollowing = false),
+                      );
+                    },
                   ),
                 ),
               ),

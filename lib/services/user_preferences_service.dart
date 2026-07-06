@@ -59,6 +59,7 @@ class UserPreferencesService {
   final ValueNotifier<bool> use3DMap = ValueNotifier<bool>(false);
   final ValueNotifier<bool> isElectric = ValueNotifier<bool>(false);
   final ValueNotifier<bool> hasStuddedTires = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> useVectorMap = ValueNotifier<bool>(false);
   final ValueNotifier<MapMarkerStyle> mapMarkerStyle =
       ValueNotifier<MapMarkerStyle>(MapMarkerStyle.navigation);
 
@@ -70,6 +71,7 @@ class UserPreferencesService {
   static const String _use3DMapKey = 'user_use_3d_map';
   static const String _isElectricKey = 'user_is_electric';
   static const String _hasStuddedTiresKey = 'user_has_studded_tires';
+  static const String _useVectorMapKey = 'user_use_vector_map';
   static const String _mapMarkerStyleKey = 'user_map_marker_style';
 
   /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_SE_A-tractor'.
@@ -96,6 +98,7 @@ class UserPreferencesService {
     use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
     isElectric.value = _prefs!.getBool(_isElectricKey) ?? false;
     hasStuddedTires.value = _prefs!.getBool(_hasStuddedTiresKey) ?? false;
+    useVectorMap.value = _prefs!.getBool(_useVectorMapKey) ?? false;
     final storedMarkerStyle = _prefs!.getString(_mapMarkerStyleKey);
     mapMarkerStyle.value = MapMarkerStyle.values.firstWhere(
       (style) => style.name == storedMarkerStyle,
@@ -113,6 +116,7 @@ class UserPreferencesService {
       use3DMap.addListener(_persist3DMap);
       isElectric.addListener(_persistIsElectric);
       hasStuddedTires.addListener(_persistHasStuddedTires);
+      useVectorMap.addListener(_persistUseVectorMap);
       mapMarkerStyle.addListener(_persistMapMarkerStyle);
       _listenersAttached = true;
     }
@@ -170,6 +174,10 @@ class UserPreferencesService {
 
   Future<void> _persistHasStuddedTires() async {
     await _prefs?.setBool(_hasStuddedTiresKey, hasStuddedTires.value);
+  }
+
+  Future<void> _persistUseVectorMap() async {
+    await _prefs?.setBool(_useVectorMapKey, useVectorMap.value);
   }
 
   Future<void> _persistMapMarkerStyle() async {

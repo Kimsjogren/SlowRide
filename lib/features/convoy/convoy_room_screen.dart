@@ -30,6 +30,7 @@ import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 import 'package:slowride/services/destination_history_service.dart';
+import 'package:slowride/widgets/vector_map_widget.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -72,6 +73,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   // Smooth arrow heading — ticker drives it when following, GPS otherwise.
   final ValueNotifier<double> _arrowHdg = ValueNotifier<double>(0);
+  // Location notifier for VectorMapWidget.
+  final ValueNotifier<LatLng?> _locationNotifier = ValueNotifier<LatLng?>(null);
   // Speed notifier — drives speed display without setState.
   final ValueNotifier<double> _speedNotifier = ValueNotifier<double>(0);
   Duration? _lastCameraTickAt;
@@ -564,6 +567,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             // which was causing the arrow to stutter every ~1-3 s).
             _speedNotifier.value = newSpeed;
             _myLocation = point;
+            _locationNotifier.value = point;
             _myHeading = headingForArrow;
             if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
             _distToNextManeuver = newDistToManeuver;
@@ -756,6 +760,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _speedNotifier.dispose();
+    _locationNotifier.dispose();
     _searchDebounce?.cancel();
     _camTicker.dispose();
     _messageController.dispose();
@@ -3517,6 +3522,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 builder: (context, constraints) {
                                   final h = constraints.maxHeight;
                                   final w = constraints.maxWidth;
+                                  final useVector = UserPreferencesService
+                                      .instance
+                                      .useVectorMap
+                                      .value;
+                                  if (useVector) {
+                                    return VectorMapWidget(
+                                      key: const ValueKey('convoy-vector'),
+                                      locationNotifier: _locationNotifier,
+                                      headingNotifier: _arrowHdg,
+                                      destination: _routeDestination,
+                                      routePoints: _routePoints,
+                                      alerts: _alerts,
+                                      followUser: _isFollowingMyPosition,
+                                      use3D: _isNavigating && _use3DMap,
+                                      darkMode: _useDarkMap,
+                                      onUserPanned: () => setState(
+                                        () => _isFollowingMyPosition = false,
+                                      ),
+                                    );
+                                  }
                                   final is3D =
                                       _isFollowingMyPosition && _use3DMap;
                                   final matrix = is3D
@@ -3570,16 +3595,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               children: [
                                                 TileLayer(
                                                   urlTemplate:
-                                                      BackendConfig
-                                                          .hasSelfHostedTiles
-                                                      ? '${BackendConfig.tileServerUrl}/styles/${_useDarkMap ? "cruizx-dark" : "cruizx-light"}/512/{z}/{x}/{y}.png'
+                                                      (BackendConfig
+                                                              .hasSelfHostedTiles &&
+                                                          !_useDarkMap)
+                                                      ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
                                                       : _useDarkMap
                                                       ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                       : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                                  fallbackUrl:
-                                                      BackendConfig
-                                                          .hasSelfHostedTiles
-                                                      ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+                                                  fallbackUrl: _useDarkMap
+                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                       : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                                   subdomains: const [
                                                     'a',
@@ -3620,9 +3644,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           const TileDisplay.instantaneous(),
                                                     ),
                                                   ),
-                                                if (_useDarkMap &&
-                                                    !BackendConfig
-                                                        .hasSelfHostedTiles)
+                                                if (_useDarkMap)
                                                   TileLayer(
                                                     urlTemplate:
                                                         'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
@@ -3865,8 +3887,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                             ),
                           ),
                           // ── Fixed arrow overlay (follow mode) ──
-                          // Removes jitter by keeping the arrow fixed on
-                          // screen while the map animates beneath it.
                           if (_isFollowingMyPosition && _myLocation != null)
                             IgnorePointer(
                               child: Align(

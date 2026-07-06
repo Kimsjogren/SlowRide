@@ -603,6 +603,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsMapMarkerDot => 'Punkt';
 
   @override
+  String get settingsMapMarkerEpa => 'EPA';
+
+  @override
   String get settingsMapMarkerMicrocar => 'Mopedbil';
 
   @override
@@ -1453,4 +1456,13 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get ttsVoiceHintDismiss => 'OK';
+
+  @override
+  String get settingsVectorMap => 'Vektorkart';
+
+  @override
+  String get settingsVectorMapOn => 'Skarp gjengivelse på alle zoomnivåer, myk zoom';
+
+  @override
+  String get settingsVectorMapOff => 'Standard — rask og offline-bufret';
 }

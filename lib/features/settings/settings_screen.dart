@@ -537,6 +537,62 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                 ),
+                const SizedBox(height: 12),
+                // Vector map toggle
+                ValueListenableBuilder<bool>(
+                  valueListenable: UserPreferencesService.instance.useVectorMap,
+                  builder: (context, useVector, _) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            l10n.settingsVectorMap,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Text(
+                            useVector
+                                ? l10n.settingsVectorMapOn
+                                : l10n.settingsVectorMapOff,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 13,
+                            ),
+                          ),
+                          secondary: Icon(
+                            Icons.map_outlined,
+                            color: useVector
+                                ? const Color(0xFF00C8FF)
+                                : Colors.white38,
+                          ),
+                          value: useVector,
+                          activeThumbColor: const Color(0xFF00C8FF),
+                          onChanged: (v) =>
+                              UserPreferencesService
+                                      .instance
+                                      .useVectorMap
+                                      .value =
+                                  v,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 // Parent Mode card
                 GestureDetector(

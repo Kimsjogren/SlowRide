@@ -1257,6 +1257,12 @@ abstract class AppLocalizations {
   /// **'Dot'**
   String get settingsMapMarkerDot;
 
+  /// No description provided for @settingsMapMarkerEpa.
+  ///
+  /// In en, this message translates to:
+  /// **'EPA'**
+  String get settingsMapMarkerEpa;
+
   /// No description provided for @settingsMapMarkerMicrocar.
   ///
   /// In en, this message translates to:
@@ -2828,6 +2834,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get ttsVoiceHintDismiss;
+
+  /// No description provided for @settingsVectorMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Vector map'**
+  String get settingsVectorMap;
+
+  /// No description provided for @settingsVectorMapOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharp rendering at all zoom levels, smooth zoom'**
+  String get settingsVectorMapOn;
+
+  /// No description provided for @settingsVectorMapOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard — fast and offline-cached'**
+  String get settingsVectorMapOff;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

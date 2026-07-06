@@ -592,5 +592,8 @@
   "favSetAs": "Enregistrer comme {type}",
   "favCustom": "Autre favori",
   "ttsVoiceHint": "Astuce : Téléchargez de meilleures voix dans Réglages → Accessibilité → Contenu énoncé → Voix",
-  "ttsVoiceHintDismiss": "OK"
+  "ttsVoiceHintDismiss": "OK",
+  "settingsVectorMap": "Carte vectorielle",
+  "settingsVectorMapOn": "Rendu net à tous les niveaux de zoom, zoom fluide",
+  "settingsVectorMapOff": "Standard — rapide et mis en cache hors ligne"
 }
