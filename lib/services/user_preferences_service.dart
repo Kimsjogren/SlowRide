@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 
 enum SpeedUnit { kmh, mph }
@@ -98,7 +99,9 @@ class UserPreferencesService {
     use3DMap.value = _prefs!.getBool(_use3DMapKey) ?? false;
     isElectric.value = _prefs!.getBool(_isElectricKey) ?? false;
     hasStuddedTires.value = _prefs!.getBool(_hasStuddedTiresKey) ?? false;
-    useVectorMap.value = _prefs!.getBool(_useVectorMapKey) ?? false;
+    // Default vector ON when self-hosted tiles available, OFF otherwise.
+    useVectorMap.value =
+        _prefs!.getBool(_useVectorMapKey) ?? BackendConfig.hasSelfHostedTiles;
     final storedMarkerStyle = _prefs!.getString(_mapMarkerStyleKey);
     mapMarkerStyle.value = MapMarkerStyle.values.firstWhere(
       (style) => style.name == storedMarkerStyle,

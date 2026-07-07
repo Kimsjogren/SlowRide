@@ -113,7 +113,7 @@ class BackendConfig {
   /// Build with:   --dart-define=TILE_SERVER_URL=https://api.cruizx.com/tiles
   static const String tileServerUrl = String.fromEnvironment(
     'TILE_SERVER_URL',
-    defaultValue: '',
+    defaultValue: 'https://api.cruizx.com/tiles',
   );
 
   /// Returns true when a self-hosted tile server is configured.

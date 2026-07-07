@@ -145,10 +145,8 @@ class _MapScreenState extends State<MapScreen> {
       _onExternalNavigationRequest,
     );
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
-    // Default vector mode on when self-hosted tiles are available.
-    _useVectorMap = BackendConfig.hasSelfHostedTiles
-        ? true
-        : UserPreferencesService.instance.useVectorMap.value;
+    // Respect settings toggle, with vector as default if self-hosted tiles available.
+    _useVectorMap = UserPreferencesService.instance.useVectorMap.value;
     UserPreferencesService.instance.useVectorMap.addListener(
       _onUseVectorMapChanged,
     );

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -54,12 +55,22 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   bool _userPanning = false;
   bool _disposed = false;
   bool _isAnimatingCamera = false;
+  Timer? _panCooldownTimer;
+  Timer? _layerUpdateDebouncer;
+  List<LatLng> _lastRoutePoints = [];
+  LatLng? _lastDestination;
 
   String get _styleUrl {
-    // Always use Carto GL for reliable vector rendering.
-    return widget.darkMode
-        ? 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
-        : 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+    if (widget.darkMode) {
+      // Using a more stable dark style. The standard dark-matter-gl-style
+      // can have label flickering issues due to text collision detection.
+      // We'll try the OSM Liberty dark variant or stick with dark-matter
+      // but optimize layer management to reduce flicker.
+      return 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+    }
+    // Light mode: use Carto Voyager GL (reliable fallback)
+    // The custom cruizx-light style is not yet available on the tile server
+    return 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
   }
 
   @override
@@ -72,6 +83,8 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   @override
   void dispose() {
     _disposed = true;
+    _panCooldownTimer?.cancel();
+    _layerUpdateDebouncer?.cancel();
     widget.locationNotifier.removeListener(_onLocationUpdate);
     widget.headingNotifier.removeListener(_onHeadingUpdate);
     super.dispose();
@@ -152,93 +165,121 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     final c = _controller;
     if (c == null) return;
 
-    // ── Route ─────────────────────────────────────────────────────────────
-    for (final id in ['route-line', 'route-casing']) {
-      try {
-        await c.removeLayer(id);
-      } catch (_) {}
-    }
-    try {
-      await c.removeSource('route-src');
-    } catch (_) {}
+    // Skip update if data hasn't actually changed
+    final routeChanged = widget.routePoints != _lastRoutePoints;
+    final destChanged = widget.destination != _lastDestination;
+    if (!routeChanged && !destChanged) return;
 
-    if (widget.routePoints.length >= 2) {
+    _lastRoutePoints = List.from(widget.routePoints);
+    _lastDestination = widget.destination;
+
+    // ── Route ─────────────────────────────────────────────────────────────
+    // Instead of removing and re-adding layers/sources, update them in place
+    // to avoid triggering label re-rendering which causes flickering.
+    final hasRoute = widget.routePoints.length >= 2;
+
+    if (hasRoute) {
       final coords = widget.routePoints
           .map((p) => [p.longitude, p.latitude])
           .toList();
-      await c.addSource(
-        'route-src',
-        ml.GeojsonSourceProperties(
-          data: {
-            'type': 'FeatureCollection',
-            'features': [
-              {
-                'type': 'Feature',
-                'geometry': {'type': 'LineString', 'coordinates': coords},
-              },
-            ],
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'geometry': {'type': 'LineString', 'coordinates': coords},
           },
-        ),
-      );
-      await c.addLineLayer(
-        'route-src',
-        'route-casing',
-        const ml.LineLayerProperties(
-          lineColor: '#1448a8',
-          lineWidth: 11.0,
-          lineCap: 'round',
-          lineJoin: 'round',
-        ),
-      );
-      await c.addLineLayer(
-        'route-src',
-        'route-line',
-        const ml.LineLayerProperties(
-          lineColor: '#4888ff',
-          lineWidth: 7.0,
-          lineCap: 'round',
-          lineJoin: 'round',
-        ),
-      );
+        ],
+      };
+
+      // Try to update source if it exists, otherwise create it
+      try {
+        await c.setGeoJsonSource('route-src', geojson);
+      } catch (_) {
+        // Source doesn't exist yet, create it with layers
+        await c.addSource(
+          'route-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addLineLayer(
+          'route-src',
+          'route-casing',
+          const ml.LineLayerProperties(
+            lineColor: '#1448a8',
+            lineWidth: 11.0,
+            lineCap: 'round',
+            lineJoin: 'round',
+          ),
+        );
+        await c.addLineLayer(
+          'route-src',
+          'route-line',
+          const ml.LineLayerProperties(
+            lineColor: '#4888ff',
+            lineWidth: 7.0,
+            lineCap: 'round',
+            lineJoin: 'round',
+          ),
+        );
+      }
+    } else {
+      // No route, remove layers if they exist
+      for (final id in ['route-line', 'route-casing']) {
+        try {
+          await c.removeLayer(id);
+        } catch (_) {}
+      }
+      try {
+        await c.removeSource('route-src');
+      } catch (_) {}
     }
 
     // ── Destination ────────────────────────────────────────────────────────
-    try {
-      await c.removeLayer('dest-layer');
-    } catch (_) {}
-    try {
-      await c.removeSource('dest-src');
-    } catch (_) {}
+    final hasDest = widget.destination != null;
 
-    if (widget.destination != null) {
+    if (hasDest) {
       final d = widget.destination!;
-      await c.addSource(
-        'dest-src',
-        ml.GeojsonSourceProperties(
-          data: {
-            'type': 'FeatureCollection',
-            'features': [
-              {
-                'type': 'Feature',
-                'geometry': {
-                  'type': 'Point',
-                  'coordinates': [d.longitude, d.latitude],
-                },
-              },
-            ],
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': [
+          {
+            'type': 'Feature',
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [d.longitude, d.latitude],
+            },
           },
-        ),
-      );
-      await c.addCircleLayer(
-        'dest-src',
-        'dest-layer',
-        const ml.CircleLayerProperties(
-          circleColor: '#ff4444',
-          circleRadius: 10.0,
-          circleStrokeColor: '#ffffff',
-          circleStrokeWidth: 3.0,
-        ),
-      );
+        ],
+      };
+
+      // Try to update source if it exists, otherwise create it
+      try {
+        await c.setGeoJsonSource('dest-src', geojson);
+      } catch (_) {
+        // Source doesn't exist yet, create it with layer
+        await c.addSource(
+          'dest-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addCircleLayer(
+          'dest-src',
+          'dest-layer',
+          const ml.CircleLayerProperties(
+            circleColor: '#ff4444',
+            circleRadius: 10.0,
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 3.0,
+          ),
+        );
+      }
+    } else {
+      // No destination, remove layer if it exists
+      try {
+        await c.removeLayer('dest-layer');
+      } catch (_) {}
+      try {
+        await c.removeSource('dest-src');
+      } catch (_) {}
     }
   }
 
@@ -249,7 +290,13 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
 
     final routeChanged = widget.routePoints != oldWidget.routePoints;
     final destChanged = widget.destination != oldWidget.destination;
-    if (routeChanged || destChanged) _refreshLayers();
+    if (routeChanged || destChanged) {
+      // Debounce layer updates to avoid flickering labels
+      _layerUpdateDebouncer?.cancel();
+      _layerUpdateDebouncer = Timer(const Duration(milliseconds: 100), () {
+        if (mounted) _refreshLayers();
+      });
+    }
 
     if (widget.followUser && !oldWidget.followUser) {
       _userPanning = false;
@@ -279,14 +326,23 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         },
         onCameraMove: (_) {
           // If camera moves without a programmatic animation, it's a user pan.
-          if (!_isAnimatingCamera && _mapReady) {
+          if (!_isAnimatingCamera && _mapReady && !_userPanning) {
             _userPanning = true;
+            // Notify immediately so MapScreen can disable follow mode
+            widget.onUserPanned?.call();
+            // Cancel previous cooldown
+            _panCooldownTimer?.cancel();
           }
         },
         onCameraIdle: () {
           if (_userPanning) {
-            _userPanning = false;
-            widget.onUserPanned?.call();
+            // Keep _userPanning true for 1.5s to prevent snap-back during gesture
+            _panCooldownTimer?.cancel();
+            _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
+              if (mounted) {
+                _userPanning = false;
+              }
+            });
           }
         },
         myLocationEnabled: true,
