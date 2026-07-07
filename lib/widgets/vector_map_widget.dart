@@ -68,9 +68,9 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       // but optimize layer management to reduce flicker.
       return 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
     }
-    // Light mode: use Carto Voyager GL (reliable fallback)
-    // The custom cruizx-light style is not yet available on the tile server
-    return 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+    // Light mode: use Positron GL which has more detail than Voyager
+    // Positron includes all street names, POIs, and better labeling
+    return 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
   }
 
   @override
@@ -321,9 +321,19 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         onPanStart: (_) {
           if (widget.followUser && !_userPanning) {
             _userPanning = true;
+            _isAnimatingCamera = false; // Stop any ongoing camera animation
             widget.onUserPanned?.call();
             _panCooldownTimer?.cancel();
           }
+        },
+        onPanUpdate: (_) {
+          // Continue to mark as panning on every pan update
+          if (widget.followUser && !_userPanning) {
+            _userPanning = true;
+            _isAnimatingCamera = false;
+            widget.onUserPanned?.call();
+          }
+          _panCooldownTimer?.cancel();
         },
         child: ml.MapLibreMap(
           styleString: _styleUrl,
