@@ -111,22 +111,24 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     final heading = widget.headingNotifier.value;
     final tilt = (widget.followUser && widget.use3D) ? 45.0 : 0.0;
     _isAnimatingCamera = true;
-    c.animateCamera(
-      ml.CameraUpdate.newCameraPosition(
-        ml.CameraPosition(
-          target: ml.LatLng(loc.latitude, loc.longitude),
-          bearing: heading,
-          tilt: tilt,
-          zoom: _computeZoom(),
-        ),
-      ),
-      duration: const Duration(milliseconds: 300),
-    ).then((_) {
-      // Clear programmatic flag after animation completes
-      if (mounted) {
-        _isAnimatingCamera = false;
-      }
-    });
+    c
+        .animateCamera(
+          ml.CameraUpdate.newCameraPosition(
+            ml.CameraPosition(
+              target: ml.LatLng(loc.latitude, loc.longitude),
+              bearing: heading,
+              tilt: tilt,
+              zoom: _computeZoom(),
+            ),
+          ),
+          duration: const Duration(milliseconds: 300),
+        )
+        .then((_) {
+          // Clear programmatic flag after animation completes
+          if (mounted) {
+            _isAnimatingCamera = false;
+          }
+        });
   }
 
   double _computeZoom() {
@@ -314,46 +316,56 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       borderRadius: widget.followUser
           ? BorderRadius.zero
           : BorderRadius.circular(12),
-      child: ml.MapLibreMap(
-        styleString: _styleUrl,
-        initialCameraPosition: ml.CameraPosition(
-          target: ml.LatLng(initial.latitude, initial.longitude),
-          zoom: 12.0,
-        ),
-        onMapCreated: _onMapCreated,
-        onStyleLoadedCallback: _onStyleLoaded,
-        onMapClick: (_, coord) {
-          widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
-        },
-        onCameraMove: (_) {
-          // If camera moves without a programmatic animation, it's a user pan.
-          if (!_isAnimatingCamera && _mapReady) {
-            if (!_userPanning) {
-              _userPanning = true;
-              // Notify immediately so MapScreen can disable follow mode
-              widget.onUserPanned?.call();
-            }
-            // Cancel previous cooldown on every move
+      child: GestureDetector(
+        // Detect pan gestures immediately to disable follow mode
+        onPanStart: (_) {
+          if (widget.followUser && !_userPanning) {
+            _userPanning = true;
+            widget.onUserPanned?.call();
             _panCooldownTimer?.cancel();
           }
         },
-        onCameraIdle: () {
-          if (_userPanning) {
-            // Keep _userPanning true for 1.5s to prevent snap-back during gesture
-            _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
-              if (mounted) {
-                _userPanning = false;
+        child: ml.MapLibreMap(
+          styleString: _styleUrl,
+          initialCameraPosition: ml.CameraPosition(
+            target: ml.LatLng(initial.latitude, initial.longitude),
+            zoom: 12.0,
+          ),
+          onMapCreated: _onMapCreated,
+          onStyleLoadedCallback: _onStyleLoaded,
+          onMapClick: (_, coord) {
+            widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
+          },
+          onCameraMove: (_) {
+            // If camera moves without a programmatic animation, it's a user pan.
+            if (!_isAnimatingCamera && _mapReady) {
+              if (!_userPanning) {
+                _userPanning = true;
+                // Notify immediately so MapScreen can disable follow mode
+                widget.onUserPanned?.call();
               }
-            });
-          }
-        },
-        myLocationEnabled: true,
-        myLocationRenderMode: ml.MyLocationRenderMode.compass,
-        myLocationTrackingMode: ml.MyLocationTrackingMode.none,
-        compassEnabled: false,
-        rotateGesturesEnabled: true,
-        tiltGesturesEnabled: true,
-        attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
+              // Cancel previous cooldown on every move
+              _panCooldownTimer?.cancel();
+            }
+          },
+          onCameraIdle: () {
+            if (_userPanning) {
+              // Keep _userPanning true for 1.5s to prevent snap-back during gesture
+              _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
+                if (mounted) {
+                  _userPanning = false;
+                }
+              });
+            }
+          },
+          myLocationEnabled: true,
+          myLocationRenderMode: ml.MyLocationRenderMode.compass,
+          myLocationTrackingMode: ml.MyLocationTrackingMode.none,
+          compassEnabled: false,
+          rotateGesturesEnabled: true,
+          tiltGesturesEnabled: true,
+          attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
+        ),
       ),
     );
   }
