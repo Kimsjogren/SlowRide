@@ -316,66 +316,46 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       borderRadius: widget.followUser
           ? BorderRadius.zero
           : BorderRadius.circular(12),
-      child: GestureDetector(
-        // Detect pan gestures immediately to disable follow mode
-        onPanStart: (_) {
-          if (widget.followUser && !_userPanning) {
-            _userPanning = true;
-            _isAnimatingCamera = false; // Stop any ongoing camera animation
-            widget.onUserPanned?.call();
+      child: ml.MapLibreMap(
+        styleString: _styleUrl,
+        initialCameraPosition: ml.CameraPosition(
+          target: ml.LatLng(initial.latitude, initial.longitude),
+          zoom: 12.0,
+        ),
+        onMapCreated: _onMapCreated,
+        onStyleLoadedCallback: _onStyleLoaded,
+        onMapClick: (_, coord) {
+          widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
+        },
+        onCameraMove: (_) {
+          // If camera moves without a programmatic animation, it's a user pan.
+          if (!_isAnimatingCamera && _mapReady && widget.followUser) {
+            if (!_userPanning) {
+              _userPanning = true;
+              // Notify immediately so MapScreen can disable follow mode
+              widget.onUserPanned?.call();
+            }
+            // Cancel previous cooldown on every move
             _panCooldownTimer?.cancel();
           }
         },
-        onPanUpdate: (_) {
-          // Continue to mark as panning on every pan update
-          if (widget.followUser && !_userPanning) {
-            _userPanning = true;
-            _isAnimatingCamera = false;
-            widget.onUserPanned?.call();
-          }
-          _panCooldownTimer?.cancel();
-        },
-        child: ml.MapLibreMap(
-          styleString: _styleUrl,
-          initialCameraPosition: ml.CameraPosition(
-            target: ml.LatLng(initial.latitude, initial.longitude),
-            zoom: 12.0,
-          ),
-          onMapCreated: _onMapCreated,
-          onStyleLoadedCallback: _onStyleLoaded,
-          onMapClick: (_, coord) {
-            widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
-          },
-          onCameraMove: (_) {
-            // If camera moves without a programmatic animation, it's a user pan.
-            if (!_isAnimatingCamera && _mapReady) {
-              if (!_userPanning) {
-                _userPanning = true;
-                // Notify immediately so MapScreen can disable follow mode
-                widget.onUserPanned?.call();
+        onCameraIdle: () {
+          if (_userPanning) {
+            // Keep _userPanning true for 1.5s to prevent snap-back during gesture
+            _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
+              if (mounted) {
+                _userPanning = false;
               }
-              // Cancel previous cooldown on every move
-              _panCooldownTimer?.cancel();
-            }
-          },
-          onCameraIdle: () {
-            if (_userPanning) {
-              // Keep _userPanning true for 1.5s to prevent snap-back during gesture
-              _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
-                if (mounted) {
-                  _userPanning = false;
-                }
-              });
-            }
-          },
-          myLocationEnabled: true,
-          myLocationRenderMode: ml.MyLocationRenderMode.compass,
-          myLocationTrackingMode: ml.MyLocationTrackingMode.none,
-          compassEnabled: false,
-          rotateGesturesEnabled: true,
-          tiltGesturesEnabled: true,
-          attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
-        ),
+            });
+          }
+        },
+        myLocationEnabled: true,
+        myLocationRenderMode: ml.MyLocationRenderMode.compass,
+        myLocationTrackingMode: ml.MyLocationTrackingMode.none,
+        compassEnabled: false,
+        rotateGesturesEnabled: true,
+        tiltGesturesEnabled: true,
+        attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
       ),
     );
   }
