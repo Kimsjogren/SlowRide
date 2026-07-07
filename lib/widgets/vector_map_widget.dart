@@ -105,7 +105,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   }
 
   void _animateCameraToUser(LatLng loc) {
-    if (_disposed) return;
+    if (_disposed || _userPanning) return;
     final c = _controller;
     if (c == null) return;
     final heading = widget.headingNotifier.value;
@@ -121,10 +121,11 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         ),
       ),
       duration: const Duration(milliseconds: 300),
-    );
-    // Clear programmatic flag after animation duration
-    Future.delayed(const Duration(milliseconds: 400), () {
-      _isAnimatingCamera = false;
+    ).then((_) {
+      // Clear programmatic flag after animation completes
+      if (mounted) {
+        _isAnimatingCamera = false;
+      }
     });
   }
 
@@ -326,18 +327,19 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         },
         onCameraMove: (_) {
           // If camera moves without a programmatic animation, it's a user pan.
-          if (!_isAnimatingCamera && _mapReady && !_userPanning) {
-            _userPanning = true;
-            // Notify immediately so MapScreen can disable follow mode
-            widget.onUserPanned?.call();
-            // Cancel previous cooldown
+          if (!_isAnimatingCamera && _mapReady) {
+            if (!_userPanning) {
+              _userPanning = true;
+              // Notify immediately so MapScreen can disable follow mode
+              widget.onUserPanned?.call();
+            }
+            // Cancel previous cooldown on every move
             _panCooldownTimer?.cancel();
           }
         },
         onCameraIdle: () {
           if (_userPanning) {
             // Keep _userPanning true for 1.5s to prevent snap-back during gesture
-            _panCooldownTimer?.cancel();
             _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
               if (mounted) {
                 _userPanning = false;

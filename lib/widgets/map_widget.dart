@@ -665,15 +665,15 @@ class _MapWidgetState extends State<MapWidget>
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    (BackendConfig.hasSelfHostedTiles && !widget.darkMode)
-                    ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
-                    : widget.darkMode
+                // Try custom tile server first if available, fallback to Carto
+                urlTemplate: widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    : (BackendConfig.hasSelfHostedTiles
+                        ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
+                        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'),
                 fallbackUrl: widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                    : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.cruizx.mobile',
                 tileProvider: _tileProvider,
