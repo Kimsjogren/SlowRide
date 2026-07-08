@@ -61,6 +61,10 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   List<LatLng> _lastChargingStations = [];
   List<List<LatLng>> _lastStuddedTireBanZones = [];
   LatLng? _lastDestination;
+  LatLng? _lastCameraTarget;
+  DateTime _lastCameraUpdateAt = DateTime.fromMillisecondsSinceEpoch(0);
+  double _lastCameraBearing = 0.0;
+  double _lastCameraZoom = 0.0;
   double _lastAnimatedHeading = 0.0;
 
   String get _styleUrl {
@@ -97,43 +101,89 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (!_mapReady || _userPanning || _disposed) return;
     final loc = widget.locationNotifier.value;
     if (loc != null && widget.followUser) {
-      _animateCameraToUser(loc);
+      _updateFollowCamera(loc);
     }
   }
 
   void _onHeadingUpdate() {
-    if (!_mapReady || _userPanning || !widget.followUser) return;
+    if (!_mapReady || _userPanning || !widget.followUser || !widget.use3D) {
+      return;
+    }
     final loc = widget.locationNotifier.value;
     if (loc == null) return;
 
-    // Only animate if heading changed significantly (5+ degrees) to prevent label flicker
+    // In 3D we still allow heading updates, but with a larger deadband and
+    // without re-triggering a full animated camera step every small change.
     final currentHeading = widget.headingNotifier.value;
     final headingDiff = (currentHeading - _lastAnimatedHeading).abs();
     final normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
 
-    if (normalizedDiff >= 5.0) {
-      _animateCameraToUser(loc);
+    if (normalizedDiff >= 12.0) {
+      _updateFollowCamera(loc, headingOnly: true);
     }
   }
 
-  void _animateCameraToUser(LatLng loc) {
+  double _distanceMeters(LatLng a, LatLng b) {
+    const lat2m = 111320.0;
+    final lng2m = 111320.0 * math.cos(a.latitude * math.pi / 180.0);
+    final dx = (b.latitude - a.latitude) * lat2m;
+    final dy = (b.longitude - a.longitude) * lng2m;
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  double _normalizedHeadingDiff(double a, double b) {
+    final diff = (a - b).abs();
+    return diff > 180 ? 360 - diff : diff;
+  }
+
+  void _updateFollowCamera(LatLng loc, {bool headingOnly = false}) {
     if (_disposed || _userPanning) return;
     final c = _controller;
     if (c == null) return;
-    final heading = widget.headingNotifier.value;
+    final heading = widget.use3D ? widget.headingNotifier.value : 0.0;
     final tilt = (widget.followUser && widget.use3D) ? 45.0 : 0.0;
+    final zoom = _computeZoom();
+    final now = DateTime.now();
+
+    if (_lastCameraTarget != null) {
+      final movedMeters = _distanceMeters(_lastCameraTarget!, loc);
+      final headingDelta = _normalizedHeadingDiff(
+        heading,
+        _lastCameraBearing,
+      );
+      final zoomDelta = (zoom - _lastCameraZoom).abs();
+      final minIntervalMs = headingOnly ? 220 : 120;
+      final updatedRecently =
+          now.difference(_lastCameraUpdateAt).inMilliseconds < minIntervalMs;
+      final positionStable = movedMeters < 1.5;
+      final headingStable = headingDelta < (widget.use3D ? 12.0 : 1.0);
+      final zoomStable = zoomDelta < 0.05;
+
+      if (updatedRecently ||
+          (positionStable && headingStable && zoomStable) ||
+          (headingOnly && positionStable && zoomStable)) {
+        return;
+      }
+    }
+
     _lastAnimatedHeading = heading;
-    c.animateCamera(
-      ml.CameraUpdate.newCameraPosition(
-        ml.CameraPosition(
-          target: ml.LatLng(loc.latitude, loc.longitude),
-          bearing: heading,
-          tilt: tilt,
-          zoom: _computeZoom(),
-        ),
+    _lastCameraTarget = loc;
+    _lastCameraBearing = heading;
+    _lastCameraZoom = zoom;
+    _lastCameraUpdateAt = now;
+
+    final update = ml.CameraUpdate.newCameraPosition(
+      ml.CameraPosition(
+        target: ml.LatLng(loc.latitude, loc.longitude),
+        bearing: heading,
+        tilt: tilt,
+        zoom: zoom,
       ),
-      duration: const Duration(milliseconds: 300),
     );
+
+    // Use a hard move during follow updates to avoid the label fade/flicker
+    // that MapLibre triggers when a new camera animation starts repeatedly.
+    c.moveCamera(update);
   }
 
   double _computeZoom() {
@@ -156,7 +206,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     await _refreshLayers();
     final loc = widget.locationNotifier.value;
     if (loc != null && widget.followUser) {
-      _animateCameraToUser(loc);
+      _updateFollowCamera(loc);
     } else if (loc != null) {
       _controller?.moveCamera(
         ml.CameraUpdate.newCameraPosition(
@@ -532,7 +582,20 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (widget.followUser && !oldWidget.followUser) {
       _userPanning = false;
       final loc = widget.locationNotifier.value;
-      if (loc != null) _animateCameraToUser(loc);
+      if (loc != null) {
+        _lastCameraTarget = null;
+        _updateFollowCamera(loc);
+      }
+    }
+
+    if (widget.followUser &&
+        (widget.use3D != oldWidget.use3D ||
+            widget.darkMode != oldWidget.darkMode)) {
+      final loc = widget.locationNotifier.value;
+      if (loc != null) {
+        _lastCameraTarget = null;
+        _updateFollowCamera(loc);
+      }
     }
   }
 

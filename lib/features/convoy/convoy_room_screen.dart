@@ -30,7 +30,6 @@ import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 import 'package:slowride/services/destination_history_service.dart';
-import 'package:slowride/widgets/vector_map_widget.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -73,7 +72,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   // Smooth arrow heading — ticker drives it when following, GPS otherwise.
   final ValueNotifier<double> _arrowHdg = ValueNotifier<double>(0);
-  // Location notifier for VectorMapWidget.
+  // Location notifier for convoy map follow handling.
   final ValueNotifier<LatLng?> _locationNotifier = ValueNotifier<LatLng?>(null);
   // Speed notifier — drives speed display without setState.
   final ValueNotifier<double> _speedNotifier = ValueNotifier<double>(0);
@@ -3522,26 +3521,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 builder: (context, constraints) {
                                   final h = constraints.maxHeight;
                                   final w = constraints.maxWidth;
-                                  final useVector = UserPreferencesService
-                                      .instance
-                                      .useVectorMap
-                                      .value;
-                                  if (useVector) {
-                                    return VectorMapWidget(
-                                      key: const ValueKey('convoy-vector'),
-                                      locationNotifier: _locationNotifier,
-                                      headingNotifier: _arrowHdg,
-                                      destination: _routeDestination,
-                                      routePoints: _routePoints,
-                                      alerts: _alerts,
-                                      followUser: _isFollowingMyPosition,
-                                      use3D: _isNavigating && _use3DMap,
-                                      darkMode: _useDarkMap,
-                                      onUserPanned: () => setState(
-                                        () => _isFollowingMyPosition = false,
-                                      ),
-                                    );
-                                  }
                                   final is3D =
                                       _isFollowingMyPosition && _use3DMap;
                                   final matrix = is3D
