@@ -604,9 +604,17 @@ class _MapWidgetState extends State<MapWidget>
   void didUpdateWidget(MapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    // A GPS fix can arrive in the same frame that the parent enables follow
+    // mode. Synchronize from the notifier here as well so the marker never
+    // depends on a later theme/style rebuild to become visible.
+    final latestLocation = widget.locationNotifier.value;
+    if (latestLocation != null) {
+      _markerLocation = latestLocation;
+    }
+
     // Waze-style: zoom in and orient map to heading when navigation starts.
     if (widget.followUser && !oldWidget.followUser) {
-      final loc = widget.locationNotifier.value;
+      final loc = latestLocation;
       final hdg = widget.headingNotifier.value;
       if (loc != null) {
         _curLat = _tgtLat = loc.latitude;

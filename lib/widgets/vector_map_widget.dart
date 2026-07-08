@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/map_poi.dart';
 import 'package:slowride/services/map_poi_service.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 /// Vector map widget backed by MapLibre GL — renders crisp tiles at every
 /// zoom level. Uses the same interface as [MapWidget] so [MapScreen] can swap
@@ -760,32 +761,54 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
             });
           }
         },
-        child: ml.MapLibreMap(
-          styleString: _styleUrl,
-          initialCameraPosition: ml.CameraPosition(
-            target: ml.LatLng(initial.latitude, initial.longitude),
-            zoom: 12.0,
-          ),
-          onMapCreated: _onMapCreated,
-          onStyleLoadedCallback: _onStyleLoaded,
-          onCameraIdle: () {
-            final camera = _controller?.cameraPosition;
-            if (camera == null) return;
-            _schedulePoiFetch(
-              LatLng(camera.target.latitude, camera.target.longitude),
-              camera.zoom,
-            );
-          },
-          onMapClick: (_, coord) {
-            widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
-          },
-          myLocationEnabled: true,
-          myLocationRenderMode: ml.MyLocationRenderMode.compass,
-          myLocationTrackingMode: ml.MyLocationTrackingMode.none,
-          compassEnabled: false,
-          rotateGesturesEnabled: true,
-          tiltGesturesEnabled: true,
-          attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ml.MapLibreMap(
+                styleString: _styleUrl,
+                initialCameraPosition: ml.CameraPosition(
+                  target: ml.LatLng(initial.latitude, initial.longitude),
+                  zoom: 12.0,
+                ),
+                onMapCreated: _onMapCreated,
+                onStyleLoadedCallback: _onStyleLoaded,
+                onCameraIdle: () {
+                  final camera = _controller?.cameraPosition;
+                  if (camera == null) return;
+                  _schedulePoiFetch(
+                    LatLng(camera.target.latitude, camera.target.longitude),
+                    camera.zoom,
+                  );
+                },
+                onMapClick: (_, coord) {
+                  widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
+                },
+                myLocationEnabled: !widget.followUser,
+                myLocationRenderMode: ml.MyLocationRenderMode.compass,
+                myLocationTrackingMode: ml.MyLocationTrackingMode.none,
+                compassEnabled: false,
+                rotateGesturesEnabled: true,
+                tiltGesturesEnabled: true,
+                attributionButtonPosition:
+                    ml.AttributionButtonPosition.bottomRight,
+              ),
+            ),
+            if (widget.followUser)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Align(
+                    alignment: widget.use3D
+                        ? const Alignment(0, 0.30)
+                        : Alignment.center,
+                    child: UserLocationMarker(
+                      headingNotifier: widget.headingNotifier,
+                      lockNorthUp: widget.use3D,
+                      size: 34,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
