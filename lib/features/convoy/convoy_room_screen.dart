@@ -55,6 +55,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Timer? _searchDebounce;
   List<Map<String, dynamic>> _suggestions = [];
   bool _showSuggestions = false;
+  late Stream<List<ConvoyPin>> _pinsStream;
+  late Stream<List<ConvoyMessage>> _messagesStream;
 
   // ── Smooth camera animation (same as MapWidget) ────────────────────────
   late final Ticker _camTicker;
@@ -190,6 +192,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   @override
   void initState() {
     super.initState();
+    _bindRealtimeStreams();
     _tileHttpClient = http.Client();
     _tileProvider = NetworkTileProvider(
       httpClient: _tileHttpClient,
@@ -228,6 +231,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       if (mounted) _fetchMemberLocations();
     });
     _fetchMemberLocations(); // immediate first load
+  }
+
+  void _bindRealtimeStreams() {
+    _pinsStream = _controller.watchPins(convoyId: widget.convoy.id);
+    _messagesStream = _controller.watchMessages(convoyId: widget.convoy.id);
   }
 
   Future<void> _fetchMemberLocations() async {
@@ -767,6 +775,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _searchFocus.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant ConvoyRoomScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.convoy.id != widget.convoy.id) {
+      _bindRealtimeStreams();
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -3496,7 +3512,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         body: TabBarView(
           children: [
             StreamBuilder<List<ConvoyPin>>(
-              stream: _controller.watchPins(convoyId: widget.convoy.id),
+              stream: _pinsStream,
               builder: (context, pinSnapshot) {
                 final allPins = pinSnapshot.data ?? const [];
                 final locations = _memberLocations;
@@ -5189,9 +5205,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               children: [
                 Expanded(
                   child: StreamBuilder<List<ConvoyMessage>>(
-                    stream: _controller.watchMessages(
-                      convoyId: widget.convoy.id,
-                    ),
+                    stream: _messagesStream,
                     builder: (context, snapshot) {
                       final messages = snapshot.data ?? const [];
                       if (messages.isEmpty) {
@@ -5209,6 +5223,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                         itemBuilder: (context, index) {
                           final message = messages[index];
                           return Container(
+                            key: ValueKey(message.id),
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
