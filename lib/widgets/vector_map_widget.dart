@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as ml;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/models/map_poi.dart';
+import 'package:slowride/services/map_poi_service.dart';
 
 /// Vector map widget backed by MapLibre GL — renders crisp tiles at every
 /// zoom level. Uses the same interface as [MapWidget] so [MapScreen] can swap
@@ -56,6 +58,11 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   bool _disposed = false;
   Timer? _panCooldownTimer;
   Timer? _layerUpdateDebouncer;
+  Timer? _poiFetchDebouncer;
+  List<MapPoi> _pois = const [];
+  List<MapPoi> _lastPois = const [];
+  LatLng? _lastPoiRequestCenter;
+  int _poiRequestToken = 0;
   List<LatLng> _lastRoutePoints = [];
   List<AlertModel> _lastAlerts = [];
   List<LatLng> _lastChargingStations = [];
@@ -75,9 +82,9 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       // but optimize layer management to reduce flicker.
       return 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
     }
-    // Light mode: use Positron GL which has more detail than Voyager
-    // Positron includes all street names, POIs, and better labeling
-    return 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+    // Light mode: use Voyager GL to surface more everyday POIs like
+    // restaurants, shops and gas stations directly on the map.
+    return 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
   }
 
   @override
@@ -92,6 +99,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     _disposed = true;
     _panCooldownTimer?.cancel();
     _layerUpdateDebouncer?.cancel();
+    _poiFetchDebouncer?.cancel();
     widget.locationNotifier.removeListener(_onLocationUpdate);
     widget.headingNotifier.removeListener(_onHeadingUpdate);
     super.dispose();
@@ -131,6 +139,50 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     return math.sqrt(dx * dx + dy * dy);
   }
 
+  int _poiRadiusForZoom(double zoom) {
+    if (zoom >= 17) return 900;
+    if (zoom >= 16) return 1300;
+    if (zoom >= 15) return 1900;
+    return 2800;
+  }
+
+  void _schedulePoiFetch(LatLng center, double zoom) {
+    if (zoom < 14) {
+      _poiFetchDebouncer?.cancel();
+      _lastPoiRequestCenter = null;
+      if (_pois.isNotEmpty) {
+        _pois = const [];
+        _refreshLayers();
+      }
+      return;
+    }
+
+    final radius = _poiRadiusForZoom(zoom);
+    final lastCenter = _lastPoiRequestCenter;
+    if (lastCenter != null &&
+        _distanceMeters(lastCenter, center) < radius * 0.28) {
+      return;
+    }
+
+    _poiFetchDebouncer?.cancel();
+    _poiFetchDebouncer = Timer(
+      const Duration(milliseconds: 650),
+      () => _fetchPois(center, zoom),
+    );
+  }
+
+  Future<void> _fetchPois(LatLng center, double zoom) async {
+    final requestToken = ++_poiRequestToken;
+    _lastPoiRequestCenter = center;
+    final pois = await MapPoiService.instance.fetchNearby(
+      center,
+      radiusMeters: _poiRadiusForZoom(zoom),
+    );
+    if (_disposed || requestToken != _poiRequestToken) return;
+    _pois = pois;
+    await _refreshLayers();
+  }
+
   double _normalizedHeadingDiff(double a, double b) {
     final diff = (a - b).abs();
     return diff > 180 ? 360 - diff : diff;
@@ -147,10 +199,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
 
     if (_lastCameraTarget != null) {
       final movedMeters = _distanceMeters(_lastCameraTarget!, loc);
-      final headingDelta = _normalizedHeadingDiff(
-        heading,
-        _lastCameraBearing,
-      );
+      final headingDelta = _normalizedHeadingDiff(heading, _lastCameraBearing);
       final zoomDelta = (zoom - _lastCameraZoom).abs();
       final minIntervalMs = headingOnly ? 220 : 120;
       final updatedRecently =
@@ -203,6 +252,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   Future<void> _onStyleLoaded() async {
     if (_disposed) return;
     _mapReady = true;
+    _lastPois = const [];
     await _refreshLayers();
     final loc = widget.locationNotifier.value;
     if (loc != null && widget.followUser) {
@@ -217,6 +267,11 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         ),
       );
     }
+    final camera = _controller?.cameraPosition;
+    final center = camera?.target;
+    if (center != null && camera != null) {
+      _schedulePoiFetch(LatLng(center.latitude, center.longitude), camera.zoom);
+    }
   }
 
   Future<void> _refreshLayers() async {
@@ -230,11 +285,13 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     final chargingChanged = widget.chargingStations != _lastChargingStations;
     final studdedZonesChanged =
         widget.studdedTireBanZones != _lastStuddedTireBanZones;
+    final poisChanged = _pois != _lastPois;
     if (!routeChanged &&
         !destChanged &&
         !alertsChanged &&
         !chargingChanged &&
-        !studdedZonesChanged) {
+        !studdedZonesChanged &&
+        !poisChanged) {
       return;
     }
 
@@ -244,7 +301,79 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     _lastStuddedTireBanZones = widget.studdedTireBanZones
         .map((polygon) => List<LatLng>.from(polygon))
         .toList();
+    _lastPois = _pois;
     _lastDestination = widget.destination;
+
+    if (_pois.isNotEmpty) {
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': _pois
+            .map(
+              (poi) => {
+                'type': 'Feature',
+                'properties': {
+                  'name': poi.name ?? '',
+                  'color': _poiColor(poi.category),
+                },
+                'geometry': {
+                  'type': 'Point',
+                  'coordinates': [
+                    poi.position.longitude,
+                    poi.position.latitude,
+                  ],
+                },
+              },
+            )
+            .toList(),
+      };
+      try {
+        await c.setGeoJsonSource('pois-src', geojson);
+      } catch (_) {
+        await c.addSource(
+          'pois-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addCircleLayer(
+          'pois-src',
+          'pois-circles',
+          ml.CircleLayerProperties(
+            circleColor: const ['get', 'color'],
+            circleRadius: 6.5,
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 1.5,
+          ),
+          minzoom: 14,
+          enableInteraction: false,
+        );
+        await c.addSymbolLayer(
+          'pois-src',
+          'pois-labels',
+          ml.SymbolLayerProperties(
+            textField: const ['get', 'name'],
+            textSize: 11,
+            textColor: widget.darkMode ? '#ffffff' : '#202124',
+            textHaloColor: widget.darkMode ? '#172033' : '#ffffff',
+            textHaloWidth: 1.4,
+            textAnchor: 'top',
+            textOffset: const [0, 1.1],
+            textMaxWidth: 10,
+            textOptional: true,
+            textAllowOverlap: false,
+          ),
+          minzoom: 16,
+          enableInteraction: false,
+        );
+      }
+    } else {
+      for (final id in ['pois-labels', 'pois-circles']) {
+        try {
+          await c.removeLayer(id);
+        } catch (_) {}
+      }
+      try {
+        await c.removeSource('pois-src');
+      } catch (_) {}
+    }
 
     // ── Route ─────────────────────────────────────────────────────────────
     // Instead of removing and re-adding layers/sources, update them in place
@@ -379,10 +508,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
             };
           })
           .toList();
-      final geojson = {
-        'type': 'FeatureCollection',
-        'features': features,
-      };
+      final geojson = {'type': 'FeatureCollection', 'features': features};
 
       try {
         await c.setGeoJsonSource('studded-zones-src', geojson);
@@ -486,9 +612,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
             .map(
               (alert) => {
                 'type': 'Feature',
-                'properties': {
-                  'color': _alertColor(alert.type),
-                },
+                'properties': {'color': _alertColor(alert.type)},
                 'geometry': {
                   'type': 'Point',
                   'coordinates': [
@@ -544,8 +668,9 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     return switch (type) {
       AlertType.police => '#2d7ff9',
       AlertType.speedCamera => '#ff5a5f',
-      AlertType.roadwork || AlertType.hazard || AlertType.narrowRoad =>
-        '#ff9f0a',
+      AlertType.roadwork ||
+      AlertType.hazard ||
+      AlertType.narrowRoad => '#ff9f0a',
       AlertType.accident || AlertType.trafficJam => '#ff375f',
       AlertType.steepHill => '#9b6cff',
       AlertType.meetup || AlertType.hangout => '#7a5cff',
@@ -554,6 +679,19 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       AlertType.charging => '#11b5c9',
     };
   }
+
+  String _poiColor(MapPoiCategory category) => switch (category) {
+    MapPoiCategory.food => '#ef6c00',
+    MapPoiCategory.cafe => '#8d6e63',
+    MapPoiCategory.fuel => '#455a64',
+    MapPoiCategory.shopping => '#7b61ff',
+    MapPoiCategory.parking => '#1976d2',
+    MapPoiCategory.charging => '#00a86b',
+    MapPoiCategory.health => '#e53935',
+    MapPoiCategory.lodging => '#5c6bc0',
+    MapPoiCategory.attraction => '#00897b',
+    MapPoiCategory.services => '#546e7a',
+  };
 
   @override
   void didUpdateWidget(VectorMapWidget oldWidget) {
@@ -630,6 +768,14 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
           ),
           onMapCreated: _onMapCreated,
           onStyleLoadedCallback: _onStyleLoaded,
+          onCameraIdle: () {
+            final camera = _controller?.cameraPosition;
+            if (camera == null) return;
+            _schedulePoiFetch(
+              LatLng(camera.target.latitude, camera.target.longitude),
+              camera.zoom,
+            );
+          },
           onMapClick: (_, coord) {
             widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
           },
