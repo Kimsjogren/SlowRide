@@ -54,7 +54,6 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   bool _mapReady = false;
   bool _userPanning = false;
   bool _disposed = false;
-  bool _isAnimatingCamera = false;
   Timer? _panCooldownTimer;
   Timer? _layerUpdateDebouncer;
   List<LatLng> _lastRoutePoints = [];
@@ -110,25 +109,17 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (c == null) return;
     final heading = widget.headingNotifier.value;
     final tilt = (widget.followUser && widget.use3D) ? 45.0 : 0.0;
-    _isAnimatingCamera = true;
-    c
-        .animateCamera(
-          ml.CameraUpdate.newCameraPosition(
-            ml.CameraPosition(
-              target: ml.LatLng(loc.latitude, loc.longitude),
-              bearing: heading,
-              tilt: tilt,
-              zoom: _computeZoom(),
-            ),
-          ),
-          duration: const Duration(milliseconds: 300),
-        )
-        .then((_) {
-          // Clear programmatic flag after animation completes
-          if (mounted) {
-            _isAnimatingCamera = false;
-          }
-        });
+    c.animateCamera(
+      ml.CameraUpdate.newCameraPosition(
+        ml.CameraPosition(
+          target: ml.LatLng(loc.latitude, loc.longitude),
+          bearing: heading,
+          tilt: tilt,
+          zoom: _computeZoom(),
+        ),
+      ),
+      duration: const Duration(milliseconds: 300),
+    );
   }
 
   double _computeZoom() {
@@ -316,46 +307,40 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       borderRadius: widget.followUser
           ? BorderRadius.zero
           : BorderRadius.circular(12),
-      child: ml.MapLibreMap(
-        styleString: _styleUrl,
-        initialCameraPosition: ml.CameraPosition(
-          target: ml.LatLng(initial.latitude, initial.longitude),
-          zoom: 12.0,
-        ),
-        onMapCreated: _onMapCreated,
-        onStyleLoadedCallback: _onStyleLoaded,
-        onMapClick: (_, coord) {
-          widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
-        },
-        onCameraMove: (_) {
-          // If camera moves without a programmatic animation, it's a user pan.
-          if (!_isAnimatingCamera && _mapReady && widget.followUser) {
-            if (!_userPanning) {
-              _userPanning = true;
-              // Notify immediately so MapScreen can disable follow mode
-              widget.onUserPanned?.call();
-            }
-            // Cancel previous cooldown on every move
+      child: Listener(
+        onPointerDown: (_) {
+          // User touched the map - disable follow mode if active
+          if (widget.followUser && !_userPanning) {
+            _userPanning = true;
+            widget.onUserPanned?.call();
+            // Reset after a short delay
             _panCooldownTimer?.cancel();
-          }
-        },
-        onCameraIdle: () {
-          if (_userPanning) {
-            // Keep _userPanning true for 1.5s to prevent snap-back during gesture
-            _panCooldownTimer = Timer(const Duration(milliseconds: 1500), () {
+            _panCooldownTimer = Timer(const Duration(milliseconds: 1000), () {
               if (mounted) {
                 _userPanning = false;
               }
             });
           }
         },
-        myLocationEnabled: true,
-        myLocationRenderMode: ml.MyLocationRenderMode.compass,
-        myLocationTrackingMode: ml.MyLocationTrackingMode.none,
-        compassEnabled: false,
-        rotateGesturesEnabled: true,
-        tiltGesturesEnabled: true,
-        attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
+        child: ml.MapLibreMap(
+          styleString: _styleUrl,
+          initialCameraPosition: ml.CameraPosition(
+            target: ml.LatLng(initial.latitude, initial.longitude),
+            zoom: 12.0,
+          ),
+          onMapCreated: _onMapCreated,
+          onStyleLoadedCallback: _onStyleLoaded,
+          onMapClick: (_, coord) {
+            widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
+          },
+          myLocationEnabled: true,
+          myLocationRenderMode: ml.MyLocationRenderMode.compass,
+          myLocationTrackingMode: ml.MyLocationTrackingMode.none,
+          compassEnabled: false,
+          rotateGesturesEnabled: true,
+          tiltGesturesEnabled: true,
+          attributionButtonPosition: ml.AttributionButtonPosition.bottomRight,
+        ),
       ),
     );
   }
