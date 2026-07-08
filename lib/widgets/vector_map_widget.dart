@@ -57,6 +57,9 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   Timer? _panCooldownTimer;
   Timer? _layerUpdateDebouncer;
   List<LatLng> _lastRoutePoints = [];
+  List<AlertModel> _lastAlerts = [];
+  List<LatLng> _lastChargingStations = [];
+  List<List<LatLng>> _lastStuddedTireBanZones = [];
   LatLng? _lastDestination;
   double _lastAnimatedHeading = 0.0;
 
@@ -102,12 +105,12 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (!_mapReady || _userPanning || !widget.followUser) return;
     final loc = widget.locationNotifier.value;
     if (loc == null) return;
-    
+
     // Only animate if heading changed significantly (5+ degrees) to prevent label flicker
     final currentHeading = widget.headingNotifier.value;
     final headingDiff = (currentHeading - _lastAnimatedHeading).abs();
     final normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
-    
+
     if (normalizedDiff >= 5.0) {
       _animateCameraToUser(loc);
     }
@@ -173,9 +176,24 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     // Skip update if data hasn't actually changed
     final routeChanged = widget.routePoints != _lastRoutePoints;
     final destChanged = widget.destination != _lastDestination;
-    if (!routeChanged && !destChanged) return;
+    final alertsChanged = widget.alerts != _lastAlerts;
+    final chargingChanged = widget.chargingStations != _lastChargingStations;
+    final studdedZonesChanged =
+        widget.studdedTireBanZones != _lastStuddedTireBanZones;
+    if (!routeChanged &&
+        !destChanged &&
+        !alertsChanged &&
+        !chargingChanged &&
+        !studdedZonesChanged) {
+      return;
+    }
 
     _lastRoutePoints = List.from(widget.routePoints);
+    _lastAlerts = List.from(widget.alerts);
+    _lastChargingStations = List.from(widget.chargingStations);
+    _lastStuddedTireBanZones = widget.studdedTireBanZones
+        .map((polygon) => List<LatLng>.from(polygon))
+        .toList();
     _lastDestination = widget.destination;
 
     // ── Route ─────────────────────────────────────────────────────────────
@@ -286,6 +304,205 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
         await c.removeSource('dest-src');
       } catch (_) {}
     }
+
+    // ── Studded tire ban zones ────────────────────────────────────────────
+    if (widget.studdedTireBanZones.isNotEmpty) {
+      final features = widget.studdedTireBanZones
+          .where((polygon) => polygon.length >= 3)
+          .map((polygon) {
+            final ring = polygon
+                .map((point) => [point.longitude, point.latitude])
+                .toList();
+            if (ring.isNotEmpty) {
+              final first = ring.first;
+              final last = ring.last;
+              if (first[0] != last[0] || first[1] != last[1]) {
+                ring.add([first[0], first[1]]);
+              }
+            }
+            return {
+              'type': 'Feature',
+              'geometry': {
+                'type': 'Polygon',
+                'coordinates': [ring],
+              },
+            };
+          })
+          .toList();
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': features,
+      };
+
+      try {
+        await c.setGeoJsonSource('studded-zones-src', geojson);
+      } catch (_) {
+        await c.addSource(
+          'studded-zones-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addFillLayer(
+          'studded-zones-src',
+          'studded-zones-fill',
+          const ml.FillLayerProperties(
+            fillColor: '#ff7a1a',
+            fillOpacity: 0.16,
+            fillOutlineColor: '#ff9b4a',
+          ),
+        );
+        await c.addLineLayer(
+          'studded-zones-src',
+          'studded-zones-outline',
+          const ml.LineLayerProperties(
+            lineColor: '#ff9b4a',
+            lineWidth: 2.0,
+            lineOpacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round',
+          ),
+        );
+      }
+    } else {
+      for (final id in ['studded-zones-outline', 'studded-zones-fill']) {
+        try {
+          await c.removeLayer(id);
+        } catch (_) {}
+      }
+      try {
+        await c.removeSource('studded-zones-src');
+      } catch (_) {}
+    }
+
+    // ── Charging stations ────────────────────────────────────────────────
+    if (widget.chargingStations.isNotEmpty) {
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': widget.chargingStations
+            .map(
+              (station) => {
+                'type': 'Feature',
+                'geometry': {
+                  'type': 'Point',
+                  'coordinates': [station.longitude, station.latitude],
+                },
+              },
+            )
+            .toList(),
+      };
+
+      try {
+        await c.setGeoJsonSource('charging-src', geojson);
+      } catch (_) {
+        await c.addSource(
+          'charging-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addCircleLayer(
+          'charging-src',
+          'charging-halo',
+          const ml.CircleLayerProperties(
+            circleColor: '#40cfd8',
+            circleRadius: 10.0,
+            circleOpacity: 0.18,
+          ),
+        );
+        await c.addCircleLayer(
+          'charging-src',
+          'charging-layer',
+          const ml.CircleLayerProperties(
+            circleColor: '#11b5c9',
+            circleRadius: 5.5,
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 1.8,
+          ),
+        );
+      }
+    } else {
+      for (final id in ['charging-layer', 'charging-halo']) {
+        try {
+          await c.removeLayer(id);
+        } catch (_) {}
+      }
+      try {
+        await c.removeSource('charging-src');
+      } catch (_) {}
+    }
+
+    // ── Alerts ───────────────────────────────────────────────────────────
+    if (widget.alerts.isNotEmpty) {
+      final geojson = {
+        'type': 'FeatureCollection',
+        'features': widget.alerts
+            .map(
+              (alert) => {
+                'type': 'Feature',
+                'properties': {
+                  'color': _alertColor(alert.type),
+                },
+                'geometry': {
+                  'type': 'Point',
+                  'coordinates': [
+                    alert.position.longitude,
+                    alert.position.latitude,
+                  ],
+                },
+              },
+            )
+            .toList(),
+      };
+
+      try {
+        await c.setGeoJsonSource('alerts-src', geojson);
+      } catch (_) {
+        await c.addSource(
+          'alerts-src',
+          ml.GeojsonSourceProperties(data: geojson),
+        );
+        await c.addCircleLayer(
+          'alerts-src',
+          'alerts-halo',
+          ml.CircleLayerProperties(
+            circleColor: ['get', 'color'],
+            circleRadius: 11.0,
+            circleOpacity: 0.16,
+          ),
+        );
+        await c.addCircleLayer(
+          'alerts-src',
+          'alerts-layer',
+          ml.CircleLayerProperties(
+            circleColor: ['get', 'color'],
+            circleRadius: 5.8,
+            circleStrokeColor: '#ffffff',
+            circleStrokeWidth: 2.0,
+          ),
+        );
+      }
+    } else {
+      for (final id in ['alerts-layer', 'alerts-halo']) {
+        try {
+          await c.removeLayer(id);
+        } catch (_) {}
+      }
+      try {
+        await c.removeSource('alerts-src');
+      } catch (_) {}
+    }
+  }
+
+  String _alertColor(AlertType type) {
+    return switch (type) {
+      AlertType.police => '#2d7ff9',
+      AlertType.speedCamera => '#ff5a5f',
+      AlertType.roadwork || AlertType.hazard || AlertType.narrowRoad =>
+        '#ff9f0a',
+      AlertType.accident || AlertType.trafficJam => '#ff375f',
+      AlertType.steepHill => '#9b6cff',
+      AlertType.meetup || AlertType.hangout => '#7a5cff',
+      AlertType.parking => '#3cb371',
+      AlertType.foodStop => '#ffb347',
+      AlertType.charging => '#11b5c9',
+    };
   }
 
   @override
@@ -295,7 +512,16 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
 
     final routeChanged = widget.routePoints != oldWidget.routePoints;
     final destChanged = widget.destination != oldWidget.destination;
-    if (routeChanged || destChanged) {
+    final alertsChanged = widget.alerts != oldWidget.alerts;
+    final chargingChanged =
+        widget.chargingStations != oldWidget.chargingStations;
+    final studdedZonesChanged =
+        widget.studdedTireBanZones != oldWidget.studdedTireBanZones;
+    if (routeChanged ||
+        destChanged ||
+        alertsChanged ||
+        chargingChanged ||
+        studdedZonesChanged) {
       // Debounce layer updates to avoid flickering labels
       _layerUpdateDebouncer?.cancel();
       _layerUpdateDebouncer = Timer(const Duration(milliseconds: 100), () {
