@@ -585,11 +585,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _onUseVectorMapChanged() {
-    if (mounted)
+    if (mounted) {
       setState(
         () =>
             _useVectorMap = UserPreferencesService.instance.useVectorMap.value,
       );
+    }
   }
 
   String _normalizeSearchText(String input) {

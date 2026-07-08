@@ -58,6 +58,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   Timer? _layerUpdateDebouncer;
   List<LatLng> _lastRoutePoints = [];
   LatLng? _lastDestination;
+  double _lastAnimatedHeading = 0.0;
 
   String get _styleUrl {
     if (widget.darkMode) {
@@ -100,7 +101,16 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   void _onHeadingUpdate() {
     if (!_mapReady || _userPanning || !widget.followUser) return;
     final loc = widget.locationNotifier.value;
-    if (loc != null) _animateCameraToUser(loc);
+    if (loc == null) return;
+    
+    // Only animate if heading changed significantly (5+ degrees) to prevent label flicker
+    final currentHeading = widget.headingNotifier.value;
+    final headingDiff = (currentHeading - _lastAnimatedHeading).abs();
+    final normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
+    
+    if (normalizedDiff >= 5.0) {
+      _animateCameraToUser(loc);
+    }
   }
 
   void _animateCameraToUser(LatLng loc) {
@@ -109,6 +119,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (c == null) return;
     final heading = widget.headingNotifier.value;
     final tilt = (widget.followUser && widget.use3D) ? 45.0 : 0.0;
+    _lastAnimatedHeading = heading;
     c.animateCamera(
       ml.CameraUpdate.newCameraPosition(
         ml.CameraPosition(

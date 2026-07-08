@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 

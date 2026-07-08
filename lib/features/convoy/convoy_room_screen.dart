@@ -1,4 +1,4 @@
-// ignore_for_file: duplicate_ignore, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, unused_element, duplicate_ignore, use_build_context_synchronously
 
 import 'dart:async';
 import 'dart:convert';
@@ -5454,6 +5454,7 @@ class _ConvoyPoiResultsSheetState extends State<_ConvoyPoiResultsSheet> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.only(bottom: 16),
                     itemCount: candidates.length,
+                    // ignore: unnecessary_underscores
                     separatorBuilder: (_, __) =>
                         const Divider(height: 1, color: Colors.white12),
                     itemBuilder: (context, index) {
