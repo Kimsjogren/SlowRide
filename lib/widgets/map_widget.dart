@@ -6,7 +6,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 
@@ -665,12 +664,10 @@ class _MapWidgetState extends State<MapWidget>
             ),
             children: [
               TileLayer(
-                // Try custom tile server first if available, fallback to Carto
+                // Use Carto Positron (light) / Dark Matter (dark) for better detail
                 urlTemplate: widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                    : (BackendConfig.hasSelfHostedTiles
-                          ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
-                          : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'),
+                    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
                 fallbackUrl: widget.darkMode
                     ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                     : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
@@ -723,7 +720,7 @@ class _MapWidgetState extends State<MapWidget>
               if (!widget.darkMode)
                 TileLayer(
                   urlTemplate:
-                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+                      'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
                   fallbackUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.cruizx.mobile',
