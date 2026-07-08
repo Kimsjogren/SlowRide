@@ -28,8 +28,6 @@ import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
-import 'package:slowride/models/map_poi.dart';
-import 'package:slowride/services/map_poi_service.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 import 'package:slowride/services/destination_history_service.dart';
 
@@ -87,13 +85,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Timer? _locationPollTimer;
   Timer? _alertsTimer;
   Timer? _themeTimer;
-  Timer? _poiFetchDebouncer;
   List<ConvoyMemberLocation> _memberLocations = [];
   List<AlertModel> _alerts = const [];
-  List<MapPoi> _mapPois = const [];
-  LatLng? _lastPoiRequestCenter;
-  double _poiZoom = 0;
-  int _poiRequestToken = 0;
   AlertModel? _nearbyAlert;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
@@ -771,7 +764,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
     _themeTimer?.cancel();
-    _poiFetchDebouncer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _speedNotifier.dispose();
@@ -1242,53 +1234,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final dx = (b.latitude - a.latitude) * lat2m;
     final dy = (b.longitude - a.longitude) * lng2m;
     return math.sqrt(dx * dx + dy * dy);
-  }
-
-  int _poiRadiusForZoom(double zoom) {
-    if (zoom >= 17) return 900;
-    if (zoom >= 16) return 1300;
-    if (zoom >= 15) return 1900;
-    return 2800;
-  }
-
-  void _schedulePoiFetch(LatLng center, double zoom, {bool immediate = false}) {
-    final labelVisibilityChanged = (_poiZoom >= 16) != (zoom >= 16);
-    _poiZoom = zoom;
-    if (zoom < 14) {
-      _poiFetchDebouncer?.cancel();
-      _lastPoiRequestCenter = null;
-      if (_mapPois.isNotEmpty && mounted) {
-        setState(() => _mapPois = const []);
-      }
-      return;
-    }
-
-    final radius = _poiRadiusForZoom(zoom);
-    final lastCenter = _lastPoiRequestCenter;
-    if (lastCenter != null && _segDist(lastCenter, center) < radius * 0.28) {
-      if (labelVisibilityChanged && mounted) setState(() {});
-      return;
-    }
-
-    _poiFetchDebouncer?.cancel();
-    _poiFetchDebouncer = Timer(
-      immediate ? Duration.zero : const Duration(milliseconds: 650),
-      () => _fetchMapPois(center, zoom),
-    );
-  }
-
-  Future<void> _fetchMapPois(LatLng center, double zoom) async {
-    final requestToken = ++_poiRequestToken;
-    _lastPoiRequestCenter = center;
-    final pois = await MapPoiService.instance.fetchNearby(
-      center,
-      radiusMeters: _poiRadiusForZoom(zoom),
-    );
-    if (!mounted || requestToken != _poiRequestToken) return;
-    setState(() {
-      _mapPois = pois;
-      _poiZoom = zoom;
-    });
   }
 
   void _onCamTick(Duration elapsed) {
@@ -3625,33 +3570,21 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 initialCenter: center,
                                                 initialZoom: _followZoom,
                                                 initialRotation: 0,
-                                                onMapReady: () =>
-                                                    _schedulePoiFetch(
-                                                      center,
-                                                      _followZoom,
-                                                      immediate: true,
-                                                    ),
                                                 onTap: (_, point) =>
                                                     _showQuickHazardPicker(
                                                       point,
                                                       l10n,
                                                     ),
-                                                onPositionChanged:
-                                                    (camera, hasGesture) {
-                                                      _schedulePoiFetch(
-                                                        camera.center,
-                                                        camera.zoom,
-                                                        immediate: !hasGesture,
-                                                      );
-                                                      if (!hasGesture ||
-                                                          !_isFollowingMyPosition) {
-                                                        return;
-                                                      }
-                                                      setState(() {
-                                                        _isFollowingMyPosition =
-                                                            false;
-                                                      });
-                                                    },
+                                                onPositionChanged: (_, hasGesture) {
+                                                  if (!hasGesture ||
+                                                      !_isFollowingMyPosition) {
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _isFollowingMyPosition =
+                                                        false;
+                                                  });
+                                                },
                                               ),
                                               mapController: _mapController,
                                               children: [
@@ -3772,32 +3705,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   ),
                                                 MarkerLayer(
                                                   markers: [
-                                                    for (final poi in _mapPois)
-                                                      Marker(
-                                                        key: ValueKey(poi.id),
-                                                        point: poi.position,
-                                                        width:
-                                                            _poiZoom >= 16 &&
-                                                                poi.name != null
-                                                            ? 104
-                                                            : 30,
-                                                        height:
-                                                            _poiZoom >= 16 &&
-                                                                poi.name != null
-                                                            ? 48
-                                                            : 30,
-                                                        child: IgnorePointer(
-                                                          child:
-                                                              _ConvoyPoiMarker(
-                                                                poi: poi,
-                                                                darkMode:
-                                                                    _useDarkMap,
-                                                                showLabel:
-                                                                    _poiZoom >=
-                                                                    16,
-                                                              ),
-                                                        ),
-                                                      ),
                                                     // Alert markers
                                                     for (final alert in _alerts)
                                                       Marker(
@@ -5752,87 +5659,6 @@ class _ConvoyFavPreset {
   final IconData icon;
   final String label;
   const _ConvoyFavPreset(this.key, this.icon, this.label);
-}
-
-class _ConvoyPoiMarker extends StatelessWidget {
-  const _ConvoyPoiMarker({
-    required this.poi,
-    required this.darkMode,
-    required this.showLabel,
-  });
-
-  final MapPoi poi;
-  final bool darkMode;
-  final bool showLabel;
-
-  Color get _color => switch (poi.category) {
-    MapPoiCategory.food => const Color(0xFFEF6C00),
-    MapPoiCategory.cafe => const Color(0xFF8D6E63),
-    MapPoiCategory.fuel => const Color(0xFF455A64),
-    MapPoiCategory.shopping => const Color(0xFF7B61FF),
-    MapPoiCategory.parking => const Color(0xFF1976D2),
-    MapPoiCategory.charging => const Color(0xFF00A86B),
-    MapPoiCategory.health => const Color(0xFFE53935),
-    MapPoiCategory.lodging => const Color(0xFF5C6BC0),
-    MapPoiCategory.attraction => const Color(0xFF00897B),
-    MapPoiCategory.services => const Color(0xFF546E7A),
-  };
-
-  IconData get _icon => switch (poi.category) {
-    MapPoiCategory.food => Icons.restaurant,
-    MapPoiCategory.cafe => Icons.local_cafe,
-    MapPoiCategory.fuel => Icons.local_gas_station,
-    MapPoiCategory.shopping => Icons.shopping_bag,
-    MapPoiCategory.parking => Icons.local_parking,
-    MapPoiCategory.charging => Icons.ev_station,
-    MapPoiCategory.health => Icons.local_hospital,
-    MapPoiCategory.lodging => Icons.hotel,
-    MapPoiCategory.attraction => Icons.place,
-    MapPoiCategory.services => Icons.account_balance,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final name = poi.name;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: _color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 1.5),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
-          ),
-          child: Icon(_icon, color: Colors.white, size: 15),
-        ),
-        if (showLabel && name != null)
-          Container(
-            constraints: const BoxConstraints(maxWidth: 104),
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              color: (darkMode ? const Color(0xDD172033) : Colors.white)
-                  .withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: darkMode ? Colors.white : const Color(0xFF202124),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 }
 
 // ── Alert marker (replicates MapWidget's _AlertMarker) ───────────────────────

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,8 +7,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
-import 'package:slowride/models/map_poi.dart';
-import 'package:slowride/services/map_poi_service.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 
 class MapWidget extends StatefulWidget {
@@ -80,11 +77,6 @@ class _MapWidgetState extends State<MapWidget>
   final MapController _mapController = MapController();
   late final http.Client _tileHttpClient;
   late final NetworkTileProvider _tileProvider;
-  Timer? _poiFetchDebouncer;
-  List<MapPoi> _pois = const [];
-  LatLng? _lastPoiRequestCenter;
-  double _poiZoom = 0;
-  int _poiRequestToken = 0;
 
   // ── Marker state (updated via notifiers, isolated from parent setState) ──
   LatLng? _markerLocation;
@@ -156,57 +148,6 @@ class _MapWidgetState extends State<MapWidget>
     widget.locationNotifier.addListener(_onLocationUpdate);
     widget.headingNotifier.addListener(_onHeadingUpdate);
     _ticker = createTicker(_onTick)..start();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final center = widget.locationNotifier.value ?? MapWidget._defaultCenter;
-      _schedulePoiFetch(center, widget.followUser ? _computeNavZoom() : 12);
-    });
-  }
-
-  int _poiRadiusForZoom(double zoom) {
-    if (zoom >= 17) return 900;
-    if (zoom >= 16) return 1300;
-    if (zoom >= 15) return 1900;
-    return 2800;
-  }
-
-  void _schedulePoiFetch(LatLng center, double zoom, {bool immediate = false}) {
-    final labelVisibilityChanged = (_poiZoom >= 16) != (zoom >= 16);
-    _poiZoom = zoom;
-    if (zoom < 14) {
-      _poiFetchDebouncer?.cancel();
-      _lastPoiRequestCenter = null;
-      if (_pois.isNotEmpty && mounted) setState(() => _pois = const []);
-      return;
-    }
-
-    final lastCenter = _lastPoiRequestCenter;
-    final radius = _poiRadiusForZoom(zoom);
-    if (lastCenter != null &&
-        _segmentMeters(lastCenter, center) < radius * 0.28) {
-      if (labelVisibilityChanged && mounted) setState(() {});
-      return;
-    }
-
-    _poiFetchDebouncer?.cancel();
-    _poiFetchDebouncer = Timer(
-      immediate ? Duration.zero : const Duration(milliseconds: 650),
-      () => _fetchPois(center, zoom),
-    );
-  }
-
-  Future<void> _fetchPois(LatLng center, double zoom) async {
-    final requestToken = ++_poiRequestToken;
-    _lastPoiRequestCenter = center;
-    final pois = await MapPoiService.instance.fetchNearby(
-      center,
-      radiusMeters: _poiRadiusForZoom(zoom),
-    );
-    if (!mounted || requestToken != _poiRequestToken) return;
-    setState(() {
-      _pois = pois;
-      _poiZoom = zoom;
-    });
   }
 
   double _wrap360(double angle) => (angle % 360 + 360) % 360;
@@ -593,7 +534,6 @@ class _MapWidgetState extends State<MapWidget>
   void dispose() {
     widget.locationNotifier.removeListener(_onLocationUpdate);
     widget.headingNotifier.removeListener(_onHeadingUpdate);
-    _poiFetchDebouncer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _ticker.dispose();
@@ -728,11 +668,6 @@ class _MapWidgetState extends State<MapWidget>
                 if (hasGesture && widget.followUser) {
                   widget.onUserPanned?.call();
                 }
-                _schedulePoiFetch(
-                  camera.center,
-                  camera.zoom,
-                  immediate: !hasGesture,
-                );
               },
             ),
             children: [
@@ -846,20 +781,6 @@ class _MapWidgetState extends State<MapWidget>
               ],
               MarkerLayer(
                 markers: [
-                  for (final poi in _pois)
-                    Marker(
-                      key: ValueKey(poi.id),
-                      point: poi.position,
-                      width: _poiZoom >= 16 && poi.name != null ? 104 : 30,
-                      height: _poiZoom >= 16 && poi.name != null ? 48 : 30,
-                      child: IgnorePointer(
-                        child: _PoiMarker(
-                          poi: poi,
-                          darkMode: widget.darkMode,
-                          showLabel: _poiZoom >= 16,
-                        ),
-                      ),
-                    ),
                   // EV charging station markers.
                   for (final pos in widget.chargingStations)
                     Marker(
@@ -980,87 +901,6 @@ class _MapWidgetState extends State<MapWidget>
           );
         },
       ),
-    );
-  }
-}
-
-class _PoiMarker extends StatelessWidget {
-  const _PoiMarker({
-    required this.poi,
-    required this.darkMode,
-    required this.showLabel,
-  });
-
-  final MapPoi poi;
-  final bool darkMode;
-  final bool showLabel;
-
-  Color get _color => switch (poi.category) {
-    MapPoiCategory.food => const Color(0xFFEF6C00),
-    MapPoiCategory.cafe => const Color(0xFF8D6E63),
-    MapPoiCategory.fuel => const Color(0xFF455A64),
-    MapPoiCategory.shopping => const Color(0xFF7B61FF),
-    MapPoiCategory.parking => const Color(0xFF1976D2),
-    MapPoiCategory.charging => const Color(0xFF00A86B),
-    MapPoiCategory.health => const Color(0xFFE53935),
-    MapPoiCategory.lodging => const Color(0xFF5C6BC0),
-    MapPoiCategory.attraction => const Color(0xFF00897B),
-    MapPoiCategory.services => const Color(0xFF546E7A),
-  };
-
-  IconData get _icon => switch (poi.category) {
-    MapPoiCategory.food => Icons.restaurant,
-    MapPoiCategory.cafe => Icons.local_cafe,
-    MapPoiCategory.fuel => Icons.local_gas_station,
-    MapPoiCategory.shopping => Icons.shopping_bag,
-    MapPoiCategory.parking => Icons.local_parking,
-    MapPoiCategory.charging => Icons.ev_station,
-    MapPoiCategory.health => Icons.local_hospital,
-    MapPoiCategory.lodging => Icons.hotel,
-    MapPoiCategory.attraction => Icons.place,
-    MapPoiCategory.services => Icons.account_balance,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final name = poi.name;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: _color,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 1.5),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
-          ),
-          child: Icon(_icon, color: Colors.white, size: 15),
-        ),
-        if (showLabel && name != null)
-          Container(
-            constraints: const BoxConstraints(maxWidth: 104),
-            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-            decoration: BoxDecoration(
-              color: (darkMode ? const Color(0xDD172033) : Colors.white)
-                  .withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(3),
-            ),
-            child: Text(
-              name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: darkMode ? Colors.white : const Color(0xFF202124),
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-              ),
-            ),
-          ),
-      ],
     );
   }
 }
