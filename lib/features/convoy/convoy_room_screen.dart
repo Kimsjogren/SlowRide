@@ -3620,17 +3620,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               mapController: _mapController,
                                               children: [
                                                 TileLayer(
-                                                  urlTemplate:
-                                                      (BackendConfig
-                                                              .hasSelfHostedTiles &&
-                                                          !_useDarkMap)
-                                                      ? '${BackendConfig.tileServerUrl}/styles/cruizx-light/512/{z}/{x}/{y}.png'
-                                                      : _useDarkMap
+                                                  urlTemplate: _useDarkMap
                                                       ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                       : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                                                   fallbackUrl: _useDarkMap
                                                       ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                                                      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                                                   subdomains: const [
                                                     'a',
                                                     'b',
@@ -3656,57 +3651,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   tileDisplay:
                                                       const TileDisplay.instantaneous(),
                                                 ),
-                                                if (!_useDarkMap)
-                                                  Opacity(
-                                                    opacity: 0.14,
-                                                    child: TileLayer(
-                                                      urlTemplate:
-                                                          'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
-                                                      userAgentPackageName:
-                                                          'com.cruizx.mobile',
-                                                      keepBuffer: 2,
-                                                      panBuffer: 1,
-                                                      tileDisplay:
-                                                          const TileDisplay.instantaneous(),
-                                                    ),
-                                                  ),
                                                 if (_useDarkMap)
                                                   TileLayer(
                                                     urlTemplate:
                                                         'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
-                                                    fallbackUrl:
-                                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                                    subdomains: const [
-                                                      'a',
-                                                      'b',
-                                                      'c',
-                                                      'd',
-                                                    ],
-                                                    userAgentPackageName:
-                                                        'com.cruizx.mobile',
-                                                    tileProvider: _tileProvider,
-                                                    tileUpdateTransformer:
-                                                        TileUpdateTransformers.throttle(
-                                                          const Duration(
-                                                            milliseconds: 28,
-                                                          ),
-                                                        ),
-                                                    retinaMode:
-                                                        RetinaMode.isHighDensity(
-                                                          context,
-                                                        ),
-                                                    maxNativeZoom: 20,
-                                                    keepBuffer: 2,
-                                                    panBuffer: 1,
-                                                    tileDisplay:
-                                                        const TileDisplay.instantaneous(),
-                                                  ),
-                                                if (!_useDarkMap &&
-                                                    !BackendConfig
-                                                        .hasSelfHostedTiles)
-                                                  TileLayer(
-                                                    urlTemplate:
-                                                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
                                                     fallbackUrl:
                                                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                                     subdomains: const [
