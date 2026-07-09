@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as ml;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
-import 'package:slowride/widgets/user_location_marker.dart';
 
 /// Vector map widget backed by MapLibre GL — renders crisp tiles at every
 /// zoom level. Uses the same interface as [MapWidget] so [MapScreen] can swap
@@ -635,7 +634,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
                 onMapClick: (_, coord) {
                   widget.onTap?.call(LatLng(coord.latitude, coord.longitude));
                 },
-                myLocationEnabled: !widget.followUser,
+                myLocationEnabled: true,
                 myLocationRenderMode: ml.MyLocationRenderMode.compass,
                 myLocationTrackingMode: ml.MyLocationTrackingMode.none,
                 compassEnabled: false,
@@ -645,21 +644,6 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
                     ml.AttributionButtonPosition.bottomRight,
               ),
             ),
-            if (widget.followUser)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Align(
-                    alignment: widget.use3D
-                        ? const Alignment(0, 0.30)
-                        : Alignment.center,
-                    child: UserLocationMarker(
-                      headingNotifier: widget.headingNotifier,
-                      lockNorthUp: widget.use3D,
-                      size: 34,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
