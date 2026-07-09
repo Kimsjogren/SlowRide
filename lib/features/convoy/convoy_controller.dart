@@ -258,29 +258,42 @@ class ConvoyController {
         );
   }
 
-  Future<void> sendMessage({
+  Future<ConvoyMessage> sendMessage({
     required String convoyId,
     required String text,
   }) async {
-    final userId = AuthService.instance.userId.value;
-    if (!SupabaseService.instance.isEnabled ||
-        userId == null ||
-        userId.isEmpty) {
-      return;
+    if (!SupabaseService.instance.isEnabled) {
+      throw StateError('realtime_backend_missing');
     }
 
     final normalizedText = text.trim();
     if (normalizedText.isEmpty) {
-      return;
+      throw ArgumentError.value(text, 'text', 'message_is_empty');
     }
 
-    await SupabaseService.instance.client.from('convoy_messages').insert({
-      'convoy_id': convoyId,
-      'user_id': userId,
-      'user_label': AuthService.instance.userName.value ?? 'Rider',
-      'text': normalizedText,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    final client = SupabaseService.instance.client;
+    final user = client.auth.currentUser;
+    final userId = user?.id ?? AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) {
+      throw StateError('authenticated_user_missing');
+    }
+
+    final row = await client
+        .from('convoy_messages')
+        .insert({
+          'convoy_id': convoyId,
+          'user_id': userId,
+          'user_label':
+              AuthService.instance.userName.value ??
+              user?.userMetadata?['display_name']?.toString() ??
+              'Rider',
+          'text': normalizedText,
+          'created_at': DateTime.now().toIso8601String(),
+        })
+        .select()
+        .single()
+        .timeout(const Duration(seconds: 12));
+    return ConvoyMessage.fromMap(row);
   }
 
   Stream<List<ConvoyMemberLocation>> watchMemberLocations({

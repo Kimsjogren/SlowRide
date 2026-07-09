@@ -486,13 +486,13 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVehicleTypeLabel => 'Ajoneuvotyyppi';
 
   @override
-  String get settingsVehicleAtractor => 'A-traktor';
+  String get settingsVehicleAtractor => 'A-traktori';
 
   @override
-  String get settingsVehicleMopedCar => 'Mopedbil';
+  String get settingsVehicleMopedCar => 'Mopoauto';
 
   @override
-  String get settingsVehicleTractor => 'Traktor';
+  String get settingsVehicleTractor => 'Traktori';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -570,7 +570,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerCategoryClassic => 'Klassiset';
 
   @override
-  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
+  String get settingsMapMarkerCategoryMicrocar => 'Mopoauto';
 
   @override
   String get settingsMapMarkerCategoryEpa => 'EPA';
@@ -585,10 +585,10 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
-  String get settingsMapMarkerCategoryAtractor => 'A-traktor';
+  String get settingsMapMarkerCategoryAtractor => 'A-traktori';
 
   @override
-  String get settingsMapMarkerCategoryTractor => 'Traktor';
+  String get settingsMapMarkerCategoryTractor => 'Traktori';
 
   @override
   String get settingsMapMarkerArrow => 'Nuoli';

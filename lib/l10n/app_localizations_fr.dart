@@ -486,13 +486,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsVehicleTypeLabel => 'Type de véhicule';
 
   @override
-  String get settingsVehicleAtractor => 'A-traktor';
+  String get settingsVehicleAtractor => 'Tracteur A';
 
   @override
-  String get settingsVehicleMopedCar => 'Mopedbil';
+  String get settingsVehicleMopedCar => 'Voiture sans permis';
 
   @override
-  String get settingsVehicleTractor => 'Traktor';
+  String get settingsVehicleTractor => 'Tracteur';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -570,7 +570,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCategoryClassic => 'Classiques';
 
   @override
-  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
+  String get settingsMapMarkerCategoryMicrocar => 'Voiture sans permis';
 
   @override
   String get settingsMapMarkerCategoryEpa => 'EPA';
@@ -585,10 +585,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsMapMarkerCategoryPickup => 'Pickup';
 
   @override
-  String get settingsMapMarkerCategoryAtractor => 'A-traktor';
+  String get settingsMapMarkerCategoryAtractor => 'Tracteur A';
 
   @override
-  String get settingsMapMarkerCategoryTractor => 'Traktor';
+  String get settingsMapMarkerCategoryTractor => 'Tracteur';
 
   @override
   String get settingsMapMarkerArrow => 'Flèche';

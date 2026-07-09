@@ -489,7 +489,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsVehicleAtractor => 'A-traktor';
 
   @override
-  String get settingsVehicleMopedCar => 'Mopedbil';
+  String get settingsVehicleMopedCar => 'Knallertbil';
 
   @override
   String get settingsVehicleTractor => 'Traktor';
@@ -570,7 +570,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsMapMarkerCategoryClassic => 'Klassiske';
 
   @override
-  String get settingsMapMarkerCategoryMicrocar => 'Mopedbil';
+  String get settingsMapMarkerCategoryMicrocar => 'Knallertbil';
 
   @override
   String get settingsMapMarkerCategoryEpa => 'EPA';

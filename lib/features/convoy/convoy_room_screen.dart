@@ -46,6 +46,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   final RoutingService _routingService = RoutingService();
   final AlertsController _alertsController = AlertsController();
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
   final TextEditingController _addressSearchController =
       TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -57,6 +58,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _showSuggestions = false;
   late Stream<List<ConvoyPin>> _pinsStream;
   late Stream<List<ConvoyMessage>> _messagesStream;
+  List<ConvoyMessage> _sentMessages = const [];
+  bool _isSendingMessage = false;
 
   // ── Smooth camera animation (same as MapWidget) ────────────────────────
   late final Ticker _camTicker;
@@ -771,6 +774,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _searchDebounce?.cancel();
     _camTicker.dispose();
     _messageController.dispose();
+    _chatScrollController.dispose();
     _addressSearchController.dispose();
     _searchFocus.dispose();
     _controller.dispose();
@@ -782,20 +786,47 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.convoy.id != widget.convoy.id) {
       _bindRealtimeStreams();
+      _sentMessages = const [];
+      _isSendingMessage = false;
     }
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) {
+    if (text.isEmpty || _isSendingMessage) {
       return;
     }
 
-    await _controller.sendMessage(convoyId: widget.convoy.id, text: text);
-    if (!mounted) {
-      return;
+    setState(() => _isSendingMessage = true);
+    try {
+      final message = await _controller.sendMessage(
+        convoyId: widget.convoy.id,
+        text: text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _sentMessages = [..._sentMessages, message];
+        _isSendingMessage = false;
+      });
+      if (_messageController.text.trim() == text) {
+        _messageController.clear();
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_chatScrollController.hasClients) return;
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      });
+    } catch (error) {
+      debugPrint('Convoy message send failed: $error');
+      if (!mounted) return;
+      setState(() => _isSendingMessage = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.authGenericError)),
+      );
     }
-    _messageController.clear();
   }
 
   // ── Waze-style dynamic zoom ────────────────────────────────────────────
@@ -5207,7 +5238,16 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                   child: StreamBuilder<List<ConvoyMessage>>(
                     stream: _messagesStream,
                     builder: (context, snapshot) {
-                      final messages = snapshot.data ?? const [];
+                      final remoteMessages = snapshot.data ?? const [];
+                      final remoteIds = remoteMessages
+                          .map((message) => message.id)
+                          .toSet();
+                      final messages = [
+                        ...remoteMessages,
+                        ..._sentMessages.where(
+                          (message) => !remoteIds.contains(message.id),
+                        ),
+                      ]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
                       if (messages.isEmpty) {
                         return Center(
                           child: Text(
@@ -5218,6 +5258,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                       }
 
                       return ListView.builder(
+                        controller: _chatScrollController,
                         padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
@@ -5303,7 +5344,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
-                            onSubmitted: (_) => _sendMessage(),
+                            onSubmitted: (_) {
+                              if (!_isSendingMessage) _sendMessage();
+                            },
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -5318,8 +5361,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               vertical: 14,
                             ),
                           ),
-                          onPressed: _sendMessage,
-                          child: Text(l10n.convoyChatSend),
+                          onPressed: _isSendingMessage ? null : _sendMessage,
+                          child: _isSendingMessage
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(l10n.convoyChatSend),
                         ),
                       ],
                     ),

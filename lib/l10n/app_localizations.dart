@@ -1038,19 +1038,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsVehicleAtractor.
   ///
   /// In en, this message translates to:
-  /// **'A-traktor'**
+  /// **'A-tractor'**
   String get settingsVehicleAtractor;
 
   /// No description provided for @settingsVehicleMopedCar.
   ///
   /// In en, this message translates to:
-  /// **'Mopedbil'**
+  /// **'Moped car'**
   String get settingsVehicleMopedCar;
 
   /// No description provided for @settingsVehicleTractor.
   ///
   /// In en, this message translates to:
-  /// **'Traktor'**
+  /// **'Tractor'**
   String get settingsVehicleTractor;
 
   /// No description provided for @settingsSpeedUnitKmh.
@@ -1194,7 +1194,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerCategoryMicrocar.
   ///
   /// In en, this message translates to:
-  /// **'Mopedbil'**
+  /// **'Moped car'**
   String get settingsMapMarkerCategoryMicrocar;
 
   /// No description provided for @settingsMapMarkerCategoryEpa.
@@ -1224,13 +1224,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMapMarkerCategoryAtractor.
   ///
   /// In en, this message translates to:
-  /// **'A-traktor'**
+  /// **'A-tractor'**
   String get settingsMapMarkerCategoryAtractor;
 
   /// No description provided for @settingsMapMarkerCategoryTractor.
   ///
   /// In en, this message translates to:
-  /// **'Traktor'**
+  /// **'Tractor'**
   String get settingsMapMarkerCategoryTractor;
 
   /// No description provided for @settingsMapMarkerArrow.
