@@ -1,7 +1,6 @@
 const revealItems = document.querySelectorAll(".reveal");
 const yearNode = document.querySelector("#year");
 const languageSelect = document.querySelector("#language-select");
-const liveClockNode = document.querySelector(".screen-time");
 const cookieBanner = document.querySelector("#cookie-banner");
 const cookieAcceptBtn = document.querySelector("#cookie-accept");
 const cookieNecessaryBtn = document.querySelector("#cookie-necessary");
@@ -600,8 +599,19 @@ const translations = {
 };
 
 const supportedLanguages = ["da", "en", "fi", "fr", "nb", "sv"];
+const heroStatusTranslations = {
+  en: { label: "System status", live: "Live", current: "Current status", checking: "Checking…", up: "All systems operational", down: "Service disruption", copy: "Live availability for CruizX and the navigation service.", website: "CruizX website", navigation: "Navigation API", maps: "Map data", details: "View full status →", response: "Response" },
+  sv: { label: "Systemstatus", live: "Live", current: "Aktuell status", checking: "Kontrollerar…", up: "Alla system fungerar", down: "Driftstörning", copy: "Aktuell tillgänglighet för CruizX och navigationstjänsten.", website: "CruizX webbplats", navigation: "Navigations-API", maps: "Kartdata", details: "Visa full status →", response: "Svarstid" },
+  nb: { label: "Systemstatus", live: "Direkte", current: "Nåværende status", checking: "Kontrollerer…", up: "Alle systemer fungerer", down: "Driftsforstyrrelse", copy: "Aktuell tilgjengelighet for CruizX og navigasjonstjenesten.", website: "CruizX-nettsted", navigation: "Navigasjons-API", maps: "Kartdata", details: "Vis full status →", response: "Svartid" },
+  da: { label: "Systemstatus", live: "Live", current: "Aktuel status", checking: "Kontrollerer…", up: "Alle systemer fungerer", down: "Driftsforstyrrelse", copy: "Aktuel tilgængelighed for CruizX og navigationstjenesten.", website: "CruizX-websted", navigation: "Navigations-API", maps: "Kortdata", details: "Se fuld status →", response: "Svartid" },
+  fi: { label: "Järjestelmän tila", live: "Live", current: "Nykyinen tila", checking: "Tarkistetaan…", up: "Kaikki järjestelmät toimivat", down: "Palveluhäiriö", copy: "CruizX:n ja navigointipalvelun ajantasainen saatavuus.", website: "CruizX-verkkosivusto", navigation: "Navigointi-API", maps: "Karttatiedot", details: "Näytä koko tila →", response: "Vasteaika" },
+  fr: { label: "État du système", live: "En direct", current: "État actuel", checking: "Vérification…", up: "Tous les systèmes fonctionnent", down: "Perturbation du service", copy: "Disponibilité en direct de CruizX et du service de navigation.", website: "Site CruizX", navigation: "API de navigation", maps: "Données cartographiques", details: "Voir l’état complet →", response: "Réponse" },
+};
 const COOKIE_CONSENT_KEY = "cruizx_cookie_consent";
 const WEB_PRICING_URL = "https://cruizx.com/api/web/pricing";
+const HERO_STATUS_URL = "https://api.cruizx.com/status";
+let heroStatusLanguage = "en";
+let heroStatusResult = null;
 
 async function hydrateRemotePricing() {
   try {
@@ -653,6 +663,8 @@ function applyLanguage(lang) {
   if (languageSelect) languageSelect.value = activeLang;
   localStorage.setItem("cruizx_site_lang", activeLang);
   updateLegalLinks(activeLang);
+  heroStatusLanguage = activeLang;
+  renderHeroStatus();
 }
 
 function updateLegalLinks(lang) {
@@ -685,18 +697,50 @@ if (yearNode) {
   yearNode.textContent = new Date().getFullYear();
 }
 
-function renderLiveClock() {
-  if (!liveClockNode) return;
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  liveClockNode.textContent = `${hh}:${mm}`;
+function renderHeroStatus() {
+  const card = document.querySelector("#hero-status-card");
+  if (!card) return;
+  const text = heroStatusTranslations[heroStatusLanguage] ?? heroStatusTranslations.en;
+  document.querySelectorAll("[data-hero-status-i18n]").forEach((node) => {
+    const key = node.getAttribute("data-hero-status-i18n");
+    if (text[key]) node.textContent = text[key];
+  });
+
+  const title = document.querySelector("#hero-status-title");
+  const indicator = document.querySelector("#hero-status-indicator");
+  const response = document.querySelector("#hero-status-response");
+  const states = document.querySelectorAll(".hero-service-state");
+  card.classList.toggle("is-up", heroStatusResult?.up === true);
+  card.classList.toggle("is-down", heroStatusResult?.up === false);
+  indicator?.classList.toggle("is-up", heroStatusResult?.up === true);
+  indicator?.classList.toggle("is-down", heroStatusResult?.up === false);
+  indicator?.classList.toggle("is-checking", heroStatusResult === null);
+
+  const stateText = heroStatusResult === null ? text.checking : heroStatusResult.up ? text.up : text.down;
+  if (title) title.textContent = stateText;
+  states.forEach((node) => { node.textContent = heroStatusResult === null ? text.checking : heroStatusResult.up ? text.up : text.down; });
+  if (response) response.textContent = heroStatusResult?.up ? `${text.response}: ${heroStatusResult.ms} ms` : "—";
 }
 
-renderLiveClock();
-setInterval(renderLiveClock, 60 * 1000);
+async function checkHeroStatus() {
+  if (!document.querySelector("#hero-status-card")) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  const startedAt = performance.now();
+  try {
+    const response = await fetch(`${HERO_STATUS_URL}?t=${Date.now()}`, { cache: "no-store", signal: controller.signal });
+    const data = response.ok ? await response.json() : null;
+    heroStatusResult = { up: Boolean(data?.version && data?.available_actions), ms: Math.round(performance.now() - startedAt) };
+  } catch (_) {
+    heroStatusResult = { up: false, ms: 0 };
+  } finally {
+    clearTimeout(timeout);
+    renderHeroStatus();
+  }
+}
 
-setInterval(renderLiveClock, 60 * 1000);
+checkHeroStatus();
+setInterval(checkHeroStatus, 60 * 1000);
 
 // ── Pro checkout ────────────────────────────────────────────────────────────
 const btnBuyPro = document.querySelector("#btn-buy-pro");

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Live operational status for CruizX services and routing." />
+    <meta name="theme-color" content="#06111f" />
+    <title>CruizX Status</title>
+    <link rel="stylesheet" href="./styles.css?v=20260713a" />
+    <link rel="stylesheet" href="./status.css?v=20260713a" />
+    <script src="./analytics.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="page-overlay"></div>
+
+      <header class="site-header status-header">
+        <a class="brand" href="./index.html" aria-label="CruizX home">
+          <img src="./assets/logga_nobg.png" alt="CruizX" />
+        </a>
+
+        <div class="header-controls">
+          <label class="language-switch" for="status-language-select">
+            <span data-status-i18n="language">Language</span>
+            <select id="status-language-select" aria-label="Select language">
+              <option value="en">EN</option>
+              <option value="sv">SV</option>
+              <option value="nb">NB</option>
+              <option value="da">DA</option>
+              <option value="fi">FI</option>
+              <option value="fr">FR</option>
+            </select>
+          </label>
+
+          <nav class="site-nav status-nav">
+            <a href="./index.html#features" data-status-i18n="features">Features</a>
+            <a href="./index.html#experience" data-status-i18n="experience">Experience</a>
+            <a href="./index.html#support" data-status-i18n="support">Support</a>
+            <a href="./index.html#download" data-status-i18n="download">Download</a>
+            <a href="./status.html" aria-current="page">Status</a>
+            <a href="https://kimtechtool.se" target="_blank" rel="noreferrer">KimTechTool</a>
+          </nav>
+        </div>
+      </header>
+
+      <main class="status-main">
+        <section class="status-intro reveal is-visible">
+          <p class="eyebrow" data-status-i18n="eyebrow">System status</p>
+          <h1 data-status-i18n="title">CruizX service status</h1>
+          <p data-status-i18n="intro">
+            Live availability for the website, routing service, and active map data.
+          </p>
+        </section>
+
+        <section class="overall-card" id="overall-card" aria-live="polite">
+          <div class="overall-state">
+            <span class="status-indicator is-checking" id="overall-indicator" aria-hidden="true"></span>
+            <div>
+              <p class="overall-label" data-status-i18n="overall">Overall status</p>
+              <h2 id="overall-text" data-status-i18n="checking">Checking services…</h2>
+            </div>
+          </div>
+          <button class="status-refresh" id="status-refresh" type="button" data-status-i18n="refresh">
+            Check now
+          </button>
+        </section>
+
+        <section class="status-grid" aria-label="Service status">
+          <article class="status-service-card">
+            <div class="service-card-head">
+              <div>
+                <p class="service-kicker" data-status-i18n="service">Service</p>
+                <h2 data-status-i18n="website">CruizX website</h2>
+              </div>
+              <span class="service-state is-up" data-status-i18n="operational">Operational</span>
+            </div>
+            <p data-status-i18n="websiteBody">The public CruizX website is available.</p>
+          </article>
+
+          <article class="status-service-card">
+            <div class="service-card-head">
+              <div>
+                <p class="service-kicker" data-status-i18n="service">Service</p>
+                <h2 data-status-i18n="routing">Navigation API</h2>
+              </div>
+              <span class="service-state is-checking" id="routing-state" data-status-i18n="checkingShort">Checking</span>
+            </div>
+            <p id="routing-detail" data-status-i18n="routingBody">Testing the live Valhalla routing service.</p>
+          </article>
+
+          <article class="status-service-card">
+            <div class="service-card-head">
+              <div>
+                <p class="service-kicker" data-status-i18n="data">Data</p>
+                <h2 data-status-i18n="maps">Map coverage</h2>
+              </div>
+              <span class="service-state is-checking" id="maps-state" data-status-i18n="checkingShort">Checking</span>
+            </div>
+            <p id="maps-detail" data-status-i18n="mapsBody">Checking the active map package.</p>
+          </article>
+        </section>
+
+        <section class="coverage-card">
+          <div>
+            <p class="eyebrow" data-status-i18n="coverageEyebrow">Active coverage</p>
+            <h2 data-status-i18n="coverageTitle">Available map countries</h2>
+          </div>
+          <div class="country-list" aria-label="Available countries">
+            <span data-status-i18n="sweden">Sweden</span>
+            <span data-status-i18n="norway">Norway</span>
+            <span data-status-i18n="denmark">Denmark</span>
+            <span data-status-i18n="finland">Finland</span>
+            <span data-status-i18n="france">France</span>
+            <span data-status-i18n="greatBritain">Great Britain</span>
+            <span data-status-i18n="spain">Spain</span>
+          </div>
+        </section>
+
+        <p class="status-meta">
+          <span data-status-i18n="lastChecked">Last checked</span>:
+          <time id="last-checked">—</time>
+          <span aria-hidden="true">•</span>
+          <span data-status-i18n="autoRefresh">Automatically refreshes every minute</span>
+        </p>
+      </main>
+
+      <footer class="site-footer">
+        <div class="footer-main">
+          <p>CruizX</p>
+          <p>Driven by the ride.</p>
+          <p>&copy; 2026 CruizX</p>
+        </div>
+        <p class="legal-links">
+          <a href="./index.html" data-status-i18n="home">Home</a>
+          <span>•</span>
+          <a href="./index.html#support" data-status-i18n="support">Support</a>
+          <span>•</span>
+          <a href="mailto:support@cruizx.com">support@cruizx.com</a>
+        </p>
+      </footer>
+    </div>
+
+    <script src="./status.js?v=20260713a"></script>
+  </body>
+</html>

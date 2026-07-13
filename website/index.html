@@ -57,6 +57,7 @@
             <a href="#experience" data-i18n="navExperience">Experience</a>
             <a href="#support" id="nav-support-link" data-i18n="navSupport">Support</a>
             <a href="#download" id="nav-download-link" data-i18n="navDownload">Download</a>
+            <a href="./status.html">Status</a>
           <a href="https://kimtechtool.se" target="_blank" rel="noreferrer">
             KimTechTool
           </a>
@@ -103,45 +104,47 @@
           </div>
 
           <div class="hero-visual reveal">
-            <div class="device-frame">
-              <div class="device-screen">
-                <div class="screen-top">
-                  <span class="screen-pill" data-i18n="screenPill">CruizX live</span>
-                  <span class="screen-time">22:48</span>
-                </div>
+            <aside class="hero-status-card" id="hero-status-card" aria-live="polite">
+              <div class="hero-status-top">
+                <span class="hero-status-label" data-hero-status-i18n="label">System status</span>
+                <span class="hero-status-live">
+                  <i aria-hidden="true"></i>
+                  <span data-hero-status-i18n="live">Live</span>
+                </span>
+              </div>
 
-                <div class="route-card">
-                  <p class="route-label" data-i18n="routeLabel">Convoy focused</p>
-                  <h2 data-i18n="routeTitle">Built for the vehicles. Built for the convoy.</h2>
-                  <p data-i18n="routeBody">
-                    CruizX is designed around the behavior, energy, and needs
-                    of this scene, with a stronger focus on convoy flow,
-                    live group awareness, and moving together.
-                  </p>
-                </div>
-
-                <div class="signal-grid">
-                  <article>
-                    <span data-i18n="signalOneLabel">Vehicles</span>
-                    <strong data-i18n="signalOneValue">Purpose-built</strong>
-                  </article>
-                  <article>
-                    <span data-i18n="signalTwoLabel">Convoy</span>
-                    <strong data-i18n="signalTwoValue">Live coordination</strong>
-                  </article>
-                  <article>
-                    <span data-i18n="signalThreeLabel">Community</span>
-                    <strong data-i18n="signalThreeValue">Built for the culture</strong>
-                  </article>
-                </div>
-
-                <div class="map-lines" aria-hidden="true">
-                  <span class="line line-one"></span>
-                  <span class="line line-two"></span>
-                  <span class="line line-three"></span>
+              <div class="hero-status-overall">
+                <span class="hero-status-indicator is-checking" id="hero-status-indicator" aria-hidden="true"></span>
+                <div>
+                  <p data-hero-status-i18n="current">Current status</p>
+                  <h2 id="hero-status-title">Checking services…</h2>
                 </div>
               </div>
-            </div>
+
+              <p class="hero-status-copy" data-hero-status-i18n="copy">
+                Live availability for CruizX and the navigation service.
+              </p>
+
+              <div class="hero-status-services">
+                <div class="hero-status-service">
+                  <span data-hero-status-i18n="website">CruizX website</span>
+                  <strong class="hero-service-state" data-hero-status-i18n="checking">Checking…</strong>
+                </div>
+                <div class="hero-status-service">
+                  <span data-hero-status-i18n="navigation">Navigation API</span>
+                  <strong class="hero-service-state" data-hero-status-i18n="checking">Checking…</strong>
+                </div>
+                <div class="hero-status-service">
+                  <span data-hero-status-i18n="maps">Map data</span>
+                  <strong class="hero-service-state" data-hero-status-i18n="checking">Checking…</strong>
+                </div>
+              </div>
+
+              <div class="hero-status-footer">
+                <span id="hero-status-response">—</span>
+                <a href="./status.html" data-hero-status-i18n="details">View full status →</a>
+              </div>
+            </aside>
           </div>
         </section>
 
@@ -294,6 +297,8 @@
           <a href="./terms.html" id="footer-terms-link" data-i18n="footerTerms">Terms</a>
           <span>•</span>
           <a href="#support" id="footer-support-link" data-i18n="footerSupport">Support</a>
+          <span>•</span>
+          <a href="./status.html">Status</a>
         </p>
       </footer>
     </div>

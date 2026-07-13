@@ -226,6 +226,16 @@ main,
   background: rgba(255, 255, 255, 0.06);
 }
 
+@media (min-width: 981px) {
+  .site-nav {
+    transform: translateX(-4rem);
+  }
+
+  .language-switch {
+    transform: translate(5.5rem, -0.6rem);
+  }
+}
+
 main {
   width: min(calc(100% - 2rem), var(--max-width));
   margin: 0 auto;
@@ -378,6 +388,148 @@ main {
   display: flex;
   justify-content: center;
 }
+
+.hero-status-card {
+  width: min(100%, 27rem);
+  min-height: 36rem;
+  padding: 1.5rem;
+  border-radius: 30px;
+  border: 1px solid rgba(58, 168, 255, 0.32);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 119, 255, 0.22), transparent 42%),
+    linear-gradient(155deg, rgba(12, 34, 77, 0.95), rgba(6, 20, 48, 0.96));
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-status-top,
+.hero-status-overall,
+.hero-status-service,
+.hero-status-footer {
+  display: flex;
+  align-items: center;
+}
+
+.hero-status-top,
+.hero-status-service,
+.hero-status-footer {
+  justify-content: space-between;
+}
+
+.hero-status-label {
+  color: var(--accent-bright);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero-status-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #65e69b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.hero-status-live i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 5px rgba(55, 200, 113, 0.12);
+}
+
+.hero-status-overall {
+  gap: 1rem;
+  margin-top: 3.5rem;
+  padding: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.hero-status-overall p {
+  margin: 0 0 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-status-overall h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  line-height: 1.12;
+}
+
+.hero-status-indicator {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #f3b94e;
+  box-shadow: 0 0 0 8px rgba(243, 185, 78, 0.12);
+}
+
+.hero-status-indicator.is-up {
+  background: #37c871;
+  box-shadow: 0 0 0 8px rgba(55, 200, 113, 0.13);
+}
+
+.hero-status-indicator.is-down {
+  background: #ff6577;
+  box-shadow: 0 0 0 8px rgba(255, 101, 119, 0.13);
+}
+
+.hero-status-copy {
+  margin: 1.25rem 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.hero-status-services {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.hero-status-service {
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.9rem;
+}
+
+.hero-service-state {
+  color: #f3b94e;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.hero-status-card.is-up .hero-service-state { color: #65e69b; }
+.hero-status-card.is-down .hero-service-state { color: #ff8796; }
+
+.hero-status-footer {
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.hero-status-footer a {
+  color: var(--accent-bright);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.hero-status-footer a:hover { color: #fff; }
 
 .device-frame {
   width: min(100%, 27rem);
