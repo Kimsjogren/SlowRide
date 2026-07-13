@@ -181,6 +181,7 @@
   "settingsCountryFinland": "\ud83c\uddeb\ud83c\uddee Finlande",
   "settingsCountryFrance": "\ud83c\uddeb\ud83c\uddf7 France",
   "settingsCountrySpain": "🇪🇸 Espagne",
+  "settingsCountryUnitedKingdom": "\ud83c\uddec\ud83c\udde7 Royaume-Uni",
   "settingsCountryHint": "Les limites de vitesse et r\u00e8gles routi\u00e8res s'adaptent au pays s\u00e9lectionn\u00e9.",
   "settingsLanguageCurrentlyUsing": "Utilisation actuelle : {mode}",
   "@settingsLanguageCurrentlyUsing": {

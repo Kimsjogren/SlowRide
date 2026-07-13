@@ -47,6 +47,7 @@ wget -N https://download.geofabrik.de/europe/denmark-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/finland-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/france-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/spain-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
 
 cd ..
 docker-compose up -d

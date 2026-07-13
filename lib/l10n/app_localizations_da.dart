@@ -475,6 +475,9 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Spanien';
 
   @override
+  String get settingsCountryUnitedKingdom => '🇬🇧 Storbritannien';
+
+  @override
   String get settingsCountryHint => 'Hastighedsgrænser og vejregler tilpasses det valgte land.';
 
   @override

@@ -219,6 +219,12 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'ES',
                                 child: Text(l10n.settingsCountrySpain),
                               ),
+                              DropdownMenuItem(
+                                value: 'GB',
+                                child: Text(
+                                  l10n.settingsCountryUnitedKingdom,
+                                ),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value != null) {
@@ -231,6 +237,7 @@ class SettingsScreen extends StatelessWidget {
                                   'FI' => 'fi',
                                   'FR' => 'fr',
                                   'ES' => 'es',
+                                  'GB' => 'en',
                                   _ => null,
                                 };
                                 if (syncedLanguage != null) {

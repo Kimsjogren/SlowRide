@@ -475,6 +475,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsCountrySpain => '🇪🇸 Spania';
 
   @override
+  String get settingsCountryUnitedKingdom => '🇬🇧 Storbritannia';
+
+  @override
   String get settingsCountryHint => 'Fartsgrenser og veiregler tilpasses valgt land.';
 
   @override

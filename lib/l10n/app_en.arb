@@ -181,6 +181,7 @@
   "settingsCountryFinland": "\ud83c\uddeb\ud83c\uddee Finland",
   "settingsCountryFrance": "\ud83c\uddeb\ud83c\uddf7 France",
   "settingsCountrySpain": "🇪🇸 Spain",
+  "settingsCountryUnitedKingdom": "\ud83c\uddec\ud83c\udde7 United Kingdom",
   "settingsCountryHint": "Speed limits and road rules adapt to the selected country.",
   "settingsLanguageCurrentlyUsing": "Currently using: {mode}",
   "@settingsLanguageCurrentlyUsing": {

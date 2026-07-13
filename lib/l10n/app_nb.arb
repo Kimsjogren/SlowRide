@@ -181,6 +181,7 @@
   "settingsCountryFinland": "\ud83c\uddeb\ud83c\uddee Finland",
   "settingsCountryFrance": "\ud83c\uddeb\ud83c\uddf7 Frankrike",
   "settingsCountrySpain": "🇪🇸 Spania",
+  "settingsCountryUnitedKingdom": "\ud83c\uddec\ud83c\udde7 Storbritannia",
   "settingsCountryHint": "Fartsgrenser og veiregler tilpasses valgt land.",
   "settingsLanguageCurrentlyUsing": "Bruker nå: {mode}",
   "@settingsLanguageCurrentlyUsing": {

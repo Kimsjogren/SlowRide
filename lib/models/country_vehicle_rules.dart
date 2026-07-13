@@ -10,6 +10,7 @@
 ///   DK – Færdselsstyrelsen (Danish Road Safety Agency)
 ///   FI – Traficom (Finnish Transport and Communications Agency)
 ///   FR – Code de la route (French Highway Code)
+///   GB – GOV.UK / DVLA vehicle categories
 class CountryVehicleRules {
   CountryVehicleRules._();
 
@@ -21,6 +22,7 @@ class CountryVehicleRules {
     'FI',
     'FR',
     'ES',
+    'GB',
   ];
 
   /// Default country when none is set.
@@ -55,6 +57,9 @@ class CountryVehicleRules {
 
     // France mainland.
     if (lat >= 43.0 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6) return 'FR';
+
+    // Great Britain (England, Scotland, Wales).
+    if (lat >= 49.8 && lat <= 58.8 && lon >= -8.7 && lon <= 2.0) return 'GB';
 
     // Denmark – Jutland (west of Great Belt).
     if (lat >= 54.5 && lat <= 57.8 && lon >= 8.0 && lon <= 10.9) return 'DK';
@@ -236,6 +241,31 @@ class CountryVehicleRules {
     ),
     // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
     'ES_Tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 30,
+      maxLegalSpeedKmh: 40,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+
+    // ── United Kingdom / Great Britain (GB) ─────────────────────────────
+    // Light quadricycles/moped cars use the AM-style 45 km/h class.
+    // Agricultural tractors are treated as slow vehicles and kept off motorways.
+    'GB_A-tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 45,
+      maxLegalSpeedKmh: 45,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    'GB_Moped car': VehicleRoutingProfile(
+      defaultSpeedKmh: 45,
+      maxLegalSpeedKmh: 45,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    'GB_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
       useHighways: 0.0,

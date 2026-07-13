@@ -1017,6 +1017,12 @@ abstract class AppLocalizations {
   /// **'🇪🇸 Spain'**
   String get settingsCountrySpain;
 
+  /// No description provided for @settingsCountryUnitedKingdom.
+  ///
+  /// In en, this message translates to:
+  /// **'🇬🇧 United Kingdom'**
+  String get settingsCountryUnitedKingdom;
+
   /// No description provided for @settingsCountryHint.
   ///
   /// In en, this message translates to:
