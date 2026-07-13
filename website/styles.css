@@ -441,6 +441,7 @@ main {
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 0 5px rgba(55, 200, 113, 0.12);
+  animation: live-dot-pulse 1.8s ease-in-out infinite;
 }
 
 .hero-status-overall {
@@ -479,11 +480,13 @@ main {
 .hero-status-indicator.is-up {
   background: #37c871;
   box-shadow: 0 0 0 8px rgba(55, 200, 113, 0.13);
+  animation: status-dot-pulse 1.8s ease-in-out infinite;
 }
 
 .hero-status-indicator.is-down {
   background: #ff6577;
   box-shadow: 0 0 0 8px rgba(255, 101, 119, 0.13);
+  animation: error-dot-pulse 1.35s ease-in-out infinite;
 }
 
 .hero-status-copy {
@@ -515,6 +518,14 @@ main {
 .hero-status-card.is-up .hero-service-state { color: #65e69b; }
 .hero-status-card.is-down .hero-service-state { color: #ff8796; }
 
+.hero-status-card.is-down .hero-status-live {
+  color: #ff6577;
+}
+
+.hero-status-card.is-down .hero-status-live i {
+  animation-name: error-dot-pulse;
+}
+
 .hero-status-footer {
   gap: 1rem;
   margin-top: auto;
@@ -530,6 +541,53 @@ main {
 }
 
 .hero-status-footer a:hover { color: #fff; }
+
+@keyframes live-dot-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 4px rgba(55, 200, 113, 0.1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 8px rgba(55, 200, 113, 0.2);
+    opacity: 1;
+  }
+}
+
+@keyframes status-dot-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 6px rgba(55, 200, 113, 0.1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 12px rgba(55, 200, 113, 0.2);
+    opacity: 1;
+  }
+}
+
+@keyframes error-dot-pulse {
+  0%, 100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 5px rgba(255, 101, 119, 0.1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 12px rgba(255, 101, 119, 0.24);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-status-live i,
+  .hero-status-indicator.is-up,
+  .hero-status-indicator.is-down {
+    animation: none;
+  }
+}
 
 .device-frame {
   width: min(100%, 27rem);
