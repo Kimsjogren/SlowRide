@@ -591,7 +591,7 @@ export default {
       const ua = request.headers.get("User-Agent") || "";
       logEvent(env, "apk_download", "website", "", ip, { ua }).catch(() => {});
       return Response.redirect(
-        "https://github.com/Kimsjogren/SlowRide/releases/download/v1.0.5/CruizX-1.0.5-67-free.apk",
+        "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.0/CruizX-1.1.0-96-free.apk",
         302
       );
     }
