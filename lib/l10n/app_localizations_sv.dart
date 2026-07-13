@@ -492,6 +492,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsVehicleAtractor => 'A-traktor';
 
   @override
+  String get settingsVehicleLowVehicle => 'Lågt fordon';
+
+  @override
   String get settingsVehicleMopedCar => 'Mopedbil';
 
   @override
@@ -896,6 +899,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Brant backe';
+
+  @override
+  String get alertTypeSpeedBump => 'Högt gupp';
 
   @override
   String get alertTypeMeetup => 'Mötesplats';

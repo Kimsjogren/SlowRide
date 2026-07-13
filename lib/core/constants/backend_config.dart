@@ -38,6 +38,12 @@ class BackendConfig {
     defaultValue: 'https://api.cruizx.com',
   );
 
+  /// Public CruizX API for cached OpenStreetMap road-obstacle data.
+  static const String mapDataBaseUrl = String.fromEnvironment(
+    'MAP_DATA_BASE_URL',
+    defaultValue: 'https://cruizx.com',
+  );
+
   /// Mapbox access token (pk.) used for map tiles and future SDK features
   static const String mapboxAccessToken = String.fromEnvironment(
     'MAPBOX_TOKEN',

@@ -938,6 +938,7 @@ class _AlertMarker extends StatelessWidget {
     AlertType.speedCamera => const Color(0xFF6A1B9A),
     AlertType.narrowRoad => const Color(0xFF00695C),
     AlertType.steepHill => const Color(0xFF37474F),
+    AlertType.speedBump => const Color(0xFFFF7A00),
     AlertType.meetup => const Color(0xFF1E88E5),
     AlertType.parking => const Color(0xFF0277BD),
     AlertType.foodStop => const Color(0xFFEF6C00),

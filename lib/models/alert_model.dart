@@ -11,6 +11,7 @@ enum AlertType {
   hazard,
   narrowRoad,
   steepHill,
+  speedBump,
   meetup,
   parking,
   foodStop,
@@ -28,6 +29,7 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => 'hazard',
     AlertType.narrowRoad => 'narrow_road',
     AlertType.steepHill => 'steep_hill',
+    AlertType.speedBump => 'speed_bump',
     AlertType.meetup => 'meetup',
     AlertType.parking => 'parking',
     AlertType.foodStop => 'food_stop',
@@ -44,6 +46,7 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => 'Hazard',
     AlertType.narrowRoad => 'Narrow road',
     AlertType.steepHill => 'Steep hill',
+    AlertType.speedBump => 'High speed bump',
     AlertType.meetup => 'Meetup spot',
     AlertType.parking => 'Parking',
     AlertType.foodStop => 'Food stop',
@@ -60,6 +63,7 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => l10n.alertTypeHazard,
     AlertType.narrowRoad => l10n.alertTypeNarrowRoad,
     AlertType.steepHill => l10n.alertTypeSteepHill,
+    AlertType.speedBump => l10n.alertTypeSpeedBump,
     AlertType.meetup => l10n.alertTypeMeetup,
     AlertType.parking => l10n.alertTypeParking,
     AlertType.foodStop => l10n.alertTypeFoodStop,
@@ -76,6 +80,7 @@ extension AlertTypeX on AlertType {
     AlertType.hazard => '⚠️',
     AlertType.narrowRoad => '↔️',
     AlertType.steepHill => '⛰️',
+    AlertType.speedBump => '〰️',
     AlertType.meetup => '📍',
     AlertType.parking => '🅿️',
     AlertType.foodStop => '🍔',
@@ -91,6 +96,7 @@ extension AlertTypeX on AlertType {
     'speed_camera' => AlertType.speedCamera,
     'narrow_road' => AlertType.narrowRoad,
     'steep_hill' => AlertType.steepHill,
+    'speed_bump' => AlertType.speedBump,
     'meetup' => AlertType.meetup,
     'parking' => AlertType.parking,
     'food_stop' => AlertType.foodStop,
@@ -122,6 +128,9 @@ class AlertModel {
   /// Alerts expire quickly, while community POIs live longer.
   static Duration ttlFor(AlertType type) => switch (type) {
     AlertType.roadwork => const Duration(hours: 24),
+    // Speed bumps are infrastructure and remain relevant much longer than
+    // temporary traffic alerts.
+    AlertType.speedBump => const Duration(days: 365),
     AlertType.meetup ||
     AlertType.parking ||
     AlertType.foodStop ||

@@ -17,6 +17,7 @@ import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/routing_service.dart';
+import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
@@ -90,6 +91,21 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Timer? _themeTimer;
   List<ConvoyMemberLocation> _memberLocations = [];
   List<AlertModel> _alerts = const [];
+
+  Future<List<LatLng>> _lowVehicleBumpAvoidLocations({
+    required LatLng origin,
+    required LatLng destination,
+  }) async {
+    if (UserPreferencesService.instance.vehicleType.value != 'Low vehicle') {
+      return const [];
+    }
+    return OsmSpeedBumpService.instance.avoidLocationsForRoute(
+      origin: origin,
+      destination: destination,
+      knownAlerts: _alerts,
+    );
+  }
+
   AlertModel? _nearbyAlert;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
@@ -2701,9 +2717,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Future<void> _loadAlerts() async {
     final center = _myLocation ?? const LatLng(59.3293, 18.0686);
     try {
-      final result = await _alertsController.fetchNearby(center);
+      final results = await Future.wait<List<AlertModel>>([
+        _alertsController.fetchNearby(center),
+        if (UserPreferencesService.instance.vehicleType.value == 'Low vehicle')
+          OsmSpeedBumpService.instance.fetchNearby(center)
+        else
+          Future.value(const <AlertModel>[]),
+      ]);
       if (!mounted) return;
-      setState(() => _alerts = result);
+      setState(() => _alerts = [...results[0], ...results[1]]);
     } catch (_) {}
   }
 
@@ -2756,6 +2778,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         origin: _myLocation!,
         destination: destination,
         vehicleType: UserPreferencesService.instance.vehicleType.value,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: _myLocation!,
+          destination: destination,
+        ),
       );
       if (!mounted) return;
 
@@ -2836,6 +2862,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         final vehicleType = UserPreferencesService.instance.vehicleType.value;
         final vehicleName = switch (vehicleType) {
           'A-tractor' => l10n.settingsVehicleAtractor,
+          'Low vehicle' => l10n.settingsVehicleLowVehicle,
           'Moped car' => l10n.settingsVehicleMopedCar,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => vehicleType,
@@ -2901,6 +2928,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         destination: destination,
         vehicleType: UserPreferencesService.instance.vehicleType.value,
         relaxedLegalChecks: true,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: origin,
+          destination: destination,
+        ),
       );
     } catch (_) {
       return null;
@@ -2970,6 +3001,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         destination: destination,
         vehicleType: vehicleType,
         primaryRoute: strictRoute,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: origin,
+          destination: destination,
+        ),
       );
       for (final alt in alternatives) {
         if (options
@@ -3027,6 +3062,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final vehicleType = UserPreferencesService.instance.vehicleType.value;
     final vehicleName = switch (vehicleType) {
       'A-tractor' => l10n.settingsVehicleAtractor,
+      'Low vehicle' => l10n.settingsVehicleLowVehicle,
       'Moped car' => l10n.settingsVehicleMopedCar,
       'Tractor' => l10n.settingsVehicleTractor,
       _ => vehicleType,
@@ -5675,6 +5711,7 @@ class _ConvoyAlertMarker extends StatelessWidget {
     AlertType.speedCamera => const Color(0xFF6A1B9A),
     AlertType.narrowRoad => const Color(0xFF00695C),
     AlertType.steepHill => const Color(0xFF37474F),
+    AlertType.speedBump => const Color(0xFFFF7A00),
     AlertType.meetup => const Color(0xFF1E88E5),
     AlertType.parking => const Color(0xFF0277BD),
     AlertType.foodStop => const Color(0xFFEF6C00),

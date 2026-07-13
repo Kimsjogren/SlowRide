@@ -6,6 +6,7 @@
  *   POST /api/scan    → logga en QR-scan (no-op om redan loggad)
  *   GET  /api/stats   → enkel översikt (skyddad med STATS_TOKEN)
  *   GET  /api/web/pricing          → läs aktivt Stripe-pris för webb/APK
+ *   GET  /api/map/speed-bumps      → cachelagrade farthinder från OpenStreetMap
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -574,6 +575,118 @@ async function handleStats(request, env, origin) {
   return json({ ...flyerData, apk_downloads: apkDownloads }, { status: flyerRes.status }, origin);
 }
 
+// --- OpenStreetMap road obstacles ----------------------------------
+
+const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const SPEED_BUMP_VALUES = new Set([
+  "bump",
+  "hump",
+  "table",
+  "cushion",
+  "dip",
+  "double_dip",
+]);
+
+function finiteNumber(value, min, max) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= min && number <= max
+    ? number
+    : null;
+}
+
+async function handleSpeedBumps(request, origin) {
+  const url = new URL(request.url);
+  const lat = finiteNumber(url.searchParams.get("lat"), -90, 90);
+  const lng = finiteNumber(url.searchParams.get("lng"), -180, 180);
+  const requestedRadius = finiteNumber(url.searchParams.get("radius_km") || "15", 1, 25);
+  if (lat === null || lng === null || requestedRadius === null) {
+    return json(
+      { error: "invalid_coordinates", message: "lat, lng och radius_km måste vara giltiga tal." },
+      { status: 400 },
+      origin
+    );
+  }
+
+  // Quantization lets nearby users share the same Cloudflare cache entry and
+  // keeps load away from the public Overpass service.
+  const cellSize = 0.05;
+  const queryLat = Math.round(lat / cellSize) * cellSize;
+  const queryLng = Math.round(lng / cellSize) * cellSize;
+  const radiusKm = Math.ceil(requestedRadius / 5) * 5;
+  const cacheKey = new Request(
+    `https://cruizx-osm-cache.invalid/speed-bumps?lat=${queryLat.toFixed(2)}` +
+      `&lng=${queryLng.toFixed(2)}&radius_km=${radiusKm}`
+  );
+  const cache = caches.default;
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    const data = await cached.json();
+    return json(data, { headers: { "Cache-Control": "public, max-age=3600", "X-CruizX-Cache": "HIT" } }, origin);
+  }
+
+  const radiusMeters = radiusKm * 1000;
+  const overpassQuery = `[out:json][timeout:20];\n(` +
+    `nwr(around:${radiusMeters},${queryLat},${queryLng})` +
+    `["traffic_calming"~"^(bump|hump|table|cushion|dip|double_dip)$"];\n` +
+    `);\nout center tags;`;
+
+  let overpassResponse;
+  try {
+    overpassResponse = await fetch(OVERPASS_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        "User-Agent": "CruizX/1.1 (https://cruizx.com)",
+      },
+      body: new URLSearchParams({ data: overpassQuery }),
+    });
+  } catch (error) {
+    return json({ error: "osm_unavailable", detail: String(error) }, { status: 502 }, origin);
+  }
+
+  if (!overpassResponse.ok) {
+    return json(
+      { error: "osm_unavailable", status: overpassResponse.status },
+      { status: 502 },
+      origin
+    );
+  }
+
+  const overpassData = await overpassResponse.json();
+  const bumps = [];
+  for (const element of overpassData.elements || []) {
+    const kind = String(element.tags?.traffic_calming || "").split(";")[0];
+    if (!SPEED_BUMP_VALUES.has(kind)) continue;
+    const elementLat = Number(element.lat ?? element.center?.lat);
+    const elementLng = Number(element.lon ?? element.center?.lon);
+    if (!Number.isFinite(elementLat) || !Number.isFinite(elementLng)) continue;
+    bumps.push({
+      id: `osm_${element.type}_${element.id}`,
+      lat: elementLat,
+      lng: elementLng,
+      kind,
+      source: "openstreetmap",
+    });
+    if (bumps.length >= 2500) break;
+  }
+
+  const result = {
+    source: "openstreetmap",
+    center: { lat: queryLat, lng: queryLng },
+    radius_km: radiusKm,
+    fetched_at: new Date().toISOString(),
+    count: bumps.length,
+    bumps,
+  };
+  await cache.put(
+    cacheKey,
+    new Response(JSON.stringify(result), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=86400" },
+    })
+  );
+  return json(result, { headers: { "Cache-Control": "public, max-age=3600", "X-CruizX-Cache": "MISS" } }, origin);
+}
+
 // --- Entry ----------------------------------------------------------
 
 export default {
@@ -604,6 +717,9 @@ export default {
     }
     if (url.pathname === "/api/stats" && request.method === "GET") {
       return handleStats(request, env, origin);
+    }
+    if (url.pathname === "/api/map/speed-bumps" && request.method === "GET") {
+      return handleSpeedBumps(request, origin);
     }
     if (url.pathname === "/api/web/pricing" && request.method === "GET") {
       return handleWebPricing(env, origin);

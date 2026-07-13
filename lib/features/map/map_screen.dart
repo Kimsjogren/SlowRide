@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
+import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
@@ -99,6 +100,25 @@ class _MapScreenState extends State<MapScreen> {
   final AlertsController _alertsController = AlertsController();
   List<AlertModel> _alerts = const [];
   Timer? _alertsTimer;
+
+  /// Valhalla has no native "high speed bump" costing option. For low
+  /// vehicles, route around community-reported bumps as excluded locations.
+  Future<List<LatLng>> _lowVehicleBumpAvoidLocations({
+    required LatLng origin,
+    required LatLng destination,
+    LatLng? waypoint,
+  }) async {
+    if (UserPreferencesService.instance.vehicleType.value != 'Low vehicle') {
+      return const [];
+    }
+    return OsmSpeedBumpService.instance.avoidLocationsForRoute(
+      origin: origin,
+      destination: destination,
+      waypoint: waypoint,
+      knownAlerts: _alerts,
+    );
+  }
+
   // EV charging stations (fetched when isElectric is on).
   List<LatLng> _chargingStations = const [];
   // Nearest alert within 400 m while navigating (for proximity warning).
@@ -242,13 +262,18 @@ class _MapScreenState extends State<MapScreen> {
     final center = _currentLocation;
     if (center == null) return;
     try {
-      final futures = [
+      final osmBumps =
+          UserPreferencesService.instance.vehicleType.value == 'Low vehicle'
+          ? OsmSpeedBumpService.instance.fetchNearby(center)
+          : Future.value(const <AlertModel>[]);
+      final futures = <Future<List<AlertModel>>>[
         _alertsController.fetchNearby(center),
         TrafikverketService.instance.fetchNearby(center),
+        osmBumps,
       ];
       final results = await Future.wait(futures);
       if (!mounted) return;
-      final combined = [...results[0], ...results[1]];
+      final combined = [...results[0], ...results[1], ...results[2]];
       setState(() => _alerts = combined);
     } catch (_) {}
   }
@@ -1938,6 +1963,11 @@ class _MapScreenState extends State<MapScreen> {
         waypoint: candidate.position,
         destination: destination,
         vehicleType: preferences.vehicleType.value,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: current,
+          destination: destination,
+          waypoint: candidate.position,
+        ),
       );
       if (!mounted) return;
       _applyRouteResult(route, l10n);
@@ -1973,6 +2003,10 @@ class _MapScreenState extends State<MapScreen> {
         destination: destination,
         vehicleType: vehicleType,
         relaxedLegalChecks: true,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: origin,
+          destination: destination,
+        ),
       );
     } catch (_) {
       return null;
@@ -2029,6 +2063,10 @@ class _MapScreenState extends State<MapScreen> {
         destination: destination,
         vehicleType: vehicleType,
         primaryRoute: strictRoute,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: origin,
+          destination: destination,
+        ),
       );
       for (final alt in alternatives) {
         if (options
@@ -2230,6 +2268,10 @@ class _MapScreenState extends State<MapScreen> {
         origin: current,
         destination: destination,
         vehicleType: preferences.vehicleType.value,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: current,
+          destination: destination,
+        ),
       );
       if (!mounted) return;
       _applyRouteResult(route, l10n);
@@ -3045,6 +3087,10 @@ class _MapScreenState extends State<MapScreen> {
         origin: _currentLocation!,
         destination: destination,
         vehicleType: preferences.vehicleType.value,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: _currentLocation!,
+          destination: destination,
+        ),
       );
 
       if (!mounted) {
@@ -3061,6 +3107,7 @@ class _MapScreenState extends State<MapScreen> {
           ? await _showRouteOptionsSheet(
               vehicleName: switch (preferences.vehicleType.value) {
                 'A-tractor' => l10n.settingsVehicleAtractor,
+                'Low vehicle' => l10n.settingsVehicleLowVehicle,
                 'Moped car' => l10n.settingsVehicleMopedCar,
                 'Tractor' => l10n.settingsVehicleTractor,
                 _ => preferences.vehicleType.value,
@@ -3107,6 +3154,7 @@ class _MapScreenState extends State<MapScreen> {
       if (isRouteBlocked) {
         final vehicleName = switch (preferences.vehicleType.value) {
           'A-tractor' => l10n.settingsVehicleAtractor,
+          'Low vehicle' => l10n.settingsVehicleLowVehicle,
           'Moped car' => l10n.settingsVehicleMopedCar,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => preferences.vehicleType.value,

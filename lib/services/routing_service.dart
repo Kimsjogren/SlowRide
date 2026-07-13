@@ -158,6 +158,7 @@ class RoutingService {
     required double userSpeedKmh,
     required String countryCode,
     String language = 'sv-SE',
+    List<LatLng> avoidLocations = const [],
   }) {
     return _buildValhallaRequestPayload(
       origin: origin,
@@ -167,6 +168,7 @@ class RoutingService {
       userSpeedKmh: userSpeedKmh,
       countryCode: countryCode,
       language: language,
+      avoidLocations: avoidLocations,
     );
   }
 
@@ -178,6 +180,7 @@ class RoutingService {
     required double userSpeedKmh,
     required String countryCode,
     required String language,
+    List<LatLng> avoidLocations = const [],
   }) {
     final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
     final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
@@ -201,6 +204,29 @@ class RoutingService {
       costingOptions['use_primary'] = 0.0;
       costingOptions['disable_hierarchy_pruning'] = true;
     }
+    if (vehicleType == 'Low vehicle') {
+      // A low vehicle follows the A-tractor speed profile, but must also stay
+      // away from tracks and roads tagged as unpaved whenever the map data
+      // makes that possible.
+      costingOptions['use_tracks'] = 0.0;
+      costingOptions['exclude_unpaved'] = true;
+    }
+
+    // Never exclude the road the driver starts on or the road containing the
+    // destination/waypoint. A reported bump at either end must not make the
+    // whole route impossible to calculate.
+    const distance = Distance();
+    const endpointSafetyRadiusMeters = 120.0;
+    final safeAvoidLocations = avoidLocations
+        .where((location) {
+          if (distance(origin, location) < endpointSafetyRadiusMeters ||
+              distance(destination, location) < endpointSafetyRadiusMeters) {
+            return false;
+          }
+          return waypoint == null ||
+              distance(waypoint, location) >= endpointSafetyRadiusMeters;
+        })
+        .toList(growable: false);
 
     return <String, dynamic>{
       'locations': [
@@ -214,6 +240,11 @@ class RoutingService {
       'directions_options': {'units': 'kilometers', 'language': language},
       // Request shape as decoded coordinates for easier parsing
       'shape_format': 'polyline6',
+      if (safeAvoidLocations.isNotEmpty)
+        'exclude_locations': [
+          for (final location in safeAvoidLocations)
+            {'lat': location.latitude, 'lon': location.longitude},
+        ],
     };
   }
 
@@ -357,6 +388,7 @@ class RoutingService {
     LatLng? waypoint,
     required String vehicleType,
     bool relaxedLegalChecks = false,
+    List<LatLng> avoidLocations = const [],
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
@@ -381,6 +413,7 @@ class RoutingService {
           userSpeedKmh: userSpeed,
           countryCode: country,
           relaxedLegalChecks: relaxedLegalChecks,
+          avoidLocations: avoidLocations,
         );
         lastUsedProvider = provider;
         return route;
@@ -419,6 +452,7 @@ class RoutingService {
     required double userSpeedKmh,
     required String countryCode,
     required bool relaxedLegalChecks,
+    required List<LatLng> avoidLocations,
   }) async {
     if (provider == _providerValhalla) {
       return _getRouteFromValhalla(
@@ -429,6 +463,7 @@ class RoutingService {
         userSpeedKmh: userSpeedKmh,
         countryCode: countryCode,
         relaxedLegalChecks: relaxedLegalChecks,
+        avoidLocations: avoidLocations,
       );
     } else if (provider == _providerGraphHopper) {
       final route = await _getRouteFromGraphHopper(
@@ -728,6 +763,7 @@ class RoutingService {
     required double userSpeedKmh,
     required String countryCode,
     required bool relaxedLegalChecks,
+    required List<LatLng> avoidLocations,
   }) async {
     final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
       countryCode,
@@ -744,6 +780,7 @@ class RoutingService {
       userSpeedKmh: userSpeedKmh,
       countryCode: countryCode,
       language: _valhallaLanguage(),
+      avoidLocations: avoidLocations,
     );
 
     // Avoid studded-tire ban zones when the user has studded tires equipped.
@@ -922,6 +959,7 @@ class RoutingService {
     required String vehicleType,
     required RouteResult primaryRoute,
     int maxAlternatives = 2,
+    List<LatLng> avoidLocations = const [],
   }) async {
     if (BackendConfig.routingProvider != _providerValhalla) {
       return const [];
@@ -942,6 +980,7 @@ class RoutingService {
       userSpeedKmh: userSpeed,
       countryCode: country,
       language: _valhallaLanguage(),
+      avoidLocations: avoidLocations,
     );
     if (UserPreferencesService.instance.hasStuddedTires.value) {
       final excludePolygons = StuddedTireZones.toValhallaExcludePolygons();
@@ -991,6 +1030,8 @@ class RoutingService {
         (idx + 2).clamp(1, primaryPoints.length - 2),
       };
       basePayload['exclude_locations'] = [
+        for (final location in avoidLocations)
+          {'lat': location.latitude, 'lon': location.longitude},
         for (final i in excludeIdx)
           {'lat': primaryPoints[i].latitude, 'lon': primaryPoints[i].longitude},
       ];

@@ -492,6 +492,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVehicleAtractor => 'A-traktori';
 
   @override
+  String get settingsVehicleLowVehicle => 'Matala ajoneuvo';
+
+  @override
   String get settingsVehicleMopedCar => 'Mopoauto';
 
   @override
@@ -896,6 +899,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get alertTypeSteepHill => 'Jyrkkä mäki';
+
+  @override
+  String get alertTypeSpeedBump => 'Korkea hidastetöyssy';
 
   @override
   String get alertTypeMeetup => 'Tapaamispaikka';

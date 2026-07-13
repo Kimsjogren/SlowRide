@@ -1047,6 +1047,12 @@ abstract class AppLocalizations {
   /// **'A-tractor'**
   String get settingsVehicleAtractor;
 
+  /// No description provided for @settingsVehicleLowVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Low vehicle'**
+  String get settingsVehicleLowVehicle;
+
   /// No description provided for @settingsVehicleMopedCar.
   ///
   /// In en, this message translates to:
@@ -1802,6 +1808,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Steep hill'**
   String get alertTypeSteepHill;
+
+  /// No description provided for @alertTypeSpeedBump.
+  ///
+  /// In en, this message translates to:
+  /// **'High speed bump'**
+  String get alertTypeSpeedBump;
 
   /// No description provided for @alertTypeMeetup.
   ///

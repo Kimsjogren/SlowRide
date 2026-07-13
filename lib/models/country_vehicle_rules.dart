@@ -34,8 +34,13 @@ class CountryVehicleRules {
     String countryCode,
     String vehicleType,
   ) {
-    return _profiles['${countryCode}_$vehicleType'] ??
-        _profiles['SE_$vehicleType'] ??
+    // Low vehicles use the same legal speed and road-class restrictions as
+    // A-tractors. RoutingService adds the extra surface restrictions.
+    final profileVehicleType = vehicleType == 'Low vehicle'
+        ? 'A-tractor'
+        : vehicleType;
+    return _profiles['${countryCode}_$profileVehicleType'] ??
+        _profiles['SE_$profileVehicleType'] ??
         _defaultProfile;
   }
 

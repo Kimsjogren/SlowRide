@@ -158,6 +158,10 @@ class SettingsScreen extends StatelessWidget {
                                 child: Text(l10n.settingsVehicleAtractor),
                               ),
                               DropdownMenuItem(
+                                value: 'Low vehicle',
+                                child: Text(l10n.settingsVehicleLowVehicle),
+                              ),
+                              DropdownMenuItem(
                                 value: 'Moped car',
                                 child: Text(l10n.settingsVehicleMopedCar),
                               ),
@@ -221,9 +225,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                               DropdownMenuItem(
                                 value: 'GB',
-                                child: Text(
-                                  l10n.settingsCountryUnitedKingdom,
-                                ),
+                                child: Text(l10n.settingsCountryUnitedKingdom),
                               ),
                             ],
                             onChanged: (value) {

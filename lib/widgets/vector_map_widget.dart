@@ -546,6 +546,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
       AlertType.narrowRoad => '#ff9f0a',
       AlertType.accident || AlertType.trafficJam => '#ff375f',
       AlertType.steepHill => '#9b6cff',
+      AlertType.speedBump => '#ff7a00',
       AlertType.meetup || AlertType.hangout => '#7a5cff',
       AlertType.parking => '#3cb371',
       AlertType.foodStop => '#ffb347',
