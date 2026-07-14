@@ -39,6 +39,7 @@ wrangler secret put STRIPE_WEBHOOK_SECRET
 wrangler secret put STRIPE_PRICE_ID
 wrangler secret put WEB_CHECKOUT_SUCCESS_URL
 wrangler secret put WEB_CHECKOUT_CANCEL_URL
+wrangler secret put TRAFIKVERKET_KEY
 wrangler deploy
 ```
 
@@ -50,6 +51,7 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `POST /api/scan`: Loggar QR-scan (frivilligt, ingen body).
 - `GET /api/stats`: Returnerar `flyer_stats`-vyn. Header: `X-Stats-Token: <STATS_TOKEN>`.
 - `GET /api/web/pricing`: Returnerar aktivt Stripe-pris för webb/APK, lokaliserat per språk.
+- `GET /api/traffic/incidents`: Returnerar cachelagrade, normaliserade livehändelser från Trafikverket utan att exponera API-nyckeln i appen.
 - `POST /api/web/checkout-session`: Skapar Stripe Checkout Session (`mode=subscription`).
 - `POST /api/web/stripe-webhook`: Tar emot Stripe events och uppdaterar `web_subscriptions`.
 

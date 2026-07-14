@@ -125,12 +125,11 @@ class BackendConfig {
   /// Returns true when a self-hosted tile server is configured.
   static bool get hasSelfHostedTiles => tileServerUrl.trim().isNotEmpty;
 
-  /// Trafikverket Open API key for live traffic incidents (Sweden).
-  /// Register free at: https://api.trafikinfo.trafikverket.se/
-  /// Build with: --dart-define=TRAFIKVERKET_KEY=your_key_here
-  static const String trafikverketKey = String.fromEnvironment(
-    'TRAFIKVERKET_KEY',
-    defaultValue: '',
+  /// Public CruizX proxy for cached Trafikverket incidents. The Trafikverket
+  /// key stays in Cloudflare and is never shipped in the app.
+  static const String trafficIncidentsUrl = String.fromEnvironment(
+    'TRAFFIC_INCIDENTS_URL',
+    defaultValue: 'https://cruizx.com/api/traffic/incidents',
   );
 
   /// Enable the route simulation button in release builds.

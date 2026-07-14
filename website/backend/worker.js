@@ -7,6 +7,7 @@
  *   GET  /api/stats   → enkel översikt (skyddad med STATS_TOKEN)
  *   GET  /api/web/pricing          → läs aktivt Stripe-pris för webb/APK
  *   GET  /api/map/speed-bumps      → cachelagrade farthinder från OpenStreetMap
+ *   GET  /api/traffic/incidents    → cachelagrad trafikinformation från Trafikverket
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -687,6 +688,156 @@ async function handleSpeedBumps(request, origin) {
   return json(result, { headers: { "Cache-Control": "public, max-age=3600", "X-CruizX-Cache": "MISS" } }, origin);
 }
 
+// --- Trafikverket live traffic -------------------------------------
+
+const TRAFIKVERKET_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json";
+
+function trafikverketPoint(wgs84) {
+  const match = String(wgs84 || "").match(
+    /POINT\s*\(([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\)/i
+  );
+  if (!match) return null;
+  const lng = Number(match[1]);
+  const lat = Number(match[2]);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}
+
+async function handleTrafficIncidents(request, env, origin) {
+  if (!env.TRAFIKVERKET_KEY) {
+    return json({ error: "traffic_service_not_configured" }, { status: 503 }, origin);
+  }
+
+  const url = new URL(request.url);
+  const lat = finiteNumber(url.searchParams.get("lat"), -90, 90);
+  const lng = finiteNumber(url.searchParams.get("lng"), -180, 180);
+  const requestedRadius = finiteNumber(url.searchParams.get("radius_km") || "50", 5, 75);
+  if (lat === null || lng === null || requestedRadius === null) {
+    return json(
+      { error: "invalid_coordinates", message: "lat, lng och radius_km måste vara giltiga tal." },
+      { status: 400 },
+      origin
+    );
+  }
+
+  // Nearby clients share one cache entry. The query radius is expanded to
+  // cover users close to a grid-cell edge.
+  const cellSize = 0.05;
+  const queryLat = Math.round(lat / cellSize) * cellSize;
+  const queryLng = Math.round(lng / cellSize) * cellSize;
+  const radiusKm = Math.ceil(requestedRadius / 10) * 10 + 5;
+  const cacheKey = new Request(
+    `https://cruizx-traffic-cache.invalid/incidents?lat=${queryLat.toFixed(2)}` +
+      `&lng=${queryLng.toFixed(2)}&radius_km=${radiusKm}`
+  );
+  const cache = caches.default;
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    const data = await cached.json();
+    return json(
+      data,
+      { headers: { "Cache-Control": "public, max-age=30", "X-CruizX-Cache": "HIT" } },
+      origin
+    );
+  }
+
+  const latDelta = radiusKm / 111.0;
+  const cosLat = Math.max(0.2, Math.cos((queryLat * Math.PI) / 180));
+  const lngDelta = radiusKm / (111.0 * cosLat);
+  const minLat = queryLat - latDelta;
+  const maxLat = queryLat + latDelta;
+  const minLng = queryLng - lngDelta;
+  const maxLng = queryLng + lngDelta;
+  const query = `<REQUEST>
+  <LOGIN authenticationkey="${env.TRAFIKVERKET_KEY}" />
+  <QUERY objecttype="Situation" namespace="Road.TrafficInfo" schemaversion="1.6" limit="150">
+    <FILTER>
+      <WITHIN name="Deviation.Geometry.WGS84" shape="box" value="${minLng} ${minLat}, ${maxLng} ${maxLat}" />
+    </FILTER>
+  </QUERY>
+</REQUEST>`;
+
+  let response;
+  try {
+    response = await fetch(TRAFIKVERKET_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml", Accept: "application/json" },
+      body: query,
+    });
+  } catch (error) {
+    return json({ error: "traffic_service_unavailable", detail: String(error) }, { status: 502 }, origin);
+  }
+
+  if (!response.ok) {
+    return json(
+      { error: "traffic_service_unavailable", status: response.status },
+      { status: 502 },
+      origin
+    );
+  }
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch (_) {
+    return json({ error: "traffic_service_invalid_response" }, { status: 502 }, origin);
+  }
+
+  const result = payload?.RESPONSE?.RESULT?.[0] || {};
+  const incidents = [];
+  const seen = new Set();
+  for (const situation of result.Situation || []) {
+    if (String(situation?.Deleted).toLowerCase() === "true") continue;
+    const deviations = Array.isArray(situation.Deviation)
+      ? situation.Deviation
+      : situation.Deviation
+        ? [situation.Deviation]
+        : [];
+    for (const deviation of deviations) {
+      if (String(deviation?.Suspended).toLowerCase() === "true") continue;
+      const point = trafikverketPoint(deviation?.Geometry?.WGS84);
+      if (!point) continue;
+      const id = String(deviation?.Id || "");
+      if (!id || seen.has(id)) continue;
+      const startTime = deviation?.StartTime ? String(deviation.StartTime) : null;
+      if (startTime && Date.parse(startTime) > Date.now()) continue;
+      const endTime = deviation?.EndTime ? String(deviation.EndTime) : null;
+      if (endTime && Date.parse(endTime) < Date.now()) continue;
+      seen.add(id);
+      incidents.push({
+        id,
+        ...point,
+        header: String(deviation?.Header || ""),
+        road_number: String(deviation?.RoadNumber || ""),
+        icon_id: String(deviation?.IconId || ""),
+        message_code: String(deviation?.MessageCode || ""),
+        severity: String(deviation?.SeverityCode || ""),
+        start_time: startTime,
+        end_time: endTime,
+      });
+    }
+  }
+
+  const data = {
+    source: "trafikverket",
+    center: { lat: queryLat, lng: queryLng },
+    radius_km: radiusKm,
+    fetched_at: new Date().toISOString(),
+    count: incidents.length,
+    incidents,
+  };
+  await cache.put(
+    cacheKey,
+    new Response(JSON.stringify(data), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
+    })
+  );
+  return json(
+    data,
+    { headers: { "Cache-Control": "public, max-age=30", "X-CruizX-Cache": "MISS" } },
+    origin
+  );
+}
+
 // --- Entry ----------------------------------------------------------
 
 export default {
@@ -720,6 +871,9 @@ export default {
     }
     if (url.pathname === "/api/map/speed-bumps" && request.method === "GET") {
       return handleSpeedBumps(request, origin);
+    }
+    if (url.pathname === "/api/traffic/incidents" && request.method === "GET") {
+      return handleTrafficIncidents(request, env, origin);
     }
     if (url.pathname === "/api/web/pricing" && request.method === "GET") {
       return handleWebPricing(env, origin);

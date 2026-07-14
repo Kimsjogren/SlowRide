@@ -19,3 +19,4 @@ zone_name = "cruizx.com"
 #   wrangler secret put STRIPE_PRICE_ID       # aktivt Stripe Price ID för webb/APK
 #   wrangler secret put WEB_CHECKOUT_SUCCESS_URL
 #   wrangler secret put WEB_CHECKOUT_CANCEL_URL
+#   wrangler secret put TRAFIKVERKET_KEY     # öppna API:t för livehändelser
