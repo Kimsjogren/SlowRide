@@ -7,6 +7,7 @@ import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
 class AlertsScreen extends StatefulWidget {
@@ -51,7 +52,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Future<void> _load() async {
     final center = _myPosition ?? const LatLng(59.3293, 18.0686);
-    final alerts = await _controller.fetchNearby(center);
+    final results = await Future.wait<List<AlertModel>>([
+      _controller.fetchNearby(center),
+      TrafikverketService.instance.fetchNearby(center),
+    ]);
+    final alerts = [...results[0], ...results[1]];
+    alerts.sort((a, b) => a.distanceTo(center).compareTo(b.distanceTo(center)));
     if (!mounted) return;
     setState(() {
       _alerts = alerts;
@@ -192,6 +198,7 @@ class _AlertTile extends StatelessWidget {
   final VoidCallback onUpvoted;
 
   Color _bgColor(AlertType t) => switch (t) {
+    AlertType.roadClosure => const Color(0xFFB71C1C),
     AlertType.police => const Color(0xFF1565C0),
     AlertType.roadwork => const Color(0xFFE65100),
     AlertType.accident => const Color(0xFFC62828),
@@ -226,6 +233,8 @@ class _AlertTile extends StatelessWidget {
         : dist < 1000
         ? '${dist.round()} m'
         : '${(dist / 1000).toStringAsFixed(1)} km';
+
+    final isOfficial = alert.userId == 'trafikverket';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -287,30 +296,39 @@ class _AlertTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: GestureDetector(
-          onTap: () async {
-            await controller.upvote(alert.id);
-            onUpvoted();
-          },
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.thumb_up_alt_rounded,
-                color: Color(0xFF3AA8FF),
-                size: 18,
-              ),
-              Text(
-                '${alert.upvotes}',
-                style: const TextStyle(
-                  color: Color(0xFF3AA8FF),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+        trailing: isOfficial
+            ? const Tooltip(
+                message: 'Trafikverket',
+                child: Icon(
+                  Icons.verified_rounded,
+                  color: Color(0xFF00C896),
+                  size: 22,
+                ),
+              )
+            : GestureDetector(
+                onTap: () async {
+                  await controller.upvote(alert.id);
+                  onUpvoted();
+                },
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.thumb_up_alt_rounded,
+                      color: Color(0xFF3AA8FF),
+                      size: 18,
+                    ),
+                    Text(
+                      '${alert.upvotes}',
+                      style: const TextStyle(
+                        color: Color(0xFF3AA8FF),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -382,6 +400,13 @@ class _ReportSheet extends StatefulWidget {
 class _ReportSheetState extends State<_ReportSheet> {
   AlertType? _selected;
   bool _submitting = false;
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_selected == null) return;
@@ -390,7 +415,7 @@ class _ReportSheetState extends State<_ReportSheet> {
       await widget.controller.submit(
         type: _selected!,
         position: widget.position,
-        description: '',
+        description: _descriptionController.text.trim(),
       );
       if (!mounted) return;
       widget.onSubmitted();
@@ -428,122 +453,145 @@ class _ReportSheetState extends State<_ReportSheet> {
           color: Color(0xFF0D1B2E),
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Builder(
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                return Text(
-                  l10n.alertReportQuestion,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            Builder(
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: AlertType.values.map((t) {
-                    final sel = _selected == t;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selected = t),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? const Color(0xFF1E6BFF)
-                              : Colors.white.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return Text(
+                    l10n.alertReportQuestion,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AlertType.values.map((t) {
+                      final sel = _selected == t;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selected = t),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
                             color: sel
                                 ? const Color(0xFF1E6BFF)
-                                : Colors.white24,
+                                : Colors.white.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: sel
+                                  ? const Color(0xFF1E6BFF)
+                                  : Colors.white24,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                t.emoji,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                t.localizedLabel(l10n),
+                                style: TextStyle(
+                                  color: sel ? Colors.white : Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(t.emoji, style: const TextStyle(fontSize: 18)),
-                            const SizedBox(width: 6),
-                            Text(
-                              t.localizedLabel(l10n),
-                              style: TextStyle(
-                                color: sel ? Colors.white : Colors.white70,
-                                fontSize: 13,
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                maxLength: 120,
+                textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: AppLocalizations.of(context)!.reportAlertDescHint,
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  counterStyle: const TextStyle(color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.07),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Builder(
+                builder: (ctx) {
+                  final l10n = AppLocalizations.of(ctx)!;
+                  return SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _selected != null
+                            ? const Color(0xFF1E6BFF)
+                            : Colors.white24,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: _selected == null || _submitting
+                          ? null
+                          : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              l10n.reportAlertSubmit,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            Builder(
-              builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
-                return SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _selected != null
-                          ? const Color(0xFF1E6BFF)
-                          : Colors.white24,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
                     ),
-                    onPressed: _selected == null || _submitting
-                        ? null
-                        : _submit,
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Text(
-                            l10n.reportAlertSubmit,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

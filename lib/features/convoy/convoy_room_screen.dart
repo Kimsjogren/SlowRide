@@ -20,6 +20,7 @@ import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/tts_service.dart';
+import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/services/favorite_places_service.dart';
 import 'package:slowride/services/convoy_favorite_places_service.dart';
@@ -107,6 +108,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   AlertModel? _nearbyAlert;
+  String? _dismissedNearbyAlertId;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -629,16 +631,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             }
 
             // Proximity check.
-            _nearbyAlert = _alerts
-                .where((a) => a.distanceTo(point) <= 400)
-                .fold<AlertModel?>(
-                  null,
-                  (best, a) =>
-                      best == null ||
-                          a.distanceTo(point) < best.distanceTo(point)
-                      ? a
-                      : best,
-                );
+            _nearbyAlert = AlertModel.mostRelevantNearby(
+              _alerts,
+              point,
+              excludedId: _dismissedNearbyAlertId,
+            );
 
             // Only call setState when UI-visible text actually changes, or
             // when not following (marker layer needs rebuild).
@@ -2719,13 +2716,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     try {
       final results = await Future.wait<List<AlertModel>>([
         _alertsController.fetchNearby(center),
+        TrafikverketService.instance.fetchNearby(center),
         if (UserPreferencesService.instance.vehicleType.value == 'Low vehicle')
           OsmSpeedBumpService.instance.fetchNearby(center)
         else
           Future.value(const <AlertModel>[]),
       ]);
       if (!mounted) return;
-      setState(() => _alerts = [...results[0], ...results[1]]);
+      setState(() => _alerts = results.expand((alerts) => alerts).toList());
     } catch (_) {}
   }
 
@@ -4342,9 +4340,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               child: Material(
                                 color: Colors.transparent,
                                 child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xEEF57F17),
-                                    border: Border(
+                                  decoration: BoxDecoration(
+                                    color:
+                                        _nearbyAlert!.type ==
+                                            AlertType.roadClosure
+                                        ? const Color(0xF2B71C1C)
+                                        : const Color(0xEEF57F17),
+                                    border: const Border(
                                       bottom: BorderSide(
                                         color: Color(0x66FFCC02),
                                         width: 1,
@@ -4387,8 +4389,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                         ),
                                       ),
                                       GestureDetector(
-                                        onTap: () =>
-                                            setState(() => _nearbyAlert = null),
+                                        onTap: () => setState(() {
+                                          _dismissedNearbyAlertId =
+                                              _nearbyAlert!.id;
+                                          _nearbyAlert = null;
+                                        }),
                                         child: const Icon(
                                           Icons.close,
                                           color: Colors.white70,
@@ -5704,6 +5709,7 @@ class _ConvoyAlertMarker extends StatelessWidget {
   final AlertModel alert;
 
   Color _bgColor(AlertType t) => switch (t) {
+    AlertType.roadClosure => const Color(0xFFB71C1C),
     AlertType.police => const Color(0xFF1565C0),
     AlertType.roadwork => const Color(0xFFE65100),
     AlertType.accident => const Color(0xFFC62828),
@@ -5796,6 +5802,13 @@ class _ConvoyInlineReportSheet extends StatefulWidget {
 class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
   AlertType? _selected;
   bool _submitting = false;
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_selected == null) return;
@@ -5803,7 +5816,7 @@ class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
     await widget.controller.submit(
       type: _selected!,
       position: widget.position,
-      description: '',
+      description: _descriptionController.text.trim(),
     );
     widget.onSubmitted();
     if (mounted) Navigator.of(context).pop();
@@ -5891,6 +5904,24 @@ class _ConvoyInlineReportSheetState extends State<_ConvoyInlineReportSheet> {
                 },
               ),
               const SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                maxLength: 120,
+                textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: AppLocalizations.of(context)!.reportAlertDescHint,
+                  hintStyle: const TextStyle(color: Colors.white38),
+                  counterStyle: const TextStyle(color: Colors.white38),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.07),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Builder(
                 builder: (ctx) {
                   final l10n = AppLocalizations.of(ctx)!;

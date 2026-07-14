@@ -539,6 +539,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
 
   String _alertColor(AlertType type) {
     return switch (type) {
+      AlertType.roadClosure => '#d50000',
       AlertType.police => '#2d7ff9',
       AlertType.speedCamera => '#ff5a5f',
       AlertType.roadwork ||

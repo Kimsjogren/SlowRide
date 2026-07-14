@@ -360,6 +360,7 @@
     }
   },
 
+  "alertTypeRoadClosure": "Carretera cortada",
   "alertTypePolice": "Policía",
   "alertTypeRoadwork": "Obras",
   "alertTypeAccident": "Accidente",
@@ -377,7 +378,7 @@
 
   "alertGpsUnavailable": "GPS aún no disponible",
   "alertMustBeLoggedIn": "Debes iniciar sesión para reportar",
-  "alertsScreenSubtitle": "Alertas de otros conductores CruizX en un radio de ~50 km. Toca los pulgares para confirmar una alerta.",
+  "alertsScreenSubtitle": "Información en directo de Trafikverket y conductores CruizX en un radio de ~50 km. Confirma las alertas comunitarias con el pulgar.",
   "alertReportButton": "Reportar",
   "alertTimeJustNow": "Ahora mismo",
   "alertTimeMinutes": "hace {n} min",

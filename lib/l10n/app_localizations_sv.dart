@@ -877,6 +877,9 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String get alertTypeRoadClosure => 'Vägstopp';
+
+  @override
   String get alertTypePolice => 'Polis';
 
   @override
@@ -925,7 +928,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Du måste vara inloggad för att rapportera';
 
   @override
-  String get alertsScreenSubtitle => 'Larm från andra CruizX-förare inom ~50 km. Klistra dig på tumsymboler för att bekräfta ett larm.';
+  String get alertsScreenSubtitle => 'Liveinformation från Trafikverket och CruizX-förare inom ~50 km. Tryck på tummen för att bekräfta användarlarm.';
 
   @override
   String get alertReportButton => 'Rapportera';

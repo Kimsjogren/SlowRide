@@ -360,6 +360,7 @@
     }
   },
 
+  "alertTypeRoadClosure": "Tiesulku",
   "alertTypePolice": "Poliisi",
   "alertTypeRoadwork": "Tietyö",
   "alertTypeAccident": "Onnettomuus",
@@ -377,7 +378,7 @@
 
   "alertGpsUnavailable": "GPS ei ole vielä käytettävissä",
   "alertMustBeLoggedIn": "Sinun on oltava kirjautuneena ilmoittaaksesi",
-  "alertsScreenSubtitle": "Hälytykset muilta CruizX-kuljettajilta ~50 km säteellä. Napauta peukaloita vahvistaaksesi hälytyksen.",
+  "alertsScreenSubtitle": "Trafikverketin ja CruizX-kuljettajien reaaliaikaiset tiedot ~50 km säteellä. Vahvista käyttäjähälytys peukalolla.",
   "alertReportButton": "Ilmoita",
   "alertTimeJustNow": "Juuri nyt",
   "alertTimeMinutes": "{n} min sitten",

@@ -877,6 +877,9 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
+  String get alertTypeRoadClosure => 'Tiesulku';
+
+  @override
   String get alertTypePolice => 'Poliisi';
 
   @override
@@ -925,7 +928,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Sinun on oltava kirjautuneena ilmoittaaksesi';
 
   @override
-  String get alertsScreenSubtitle => 'Hälytykset muilta CruizX-kuljettajilta ~50 km säteellä. Napauta peukaloita vahvistaaksesi hälytyksen.';
+  String get alertsScreenSubtitle => 'Trafikverketin ja CruizX-kuljettajien reaaliaikaiset tiedot ~50 km säteellä. Vahvista käyttäjähälytys peukalolla.';
 
   @override
   String get alertReportButton => 'Ilmoita';

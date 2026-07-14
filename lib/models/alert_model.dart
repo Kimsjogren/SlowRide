@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:slowride/l10n/app_localizations.dart';
 
 enum AlertType {
+  roadClosure,
   police,
   roadwork,
   accident,
@@ -21,6 +22,7 @@ enum AlertType {
 
 extension AlertTypeX on AlertType {
   String get key => switch (this) {
+    AlertType.roadClosure => 'road_closure',
     AlertType.police => 'police',
     AlertType.roadwork => 'roadwork',
     AlertType.accident => 'accident',
@@ -38,6 +40,7 @@ extension AlertTypeX on AlertType {
   };
 
   String get label => switch (this) {
+    AlertType.roadClosure => 'Road closure',
     AlertType.police => 'Police',
     AlertType.roadwork => 'Roadwork',
     AlertType.accident => 'Accident',
@@ -55,6 +58,7 @@ extension AlertTypeX on AlertType {
   };
 
   String localizedLabel(AppLocalizations l10n) => switch (this) {
+    AlertType.roadClosure => l10n.alertTypeRoadClosure,
     AlertType.police => l10n.alertTypePolice,
     AlertType.roadwork => l10n.alertTypeRoadwork,
     AlertType.accident => l10n.alertTypeAccident,
@@ -72,6 +76,7 @@ extension AlertTypeX on AlertType {
   };
 
   String get emoji => switch (this) {
+    AlertType.roadClosure => '⛔',
     AlertType.police => '👮',
     AlertType.roadwork => '🚧',
     AlertType.accident => '🚗',
@@ -89,6 +94,7 @@ extension AlertTypeX on AlertType {
   };
 
   static AlertType fromKey(String key) => switch (key) {
+    'road_closure' => AlertType.roadClosure,
     'police' => AlertType.police,
     'roadwork' => AlertType.roadwork,
     'accident' => AlertType.accident,
@@ -103,6 +109,39 @@ extension AlertTypeX on AlertType {
     'charging' => AlertType.charging,
     'hangout' => AlertType.hangout,
     _ => AlertType.hazard,
+  };
+
+  /// Roadside warnings participate in the proximity banner. Community POIs
+  /// remain visible on the map without interrupting navigation.
+  bool get showsProximityWarning => switch (this) {
+    AlertType.meetup ||
+    AlertType.parking ||
+    AlertType.foodStop ||
+    AlertType.charging ||
+    AlertType.hangout => false,
+    _ => true,
+  };
+
+  int get warningRadiusMeters => switch (this) {
+    AlertType.roadClosure => 1000,
+    AlertType.accident => 800,
+    AlertType.trafficJam || AlertType.roadwork => 700,
+    AlertType.police || AlertType.speedCamera => 600,
+    AlertType.speedBump => 300,
+    _ => 400,
+  };
+
+  int get warningPriority => switch (this) {
+    AlertType.roadClosure => 100,
+    AlertType.accident => 90,
+    AlertType.trafficJam => 80,
+    AlertType.roadwork => 70,
+    AlertType.police => 65,
+    AlertType.speedCamera => 60,
+    AlertType.hazard => 55,
+    AlertType.narrowRoad || AlertType.steepHill => 50,
+    AlertType.speedBump => 45,
+    _ => 0,
   };
 }
 
@@ -127,6 +166,7 @@ class AlertModel {
 
   /// Alerts expire quickly, while community POIs live longer.
   static Duration ttlFor(AlertType type) => switch (type) {
+    AlertType.roadClosure => const Duration(hours: 6),
     AlertType.roadwork => const Duration(hours: 24),
     // Speed bumps are infrastructure and remain relevant much longer than
     // temporary traffic alerts.
@@ -141,6 +181,27 @@ class AlertModel {
 
   bool get isExpired =>
       DateTime.now().difference(createdAt) > AlertModel.ttlFor(type);
+
+  /// Picks the most important nearby road warning, then the closest warning
+  /// when two candidates have the same priority.
+  static AlertModel? mostRelevantNearby(
+    Iterable<AlertModel> alerts,
+    LatLng position, {
+    String? excludedId,
+  }) {
+    final candidates = alerts.where((alert) {
+      return alert.id != excludedId &&
+          alert.type.showsProximityWarning &&
+          alert.distanceTo(position) <= alert.type.warningRadiusMeters;
+    }).toList();
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final priority = b.type.warningPriority.compareTo(a.type.warningPriority);
+      if (priority != 0) return priority;
+      return a.distanceTo(position).compareTo(b.distanceTo(position));
+    });
+    return candidates.first;
+  }
 
   /// Haversine distance in metres to [other].
   double distanceTo(LatLng other) {

@@ -877,6 +877,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get alertTypeRoadClosure => 'Route barrée';
+
+  @override
   String get alertTypePolice => 'Police';
 
   @override
@@ -925,7 +928,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Vous devez être connecté pour signaler';
 
   @override
-  String get alertsScreenSubtitle => 'Alertes d\'autres conducteurs CruizX dans un rayon de ~50 km. Appuyez sur les pouces pour confirmer une alerte.';
+  String get alertsScreenSubtitle => 'Informations en direct de Trafikverket et des conducteurs CruizX dans un rayon de ~50 km. Confirmez les alertes communautaires avec le pouce.';
 
   @override
   String get alertReportButton => 'Signaler';

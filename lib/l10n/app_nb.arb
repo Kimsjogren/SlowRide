@@ -362,6 +362,7 @@
     }
   },
 
+  "alertTypeRoadClosure": "Veistenging",
   "alertTypePolice": "Politi",
   "alertTypeRoadwork": "Veiarbeid",
   "alertTypeAccident": "Ulykke",
@@ -379,7 +380,7 @@
 
   "alertGpsUnavailable": "GPS ikke tilgjengelig ennå",
   "alertMustBeLoggedIn": "Du må være logget inn for å rapportere",
-  "alertsScreenSubtitle": "Varsler fra andre CruizX-sjåfører innen ~50 km. Trykk på tommel for å bekrefte et varsel.",
+  "alertsScreenSubtitle": "Direkteinformasjon fra Trafikverket og CruizX-sjåfører innen ~50 km. Trykk på tommelen for å bekrefte brukervarsler.",
   "alertReportButton": "Rapporter",
   "alertTimeJustNow": "Akkurat nå",
   "alertTimeMinutes": "{n} min siden",

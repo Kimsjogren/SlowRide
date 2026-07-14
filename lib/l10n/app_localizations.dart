@@ -1761,6 +1761,12 @@ abstract class AppLocalizations {
   /// **'{type} · {distance} m ahead'**
   String reportAlertNearby(Object type, Object distance);
 
+  /// No description provided for @alertTypeRoadClosure.
+  ///
+  /// In en, this message translates to:
+  /// **'Road closure'**
+  String get alertTypeRoadClosure;
+
   /// No description provided for @alertTypePolice.
   ///
   /// In en, this message translates to:
@@ -1860,7 +1866,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsScreenSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Alerts from other CruizX drivers within ~50 km. Tap thumbs to confirm an alert.'**
+  /// **'Live information from Trafikverket and CruizX drivers within ~50 km. Tap the thumb to confirm community alerts.'**
   String get alertsScreenSubtitle;
 
   /// No description provided for @alertReportButton.

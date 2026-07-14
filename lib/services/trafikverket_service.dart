@@ -94,7 +94,11 @@ class TrafikverketService {
       final header = (dev['Header'] ?? '').toString();
       final roadNumber = (dev['RoadNumber'] ?? '').toString();
 
-      final type = _mapToAlertType(iconId, messageCode);
+      final type = classifyAlert(
+        iconId: iconId,
+        messageCode: messageCode,
+        header: header,
+      );
 
       final description = [
         if (roadNumber.isNotEmpty) roadNumber,
@@ -139,25 +143,48 @@ class TrafikverketService {
     return LatLng(lat, lng);
   }
 
-  AlertType _mapToAlertType(String iconId, String messageCode) {
-    if (iconId.contains('accident') ||
-        messageCode.contains('accident') ||
-        messageCode.contains('olycka')) {
+  /// Maps Trafikverket's varying icon/message vocabulary to CruizX alerts.
+  /// Kept public so classification changes can be covered by unit tests.
+  static AlertType classifyAlert({
+    required String iconId,
+    required String messageCode,
+    String header = '',
+  }) {
+    final text = '$iconId $messageCode $header'.toLowerCase();
+
+    if (text.contains('roadclosed') ||
+        text.contains('road closed') ||
+        text.contains('road closure') ||
+        text.contains('closed road') ||
+        text.contains('totalstopp') ||
+        text.contains('vägstopp') ||
+        text.contains('vägen avstängd') ||
+        text.contains('väg avstängd') ||
+        text.contains('vagen avstangd') ||
+        text.contains('vag avstangd') ||
+        iconId.contains('closure') ||
+        iconId.contains('blocked')) {
+      return AlertType.roadClosure;
+    }
+    if (text.contains('accident') || text.contains('olycka')) {
       return AlertType.accident;
     }
-    if (iconId.contains('roadwork') ||
-        messageCode.contains('roadwork') ||
-        iconId.contains('maintenance') ||
-        messageCode.contains('vägarbete')) {
+    if (text.contains('roadwork') ||
+        text.contains('maintenance') ||
+        text.contains('vägarbete')) {
       return AlertType.roadwork;
     }
-    if (iconId.contains('congestion') ||
-        iconId.contains('queue') ||
-        messageCode.contains('queue') ||
-        messageCode.contains('köbildning')) {
+    if (text.contains('congestion') ||
+        text.contains('queue') ||
+        text.contains('köbildning')) {
       return AlertType.trafficJam;
     }
-    if (iconId.contains('police') || messageCode.contains('police')) {
+    if (text.contains('speedcamera') ||
+        text.contains('speed camera') ||
+        text.contains('fartkamera')) {
+      return AlertType.speedCamera;
+    }
+    if (text.contains('police') || text.contains('polis')) {
       return AlertType.police;
     }
     return AlertType.hazard;

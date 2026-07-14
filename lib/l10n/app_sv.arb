@@ -362,6 +362,7 @@
     }
   },
 
+  "alertTypeRoadClosure": "Vägstopp",
   "alertTypePolice": "Polis",
   "alertTypeRoadwork": "Vägarbete",
   "alertTypeAccident": "Olycka",
@@ -379,7 +380,7 @@
 
   "alertGpsUnavailable": "GPS inte tillg\u00e4ngligt \u00e4nnu",
   "alertMustBeLoggedIn": "Du m\u00e5ste vara inloggad f\u00f6r att rapportera",
-  "alertsScreenSubtitle": "Larm fr\u00e5n andra CruizX-förare inom ~50 km. Klistra dig p\u00e5 tumsymboler f\u00f6r att bekr\u00e4fta ett larm.",
+  "alertsScreenSubtitle": "Liveinformation från Trafikverket och CruizX-förare inom ~50 km. Tryck på tummen för att bekräfta användarlarm.",
   "alertReportButton": "Rapportera",
   "alertTimeJustNow": "Just nu",
   "alertTimeMinutes": "{n} min sedan",

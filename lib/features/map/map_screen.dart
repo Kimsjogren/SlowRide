@@ -124,6 +124,7 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _chargingStations = const [];
   // Nearest alert within 400 m while navigating (for proximity warning).
   AlertModel? _nearbyAlert;
+  String? _dismissedNearbyAlertId;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -3286,6 +3287,7 @@ class _MapScreenState extends State<MapScreen> {
       _etaSmoothedSpeedKmh = 0;
       _etaLastMovementAt = null;
       _nearbyAlert = null;
+      _dismissedNearbyAlertId = null;
       _isSimulating = false;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
@@ -3424,16 +3426,11 @@ class _MapScreenState extends State<MapScreen> {
           _routingStatus = distStr;
         }
       }
-      _nearbyAlert = _alerts
-          .where((a) => a.distanceTo(currentPos) <= 400)
-          .fold<AlertModel?>(
-            null,
-            (best, a) =>
-                best == null ||
-                    a.distanceTo(currentPos) < best.distanceTo(currentPos)
-                ? a
-                : best,
-          );
+      _nearbyAlert = AlertModel.mostRelevantNearby(
+        _alerts,
+        currentPos,
+        excludedId: _dismissedNearbyAlertId,
+      );
     });
 
     unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
@@ -4165,9 +4162,11 @@ class _MapScreenState extends State<MapScreen> {
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xEEF57F17),
-                      border: Border(
+                    decoration: BoxDecoration(
+                      color: _nearbyAlert!.type == AlertType.roadClosure
+                          ? const Color(0xF2B71C1C)
+                          : const Color(0xEEF57F17),
+                      border: const Border(
                         bottom: BorderSide(color: Color(0x66FFCC02), width: 1),
                       ),
                     ),
@@ -4204,7 +4203,10 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => setState(() => _nearbyAlert = null),
+                          onTap: () => setState(() {
+                            _dismissedNearbyAlertId = _nearbyAlert!.id;
+                            _nearbyAlert = null;
+                          }),
                           child: const Icon(
                             Icons.close,
                             color: Colors.white70,
@@ -4964,6 +4966,13 @@ class _InlineReportSheet extends StatefulWidget {
 class _InlineReportSheetState extends State<_InlineReportSheet> {
   AlertType? _selected;
   bool _submitting = false;
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   Future<void> _submit() async {
     if (_selected == null) return;
@@ -4972,7 +4981,7 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
       await widget.controller.submit(
         type: _selected!,
         position: widget.position,
-        description: '',
+        description: _descriptionController.text.trim(),
       );
       widget.onSubmitted();
       if (mounted) Navigator.of(context).pop();
@@ -5003,111 +5012,133 @@ class _InlineReportSheetState extends State<_InlineReportSheet> {
         16,
         MediaQuery.of(context).viewInsets.bottom + 16,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return Text(
-                l10n.reportAlertTitle,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: AlertType.values.map((t) {
-                  final sel = _selected == t;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selected = t),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: sel
-                            ? const Color(0xFF1E6BFF)
-                            : const Color(0xFF0A1A46),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: sel ? const Color(0xFF3AA8FF) : Colors.white24,
-                        ),
-                      ),
-                      child: Text(
-                        '${t.emoji}  ${t.localizedLabel(l10n)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          Builder(
-            builder: (ctx) {
-              final l10n = AppLocalizations.of(ctx)!;
-              return SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: (_selected == null || _submitting)
-                      ? null
-                      : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E6BFF),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return Text(
+                  l10n.reportAlertTitle,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
                   ),
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AlertType.values.map((t) {
+                    final sel = _selected == t;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selected = t),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? const Color(0xFF1E6BFF)
+                              : const Color(0xFF0A1A46),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: sel
+                                ? const Color(0xFF3AA8FF)
+                                : Colors.white24,
                           ),
-                        )
-                      : Text(
-                          l10n.reportAlertSubmit,
+                        ),
+                        child: Text(
+                          '${t.emoji}  ${t.localizedLabel(l10n)}',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: 13,
                           ),
                         ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _descriptionController,
+              maxLength: 120,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.reportAlertDescHint,
+                hintStyle: const TextStyle(color: Colors.white38),
+                counterStyle: const TextStyle(color: Colors.white38),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.07),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-              );
-            },
-          ),
-        ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Builder(
+              builder: (ctx) {
+                final l10n = AppLocalizations.of(ctx)!;
+                return SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: (_selected == null || _submitting)
+                        ? null
+                        : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E6BFF),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: _submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            l10n.reportAlertSubmit,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

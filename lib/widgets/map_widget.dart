@@ -931,6 +931,7 @@ class _AlertMarker extends StatelessWidget {
   final AlertModel alert;
 
   Color _bgColor(AlertType t) => switch (t) {
+    AlertType.roadClosure => const Color(0xFFB71C1C),
     AlertType.police => const Color(0xFF1565C0),
     AlertType.roadwork => const Color(0xFFE65100),
     AlertType.accident => const Color(0xFFC62828),
