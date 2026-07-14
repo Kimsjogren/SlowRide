@@ -14,6 +14,8 @@ class AdService {
   // ── Ad unit IDs ──────────────────────────────────────────────────────────
   static const String _iosInterstitialConvoyId =
       'ca-app-pub-8409578758600641/2936933028';
+  static const String _iosInterstitialRouteId =
+      'ca-app-pub-8409578758600641/5874855772';
   static const String _iosBannerSettingsId =
       'ca-app-pub-8409578758600641/9243686032';
   static const String _iosBannerConvoyId =
@@ -21,6 +23,8 @@ class AdService {
 
   static const String _androidInterstitialConvoyId =
       'ca-app-pub-8409578758600641/7389190997';
+  static const String _androidInterstitialRouteId =
+      'ca-app-pub-8409578758600641/6787527904';
   static const String _androidBannerSettingsId =
       'ca-app-pub-8409578758600641/8719270290';
   static const String _androidBannerConvoyId =
@@ -28,6 +32,9 @@ class AdService {
 
   String get _interstitialConvoyId =>
       Platform.isIOS ? _iosInterstitialConvoyId : _androidInterstitialConvoyId;
+
+  String get _interstitialRouteId =>
+      Platform.isIOS ? _iosInterstitialRouteId : _androidInterstitialRouteId;
 
   String get _bannerSettingsId =>
       Platform.isIOS ? _iosBannerSettingsId : _androidBannerSettingsId;
@@ -48,6 +55,8 @@ class AdService {
   // ── Interstitial: convoy tab ─────────────────────────────────────────────
   InterstitialAd? _convoyInterstitial;
   bool _convoyAdLoading = false;
+  InterstitialAd? _routeInterstitial;
+  bool _routeAdLoading = false;
 
   Future<void> _requestConsent() async {
     final completer = Completer<void>();
@@ -127,6 +136,7 @@ class AdService {
     }
 
     _preloadConvoyInterstitial();
+    _preloadRouteInterstitial();
   }
 
   void _preloadConvoyInterstitial() {
@@ -145,6 +155,68 @@ class AdService {
         },
       ),
     );
+  }
+
+  void _preloadRouteInterstitial() {
+    if (_routeAdLoading || _routeInterstitial != null) return;
+    _routeAdLoading = true;
+    InterstitialAd.load(
+      adUnitId: _interstitialRouteId,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _routeInterstitial = ad;
+          _routeAdLoading = false;
+        },
+        onAdFailedToLoad: (_) {
+          _routeAdLoading = false;
+        },
+      ),
+    );
+  }
+
+  /// Shows one interstitial between routes 2 and 4 for free users. If the ad
+  /// is not ready before route 3, it remains eligible before route 4.
+  Future<void> showRouteInterstitialIfNeeded() async {
+    final subscriptions = SubscriptionService.instance;
+    if (!subscriptions.shouldShowRouteInterstitial) return;
+
+    final ad = _routeInterstitial;
+    if (ad == null) {
+      _preloadRouteInterstitial();
+      return;
+    }
+
+    _routeInterstitial = null;
+    final completer = Completer<void>();
+    void finish() {
+      if (!completer.isCompleted) completer.complete();
+    }
+
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (_) {
+        subscriptions.recordRouteInterstitialShown();
+      },
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        finish();
+        _preloadRouteInterstitial();
+      },
+      onAdFailedToShowFullScreenContent: (a, _) {
+        a.dispose();
+        finish();
+        _preloadRouteInterstitial();
+      },
+    );
+
+    try {
+      await ad.show();
+      await completer.future;
+    } catch (_) {
+      ad.dispose();
+      finish();
+      _preloadRouteInterstitial();
+    }
   }
 
   /// Shows the convoy interstitial if the user is on the free tier.

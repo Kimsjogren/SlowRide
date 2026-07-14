@@ -10,6 +10,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
+import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/routing_service.dart';
@@ -3073,6 +3074,9 @@ class _MapScreenState extends State<MapScreen> {
       );
       return;
     }
+
+    await AdService.instance.showRouteInterstitialIfNeeded();
+    if (!mounted) return;
 
     setState(() {
       _isRouting = true;

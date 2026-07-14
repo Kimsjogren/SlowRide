@@ -33,6 +33,7 @@ class SubscriptionService {
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
+  static const String _routeInterstitialDateKey = 'sub_route_interstitial_date';
 
   final InAppPurchase _iap = InAppPurchase.instance;
   late SharedPreferences _prefs;
@@ -367,6 +368,19 @@ class SubscriptionService {
     final count = savedDate == today ? (_prefs.getInt(_routeCountKey) ?? 0) : 0;
     _prefs.setString(_routeDateKey, today);
     _prefs.setInt(_routeCountKey, count + 1);
+  }
+
+  /// Free users see at most one route interstitial per day. It is eligible
+  /// before route 3, with route 4 acting as a retry if the ad was not loaded.
+  bool get shouldShowRouteInterstitial {
+    if (isPro.value) return false;
+    final count = routesToday;
+    if (count < 2 || count >= freeMaxDailyRoutes) return false;
+    return _prefs.getString(_routeInterstitialDateKey) != _todayString;
+  }
+
+  void recordRouteInterstitialShown() {
+    _prefs.setString(_routeInterstitialDateKey, _todayString);
   }
 
   String get _todayString {
