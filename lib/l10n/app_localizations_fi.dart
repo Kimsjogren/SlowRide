@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.1 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.2 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Yhteisön hälytykset';
