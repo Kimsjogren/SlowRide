@@ -46,6 +46,7 @@ dependencies:
   supabase_flutter: any
   google_mobile_ads: any
   permission_handler: any
+  flutter_local_notifications: any
   app_tracking_transparency: any
   url_launcher: any
   image_picker: any

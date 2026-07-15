@@ -603,5 +603,10 @@
   "ttsVoiceHintDismiss": "OK",
   "settingsVectorMap": "Vektorikartta",
   "settingsVectorMapOn": "Tarkka renderöinti kaikilla zoomitasoilla, pehmeä zoom",
-  "settingsVectorMapOff": "Vakio — nopea ja offline-välimuistissa"
+  "settingsVectorMapOff": "Vakio — nopea ja offline-välimuistissa",
+  "publicGatheringStartTime": "Aloitusaika", "publicGatheringEndTime": "Päättymisaika", "publicGatheringScheduleInvalid": "Päättymisajan on oltava aloitusajan jälkeen.",
+  "publicGatheringEndAction": "Päätä tapaaminen", "publicGatheringDeleteAction": "Poista tapaaminen", "publicGatheringEndConfirm": "Päätetäänkö tapaaminen nyt? Osallistujat eivät enää löydä sitä.", "publicGatheringDeleteConfirm": "Poistetaanko tapaaminen pysyvästi? Tätä ei voi perua.",
+  "publicGatheringReportAction": "Ilmoita tapaamisesta", "publicGatheringBlockAction": "Estä tapaaminen", "publicGatheringReportParticipant": "Ilmoita osallistujasta", "publicGatheringBlockParticipant": "Estä osallistuja", "publicGatheringReportReason": "Mitä haluat ilmoittaa?", "publicGatheringReportSent": "Ilmoitus on lähetetty.", "publicGatheringBlocked": "Estettyä sisältöä ei enää näytetä.",
+  "reportReasonInappropriate": "Sopimaton sisältö", "reportReasonHarassment": "Häirintä", "reportReasonDangerous": "Vaarallinen toiminta", "reportReasonSpam": "Roskaposti tai harhaanjohtava", "reportReasonOther": "Muu",
+  "publicGatheringNearbyNotifications": "Ilmoitukset lähellä olevista tapaamisista", "publicGatheringNearbyNotificationsSubtitle": "Ilmoita kerran, kun 25 km:n sisällä oleva julkinen tapaaminen alkaa 24 tunnin kuluessa.", "publicGatheringUpcoming": "Tulossa", "publicGatheringStarted": "Käynnissä"
 }

@@ -1519,4 +1519,73 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Standard — rapide et mis en cache hors ligne';
+
+  @override
+  String get publicGatheringStartTime => 'Heure de début';
+
+  @override
+  String get publicGatheringEndTime => 'Heure de fin';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'L’heure de fin doit être postérieure à l’heure de début.';
+
+  @override
+  String get publicGatheringEndAction => 'Terminer le rassemblement';
+
+  @override
+  String get publicGatheringDeleteAction => 'Supprimer le rassemblement';
+
+  @override
+  String get publicGatheringEndConfirm => 'Terminer le rassemblement maintenant ? Les participants ne pourront plus le trouver.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Supprimer définitivement ce rassemblement ? Cette action est irréversible.';
+
+  @override
+  String get publicGatheringReportAction => 'Signaler le rassemblement';
+
+  @override
+  String get publicGatheringBlockAction => 'Bloquer le rassemblement';
+
+  @override
+  String get publicGatheringReportParticipant => 'Signaler le participant';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Bloquer le participant';
+
+  @override
+  String get publicGatheringReportReason => 'Que souhaitez-vous signaler ?';
+
+  @override
+  String get publicGatheringReportSent => 'Votre signalement a été envoyé.';
+
+  @override
+  String get publicGatheringBlocked => 'Le contenu bloqué ne sera plus affiché.';
+
+  @override
+  String get reportReasonInappropriate => 'Contenu inapproprié';
+
+  @override
+  String get reportReasonHarassment => 'Harcèlement';
+
+  @override
+  String get reportReasonDangerous => 'Comportement dangereux';
+
+  @override
+  String get reportReasonSpam => 'Spam ou trompeur';
+
+  @override
+  String get reportReasonOther => 'Autre';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Notifications de rassemblements à proximité';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Me prévenir une fois lorsqu’un rassemblement public à moins de 25 km commence dans les 24 heures.';
+
+  @override
+  String get publicGatheringUpcoming => 'À venir';
+
+  @override
+  String get publicGatheringStarted => 'En cours';
 }

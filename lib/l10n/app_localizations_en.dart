@@ -1519,4 +1519,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Standard — fast and offline-cached';
+
+  @override
+  String get publicGatheringStartTime => 'Start time';
+
+  @override
+  String get publicGatheringEndTime => 'End time';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'The end time must be after the start time.';
+
+  @override
+  String get publicGatheringEndAction => 'End meetup';
+
+  @override
+  String get publicGatheringDeleteAction => 'Delete meetup';
+
+  @override
+  String get publicGatheringEndConfirm => 'End the meetup now? Participants will no longer be able to find it.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Permanently delete this meetup? This cannot be undone.';
+
+  @override
+  String get publicGatheringReportAction => 'Report meetup';
+
+  @override
+  String get publicGatheringBlockAction => 'Block meetup';
+
+  @override
+  String get publicGatheringReportParticipant => 'Report participant';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Block participant';
+
+  @override
+  String get publicGatheringReportReason => 'What would you like to report?';
+
+  @override
+  String get publicGatheringReportSent => 'Your report has been sent.';
+
+  @override
+  String get publicGatheringBlocked => 'Blocked content will no longer be shown.';
+
+  @override
+  String get reportReasonInappropriate => 'Inappropriate content';
+
+  @override
+  String get reportReasonHarassment => 'Harassment';
+
+  @override
+  String get reportReasonDangerous => 'Dangerous behavior';
+
+  @override
+  String get reportReasonSpam => 'Spam or misleading';
+
+  @override
+  String get reportReasonOther => 'Other';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Nearby meetup notifications';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Notify me once when a public meetup within 25 km starts within 24 hours.';
+
+  @override
+  String get publicGatheringUpcoming => 'Upcoming';
+
+  @override
+  String get publicGatheringStarted => 'In progress';
 }

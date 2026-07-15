@@ -1519,4 +1519,73 @@ class AppLocalizationsDa extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Standard — hurtig og offline-cachelagret';
+
+  @override
+  String get publicGatheringStartTime => 'Starttid';
+
+  @override
+  String get publicGatheringEndTime => 'Sluttid';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'Sluttiden skal være efter starttiden.';
+
+  @override
+  String get publicGatheringEndAction => 'Afslut træffet';
+
+  @override
+  String get publicGatheringDeleteAction => 'Slet træffet';
+
+  @override
+  String get publicGatheringEndConfirm => 'Afslut træffet nu? Deltagerne kan ikke længere finde det.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Slet træffet permanent? Dette kan ikke fortrydes.';
+
+  @override
+  String get publicGatheringReportAction => 'Rapportér træffet';
+
+  @override
+  String get publicGatheringBlockAction => 'Bloker træffet';
+
+  @override
+  String get publicGatheringReportParticipant => 'Rapportér deltageren';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Bloker deltageren';
+
+  @override
+  String get publicGatheringReportReason => 'Hvad vil du rapportere?';
+
+  @override
+  String get publicGatheringReportSent => 'Rapporten er sendt.';
+
+  @override
+  String get publicGatheringBlocked => 'Blokeret indhold vises ikke længere.';
+
+  @override
+  String get reportReasonInappropriate => 'Upassende indhold';
+
+  @override
+  String get reportReasonHarassment => 'Chikane';
+
+  @override
+  String get reportReasonDangerous => 'Farlig adfærd';
+
+  @override
+  String get reportReasonSpam => 'Spam eller vildledende';
+
+  @override
+  String get reportReasonOther => 'Andet';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Notifikationer om træf i nærheden';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Giv mig besked én gang, når et offentligt træf inden for 25 km starter inden for 24 timer.';
+
+  @override
+  String get publicGatheringUpcoming => 'Kommende';
+
+  @override
+  String get publicGatheringStarted => 'I gang';
 }

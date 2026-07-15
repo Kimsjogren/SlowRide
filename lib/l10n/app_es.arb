@@ -611,5 +611,10 @@
   "ttsVoiceHintDismiss": "Aceptar",
   "settingsVectorMap": "Mapa vectorial",
   "settingsVectorMapOn": "Renderizado nítido a todos los niveles de zoom, zoom suave",
-  "settingsVectorMapOff": "Estándar — rápido y en caché sin conexión"
+  "settingsVectorMapOff": "Estándar — rápido y en caché sin conexión",
+  "publicGatheringStartTime": "Hora de inicio", "publicGatheringEndTime": "Hora de fin", "publicGatheringScheduleInvalid": "La hora de fin debe ser posterior a la de inicio.",
+  "publicGatheringEndAction": "Finalizar encuentro", "publicGatheringDeleteAction": "Eliminar encuentro", "publicGatheringEndConfirm": "¿Finalizar el encuentro ahora? Los participantes ya no podrán encontrarlo.", "publicGatheringDeleteConfirm": "¿Eliminar el encuentro permanentemente? Esta acción no se puede deshacer.",
+  "publicGatheringReportAction": "Denunciar encuentro", "publicGatheringBlockAction": "Bloquear encuentro", "publicGatheringReportParticipant": "Denunciar participante", "publicGatheringBlockParticipant": "Bloquear participante", "publicGatheringReportReason": "¿Qué quieres denunciar?", "publicGatheringReportSent": "Tu denuncia ha sido enviada.", "publicGatheringBlocked": "El contenido bloqueado ya no se mostrará.",
+  "reportReasonInappropriate": "Contenido inapropiado", "reportReasonHarassment": "Acoso", "reportReasonDangerous": "Comportamiento peligroso", "reportReasonSpam": "Spam o engañoso", "reportReasonOther": "Otro",
+  "publicGatheringNearbyNotifications": "Avisos de encuentros cercanos", "publicGatheringNearbyNotificationsSubtitle": "Avísame una vez cuando un encuentro público a menos de 25 km comience en las próximas 24 horas.", "publicGatheringUpcoming": "Próximo", "publicGatheringStarted": "En curso"
 }

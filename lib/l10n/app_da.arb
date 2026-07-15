@@ -613,5 +613,10 @@
   "ttsVoiceHintDismiss": "OK",
   "settingsVectorMap": "Vektorkort",
   "settingsVectorMapOn": "Skarp gengivelse på alle zoomniveauer, blød zoom",
-  "settingsVectorMapOff": "Standard — hurtig og offline-cachelagret"
+  "settingsVectorMapOff": "Standard — hurtig og offline-cachelagret",
+  "publicGatheringStartTime": "Starttid", "publicGatheringEndTime": "Sluttid", "publicGatheringScheduleInvalid": "Sluttiden skal være efter starttiden.",
+  "publicGatheringEndAction": "Afslut træffet", "publicGatheringDeleteAction": "Slet træffet", "publicGatheringEndConfirm": "Afslut træffet nu? Deltagerne kan ikke længere finde det.", "publicGatheringDeleteConfirm": "Slet træffet permanent? Dette kan ikke fortrydes.",
+  "publicGatheringReportAction": "Rapportér træffet", "publicGatheringBlockAction": "Bloker træffet", "publicGatheringReportParticipant": "Rapportér deltageren", "publicGatheringBlockParticipant": "Bloker deltageren", "publicGatheringReportReason": "Hvad vil du rapportere?", "publicGatheringReportSent": "Rapporten er sendt.", "publicGatheringBlocked": "Blokeret indhold vises ikke længere.",
+  "reportReasonInappropriate": "Upassende indhold", "reportReasonHarassment": "Chikane", "reportReasonDangerous": "Farlig adfærd", "reportReasonSpam": "Spam eller vildledende", "reportReasonOther": "Andet",
+  "publicGatheringNearbyNotifications": "Notifikationer om træf i nærheden", "publicGatheringNearbyNotificationsSubtitle": "Giv mig besked én gang, når et offentligt træf inden for 25 km starter inden for 24 timer.", "publicGatheringUpcoming": "Kommende", "publicGatheringStarted": "I gang"
 }

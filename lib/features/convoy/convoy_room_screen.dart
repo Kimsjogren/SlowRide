@@ -91,6 +91,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Timer? _alertsTimer;
   Timer? _themeTimer;
   List<ConvoyMemberLocation> _memberLocations = [];
+  Set<String> _blockedParticipantIds = <String>{};
   List<AlertModel> _alerts = const [];
 
   Future<List<LatLng>> _lowVehicleBumpAvoidLocations({
@@ -266,6 +267,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   Future<void> _fetchMemberLocations() async {
     try {
+      final blockedIds = await _controller.blockedParticipantIds();
       final rows = await SupabaseService.instance.client
           .from('convoy_locations')
           .select()
@@ -279,13 +281,106 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           )
           .where(
             (location) =>
-                !widget.convoy.isPublic ||
-                DateTime.now().difference(location.updatedAt) <
-                    const Duration(minutes: 2),
+                !blockedIds.contains(location.userId) &&
+                (!widget.convoy.isPublic ||
+                    DateTime.now().difference(location.updatedAt) <
+                        const Duration(minutes: 2)),
           )
           .toList();
-      setState(() => _memberLocations = locations);
+      setState(() {
+        _blockedParticipantIds = blockedIds;
+        _memberLocations = locations;
+      });
     } catch (_) {}
+  }
+
+  Future<String?> _chooseParticipantReportReason(AppLocalizations l10n) {
+    final reasons = <String, String>{
+      'inappropriate': l10n.reportReasonInappropriate,
+      'harassment': l10n.reportReasonHarassment,
+      'dangerous': l10n.reportReasonDangerous,
+      'spam': l10n.reportReasonSpam,
+      'other': l10n.reportReasonOther,
+    };
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                l10n.publicGatheringReportReason,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final entry in reasons.entries)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(entry.value),
+                onTap: () => Navigator.pop(sheetContext, entry.key),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showParticipantSafetyActions(
+    ConvoyMemberLocation member,
+    AppLocalizations l10n,
+  ) async {
+    if (!widget.convoy.isPublic || member.userId == _myUserId) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                member.userLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: Text(l10n.publicGatheringReportParticipant),
+              onTap: () => Navigator.pop(sheetContext, 'report'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.block),
+              title: Text(l10n.publicGatheringBlockParticipant),
+              onTap: () => Navigator.pop(sheetContext, 'block'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'report') {
+      final reason = await _chooseParticipantReportReason(l10n);
+      if (reason == null) return;
+      await _controller.reportParticipant(
+        convoyId: widget.convoy.id,
+        participantId: member.userId,
+        reason: reason,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringReportSent)));
+      }
+    } else if (action == 'block') {
+      await _controller.blockParticipant(participantId: member.userId);
+      if (!mounted) return;
+      setState(() {
+        _blockedParticipantIds.add(member.userId);
+        _memberLocations.removeWhere((item) => item.userId == member.userId);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringBlocked)));
+    }
   }
 
   bool _isPinActive(ConvoyPin pin) {
@@ -3892,11 +3987,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                               member.position,
                                                           width: 100,
                                                           height: 72,
-                                                          child:
-                                                              _buildMemberMarker(
-                                                                member,
-                                                                l10n,
-                                                              ),
+                                                          child: GestureDetector(
+                                                            onTap: () =>
+                                                                _showParticipantSafetyActions(
+                                                                  member,
+                                                                  l10n,
+                                                                ),
+                                                            child:
+                                                                _buildMemberMarker(
+                                                                  member,
+                                                                  l10n,
+                                                                ),
+                                                          ),
                                                         ),
                                                     for (final pin in pins)
                                                       Marker(

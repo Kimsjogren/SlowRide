@@ -613,5 +613,10 @@
   "ttsVoiceHintDismiss": "OK",
   "settingsVectorMap": "Carte vectorielle",
   "settingsVectorMapOn": "Rendu net à tous les niveaux de zoom, zoom fluide",
-  "settingsVectorMapOff": "Standard — rapide et mis en cache hors ligne"
+  "settingsVectorMapOff": "Standard — rapide et mis en cache hors ligne",
+  "publicGatheringStartTime": "Heure de début", "publicGatheringEndTime": "Heure de fin", "publicGatheringScheduleInvalid": "L’heure de fin doit être postérieure à l’heure de début.",
+  "publicGatheringEndAction": "Terminer le rassemblement", "publicGatheringDeleteAction": "Supprimer le rassemblement", "publicGatheringEndConfirm": "Terminer le rassemblement maintenant ? Les participants ne pourront plus le trouver.", "publicGatheringDeleteConfirm": "Supprimer définitivement ce rassemblement ? Cette action est irréversible.",
+  "publicGatheringReportAction": "Signaler le rassemblement", "publicGatheringBlockAction": "Bloquer le rassemblement", "publicGatheringReportParticipant": "Signaler le participant", "publicGatheringBlockParticipant": "Bloquer le participant", "publicGatheringReportReason": "Que souhaitez-vous signaler ?", "publicGatheringReportSent": "Votre signalement a été envoyé.", "publicGatheringBlocked": "Le contenu bloqué ne sera plus affiché.",
+  "reportReasonInappropriate": "Contenu inapproprié", "reportReasonHarassment": "Harcèlement", "reportReasonDangerous": "Comportement dangereux", "reportReasonSpam": "Spam ou trompeur", "reportReasonOther": "Autre",
+  "publicGatheringNearbyNotifications": "Notifications de rassemblements à proximité", "publicGatheringNearbyNotificationsSubtitle": "Me prévenir une fois lorsqu’un rassemblement public à moins de 25 km commence dans les 24 heures.", "publicGatheringUpcoming": "À venir", "publicGatheringStarted": "En cours"
 }

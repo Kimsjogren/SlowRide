@@ -1519,4 +1519,73 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Estándar — rápido y en caché sin conexión';
+
+  @override
+  String get publicGatheringStartTime => 'Hora de inicio';
+
+  @override
+  String get publicGatheringEndTime => 'Hora de fin';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'La hora de fin debe ser posterior a la de inicio.';
+
+  @override
+  String get publicGatheringEndAction => 'Finalizar encuentro';
+
+  @override
+  String get publicGatheringDeleteAction => 'Eliminar encuentro';
+
+  @override
+  String get publicGatheringEndConfirm => '¿Finalizar el encuentro ahora? Los participantes ya no podrán encontrarlo.';
+
+  @override
+  String get publicGatheringDeleteConfirm => '¿Eliminar el encuentro permanentemente? Esta acción no se puede deshacer.';
+
+  @override
+  String get publicGatheringReportAction => 'Denunciar encuentro';
+
+  @override
+  String get publicGatheringBlockAction => 'Bloquear encuentro';
+
+  @override
+  String get publicGatheringReportParticipant => 'Denunciar participante';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Bloquear participante';
+
+  @override
+  String get publicGatheringReportReason => '¿Qué quieres denunciar?';
+
+  @override
+  String get publicGatheringReportSent => 'Tu denuncia ha sido enviada.';
+
+  @override
+  String get publicGatheringBlocked => 'El contenido bloqueado ya no se mostrará.';
+
+  @override
+  String get reportReasonInappropriate => 'Contenido inapropiado';
+
+  @override
+  String get reportReasonHarassment => 'Acoso';
+
+  @override
+  String get reportReasonDangerous => 'Comportamiento peligroso';
+
+  @override
+  String get reportReasonSpam => 'Spam o engañoso';
+
+  @override
+  String get reportReasonOther => 'Otro';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Avisos de encuentros cercanos';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Avísame una vez cuando un encuentro público a menos de 25 km comience en las próximas 24 horas.';
+
+  @override
+  String get publicGatheringUpcoming => 'Próximo';
+
+  @override
+  String get publicGatheringStarted => 'En curso';
 }

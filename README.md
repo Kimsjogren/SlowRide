@@ -80,6 +80,10 @@ For an existing CruizX database, run
 [`supabase/migrations/20260715_public_gatherings.sql`](supabase/migrations/20260715_public_gatherings.sql)
 in the Supabase SQL editor. It adds public gatherings, meetup locations,
 optional participant vehicle markers, and member-only live-location policies.
+Then run
+[`supabase/migrations/20260715_public_gathering_safety.sql`](supabase/migrations/20260715_public_gathering_safety.sql)
+to add start/end scheduling, organizer end/delete permissions, reports and
+user-owned gathering/participant blocks.
 
 Skapa tabell + aktivera RLS i SQL Editor:
 

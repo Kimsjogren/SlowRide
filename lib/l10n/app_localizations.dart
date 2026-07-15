@@ -2960,6 +2960,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Standard — fast and offline-cached'**
   String get settingsVectorMapOff;
+
+  /// No description provided for @publicGatheringStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get publicGatheringStartTime;
+
+  /// No description provided for @publicGatheringEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get publicGatheringEndTime;
+
+  /// No description provided for @publicGatheringScheduleInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The end time must be after the start time.'**
+  String get publicGatheringScheduleInvalid;
+
+  /// No description provided for @publicGatheringEndAction.
+  ///
+  /// In en, this message translates to:
+  /// **'End meetup'**
+  String get publicGatheringEndAction;
+
+  /// No description provided for @publicGatheringDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete meetup'**
+  String get publicGatheringDeleteAction;
+
+  /// No description provided for @publicGatheringEndConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'End the meetup now? Participants will no longer be able to find it.'**
+  String get publicGatheringEndConfirm;
+
+  /// No description provided for @publicGatheringDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this meetup? This cannot be undone.'**
+  String get publicGatheringDeleteConfirm;
+
+  /// No description provided for @publicGatheringReportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Report meetup'**
+  String get publicGatheringReportAction;
+
+  /// No description provided for @publicGatheringBlockAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Block meetup'**
+  String get publicGatheringBlockAction;
+
+  /// No description provided for @publicGatheringReportParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Report participant'**
+  String get publicGatheringReportParticipant;
+
+  /// No description provided for @publicGatheringBlockParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Block participant'**
+  String get publicGatheringBlockParticipant;
+
+  /// No description provided for @publicGatheringReportReason.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to report?'**
+  String get publicGatheringReportReason;
+
+  /// No description provided for @publicGatheringReportSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report has been sent.'**
+  String get publicGatheringReportSent;
+
+  /// No description provided for @publicGatheringBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked content will no longer be shown.'**
+  String get publicGatheringBlocked;
+
+  /// No description provided for @reportReasonInappropriate.
+  ///
+  /// In en, this message translates to:
+  /// **'Inappropriate content'**
+  String get reportReasonInappropriate;
+
+  /// No description provided for @reportReasonHarassment.
+  ///
+  /// In en, this message translates to:
+  /// **'Harassment'**
+  String get reportReasonHarassment;
+
+  /// No description provided for @reportReasonDangerous.
+  ///
+  /// In en, this message translates to:
+  /// **'Dangerous behavior'**
+  String get reportReasonDangerous;
+
+  /// No description provided for @reportReasonSpam.
+  ///
+  /// In en, this message translates to:
+  /// **'Spam or misleading'**
+  String get reportReasonSpam;
+
+  /// No description provided for @reportReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get reportReasonOther;
+
+  /// No description provided for @publicGatheringNearbyNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby meetup notifications'**
+  String get publicGatheringNearbyNotifications;
+
+  /// No description provided for @publicGatheringNearbyNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me once when a public meetup within 25 km starts within 24 hours.'**
+  String get publicGatheringNearbyNotificationsSubtitle;
+
+  /// No description provided for @publicGatheringUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get publicGatheringUpcoming;
+
+  /// No description provided for @publicGatheringStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get publicGatheringStarted;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

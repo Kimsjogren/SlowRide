@@ -1519,4 +1519,73 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Vakio — nopea ja offline-välimuistissa';
+
+  @override
+  String get publicGatheringStartTime => 'Aloitusaika';
+
+  @override
+  String get publicGatheringEndTime => 'Päättymisaika';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'Päättymisajan on oltava aloitusajan jälkeen.';
+
+  @override
+  String get publicGatheringEndAction => 'Päätä tapaaminen';
+
+  @override
+  String get publicGatheringDeleteAction => 'Poista tapaaminen';
+
+  @override
+  String get publicGatheringEndConfirm => 'Päätetäänkö tapaaminen nyt? Osallistujat eivät enää löydä sitä.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Poistetaanko tapaaminen pysyvästi? Tätä ei voi perua.';
+
+  @override
+  String get publicGatheringReportAction => 'Ilmoita tapaamisesta';
+
+  @override
+  String get publicGatheringBlockAction => 'Estä tapaaminen';
+
+  @override
+  String get publicGatheringReportParticipant => 'Ilmoita osallistujasta';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Estä osallistuja';
+
+  @override
+  String get publicGatheringReportReason => 'Mitä haluat ilmoittaa?';
+
+  @override
+  String get publicGatheringReportSent => 'Ilmoitus on lähetetty.';
+
+  @override
+  String get publicGatheringBlocked => 'Estettyä sisältöä ei enää näytetä.';
+
+  @override
+  String get reportReasonInappropriate => 'Sopimaton sisältö';
+
+  @override
+  String get reportReasonHarassment => 'Häirintä';
+
+  @override
+  String get reportReasonDangerous => 'Vaarallinen toiminta';
+
+  @override
+  String get reportReasonSpam => 'Roskaposti tai harhaanjohtava';
+
+  @override
+  String get reportReasonOther => 'Muu';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Ilmoitukset lähellä olevista tapaamisista';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Ilmoita kerran, kun 25 km:n sisällä oleva julkinen tapaaminen alkaa 24 tunnin kuluessa.';
+
+  @override
+  String get publicGatheringUpcoming => 'Tulossa';
+
+  @override
+  String get publicGatheringStarted => 'Käynnissä';
 }

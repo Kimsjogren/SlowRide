@@ -12,6 +12,7 @@ import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/firebase_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
+import 'package:slowride/services/public_gathering_notification_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
@@ -187,6 +188,9 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     _updateStartupStatus(l10n.splashInitializingAccountSession);
     try {
       await AuthService.instance.initialize();
+    } catch (_) {}
+    try {
+      await PublicGatheringNotificationService.instance.initialize();
     } catch (_) {}
     await _setProgress(58);
 

@@ -613,5 +613,10 @@
   "ttsVoiceHintDismiss": "OK",
   "settingsVectorMap": "Vektorkart",
   "settingsVectorMapOn": "Skarp gjengivelse på alle zoomnivåer, myk zoom",
-  "settingsVectorMapOff": "Standard — rask og offline-bufret"
+  "settingsVectorMapOff": "Standard — rask og offline-bufret",
+  "publicGatheringStartTime": "Starttid", "publicGatheringEndTime": "Sluttid", "publicGatheringScheduleInvalid": "Sluttiden må være etter starttiden.",
+  "publicGatheringEndAction": "Avslutt treffet", "publicGatheringDeleteAction": "Slett treffet", "publicGatheringEndConfirm": "Avslutte treffet nå? Deltakerne kan ikke lenger finne det.", "publicGatheringDeleteConfirm": "Slette treffet permanent? Dette kan ikke angres.",
+  "publicGatheringReportAction": "Rapporter treffet", "publicGatheringBlockAction": "Blokker treffet", "publicGatheringReportParticipant": "Rapporter deltakeren", "publicGatheringBlockParticipant": "Blokker deltakeren", "publicGatheringReportReason": "Hva vil du rapportere?", "publicGatheringReportSent": "Rapporten er sendt.", "publicGatheringBlocked": "Blokkert innhold vises ikke lenger.",
+  "reportReasonInappropriate": "Upassende innhold", "reportReasonHarassment": "Trakassering", "reportReasonDangerous": "Farlig atferd", "reportReasonSpam": "Søppel eller villedende", "reportReasonOther": "Annet",
+  "publicGatheringNearbyNotifications": "Varsler om treff i nærheten", "publicGatheringNearbyNotificationsSubtitle": "Varsle meg én gang når et offentlig treff innen 25 km starter innen 24 timer.", "publicGatheringUpcoming": "Kommende", "publicGatheringStarted": "Pågår"
 }

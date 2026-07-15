@@ -12,6 +12,7 @@ class ConvoyModel {
     this.meetupLat,
     this.meetupLng,
     this.meetupLabel = '',
+    this.startsAt,
     this.endsAt,
   });
 
@@ -25,6 +26,7 @@ class ConvoyModel {
   final double? meetupLat;
   final double? meetupLng;
   final String meetupLabel;
+  final DateTime? startsAt;
   final DateTime? endsAt;
 
   LatLng? get meetupPosition {
@@ -33,7 +35,9 @@ class ConvoyModel {
     return lat == null || lng == null ? null : LatLng(lat, lng);
   }
 
-  bool get isActive => endsAt == null || endsAt!.isAfter(DateTime.now());
+  bool get hasStarted => startsAt == null || !startsAt!.isAfter(DateTime.now());
+  bool get hasEnded => endsAt != null && !endsAt!.isAfter(DateTime.now());
+  bool get isActive => hasStarted && !hasEnded;
 
   factory ConvoyModel.fromMap({
     required String id,
@@ -62,6 +66,9 @@ class ConvoyModel {
       meetupLng: (map['meetupLng'] ?? map['meetup_lng'] as num?)?.toDouble(),
       meetupLabel:
           (map['meetupLabel'] ?? map['meetup_label'])?.toString() ?? '',
+      startsAt: DateTime.tryParse(
+        (map['startsAt'] ?? map['starts_at'])?.toString() ?? '',
+      ),
       endsAt: DateTime.tryParse(
         (map['endsAt'] ?? map['ends_at'])?.toString() ?? '',
       ),
@@ -79,6 +86,7 @@ class ConvoyModel {
       'meetupLat': meetupLat,
       'meetupLng': meetupLng,
       'meetupLabel': meetupLabel,
+      'startsAt': startsAt?.toIso8601String(),
       'endsAt': endsAt?.toIso8601String(),
     };
   }

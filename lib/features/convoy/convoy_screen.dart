@@ -14,6 +14,8 @@ import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/widgets/ad_banner_widget.dart';
 import 'package:slowride/widgets/app_background.dart';
 import 'package:slowride/services/ad_service.dart';
+import 'package:slowride/services/public_gathering_notification_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 
 class ConvoyScreen extends StatefulWidget {
   const ConvoyScreen({super.key});
@@ -75,180 +77,283 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
   }) async {
     _nameController.text = '';
     _meetupController.text = '';
+    var selectedStart = DateTime.now().add(const Duration(minutes: 15));
+    var selectedEnd = selectedStart.add(const Duration(hours: 6));
+
+    Future<DateTime?> pickDateTime(
+      BuildContext pickerContext,
+      DateTime initial,
+    ) async {
+      final date = await showDatePicker(
+        context: pickerContext,
+        initialDate: initial,
+        firstDate: DateTime.now().subtract(const Duration(days: 1)),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+      );
+      if (date == null || !pickerContext.mounted) return null;
+      final time = await showTimePicker(
+        context: pickerContext,
+        initialTime: TimeOfDay.fromDateTime(initial),
+      );
+      if (time == null) return null;
+      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    }
+
+    String formatDateTime(BuildContext formatContext, DateTime value) {
+      final material = MaterialLocalizations.of(formatContext);
+      return '${material.formatMediumDate(value)} · '
+          '${material.formatTimeOfDay(TimeOfDay.fromDateTime(value))}';
+    }
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D1B2E),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
-              ),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.groups,
-                      color: Color(0xFF3AA8FF),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      publicGathering
-                          ? l10n.publicGatheringCreateTitle
-                          : l10n.convoyNameDialogTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
-                  ],
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1B2E),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFF1E6BFF).withValues(alpha: 0.4),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _nameController,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: l10n.convoyNameHint,
-                    hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.08),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.groups,
+                        color: Color(0xFF3AA8FF),
+                        size: 22,
                       ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.2),
+                      const SizedBox(width: 10),
+                      Text(
+                        publicGathering
+                            ? l10n.publicGatheringCreateTitle
+                            : l10n.convoyNameDialogTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.none,
+                        ),
                       ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF1E6BFF)),
-                    ),
+                    ],
                   ),
-                ),
-                if (publicGathering) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
                   TextField(
-                    controller: _meetupController,
+                    controller: _nameController,
+                    autofocus: true,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: l10n.publicGatheringPlaceHint,
+                      hintText: l10n.convoyNameHint,
                       hintStyle: TextStyle(
                         color: Colors.white.withValues(alpha: 0.4),
                       ),
-                      prefixIcon: const Icon(
-                        Icons.location_on_outlined,
-                        color: Colors.white54,
-                      ),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.08),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF1E6BFF)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    l10n.publicGatheringLocationExplanation,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      child: Text(
-                        l10n.convoyCreateCancel,
-                        style: const TextStyle(color: Colors.white60),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E6BFF),
-                        shape: RoundedRectangleBorder(
+                  if (publicGathering) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _meetupController,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: l10n.publicGatheringPlaceHint,
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.white54,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.08),
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      l10n.publicGatheringLocationExplanation,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.schedule, size: 18),
+                            label: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(l10n.publicGatheringStartTime),
+                                Text(
+                                  formatDateTime(ctx, selectedStart),
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            onPressed: () async {
+                              final picked = await pickDateTime(
+                                ctx,
+                                selectedStart,
+                              );
+                              if (picked == null) return;
+                              setSheetState(() {
+                                final duration = selectedEnd.difference(
+                                  selectedStart,
+                                );
+                                selectedStart = picked;
+                                selectedEnd = picked.add(
+                                  duration.isNegative ||
+                                          duration == Duration.zero
+                                      ? const Duration(hours: 6)
+                                      : duration,
+                                );
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.event_available, size: 18),
+                            label: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(l10n.publicGatheringEndTime),
+                                Text(
+                                  formatDateTime(ctx, selectedEnd),
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            onPressed: () async {
+                              final picked = await pickDateTime(
+                                ctx,
+                                selectedEnd,
+                              );
+                              if (picked != null) {
+                                setSheetState(() => selectedEnd = picked);
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: Text(
+                          l10n.convoyCreateCancel,
+                          style: const TextStyle(color: Colors.white60),
                         ),
                       ),
-                      onPressed: () async {
-                        final name = _nameController.text.trim();
-                        if (name.isEmpty) return;
-                        final meetupLabel = _meetupController.text.trim();
-                        if (publicGathering && meetupLabel.isEmpty) return;
-                        Navigator.of(ctx).pop();
-                        LatLng? meetupPosition;
-                        if (publicGathering) {
-                          meetupPosition = await _currentGatheringPosition();
-                          if (meetupPosition == null) {
-                            if (!mounted) return;
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E6BFF),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        onPressed: () async {
+                          final name = _nameController.text.trim();
+                          if (name.isEmpty) return;
+                          final meetupLabel = _meetupController.text.trim();
+                          if (publicGathering && meetupLabel.isEmpty) return;
+                          if (publicGathering &&
+                              !selectedEnd.isAfter(selectedStart)) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  l10n.publicGatheringLocationRequired,
+                                  l10n.publicGatheringScheduleInvalid,
                                 ),
                               ),
                             );
                             return;
                           }
-                        }
-                        await _controller.createConvoy(
-                          name: name,
-                          isPublic: publicGathering,
-                          meetupPosition: meetupPosition,
-                          meetupLabel: meetupLabel,
-                          endsAt: publicGathering
-                              ? DateTime.now().add(const Duration(hours: 6))
-                              : null,
-                        );
-                        if (mounted) setState(() => _streamKey++);
-                      },
-                      child: Text(
-                        publicGathering
-                            ? l10n.publicGatheringPublish
-                            : l10n.convoyCreateConfirm,
+                          Navigator.of(ctx).pop();
+                          LatLng? meetupPosition;
+                          if (publicGathering) {
+                            meetupPosition = await _currentGatheringPosition();
+                            if (meetupPosition == null) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    l10n.publicGatheringLocationRequired,
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                          }
+                          await _controller.createConvoy(
+                            name: name,
+                            isPublic: publicGathering,
+                            meetupPosition: meetupPosition,
+                            meetupLabel: meetupLabel,
+                            startsAt: publicGathering ? selectedStart : null,
+                            endsAt: publicGathering ? selectedEnd : null,
+                          );
+                          if (mounted) setState(() => _streamKey++);
+                        },
+                        child: Text(
+                          publicGathering
+                              ? l10n.publicGatheringPublish
+                              : l10n.convoyCreateConfirm,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
             ),
           ),
         );
@@ -269,6 +374,92 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
         duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  Future<bool> _confirmAction(String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text(
+                  MaterialLocalizations.of(context).cancelButtonLabel,
+                ),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: Text(MaterialLocalizations.of(context).okButtonLabel),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<String?> _chooseReportReason(AppLocalizations l10n) {
+    final reasons = <String, String>{
+      'inappropriate': l10n.reportReasonInappropriate,
+      'harassment': l10n.reportReasonHarassment,
+      'dangerous': l10n.reportReasonDangerous,
+      'spam': l10n.reportReasonSpam,
+      'other': l10n.reportReasonOther,
+    };
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                l10n.publicGatheringReportReason,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final reason in reasons.entries)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(reason.value),
+                onTap: () => Navigator.pop(sheetContext, reason.key),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleGatheringMenu(
+    String action,
+    ConvoyModel convoy,
+    AppLocalizations l10n,
+  ) async {
+    if (action == 'end') {
+      if (!await _confirmAction(l10n.publicGatheringEndConfirm)) return;
+      await _controller.endGathering(convoyId: convoy.id);
+    } else if (action == 'delete') {
+      if (!await _confirmAction(l10n.publicGatheringDeleteConfirm)) return;
+      await _controller.deleteGathering(convoyId: convoy.id);
+    } else if (action == 'report') {
+      final reason = await _chooseReportReason(l10n);
+      if (reason == null) return;
+      await _controller.reportGathering(convoyId: convoy.id, reason: reason);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringReportSent)));
+      }
+      return;
+    } else if (action == 'block') {
+      await _controller.blockGathering(convoyId: convoy.id);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringBlocked)));
+      }
+    }
+    if (mounted) setState(() => _streamKey++);
   }
 
   Future<void> _showJoinByCodeDialog(AppLocalizations l10n) async {
@@ -627,6 +818,55 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                     ),
                                   ),
                                 ),
+                                if (_showPublicGatherings) ...[
+                                  const SizedBox(height: 8),
+                                  ValueListenableBuilder<bool>(
+                                    valueListenable: UserPreferencesService
+                                        .instance
+                                        .nearbyGatheringNotifications,
+                                    builder: (context, enabled, _) => SwitchListTile.adaptive(
+                                      contentPadding: EdgeInsets.zero,
+                                      value: enabled,
+                                      title: Text(
+                                        l10n.publicGatheringNearbyNotifications,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        l10n.publicGatheringNearbyNotificationsSubtitle,
+                                        style: const TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      onChanged: (value) async {
+                                        if (!value) {
+                                          PublicGatheringNotificationService
+                                              .instance
+                                              .disable();
+                                          return;
+                                        }
+                                        final enabled =
+                                            await PublicGatheringNotificationService
+                                                .instance
+                                                .enable();
+                                        if (!enabled && context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                l10n.publicGatheringLocationRequired,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 10),
                                 FilledButton.icon(
                                   onPressed: () {
@@ -940,9 +1180,85 @@ class _ConvoyScreenState extends State<ConvoyScreen> {
                                                       ],
                                                     ),
                                                   ],
+                                                  if (isPublic &&
+                                                      convoy.startsAt !=
+                                                          null) ...[
+                                                    const SizedBox(height: 4),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.schedule,
+                                                          size: 11,
+                                                          color: Colors.white60,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Expanded(
+                                                          child: Text(
+                                                            '${convoy.hasStarted ? l10n.publicGatheringStarted : l10n.publicGatheringUpcoming}: '
+                                                            '${MaterialLocalizations.of(context).formatMediumDate(convoy.startsAt!.toLocal())} · '
+                                                            '${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(convoy.startsAt!.toLocal()))}',
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white60,
+                                                                  fontSize: 11,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
                                                 ],
                                               ),
                                             ),
+                                            if (isPublic)
+                                              PopupMenuButton<String>(
+                                                icon: const Icon(
+                                                  Icons.more_vert,
+                                                  color: Colors.white70,
+                                                ),
+                                                onSelected: (action) =>
+                                                    _handleGatheringMenu(
+                                                      action,
+                                                      convoy,
+                                                      l10n,
+                                                    ),
+                                                itemBuilder: (_) => isLeader
+                                                    ? [
+                                                        PopupMenuItem(
+                                                          value: 'end',
+                                                          child: Text(
+                                                            l10n.publicGatheringEndAction,
+                                                          ),
+                                                        ),
+                                                        PopupMenuItem(
+                                                          value: 'delete',
+                                                          child: Text(
+                                                            l10n.publicGatheringDeleteAction,
+                                                          ),
+                                                        ),
+                                                      ]
+                                                    : [
+                                                        PopupMenuItem(
+                                                          value: 'report',
+                                                          child: Text(
+                                                            l10n.publicGatheringReportAction,
+                                                          ),
+                                                        ),
+                                                        PopupMenuItem(
+                                                          value: 'block',
+                                                          child: Text(
+                                                            l10n.publicGatheringBlockAction,
+                                                          ),
+                                                        ),
+                                                      ],
+                                              ),
                                           ],
                                         ),
                                         const SizedBox(height: 10),
