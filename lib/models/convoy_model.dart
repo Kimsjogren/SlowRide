@@ -1,3 +1,5 @@
+import 'package:latlong2/latlong.dart';
+
 class ConvoyModel {
   const ConvoyModel({
     required this.id,
@@ -6,6 +8,11 @@ class ConvoyModel {
     required this.memberCount,
     required this.createdAt,
     this.isJoined = false,
+    this.isPublic = false,
+    this.meetupLat,
+    this.meetupLng,
+    this.meetupLabel = '',
+    this.endsAt,
   });
 
   final String id;
@@ -14,6 +21,19 @@ class ConvoyModel {
   final int memberCount;
   final DateTime createdAt;
   final bool isJoined;
+  final bool isPublic;
+  final double? meetupLat;
+  final double? meetupLng;
+  final String meetupLabel;
+  final DateTime? endsAt;
+
+  LatLng? get meetupPosition {
+    final lat = meetupLat;
+    final lng = meetupLng;
+    return lat == null || lng == null ? null : LatLng(lat, lng);
+  }
+
+  bool get isActive => endsAt == null || endsAt!.isAfter(DateTime.now());
 
   factory ConvoyModel.fromMap({
     required String id,
@@ -36,6 +56,15 @@ class ConvoyModel {
       memberCount: (map['memberCount'] as num?)?.toInt() ?? 1,
       createdAt: createdAt,
       isJoined: map['isJoined'] == true,
+      isPublic:
+          map['isPublic'] == true || map['visibility']?.toString() == 'public',
+      meetupLat: (map['meetupLat'] ?? map['meetup_lat'] as num?)?.toDouble(),
+      meetupLng: (map['meetupLng'] ?? map['meetup_lng'] as num?)?.toDouble(),
+      meetupLabel:
+          (map['meetupLabel'] ?? map['meetup_label'])?.toString() ?? '',
+      endsAt: DateTime.tryParse(
+        (map['endsAt'] ?? map['ends_at'])?.toString() ?? '',
+      ),
     );
   }
 
@@ -46,6 +75,11 @@ class ConvoyModel {
       'memberCount': memberCount,
       'createdAt': createdAt.toIso8601String(),
       'isJoined': isJoined,
+      'isPublic': isPublic,
+      'meetupLat': meetupLat,
+      'meetupLng': meetupLng,
+      'meetupLabel': meetupLabel,
+      'endsAt': endsAt?.toIso8601String(),
     };
   }
 }

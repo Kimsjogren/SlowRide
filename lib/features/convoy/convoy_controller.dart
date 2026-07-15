@@ -7,6 +7,7 @@ import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 
 class ConvoyController {
   final List<ConvoyModel> _localConvoys = [];
@@ -27,6 +28,33 @@ class ConvoyController {
         .order('created_at', ascending: false)
         .asyncMap(_withMembershipState)
         .map((list) => list.where((c) => c.isJoined).toList(growable: false));
+  }
+
+  Stream<List<ConvoyModel>> watchPublicGatherings() {
+    if (!SupabaseService.instance.isEnabled) {
+      _localStreamController.add(
+        _buildLocalConvoysForCurrentUser()
+            .where((convoy) => convoy.isPublic && convoy.isActive)
+            .toList(growable: false),
+      );
+      return _localStreamController.stream.map(
+        (convoys) => convoys
+            .where((convoy) => convoy.isPublic && convoy.isActive)
+            .toList(growable: false),
+      );
+    }
+
+    return SupabaseService.instance.client
+        .from('convoys')
+        .stream(primaryKey: ['id'])
+        .eq('visibility', 'public')
+        .order('created_at', ascending: false)
+        .asyncMap(_withMembershipState)
+        .map(
+          (convoys) => convoys
+              .where((convoy) => convoy.isPublic && convoy.isActive)
+              .toList(growable: false),
+        );
   }
 
   /// Join a convoy by its invite code (first segment of the UUID, case-insensitive).
@@ -79,6 +107,11 @@ class ConvoyController {
           DateTime.tryParse(matchRow['created_at']?.toString() ?? '') ??
           DateTime.now(),
       isJoined: true,
+      isPublic: matchRow['visibility']?.toString() == 'public',
+      meetupLat: (matchRow['meetup_lat'] as num?)?.toDouble(),
+      meetupLng: (matchRow['meetup_lng'] as num?)?.toDouble(),
+      meetupLabel: matchRow['meetup_label']?.toString() ?? '',
+      endsAt: DateTime.tryParse(matchRow['ends_at']?.toString() ?? ''),
     );
   }
 
@@ -92,6 +125,11 @@ class ConvoyController {
             memberCount: convoy.memberCount,
             createdAt: convoy.createdAt,
             isJoined: _localJoinedConvoyIds.contains(convoy.id),
+            isPublic: convoy.isPublic,
+            meetupLat: convoy.meetupLat,
+            meetupLng: convoy.meetupLng,
+            meetupLabel: convoy.meetupLabel,
+            endsAt: convoy.endsAt,
           ),
         )
         .toList(growable: false);
@@ -132,13 +170,24 @@ class ConvoyController {
             'memberCount': memberCounts[convoyId] ?? 0,
             'createdAt': row['created_at'],
             'isJoined': joinedConvoyIds.contains(convoyId),
+            'visibility': row['visibility'],
+            'meetup_lat': row['meetup_lat'],
+            'meetup_lng': row['meetup_lng'],
+            'meetup_label': row['meetup_label'],
+            'ends_at': row['ends_at'],
           };
           return ConvoyModel.fromMap(id: convoyId, map: map);
         })
         .toList(growable: false);
   }
 
-  Future<void> createConvoy({required String name}) async {
+  Future<void> createConvoy({
+    required String name,
+    bool isPublic = false,
+    LatLng? meetupPosition,
+    String meetupLabel = '',
+    DateTime? endsAt,
+  }) async {
     final now = DateTime.now();
     final userId = SupabaseService.instance.isEnabled
         ? (AuthService.instance.userId.value ?? 'guest')
@@ -155,6 +204,11 @@ class ConvoyController {
           memberCount: 1,
           createdAt: now,
           isJoined: true,
+          isPublic: isPublic,
+          meetupLat: meetupPosition?.latitude,
+          meetupLng: meetupPosition?.longitude,
+          meetupLabel: meetupLabel,
+          endsAt: endsAt,
         ),
       );
       _localJoinedConvoyIds.add(convoyId);
@@ -168,6 +222,11 @@ class ConvoyController {
           'name': name,
           'leader_id': userId,
           'created_at': now.toIso8601String(),
+          'visibility': isPublic ? 'public' : 'private',
+          'meetup_lat': meetupPosition?.latitude,
+          'meetup_lng': meetupPosition?.longitude,
+          'meetup_label': meetupLabel.trim(),
+          'ends_at': endsAt?.toIso8601String(),
         })
         .select('id')
         .single();
@@ -194,6 +253,11 @@ class ConvoyController {
         memberCount: current.memberCount + 1,
         createdAt: current.createdAt,
         isJoined: true,
+        isPublic: current.isPublic,
+        meetupLat: current.meetupLat,
+        meetupLng: current.meetupLng,
+        meetupLabel: current.meetupLabel,
+        endsAt: current.endsAt,
       );
       _localStreamController.add(_buildLocalConvoysForCurrentUser());
       return;
@@ -223,6 +287,11 @@ class ConvoyController {
           memberCount: current.memberCount - 1,
           createdAt: current.createdAt,
           isJoined: false,
+          isPublic: current.isPublic,
+          meetupLat: current.meetupLat,
+          meetupLng: current.meetupLng,
+          meetupLabel: current.meetupLabel,
+          endsAt: current.endsAt,
         );
       }
       _localStreamController.add(_buildLocalConvoysForCurrentUser());
@@ -234,10 +303,27 @@ class ConvoyController {
       return;
     }
 
+    await clearMyLocation(convoyId: convoy.id);
+
     await SupabaseService.instance.client
         .from('convoy_members')
         .delete()
         .eq('convoy_id', convoy.id)
+        .eq('user_id', userId);
+  }
+
+  Future<void> clearMyLocation({required String convoyId}) async {
+    final userId = AuthService.instance.userId.value;
+    if (!SupabaseService.instance.isEnabled ||
+        userId == null ||
+        userId.isEmpty) {
+      return;
+    }
+
+    await SupabaseService.instance.client
+        .from('convoy_locations')
+        .delete()
+        .eq('convoy_id', convoyId)
         .eq('user_id', userId);
   }
 
@@ -333,6 +419,8 @@ class ConvoyController {
       'lat': position.latitude,
       'lng': position.longitude,
       'updated_at': DateTime.now().toIso8601String(),
+      'vehicle_style':
+          UserPreferencesService.instance.mapMarkerStyle.value.name,
     }, onConflict: 'convoy_id,user_id');
   }
 

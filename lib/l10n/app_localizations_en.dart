@@ -222,6 +222,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get convoyCreateButton => 'Create convoy';
 
   @override
+  String get publicGatheringsTitle => 'Public meetups';
+
+  @override
+  String get publicGatheringsSubtitle => 'Find a meetup spot, join publicly, and choose whether to show your live location.';
+
+  @override
+  String get publicGatheringsMineTab => 'Mine';
+
+  @override
+  String get publicGatheringsPublicTab => 'Public';
+
+  @override
+  String get publicGatheringsEmpty => 'There are no active public meetups right now.';
+
+  @override
+  String get publicGatheringCreateButton => 'Create public meetup';
+
+  @override
+  String get publicGatheringCreateTitle => 'New public meetup';
+
+  @override
+  String get publicGatheringPlaceHint => 'Meetup spot, e.g. the town square';
+
+  @override
+  String get publicGatheringLocationExplanation => 'The meetup is placed at your current position and stays active for 6 hours. Live location is optional for every participant.';
+
+  @override
+  String get publicGatheringLocationRequired => 'Location access is required to set the meetup spot.';
+
+  @override
+  String get publicGatheringPublish => 'Publish';
+
+  @override
+  String get publicGatheringStartSharing => 'Share my live location';
+
+  @override
+  String get publicGatheringStopSharing => 'Stop sharing my live location';
+
+  @override
   String get convoyOpenButton => 'Open';
 
   @override

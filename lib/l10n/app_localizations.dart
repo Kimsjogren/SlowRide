@@ -531,6 +531,84 @@ abstract class AppLocalizations {
   /// **'Create convoy'**
   String get convoyCreateButton;
 
+  /// No description provided for @publicGatheringsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Public meetups'**
+  String get publicGatheringsTitle;
+
+  /// No description provided for @publicGatheringsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a meetup spot, join publicly, and choose whether to show your live location.'**
+  String get publicGatheringsSubtitle;
+
+  /// No description provided for @publicGatheringsMineTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Mine'**
+  String get publicGatheringsMineTab;
+
+  /// No description provided for @publicGatheringsPublicTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get publicGatheringsPublicTab;
+
+  /// No description provided for @publicGatheringsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no active public meetups right now.'**
+  String get publicGatheringsEmpty;
+
+  /// No description provided for @publicGatheringCreateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create public meetup'**
+  String get publicGatheringCreateButton;
+
+  /// No description provided for @publicGatheringCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New public meetup'**
+  String get publicGatheringCreateTitle;
+
+  /// No description provided for @publicGatheringPlaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Meetup spot, e.g. the town square'**
+  String get publicGatheringPlaceHint;
+
+  /// No description provided for @publicGatheringLocationExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'The meetup is placed at your current position and stays active for 6 hours. Live location is optional for every participant.'**
+  String get publicGatheringLocationExplanation;
+
+  /// No description provided for @publicGatheringLocationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is required to set the meetup spot.'**
+  String get publicGatheringLocationRequired;
+
+  /// No description provided for @publicGatheringPublish.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get publicGatheringPublish;
+
+  /// No description provided for @publicGatheringStartSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Share my live location'**
+  String get publicGatheringStartSharing;
+
+  /// No description provided for @publicGatheringStopSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop sharing my live location'**
+  String get publicGatheringStopSharing;
+
   /// No description provided for @convoyOpenButton.
   ///
   /// In en, this message translates to:

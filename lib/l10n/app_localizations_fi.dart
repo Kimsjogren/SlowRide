@@ -222,6 +222,45 @@ class AppLocalizationsFi extends AppLocalizations {
   String get convoyCreateButton => 'Luo saattue';
 
   @override
+  String get publicGatheringsTitle => 'Julkiset tapaamiset';
+
+  @override
+  String get publicGatheringsSubtitle => 'Löydä kokoontumispaikka, liity julkisesti ja päätä itse, näytetäänkö reaaliaikainen sijaintisi.';
+
+  @override
+  String get publicGatheringsMineTab => 'Omat';
+
+  @override
+  String get publicGatheringsPublicTab => 'Julkiset';
+
+  @override
+  String get publicGatheringsEmpty => 'Aktiivisia julkisia tapaamisia ei ole juuri nyt.';
+
+  @override
+  String get publicGatheringCreateButton => 'Luo julkinen tapaaminen';
+
+  @override
+  String get publicGatheringCreateTitle => 'Uusi julkinen tapaaminen';
+
+  @override
+  String get publicGatheringPlaceHint => 'Kokoontumispaikka, esim. tori';
+
+  @override
+  String get publicGatheringLocationExplanation => 'Tapaaminen sijoitetaan nykyiseen sijaintiisi ja on aktiivinen 6 tuntia. Reaaliaikaisen sijainnin jakaminen on vapaaehtoista.';
+
+  @override
+  String get publicGatheringLocationRequired => 'Kokoontumispaikan asettaminen edellyttää sijaintilupaa.';
+
+  @override
+  String get publicGatheringPublish => 'Julkaise';
+
+  @override
+  String get publicGatheringStartSharing => 'Jaa reaaliaikainen sijaintini';
+
+  @override
+  String get publicGatheringStopSharing => 'Lopeta reaaliaikaisen sijaintini jakaminen';
+
+  @override
   String get convoyOpenButton => 'Avaa';
 
   @override

@@ -222,6 +222,45 @@ class AppLocalizationsNb extends AppLocalizations {
   String get convoyCreateButton => 'Opprett kolonne';
 
   @override
+  String get publicGatheringsTitle => 'Offentlige treff';
+
+  @override
+  String get publicGatheringsSubtitle => 'Finn et møtested, bli med offentlig og velg selv om liveposisjonen din skal vises.';
+
+  @override
+  String get publicGatheringsMineTab => 'Mine';
+
+  @override
+  String get publicGatheringsPublicTab => 'Offentlige';
+
+  @override
+  String get publicGatheringsEmpty => 'Det finnes ingen aktive offentlige treff akkurat nå.';
+
+  @override
+  String get publicGatheringCreateButton => 'Opprett offentlig treff';
+
+  @override
+  String get publicGatheringCreateTitle => 'Nytt offentlig treff';
+
+  @override
+  String get publicGatheringPlaceHint => 'Møtested, f.eks. torget';
+
+  @override
+  String get publicGatheringLocationExplanation => 'Treffet plasseres ved din nåværende posisjon og er aktivt i 6 timer. Liveposisjon er valgfritt for alle deltakere.';
+
+  @override
+  String get publicGatheringLocationRequired => 'Posisjonstilgang kreves for å angi møtestedet.';
+
+  @override
+  String get publicGatheringPublish => 'Publiser';
+
+  @override
+  String get publicGatheringStartSharing => 'Del liveposisjonen min';
+
+  @override
+  String get publicGatheringStopSharing => 'Stopp deling av liveposisjonen min';
+
+  @override
   String get convoyOpenButton => 'Åpne';
 
   @override

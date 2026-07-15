@@ -222,6 +222,45 @@ class AppLocalizationsSv extends AppLocalizations {
   String get convoyCreateButton => 'Skapa konvoj';
 
   @override
+  String get publicGatheringsTitle => 'Offentliga träffar';
+
+  @override
+  String get publicGatheringsSubtitle => 'Hitta en samlingsplats, gå med offentligt och välj själv om din liveposition ska visas.';
+
+  @override
+  String get publicGatheringsMineTab => 'Mina';
+
+  @override
+  String get publicGatheringsPublicTab => 'Offentliga';
+
+  @override
+  String get publicGatheringsEmpty => 'Det finns inga aktiva offentliga träffar just nu.';
+
+  @override
+  String get publicGatheringCreateButton => 'Skapa offentlig träff';
+
+  @override
+  String get publicGatheringCreateTitle => 'Ny offentlig träff';
+
+  @override
+  String get publicGatheringPlaceHint => 'Samlingsplats, t.ex. Torget i Mora';
+
+  @override
+  String get publicGatheringLocationExplanation => 'Träffen placeras vid din nuvarande position och är aktiv i 6 timmar. Liveposition är frivillig för alla deltagare.';
+
+  @override
+  String get publicGatheringLocationRequired => 'Platsåtkomst krävs för att ange samlingsplatsen.';
+
+  @override
+  String get publicGatheringPublish => 'Publicera';
+
+  @override
+  String get publicGatheringStartSharing => 'Dela min liveposition';
+
+  @override
+  String get publicGatheringStopSharing => 'Sluta dela min liveposition';
+
+  @override
   String get convoyOpenButton => 'Öppna';
 
   @override

@@ -222,6 +222,45 @@ class AppLocalizationsDa extends AppLocalizations {
   String get convoyCreateButton => 'Opret konvoj';
 
   @override
+  String get publicGatheringsTitle => 'Offentlige træf';
+
+  @override
+  String get publicGatheringsSubtitle => 'Find et mødested, deltag offentligt, og vælg selv om din liveposition skal vises.';
+
+  @override
+  String get publicGatheringsMineTab => 'Mine';
+
+  @override
+  String get publicGatheringsPublicTab => 'Offentlige';
+
+  @override
+  String get publicGatheringsEmpty => 'Der er ingen aktive offentlige træf lige nu.';
+
+  @override
+  String get publicGatheringCreateButton => 'Opret offentligt træf';
+
+  @override
+  String get publicGatheringCreateTitle => 'Nyt offentligt træf';
+
+  @override
+  String get publicGatheringPlaceHint => 'Mødested, f.eks. torvet';
+
+  @override
+  String get publicGatheringLocationExplanation => 'Træffet placeres ved din aktuelle position og er aktivt i 6 timer. Liveposition er valgfri for alle deltagere.';
+
+  @override
+  String get publicGatheringLocationRequired => 'Placeringstilladelse kræves for at angive mødestedet.';
+
+  @override
+  String get publicGatheringPublish => 'Udgiv';
+
+  @override
+  String get publicGatheringStartSharing => 'Del min liveposition';
+
+  @override
+  String get publicGatheringStopSharing => 'Stop deling af min liveposition';
+
+  @override
   String get convoyOpenButton => 'Åbn';
 
   @override

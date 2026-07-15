@@ -7,6 +7,7 @@ class ConvoyMemberLocation {
     required this.userLabel,
     required this.position,
     required this.updatedAt,
+    this.vehicleStyle = 'navigation',
   });
 
   final String convoyId;
@@ -14,6 +15,7 @@ class ConvoyMemberLocation {
   final String userLabel;
   final LatLng position;
   final DateTime updatedAt;
+  final String vehicleStyle;
 
   factory ConvoyMemberLocation.fromMap(Map<String, dynamic> map) {
     final rawUpdatedAt = map['updated_at'];
@@ -29,6 +31,7 @@ class ConvoyMemberLocation {
         (map['lng'] as num?)?.toDouble() ?? 0,
       ),
       updatedAt: updatedAt,
+      vehicleStyle: map['vehicle_style']?.toString() ?? 'navigation',
     );
   }
 }

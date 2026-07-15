@@ -222,6 +222,45 @@ class AppLocalizationsFr extends AppLocalizations {
   String get convoyCreateButton => 'Créer un convoi';
 
   @override
+  String get publicGatheringsTitle => 'Rassemblements publics';
+
+  @override
+  String get publicGatheringsSubtitle => 'Trouvez un point de rencontre, rejoignez publiquement et choisissez si votre position en direct est visible.';
+
+  @override
+  String get publicGatheringsMineTab => 'Les miens';
+
+  @override
+  String get publicGatheringsPublicTab => 'Publics';
+
+  @override
+  String get publicGatheringsEmpty => 'Aucun rassemblement public actif pour le moment.';
+
+  @override
+  String get publicGatheringCreateButton => 'Créer un rassemblement public';
+
+  @override
+  String get publicGatheringCreateTitle => 'Nouveau rassemblement public';
+
+  @override
+  String get publicGatheringPlaceHint => 'Point de rencontre, par ex. la place';
+
+  @override
+  String get publicGatheringLocationExplanation => 'Le rassemblement est placé à votre position actuelle et reste actif 6 heures. Le partage de position en direct est facultatif.';
+
+  @override
+  String get publicGatheringLocationRequired => 'L’accès à la position est requis pour définir le point de rencontre.';
+
+  @override
+  String get publicGatheringPublish => 'Publier';
+
+  @override
+  String get publicGatheringStartSharing => 'Partager ma position en direct';
+
+  @override
+  String get publicGatheringStopSharing => 'Arrêter de partager ma position en direct';
+
+  @override
   String get convoyOpenButton => 'Ouvrir';
 
   @override

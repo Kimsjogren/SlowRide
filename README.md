@@ -76,6 +76,11 @@ Utan dessa värden kör appen i lokalt fallback-läge (ingen cross-device realti
 
 ### Secure SQL setup (Supabase)
 
+For an existing CruizX database, run
+[`supabase/migrations/20260715_public_gatherings.sql`](supabase/migrations/20260715_public_gatherings.sql)
+in the Supabase SQL editor. It adds public gatherings, meetup locations,
+optional participant vehicle markers, and member-only live-location policies.
+
 Skapa tabell + aktivera RLS i SQL Editor:
 
 ```sql

@@ -118,6 +118,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   LatLng? _myLocation;
   double _myHeading = 0;
   bool _isFollowingMyPosition = false;
+  bool _shareLiveLocation = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
   // When true, the map style follows time of day; a manual toggle disables it.
@@ -225,6 +226,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _camTicker = createTicker(_onCamTick)..start();
     _addressSearchController.addListener(() => setState(() {}));
     _myUserId = AuthService.instance.userId.value;
+    _shareLiveLocation = !widget.convoy.isPublic;
+    if (widget.convoy.isPublic) {
+      unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
+    }
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     ConvoyFavoritePlacesService.instance.initialize();
     // Auto-pick a dark map at night and a light map during the day.
@@ -271,6 +276,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             (row) => ConvoyMemberLocation.fromMap(
               Map<String, dynamic>.from(row as Map),
             ),
+          )
+          .where(
+            (location) =>
+                !widget.convoy.isPublic ||
+                DateTime.now().difference(location.updatedAt) <
+                    const Duration(minutes: 2),
           )
           .toList();
       setState(() => _memberLocations = locations);
@@ -766,15 +777,36 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           }
 
           // Fire-and-forget — never await network I/O inside GPS stream.
-          _controller.updateMyLocation(
-            convoyId: widget.convoy.id,
-            position: point,
-          );
+          if (_shareLiveLocation) {
+            _controller.updateMyLocation(
+              convoyId: widget.convoy.id,
+              position: point,
+            );
+          }
         });
+  }
+
+  Future<void> _setLiveLocationSharing(bool enabled) async {
+    if (!widget.convoy.isPublic || enabled == _shareLiveLocation) return;
+    setState(() => _shareLiveLocation = enabled);
+    if (enabled) {
+      final position = _myLocation;
+      if (position != null) {
+        await _controller.updateMyLocation(
+          convoyId: widget.convoy.id,
+          position: position,
+        );
+      }
+    } else {
+      await _controller.clearMyLocation(convoyId: widget.convoy.id);
+    }
   }
 
   @override
   void dispose() {
+    if (widget.convoy.isPublic && _shareLiveLocation) {
+      unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
+    }
     _positionSubscription?.cancel();
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
@@ -2385,6 +2417,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final initial = member.userLabel.isNotEmpty
         ? member.userLabel[0].toUpperCase()
         : '?';
+    final memberStyle = MapMarkerStyle.values.firstWhere(
+      (style) => style.name == member.vehicleStyle,
+      orElse: () => MapMarkerStyle.navigation,
+    );
     return Opacity(
       opacity: stale ? 0.4 : 1.0,
       child: Column(
@@ -2439,14 +2475,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                     showOuterGlow: false,
                   )
                 : Center(
-                    child: Text(
-                      initial,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: member.vehicleStyle.isEmpty
+                        ? Text(
+                            initial,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : UserLocationMarker.stylePreview(
+                            memberStyle,
+                            size: 36,
+                            selected: false,
+                          ),
                   ),
           ),
         ],
@@ -3556,13 +3598,46 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           backgroundColor: const Color(0xFF0D1B2E),
           foregroundColor: Colors.white,
           elevation: 0,
-          title: Text(
-            widget.convoy.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.convoy.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (widget.convoy.isPublic)
+                Text(
+                  widget.convoy.meetupLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF66D9FF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+            ],
           ),
+          actions: [
+            if (widget.convoy.isPublic)
+              IconButton(
+                tooltip: _shareLiveLocation
+                    ? l10n.publicGatheringStopSharing
+                    : l10n.publicGatheringStartSharing,
+                onPressed: () => _setLiveLocationSharing(!_shareLiveLocation),
+                icon: Icon(
+                  _shareLiveLocation
+                      ? Icons.location_on
+                      : Icons.location_off_outlined,
+                  color: _shareLiveLocation
+                      ? const Color(0xFF00C896)
+                      : Colors.white54,
+                ),
+              ),
+          ],
           bottom: TabBar(
             labelColor: const Color(0xFF3AA8FF),
             unselectedLabelColor: Colors.white54,
@@ -3584,11 +3659,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 final pins = allPins
                     .where(_isPinActive)
                     .toList(growable: false);
+                final meetupPosition = widget.convoy.meetupPosition;
                 final center =
                     _myLocation ??
                     (locations.isNotEmpty
                         ? locations.first.position
-                        : const LatLng(59.3293, 18.0686));
+                        : meetupPosition ?? const LatLng(59.3293, 18.0686));
 
                 return Column(
                   children: [
@@ -3718,6 +3794,78 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   ),
                                                 MarkerLayer(
                                                   markers: [
+                                                    if (meetupPosition != null)
+                                                      Marker(
+                                                        point: meetupPosition,
+                                                        width: 120,
+                                                        height: 64,
+                                                        alignment:
+                                                            const Alignment(
+                                                              0,
+                                                              -0.8,
+                                                            ),
+                                                        child: GestureDetector(
+                                                          onTap: () {
+                                                            _destinationLabel =
+                                                                widget
+                                                                    .convoy
+                                                                    .meetupLabel;
+                                                            _routeToDestination(
+                                                              meetupPosition,
+                                                            );
+                                                          },
+                                                          child: Column(
+                                                            children: [
+                                                              Container(
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          8,
+                                                                      vertical:
+                                                                          3,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  color: const Color(
+                                                                    0xEE071739,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        9,
+                                                                      ),
+                                                                  border: Border.all(
+                                                                    color: const Color(
+                                                                      0xFF66D9FF,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                child: Text(
+                                                                  widget
+                                                                      .convoy
+                                                                      .meetupLabel,
+                                                                  maxLines: 1,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize:
+                                                                        11,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                              const Icon(
+                                                                Icons
+                                                                    .location_on,
+                                                                color: Color(
+                                                                  0xFF66D9FF,
+                                                                ),
+                                                                size: 28,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
                                                     // Alert markers
                                                     for (final alert in _alerts)
                                                       Marker(
@@ -3894,6 +4042,69 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               ),
                             ),
                           ),
+                          if (widget.convoy.isPublic)
+                            Positioned(
+                              top: 12,
+                              left: 16,
+                              right: 16,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => _setLiveLocationSharing(
+                                    !_shareLiveLocation,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xEE071739),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: _shareLiveLocation
+                                            ? const Color(0xFF00C896)
+                                            : Colors.white24,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _shareLiveLocation
+                                              ? Icons.location_on
+                                              : Icons.location_off_outlined,
+                                          color: _shareLiveLocation
+                                              ? const Color(0xFF00C896)
+                                              : Colors.white54,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _shareLiveLocation
+                                                ? l10n.publicGatheringStopSharing
+                                                : l10n.publicGatheringStartSharing,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        Switch.adaptive(
+                                          value: _shareLiveLocation,
+                                          onChanged: _setLiveLocationSharing,
+                                          activeThumbColor: const Color(
+                                            0xFF00C896,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           // ── Fixed arrow overlay (follow mode) ──
                           if (_isFollowingMyPosition && _myLocation != null)
                             IgnorePointer(
