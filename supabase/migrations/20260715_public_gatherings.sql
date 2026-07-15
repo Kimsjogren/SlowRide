@@ -48,6 +48,8 @@ using (true);
 -- Sharing remains opt-in in the app for public gatherings.
 drop policy if exists "convoy_locations_select_authenticated"
   on public.convoy_locations;
+drop policy if exists "convoy_locations_select_members"
+  on public.convoy_locations;
 create policy "convoy_locations_select_members"
 on public.convoy_locations for select
 to authenticated
@@ -56,38 +58,42 @@ using (
     select 1
     from public.convoy_members member
     where member.convoy_id = convoy_locations.convoy_id
-      and member.user_id = auth.uid()
+      and member.user_id::text = auth.uid()::text
   )
 );
 
 drop policy if exists "convoy_locations_upsert_self"
   on public.convoy_locations;
+drop policy if exists "convoy_locations_insert_self_member"
+  on public.convoy_locations;
 create policy "convoy_locations_insert_self_member"
 on public.convoy_locations for insert
 to authenticated
 with check (
-  auth.uid() = user_id
+  auth.uid()::text = user_id::text
   and exists (
     select 1
     from public.convoy_members member
     where member.convoy_id = convoy_locations.convoy_id
-      and member.user_id = auth.uid()
+      and member.user_id::text = auth.uid()::text
   )
 );
 
 drop policy if exists "convoy_locations_update_self"
   on public.convoy_locations;
+drop policy if exists "convoy_locations_update_self_member"
+  on public.convoy_locations;
 create policy "convoy_locations_update_self_member"
 on public.convoy_locations for update
 to authenticated
-using (auth.uid() = user_id)
+using (auth.uid()::text = user_id::text)
 with check (
-  auth.uid() = user_id
+  auth.uid()::text = user_id::text
   and exists (
     select 1
     from public.convoy_members member
     where member.convoy_id = convoy_locations.convoy_id
-      and member.user_id = auth.uid()
+      and member.user_id::text = auth.uid()::text
   )
 );
 
@@ -96,7 +102,7 @@ drop policy if exists "convoy_locations_delete_self"
 create policy "convoy_locations_delete_self"
 on public.convoy_locations for delete
 to authenticated
-using (auth.uid() = user_id);
+using (auth.uid()::text = user_id::text);
 
 -- Realtime publication is idempotent only via this guarded block.
 do $$
