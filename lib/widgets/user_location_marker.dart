@@ -199,6 +199,13 @@ class UserLocationMarker extends StatelessWidget {
       colorNameBuilder: _blackLabel,
     ),
     MapMarkerOption(
+      style: MapMarkerStyle.epaPink,
+      category: MapMarkerCategory.pickup,
+      assetPath: 'assets/A-Traktor/A69BDD57-5335-42D1-B4CF-B9F5E15D9931.PNG',
+      labelBuilder: _pickupLabel,
+      colorNameBuilder: _pinkLabel,
+    ),
+    MapMarkerOption(
       style: MapMarkerStyle.miniBlue,
       category: MapMarkerCategory.atraktor,
       assetPath: 'assets/A-Traktor/BAA3B7F2-D521-448A-945B-23C135CA577D.png',
@@ -227,10 +234,16 @@ class UserLocationMarker extends StatelessWidget {
       colorNameBuilder: _orangeLabel,
     ),
     MapMarkerOption(
+      style: MapMarkerStyle.miniPink,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/CDB10DE2-6FEC-4C22-9CFA-4D9B8CC48BF3.PNG',
+      labelBuilder: _miniLabel,
+      colorNameBuilder: _pinkLabel,
+    ),
+    MapMarkerOption(
       style: MapMarkerStyle.bmwRed,
       category: MapMarkerCategory.atraktor,
-      assetPath:
-          'assets/A-Traktor/00C1DD02-7ECB-4113-BEFF-25D50FB60232 2.png',
+      assetPath: 'assets/A-Traktor/00C1DD02-7ECB-4113-BEFF-25D50FB60232 2.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _redLabel,
     ),
@@ -247,6 +260,13 @@ class UserLocationMarker extends StatelessWidget {
       assetPath: 'assets/A-Traktor/19C25927-5A00-4010-8C52-56659BBA33C1.png',
       labelBuilder: _bmwLabel,
       colorNameBuilder: _silverLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.bmwPink,
+      category: MapMarkerCategory.atraktor,
+      assetPath: 'assets/A-Traktor/F0384A4D-9B3D-47F9-9914-735FB0F7BD10.PNG',
+      labelBuilder: _bmwLabel,
+      colorNameBuilder: _pinkLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.tractorWhite,
@@ -484,3 +504,4 @@ String _goldLabel(AppLocalizations l10n) => l10n.settingsColorGold;
 String _silverLabel(AppLocalizations l10n) => l10n.settingsColorSilver;
 String _yellowLabel(AppLocalizations l10n) => l10n.settingsColorYellow;
 String _orangeLabel(AppLocalizations l10n) => l10n.settingsColorOrange;
+String _pinkLabel(AppLocalizations l10n) => l10n.settingsColorPink;

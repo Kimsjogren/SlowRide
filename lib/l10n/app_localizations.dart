@@ -1377,6 +1377,12 @@ abstract class AppLocalizations {
   /// **'Orange'**
   String get settingsColorOrange;
 
+  /// No description provided for @settingsColorPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get settingsColorPink;
+
   /// No description provided for @navigationTitle.
   ///
   /// In en, this message translates to:

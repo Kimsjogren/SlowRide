@@ -258,6 +258,7 @@
   "settingsColorGraphite": "Graphite",
   "settingsColorYellow": "Yellow",
   "settingsColorOrange": "Orange",
+  "settingsColorPink": "Pink",
   "navigationTitle": "Turn-by-Turn Navigation",
   "navigationSubtitle": "Directions, next turn, and ETA optimized for slow vehicles.",
   "mapStartingGps": "Starting GPS...",

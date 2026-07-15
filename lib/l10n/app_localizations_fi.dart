@@ -663,6 +663,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsColorOrange => 'Oranssi';
 
   @override
+  String get settingsColorPink => 'Vaaleanpunainen';
+
+  @override
   String get navigationTitle => 'Käännös käännökseltä -navigointi';
 
   @override

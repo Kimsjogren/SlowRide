@@ -663,6 +663,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsColorOrange => 'Orange';
 
   @override
+  String get settingsColorPink => 'Rosa';
+
+  @override
   String get navigationTitle => 'Sväng-för-sväng-navigering';
 
   @override

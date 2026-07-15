@@ -1052,6 +1052,7 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
             MapMarkerStyle.miniGreen,
             MapMarkerStyle.miniWhite,
             MapMarkerStyle.miniBlue,
+            MapMarkerStyle.miniPink,
           ]),
         ),
         _MarkerBrandGroup(
@@ -1060,6 +1061,7 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
             MapMarkerStyle.bmwRed,
             MapMarkerStyle.bmwOrange,
             MapMarkerStyle.bmwSilver,
+            MapMarkerStyle.bmwPink,
           ]),
         ),
       ],

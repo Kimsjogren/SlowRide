@@ -258,6 +258,7 @@
   "settingsColorGraphite": "Graphite",
   "settingsColorYellow": "Jaune",
   "settingsColorOrange": "Orange",
+  "settingsColorPink": "Rose",
   "navigationTitle": "Navigation virage par virage",
   "navigationSubtitle": "Itinéraire, prochain virage et heure d'arrivée optimisés pour les véhicules lents.",
   "mapStartingGps": "Démarrage du GPS...",

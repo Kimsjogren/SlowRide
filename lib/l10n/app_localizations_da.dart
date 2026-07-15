@@ -663,6 +663,9 @@ class AppLocalizationsDa extends AppLocalizations {
   String get settingsColorOrange => 'Orange';
 
   @override
+  String get settingsColorPink => 'Lyserød';
+
+  @override
   String get navigationTitle => 'Sving-for-sving-navigation';
 
   @override
