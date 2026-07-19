@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -86,6 +87,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Duration? _lastCameraTickAt;
 
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  double? _deviceCompassHeading;
   Timer? _pinRefreshTimer;
   Timer? _locationPollTimer;
   Timer? _alertsTimer;
@@ -138,6 +141,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   // ── Navigation mode state ──────────────────────────────────────────────────
   bool _isNavigating = false;
+  bool _isNavigationPanelExpanded = false;
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
   String _currentStreetName = '';
@@ -215,6 +219,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   @override
   void initState() {
     super.initState();
+    _startCompassTracking();
     _bindRealtimeStreams();
     _tileHttpClient = http.Client();
     _tileProvider = NetworkTileProvider(
@@ -703,7 +708,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             _myLocation = point;
             _locationNotifier.value = point;
             _myHeading = headingForArrow;
-            if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
+            if (!_isFollowingMyPosition && _deviceCompassHeading == null) {
+              _arrowHdg.value = headingForArrow;
+            }
             _distToNextManeuver = newDistToManeuver;
             unawaited(_maybeRefreshRoadSpeedLimit(point));
 
@@ -903,6 +910,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
     }
     _positionSubscription?.cancel();
+    _compassSubscription?.cancel();
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
@@ -919,6 +927,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _searchFocus.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _startCompassTracking() {
+    _compassSubscription = FlutterCompass.events?.listen((event) {
+      final rawHeading = event.heading;
+      if (!mounted || rawHeading == null || !rawHeading.isFinite) return;
+
+      final normalizedHeading = (rawHeading % 360 + 360) % 360;
+      final previousHeading = _deviceCompassHeading;
+      if (previousHeading == null) {
+        _deviceCompassHeading = normalizedHeading;
+      } else {
+        final shortestTurn =
+            ((normalizedHeading - previousHeading + 540) % 360) - 180;
+        _deviceCompassHeading =
+            (previousHeading + shortestTurn * 0.32 + 360) % 360;
+      }
+
+      if (!_isFollowingMyPosition) {
+        _arrowHdg.value = _deviceCompassHeading!;
+      }
+    });
   }
 
   @override
@@ -3343,6 +3373,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _routeDestination = null;
       _pendingDestination = null;
       _isNavigating = false;
+      _isNavigationPanelExpanded = false;
       _destinationLabel = '';
       _routingStatus = '';
       _routeInstructions = const [];
@@ -3679,6 +3710,123 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'hangout' => Colors.amber,
       _ => Colors.red,
     };
+  }
+
+  Widget _buildCompactConvoyNavigationSpeed() {
+    final preferences = UserPreferencesService.instance;
+    return ValueListenableBuilder<double>(
+      valueListenable: _speedNotifier,
+      builder: (context, liveSpeed, _) {
+        return ValueListenableBuilder<SpeedUnit>(
+          valueListenable: preferences.speedUnit,
+          builder: (context, speedUnit, _) {
+            return ValueListenableBuilder<double>(
+              valueListenable: preferences.maxSpeedKmh,
+              builder: (context, maxSpeedKmh, _) {
+                final roadLimitKmh = _roadSpeedLimitKmh;
+                final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
+                final over = liveSpeed > effectiveLimitKmh;
+                final speedDisplay = preferences.toDisplaySpeed(
+                  speedKmh: liveSpeed,
+                  unit: speedUnit,
+                );
+                final effectiveLimitDisplay = preferences.toDisplaySpeed(
+                  speedKmh: effectiveLimitKmh,
+                  unit: speedUnit,
+                );
+                final roadLimitDisplay = roadLimitKmh == null
+                    ? null
+                    : preferences.toDisplaySpeed(
+                        speedKmh: roadLimitKmh,
+                        unit: speedUnit,
+                      );
+                final speedRatio = effectiveLimitDisplay > 0
+                    ? (speedDisplay / effectiveLimitDisplay).clamp(0.0, 1.25)
+                    : 0.0;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: const Size(50, 50),
+                            painter: _ConvoySpeedBarsPainter(
+                              ratio: speedRatio,
+                              activeColor: over
+                                  ? const Color(0xFFFF5A5F)
+                                  : const Color(0xFFFF9A2F),
+                              inactiveColor: const Color(0x40FFFFFF),
+                              strokeWidth: 3.6,
+                              segments: 28,
+                            ),
+                          ),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: over ? Colors.red : Colors.white24,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                speedDisplay.toStringAsFixed(0),
+                                style: TextStyle(
+                                  color: over ? Colors.redAccent : Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: roadLimitDisplay != null
+                              ? Colors.red.shade700
+                              : Colors.grey.shade500,
+                          width: 3.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          roadLimitDisplay?.toStringAsFixed(0) ?? '--',
+                          style: TextStyle(
+                            color: roadLimitDisplay != null
+                                ? Colors.black
+                                : Colors.black45,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -4492,26 +4640,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 bottom: false,
                                 child: Padding(
                                   padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    10,
-                                    12,
+                                    14,
+                                    8,
+                                    14,
                                     0,
                                   ),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF071739),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(16),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Colors.black87,
-                                          blurRadius: 18,
-                                          offset: Offset(0, 4),
+                                          color: Colors.black54,
+                                          blurRadius: 12,
+                                          offset: Offset(0, 3),
                                         ),
                                       ],
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      10,
+                                      14,
+                                      11,
                                     ),
                                     child: Row(
                                       children: [
@@ -4529,7 +4679,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   alpha: 0.36,
                                                 ),
                                                 borderRadius:
-                                                    BorderRadius.circular(14),
+                                                    BorderRadius.circular(13),
                                                 border: Border.all(
                                                   color: accent.withValues(
                                                     alpha: 0.9,
@@ -4540,12 +4690,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               child: Icon(
                                                 _turnIcon(_nextManeuverSign),
                                                 color: Colors.white,
-                                                size: 30,
+                                                size: 34,
                                               ),
                                             );
                                           },
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 11),
                                         Expanded(
                                           child: Builder(
                                             builder: (_) {
@@ -4562,8 +4712,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   Container(
                                                     padding:
                                                         const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
+                                                          horizontal: 9,
+                                                          vertical: 3,
                                                         ),
                                                     decoration: BoxDecoration(
                                                       color: accent,
@@ -4580,7 +4730,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       ),
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontSize: 13,
+                                                        fontSize: 11,
                                                         fontWeight:
                                                             FontWeight.w700,
                                                         letterSpacing: 0.1,
@@ -4599,9 +4749,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       fontSize: 18,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      height: 1.2,
+                                                      height: 1.15,
                                                     ),
-                                                    maxLines: 1,
+                                                    maxLines: 2,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),
@@ -4622,7 +4772,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                         ),
                                                         style: const TextStyle(
                                                           color: Colors.white70,
-                                                          fontSize: 14,
+                                                          fontSize: 12,
                                                           fontWeight:
                                                               FontWeight.w600,
                                                         ),
@@ -4646,7 +4796,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           if (_nearbyAlert != null && _myLocation != null)
                             Positioned(
                               top: _isNavigating && _nextManeuverText.isNotEmpty
-                                  ? 165
+                                  ? 128
                                   : 80,
                               left: 0,
                               right: 0,
@@ -4724,7 +4874,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               left: 0,
                               right: 0,
                               bottom: (_routeDestination != null || _isRouting)
-                                  ? 165
+                                  ? (_isNavigationPanelExpanded ? 165 : 68)
                                   : 100,
                               child: Center(
                                 child: Container(
@@ -4756,8 +4906,105 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
+                          if (_isNavigating &&
+                              !_isNavigationPanelExpanded &&
+                              _routeDestination != null)
+                            Positioned(
+                              left: 14,
+                              right: 14,
+                              bottom: 12,
+                              child: SafeArea(
+                                top: false,
+                                child: SizedBox(
+                                  height: 108,
+                                  child: Stack(
+                                    alignment: Alignment.bottomCenter,
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.bottomLeft,
+                                        child:
+                                            _buildCompactConvoyNavigationSpeed(),
+                                      ),
+                                      Semantics(
+                                        button: true,
+                                        label: l10n.routeOptionsTitle,
+                                        child: Tooltip(
+                                          message: l10n.routeOptionsTitle,
+                                          child: GestureDetector(
+                                            onTap: () => setState(
+                                              () => _isNavigationPanelExpanded =
+                                                  true,
+                                            ),
+                                            child: Container(
+                                              width: 42,
+                                              height: 42,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0x661E6BFF),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: const Color(
+                                                    0x993AA8FF,
+                                                  ),
+                                                  width: 1.5,
+                                                ),
+                                                boxShadow: const [
+                                                  BoxShadow(
+                                                    color: Colors.black38,
+                                                    blurRadius: 9,
+                                                    offset: Offset(0, 3),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.more_horiz,
+                                                color: Colors.white,
+                                                size: 22,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Semantics(
+                                          button: true,
+                                          label: l10n.mapEndNavigation,
+                                          child: Tooltip(
+                                            message: l10n.mapEndNavigation,
+                                            child: GestureDetector(
+                                              onTap: _clearConvoyRoute,
+                                              child: Container(
+                                                width: 42,
+                                                height: 42,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xE6D32F2F),
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black45,
+                                                      blurRadius: 9,
+                                                      offset: Offset(0, 3),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Icon(
+                                                  Icons.stop_rounded,
+                                                  color: Colors.white,
+                                                  size: 21,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           // Route / navigation bottom panel (Apple Maps dark)
-                          if (_routeDestination != null || _isRouting)
+                          if ((_routeDestination != null || _isRouting) &&
+                              (!_isNavigating || _isNavigationPanelExpanded))
                             Positioned(
                               left: 0,
                               right: 0,
@@ -4807,11 +5054,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 final roadLimitKmh =
                                                     _roadSpeedLimitKmh;
                                                 final effectiveLimitKmh =
-                                                    roadLimitKmh;
+                                                    roadLimitKmh ?? maxSpeedKmh;
                                                 final over =
-                                                    effectiveLimitKmh != null &&
                                                     liveSpeed >
-                                                        effectiveLimitKmh;
+                                                    effectiveLimitKmh;
                                                 final speedDisplay =
                                                     UserPreferencesService
                                                         .instance
@@ -4820,15 +5066,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           unit: speedUnit,
                                                         );
                                                 final effectiveLimitDisplay =
-                                                    effectiveLimitKmh == null
-                                                    ? 0.0
-                                                    : UserPreferencesService
-                                                          .instance
-                                                          .toDisplaySpeed(
-                                                            speedKmh:
-                                                                effectiveLimitKmh,
-                                                            unit: speedUnit,
-                                                          );
+                                                    UserPreferencesService
+                                                        .instance
+                                                        .toDisplaySpeed(
+                                                          speedKmh:
+                                                              effectiveLimitKmh,
+                                                          unit: speedUnit,
+                                                        );
                                                 final roadLimitDisplay =
                                                     roadLimitKmh == null
                                                     ? null
@@ -4856,19 +5100,51 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   children: [
                                                     // Drag handle
                                                     Center(
-                                                      child: Container(
-                                                        width: 34,
-                                                        height: 3,
-                                                        margin:
-                                                            const EdgeInsets.only(
-                                                              bottom: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white24,
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                2,
+                                                      child: GestureDetector(
+                                                        behavior:
+                                                            HitTestBehavior
+                                                                .opaque,
+                                                        onTap: _isNavigating
+                                                            ? () => setState(
+                                                                () =>
+                                                                    _isNavigationPanelExpanded =
+                                                                        false,
+                                                              )
+                                                            : null,
+                                                        onVerticalDragEnd:
+                                                            _isNavigating
+                                                            ? (details) {
+                                                                if ((details.primaryVelocity ??
+                                                                        0) >
+                                                                    100) {
+                                                                  setState(
+                                                                    () => _isNavigationPanelExpanded =
+                                                                        false,
+                                                                  );
+                                                                }
+                                                              }
+                                                            : null,
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.fromLTRB(
+                                                                34,
+                                                                0,
+                                                                34,
+                                                                8,
                                                               ),
+                                                          child: Container(
+                                                            width: 34,
+                                                            height: 3,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: Colors
+                                                                      .white24,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        2,
+                                                                      ),
+                                                                ),
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
@@ -5153,6 +5429,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                       onTap: () => setState(() {
                                                                         _isNavigating =
                                                                             true;
+                                                                        _isNavigationPanelExpanded =
+                                                                            false;
                                                                         _isFollowingMyPosition =
                                                                             true;
                                                                         _lastNearestIdx =
@@ -5350,8 +5628,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                           ),
                                           const SizedBox(height: 4),
                                           Container(
-                                            width: 34,
-                                            height: 34,
+                                            width: 42,
+                                            height: 42,
                                             decoration: BoxDecoration(
                                               color: Colors.white,
                                               shape: BoxShape.circle,
@@ -5417,13 +5695,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     final me = _myLocation;
                                     if (me == null) return;
                                     setState(() {
-                                      if (_isNavigating ||
-                                          _routePoints.isNotEmpty) {
-                                        _isFollowingMyPosition = true;
-                                      } else {
-                                        _isFollowingMyPosition =
-                                            !_isFollowingMyPosition;
-                                      }
+                                      _isFollowingMyPosition =
+                                          !_isFollowingMyPosition;
                                     });
 
                                     if (_isFollowingMyPosition) {

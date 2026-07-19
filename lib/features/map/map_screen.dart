@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 import 'package:geolocator/geolocator.dart';
@@ -47,8 +48,10 @@ class _MapScreenState extends State<MapScreen> {
   bool _showSuggestions = false;
 
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<CompassEvent>? _compassSubscription;
   double _speedKmh = 0;
   LatLng? _currentLocation;
+  double? _deviceCompassHeading;
 
   // Notifiers that feed MapWidget directly — updating them does NOT cause
   // the whole screen to rebuild (unlike setState).
@@ -61,9 +64,9 @@ class _MapScreenState extends State<MapScreen> {
   String _routingStatus = '';
   bool _isRouting = false;
   bool _isNavigating = false;
+  bool _isNavigationPanelExpanded = false;
   // true = camera locked on user (like Waze follow mode)
   bool _isFollowing = false;
-  bool _didInitialAutoFollow = false;
   bool _useVectorMap = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
@@ -159,6 +162,7 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _startCompassTracking();
     // Delay until after first frame so AppLocalizations/context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startLocationTracking();
@@ -605,10 +609,36 @@ class _MapScreenState extends State<MapScreen> {
     _simTimer?.cancel();
     _alertsTimer?.cancel();
     _positionSubscription?.cancel();
+    _compassSubscription?.cancel();
     UserPreferencesService.instance.useVectorMap.removeListener(
       _onUseVectorMapChanged,
     );
     super.dispose();
+  }
+
+  void _startCompassTracking() {
+    _compassSubscription = FlutterCompass.events?.listen((event) {
+      final rawHeading = event.heading;
+      if (!mounted || rawHeading == null || !rawHeading.isFinite) return;
+
+      final normalizedHeading = (rawHeading % 360 + 360) % 360;
+      final previousHeading = _deviceCompassHeading;
+      if (previousHeading == null) {
+        _deviceCompassHeading = normalizedHeading;
+      } else {
+        final shortestTurn =
+            ((normalizedHeading - previousHeading + 540) % 360) - 180;
+        _deviceCompassHeading =
+            (previousHeading + shortestTurn * 0.32 + 360) % 360;
+      }
+
+      // MapLibre already renders its native compass marker. The raster map
+      // needs the device heading only while its camera is not following the
+      // user; in follow mode the existing route/GPS heading remains active.
+      if (!_isFollowing && !_useVectorMap) {
+        _headingNotifier.value = _deviceCompassHeading!;
+      }
+    });
   }
 
   void _onUseVectorMapChanged() {
@@ -3273,6 +3303,7 @@ class _MapScreenState extends State<MapScreen> {
       _routeStop = null;
       _routeStopLabel = '';
       _isNavigating = false;
+      _isNavigationPanelExpanded = false;
       _isFollowing = false;
       _instructions = const [];
       _nextManeuverText = '';
@@ -3368,7 +3399,9 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     _locationNotifier.value = currentPos;
-    if (newSpeed > 0.5) {
+    final deviceControlsRasterArrow =
+        !_isFollowing && !_useVectorMap && _deviceCompassHeading != null;
+    if (newSpeed > 0.5 && !deviceControlsRasterArrow) {
       var headingForArrow = heading;
       if (_isNavigating &&
           nearestIdxForHeading != null &&
@@ -3387,10 +3420,6 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
-      if (!_didInitialAutoFollow && !_isNavigating && _routePoints.isEmpty) {
-        _isFollowing = true;
-        _didInitialAutoFollow = true;
-      }
       if (_isNavigating) {
         _tripDistanceM = newTripDist;
         _lastNavPos = currentPos;
@@ -3455,6 +3484,7 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _isSimulating = true;
       _isNavigating = true;
+      _isNavigationPanelExpanded = false;
       _isFollowing = true;
       _tripStartTime = DateTime.now();
       _tripDistanceM = 0;
@@ -3564,6 +3594,134 @@ class _MapScreenState extends State<MapScreen> {
     final heading = (math.atan2(dLng, dLat) * 180 / math.pi + 360) % 360;
 
     _processLocationUpdate(simPos, _simCurrentSpeedKmh, heading);
+  }
+
+  Widget _buildCompactNavigationSpeed(
+    AppLocalizations l10n,
+    UserPreferencesService preferences,
+  ) {
+    return ValueListenableBuilder<SpeedUnit>(
+      valueListenable: preferences.speedUnit,
+      builder: (context, speedUnit, _) {
+        return ValueListenableBuilder<double>(
+          valueListenable: preferences.maxSpeedKmh,
+          builder: (context, maxSpeedKmh, _) {
+            final roadLimitKmh = _roadSpeedLimitKmh;
+            final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
+            final over = _speedKmh > effectiveLimitKmh;
+            final speedDisplay = preferences.toDisplaySpeed(
+              speedKmh: _speedKmh,
+              unit: speedUnit,
+            );
+            final roadLimitDisplay = roadLimitKmh == null
+                ? null
+                : preferences.toDisplaySpeed(
+                    speedKmh: roadLimitKmh,
+                    unit: speedUnit,
+                  );
+            final effectiveLimitDisplay = preferences.toDisplaySpeed(
+              speedKmh: effectiveLimitKmh,
+              unit: speedUnit,
+            );
+            final speedRatio = effectiveLimitDisplay > 0
+                ? (speedDisplay / effectiveLimitDisplay).clamp(0.0, 1.25)
+                : 0.0;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(58, 58),
+                        painter: _SpeedBarsPainter(
+                          ratio: speedRatio,
+                          activeColor: over
+                              ? const Color(0xFFFF5A5F)
+                              : const Color(0xFFFF9A2F),
+                          inactiveColor: const Color(0x40FFFFFF),
+                          strokeWidth: 3.6,
+                          segments: 28,
+                        ),
+                      ),
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: over ? Colors.red : Colors.white38,
+                            width: 2,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black45,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            speedDisplay.toStringAsFixed(0),
+                            style: TextStyle(
+                              color: over ? Colors.redAccent : Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: roadLimitDisplay != null
+                          ? Colors.red.shade700
+                          : Colors.grey.shade500,
+                      width: 3.5,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 6,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      roadLimitDisplay?.toStringAsFixed(0) ?? '--',
+                      style: TextStyle(
+                        color: roadLimitDisplay != null
+                            ? Colors.black
+                            : Colors.black45,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -3679,20 +3837,16 @@ class _MapScreenState extends State<MapScreen> {
                     valueListenable: preferences.maxSpeedKmh,
                     builder: (context, maxSpeedKmh, _) {
                       final roadLimitKmh = _roadSpeedLimitKmh;
-                      final effectiveLimitKmh = roadLimitKmh;
-                      final over =
-                          effectiveLimitKmh != null &&
-                          _speedKmh > effectiveLimitKmh;
+                      final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
+                      final over = _speedKmh > effectiveLimitKmh;
                       final speedDisplay = preferences.toDisplaySpeed(
                         speedKmh: _speedKmh,
                         unit: speedUnit,
                       );
-                      final effectiveLimitDisplay = effectiveLimitKmh == null
-                          ? 0.0
-                          : preferences.toDisplaySpeed(
-                              speedKmh: effectiveLimitKmh,
-                              unit: speedUnit,
-                            );
+                      final effectiveLimitDisplay = preferences.toDisplaySpeed(
+                        speedKmh: effectiveLimitKmh,
+                        unit: speedUnit,
+                      );
                       final roadLimitDisplay = roadLimitKmh == null
                           ? null
                           : preferences.toDisplaySpeed(
@@ -3782,8 +3936,8 @@ class _MapScreenState extends State<MapScreen> {
                           const SizedBox(height: 4),
                           // EU speed limit sign
                           Container(
-                            width: 34,
-                            height: 34,
+                            width: 42,
+                            height: 42,
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -4023,22 +4177,22 @@ class _MapScreenState extends State<MapScreen> {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
                     child: Container(
                       // Urgency tint improves readability during close/complex turns.
                       // Major apps shift color closer to maneuver for attention.
                       decoration: BoxDecoration(
                         color: const Color(0xFF071739),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
                             color: Colors.black54,
-                            blurRadius: 16,
-                            offset: Offset(0, 4),
+                            blurRadius: 12,
+                            offset: Offset(0, 3),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 14, 11),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -4049,11 +4203,11 @@ class _MapScreenState extends State<MapScreen> {
                                 _nextManeuverSign,
                               );
                               return Container(
-                                width: 72,
-                                height: 72,
+                                width: 56,
+                                height: 56,
                                 decoration: BoxDecoration(
                                   color: accent.withValues(alpha: 0.36),
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(13),
                                   border: Border.all(
                                     color: accent.withValues(alpha: 0.9),
                                     width: 1.2,
@@ -4062,12 +4216,12 @@ class _MapScreenState extends State<MapScreen> {
                                 child: Icon(
                                   _turnIcon(_nextManeuverSign),
                                   color: Colors.white,
-                                  size: 44,
+                                  size: 34,
                                 ),
                               );
                             },
                           ),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 11),
                           Expanded(
                             child: Builder(
                               builder: (_) {
@@ -4081,8 +4235,8 @@ class _MapScreenState extends State<MapScreen> {
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
+                                        horizontal: 9,
+                                        vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
                                         color: accent,
@@ -4098,13 +4252,13 @@ class _MapScreenState extends State<MapScreen> {
                                         ),
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 13,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                           letterSpacing: 0.1,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 7),
+                                    const SizedBox(height: 5),
                                     Text(
                                       _localizedManeuverPrimaryText(
                                         l10n,
@@ -4113,9 +4267,9 @@ class _MapScreenState extends State<MapScreen> {
                                       ),
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 22,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        height: 1.2,
+                                        height: 1.15,
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
@@ -4134,7 +4288,7 @@ class _MapScreenState extends State<MapScreen> {
                                           ),
                                           style: const TextStyle(
                                             color: Colors.white70,
-                                            fontSize: 14,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w600,
                                           ),
                                           maxLines: 1,
@@ -4156,7 +4310,7 @@ class _MapScreenState extends State<MapScreen> {
             // Proximity alert banner
             if (_nearbyAlert != null && _currentLocation != null)
               Positioned(
-                top: _nextManeuverText.isNotEmpty ? 165 : 12,
+                top: _nextManeuverText.isNotEmpty ? 128 : 12,
                 left: 0,
                 right: 0,
                 child: Material(
@@ -4230,11 +4384,7 @@ class _MapScreenState extends State<MapScreen> {
                 // GPS / re-center button
                 _mapCircleButton(
                   onTap: () => setState(() {
-                    if (_isNavigating || _routePoints.isNotEmpty) {
-                      _isFollowing = true;
-                    } else {
-                      _isFollowing = !_isFollowing;
-                    }
+                    _isFollowing = !_isFollowing;
                   }),
                   color: _isFollowing ? const Color(0xFF1E6BFF) : null,
                   child: Icon(
@@ -4363,7 +4513,7 @@ class _MapScreenState extends State<MapScreen> {
                   (_destination != null ||
                       _routePoints.isNotEmpty ||
                       _isRouting)
-                  ? 165
+                  ? (_isNavigationPanelExpanded ? 165 : 68)
                   : 100,
               child: Center(
                 child: Container(
@@ -4393,8 +4543,103 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          // Minimal driving controls. The full route panel stays out of the
+          // map until the driver explicitly opens it from the three-dot button.
+          if (_isNavigating &&
+              !_isNavigationPanelExpanded &&
+              (_destination != null || _routePoints.isNotEmpty))
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 12,
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  height: 108,
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      Align(
+                        alignment: Alignment.bottomLeft,
+                        child: _buildCompactNavigationSpeed(l10n, preferences),
+                      ),
+                      Semantics(
+                        button: true,
+                        label: l10n.routeOptionsTitle,
+                        child: Tooltip(
+                          message: l10n.routeOptionsTitle,
+                          child: GestureDetector(
+                            onTap: () => setState(
+                              () => _isNavigationPanelExpanded = true,
+                            ),
+                            child: Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0x661E6BFF),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0x993AA8FF),
+                                  width: 1.5,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black38,
+                                    blurRadius: 9,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.more_horiz,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Semantics(
+                          button: true,
+                          label: l10n.mapEndNavigation,
+                          child: Tooltip(
+                            message: l10n.mapEndNavigation,
+                            child: GestureDetector(
+                              onTap: _clearRoute,
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xE6D32F2F),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black45,
+                                      blurRadius: 9,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.stop_rounded,
+                                  color: Colors.white,
+                                  size: 21,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           // ── Navigation bottom panel (Apple Maps dark) ──────────────────
-          if (_destination != null || _routePoints.isNotEmpty || _isRouting)
+          if ((_destination != null || _routePoints.isNotEmpty || _isRouting) &&
+              (!_isNavigating || _isNavigationPanelExpanded))
             Positioned(
               left: 0,
               right: 0,
@@ -4422,21 +4667,18 @@ class _MapScreenState extends State<MapScreen> {
                           valueListenable: preferences.maxSpeedKmh,
                           builder: (context, maxSpeedKmh, _) {
                             final roadLimitKmh = _roadSpeedLimitKmh;
-                            final effectiveLimitKmh = roadLimitKmh;
-                            final over =
-                                effectiveLimitKmh != null &&
-                                _speedKmh > effectiveLimitKmh;
+                            final effectiveLimitKmh =
+                                roadLimitKmh ?? maxSpeedKmh;
+                            final over = _speedKmh > effectiveLimitKmh;
                             final speedDisplay = preferences.toDisplaySpeed(
                               speedKmh: _speedKmh,
                               unit: speedUnit,
                             );
-                            final effectiveLimitDisplay =
-                                effectiveLimitKmh == null
-                                ? 0.0
-                                : preferences.toDisplaySpeed(
-                                    speedKmh: effectiveLimitKmh,
-                                    unit: speedUnit,
-                                  );
+                            final effectiveLimitDisplay = preferences
+                                .toDisplaySpeed(
+                                  speedKmh: effectiveLimitKmh,
+                                  unit: speedUnit,
+                                );
                             final roadLimitDisplay = roadLimitKmh == null
                                 ? null
                                 : preferences.toDisplaySpeed(
@@ -4453,15 +4695,46 @@ class _MapScreenState extends State<MapScreen> {
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Drag handle
+                                // Tap or drag the handle down to return to the
+                                // distraction-free driving layout.
                                 Center(
-                                  child: Container(
-                                    width: 40,
-                                    height: 4,
-                                    margin: const EdgeInsets.only(bottom: 14),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white24,
-                                      borderRadius: BorderRadius.circular(2),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _isNavigating
+                                        ? () => setState(
+                                            () => _isNavigationPanelExpanded =
+                                                false,
+                                          )
+                                        : null,
+                                    onVerticalDragEnd: _isNavigating
+                                        ? (details) {
+                                            if ((details.primaryVelocity ?? 0) >
+                                                100) {
+                                              setState(
+                                                () =>
+                                                    _isNavigationPanelExpanded =
+                                                        false,
+                                              );
+                                            }
+                                          }
+                                        : null,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        34,
+                                        0,
+                                        34,
+                                        14,
+                                      ),
+                                      child: Container(
+                                        width: 40,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white24,
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -4865,6 +5138,8 @@ class _MapScreenState extends State<MapScreen> {
                                                         .startSession(vt);
                                                     setState(() {
                                                       _isNavigating = true;
+                                                      _isNavigationPanelExpanded =
+                                                          false;
                                                       _isFollowing = true;
                                                       _tripStartTime =
                                                           DateTime.now();
