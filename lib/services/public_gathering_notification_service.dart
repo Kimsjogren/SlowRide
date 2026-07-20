@@ -177,6 +177,10 @@ class PublicGatheringNotificationService {
         '$location se trouve à moins de 25 km.',
       ),
       'es' => ('Encuentro público cercano', '$location está a menos de 25 km.'),
+      'it' => (
+        'Incontro pubblico nelle vicinanze',
+        '$location si trova entro 25 km.',
+      ),
       _ => ('Public meetup nearby', '$location is within 25 km.'),
     };
   }

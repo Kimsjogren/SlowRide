@@ -224,6 +224,10 @@ class SettingsScreen extends StatelessWidget {
                                 child: Text(l10n.settingsCountrySpain),
                               ),
                               DropdownMenuItem(
+                                value: 'IT',
+                                child: Text(l10n.settingsCountryItaly),
+                              ),
+                              DropdownMenuItem(
                                 value: 'GB',
                                 child: Text(l10n.settingsCountryUnitedKingdom),
                               ),
@@ -239,6 +243,7 @@ class SettingsScreen extends StatelessWidget {
                                   'FI' => 'fi',
                                   'FR' => 'fr',
                                   'ES' => 'es',
+                                  'IT' => 'it',
                                   'GB' => 'en',
                                   _ => null,
                                 };
@@ -311,6 +316,10 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'es',
                                 child: Text(l10n.settingsLanguageSpanish),
                               ),
+                              DropdownMenuItem(
+                                value: 'it',
+                                child: Text(l10n.settingsLanguageItalian),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value == null || value == 'system') {
@@ -326,6 +335,7 @@ class SettingsScreen extends StatelessWidget {
                                 'fi' => 'FI',
                                 'fr' => 'FR',
                                 'es' => 'ES',
+                                'it' => 'IT',
                                 _ => null,
                               };
                               if (syncedCountry != null) {
@@ -347,6 +357,7 @@ class SettingsScreen extends StatelessWidget {
                             'da' => l10n.settingsLanguageDanish,
                             'fi' => l10n.settingsLanguageFinnish,
                             'es' => l10n.settingsLanguageSpanish,
+                            'it' => l10n.settingsLanguageItalian,
                             _ => l10n.settingsLanguageSystem,
                           };
                           return Text(

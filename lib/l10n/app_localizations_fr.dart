@@ -493,6 +493,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsLanguageSpanish => 'Espagnol';
 
   @override
+  String get settingsLanguageItalian => 'Italien';
+
+  @override
   String get settingsCountryLabel => 'Pays (règles de circulation)';
 
   @override
@@ -512,6 +515,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsCountrySpain => '🇪🇸 Espagne';
+
+  @override
+  String get settingsCountryItaly => '🇮🇹 Italie';
 
   @override
   String get settingsCountryUnitedKingdom => '🇬🇧 Royaume-Uni';

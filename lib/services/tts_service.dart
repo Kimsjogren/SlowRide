@@ -23,6 +23,8 @@ class TtsService {
     'nb': 'nb-NO',
     'da': 'da-DK',
     'fi': 'fi-FI',
+    'es': 'es-ES',
+    'it': 'it-IT',
   };
 
   Future<void> initialize() async {

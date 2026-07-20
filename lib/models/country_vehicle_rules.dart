@@ -10,6 +10,7 @@
 ///   DK – Færdselsstyrelsen (Danish Road Safety Agency)
 ///   FI – Traficom (Finnish Transport and Communications Agency)
 ///   FR – Code de la route (French Highway Code)
+///   IT – Codice della strada / Ministero delle Infrastrutture e dei Trasporti
 ///   GB – GOV.UK / DVLA vehicle categories
 class CountryVehicleRules {
   CountryVehicleRules._();
@@ -22,6 +23,7 @@ class CountryVehicleRules {
     'FI',
     'FR',
     'ES',
+    'IT',
     'GB',
   ];
 
@@ -59,6 +61,15 @@ class CountryVehicleRules {
   static String? countryFromCoordinates(double lat, double lon) {
     // Spain mainland — check before France to avoid overlap in Pyrenees area.
     if (lat >= 35.9 && lat <= 43.8 && lon >= -9.3 && lon <= 3.3) return 'ES';
+
+    // Italy — mainland/peninsula plus Sicily and Sardinia. Split boxes reduce
+    // false matches with nearby Corsica and the French Riviera.
+    if (lat >= 43.75 && lat <= 46.7 && lon >= 7.0 && lon <= 10.7) return 'IT';
+    if (lat >= 44.7 && lat <= 47.1 && lon > 10.7 && lon <= 13.9) return 'IT';
+    if (lat >= 42.0 && lat < 44.8 && lon >= 9.4 && lon <= 14.0) return 'IT';
+    if (lat >= 37.8 && lat < 42.2 && lon >= 12.0 && lon <= 18.7) return 'IT';
+    if (lat >= 36.6 && lat < 38.4 && lon >= 12.3 && lon <= 15.8) return 'IT';
+    if (lat >= 38.8 && lat <= 41.4 && lon >= 8.0 && lon <= 9.9) return 'IT';
 
     // France mainland.
     if (lat >= 43.0 && lat <= 51.1 && lon >= -5.2 && lon <= 9.6) return 'FR';
@@ -246,6 +257,35 @@ class CountryVehicleRules {
     ),
     // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
     'ES_Tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 30,
+      maxLegalSpeedKmh: 40,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+
+    // ── Italy (IT) ──────────────────────────────────────────────────────
+    // Italy has no native A-tractor category. A Swedish A-tractor remains
+    // construction-limited to 30 km/h and is conservatively kept away from
+    // autostrade and main extra-urban roads.
+    'IT_A-tractor': VehicleRoutingProfile(
+      defaultSpeedKmh: 30,
+      maxLegalSpeedKmh: 30,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    // Quadriciclo leggero / minicar (L6e): construction speed max 45 km/h.
+    'IT_Moped car': VehicleRoutingProfile(
+      defaultSpeedKmh: 45,
+      maxLegalSpeedKmh: 45,
+      useHighways: 0.0,
+      useTolls: 0.0,
+      useFerry: 0.3,
+    ),
+    // Agricultural machines: normally 40 km/h with pneumatic-equivalent
+    // running gear (15 km/h otherwise). Use 30 km/h as the safe default.
+    'IT_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
       useHighways: 0.0,

@@ -39,7 +39,7 @@ sudo usermod -aG docker $USER
 ```bash
 cd docker/valhalla
 
-# Download map extracts (Nordics + France + Spain)
+# Download map extracts (Nordics + France + Great Britain + Spain + Italy)
 cd data
 wget -N https://download.geofabrik.de/europe/sweden-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/norway-latest.osm.pbf
@@ -48,6 +48,7 @@ wget -N https://download.geofabrik.de/europe/finland-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/france-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/spain-latest.osm.pbf
 wget -N https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
+wget -N https://download.geofabrik.de/europe/italy-latest.osm.pbf
 
 cd ..
 docker-compose up -d

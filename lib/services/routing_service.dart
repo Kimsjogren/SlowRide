@@ -131,6 +131,7 @@ class RoutingService {
       'da' => 'da',
       'fi' => 'fi',
       'es' => 'es',
+      'it' => 'it',
       _ => 'en',
     };
   }
@@ -145,6 +146,7 @@ class RoutingService {
       'da' => 'da-DK',
       'fi' => 'fi-FI',
       'es' => 'es-ES',
+      'it' => 'it-IT',
       _ => 'en-US',
     };
   }

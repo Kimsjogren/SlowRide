@@ -10,6 +10,7 @@ import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fi.dart';
 import 'app_localizations_fr.dart';
+import 'app_localizations_it.dart';
 import 'app_localizations_nb.dart';
 import 'app_localizations_sv.dart';
 
@@ -101,6 +102,7 @@ abstract class AppLocalizations {
     Locale('es'),
     Locale('fi'),
     Locale('fr'),
+    Locale('it'),
     Locale('nb'),
     Locale('sv')
   ];
@@ -1053,6 +1055,12 @@ abstract class AppLocalizations {
   /// **'Spanish'**
   String get settingsLanguageSpanish;
 
+  /// No description provided for @settingsLanguageItalian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get settingsLanguageItalian;
+
   /// No description provided for @settingsCountryLabel.
   ///
   /// In en, this message translates to:
@@ -1094,6 +1102,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'🇪🇸 Spain'**
   String get settingsCountrySpain;
+
+  /// No description provided for @settingsCountryItaly.
+  ///
+  /// In en, this message translates to:
+  /// **'🇮🇹 Italy'**
+  String get settingsCountryItaly;
 
   /// No description provided for @settingsCountryUnitedKingdom.
   ///
@@ -3109,7 +3123,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'it', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -3125,6 +3139,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     case 'es': return AppLocalizationsEs();
     case 'fi': return AppLocalizationsFi();
     case 'fr': return AppLocalizationsFr();
+    case 'it': return AppLocalizationsIt();
     case 'nb': return AppLocalizationsNb();
     case 'sv': return AppLocalizationsSv();
   }

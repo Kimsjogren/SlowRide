@@ -9,6 +9,31 @@ void main() {
   const destination = LatLng(59.2768, 18.1316);
 
   group('RoutingService Valhalla slow vehicle profiles', () {
+    test('Italy is detected and uses Italian slow-vehicle limits', () {
+      expect(
+        CountryVehicleRules.countryFromCoordinates(41.9028, 12.4964),
+        'IT',
+      );
+      expect(CountryVehicleRules.countryFromCoordinates(45.4642, 9.1900), 'IT');
+      expect(
+        CountryVehicleRules.countryFromCoordinates(38.1157, 13.3615),
+        'IT',
+      );
+      expect(CountryVehicleRules.countryFromCoordinates(40.1209, 9.0129), 'IT');
+
+      final aTractor = CountryVehicleRules.getProfile('IT', 'A-tractor');
+      final mopedCar = CountryVehicleRules.getProfile('IT', 'Moped car');
+      final tractor = CountryVehicleRules.getProfile('IT', 'Tractor');
+
+      expect(aTractor.maxLegalSpeedKmh, 30);
+      expect(mopedCar.maxLegalSpeedKmh, 45);
+      expect(tractor.defaultSpeedKmh, 30);
+      expect(tractor.maxLegalSpeedKmh, 40);
+      expect(aTractor.useHighways, 0);
+      expect(mopedCar.useHighways, 0);
+      expect(tractor.useHighways, 0);
+    });
+
     test('low vehicle matches A-tractor rules in every supported country', () {
       for (final country in CountryVehicleRules.supportedCountries) {
         final lowVehicle = CountryVehicleRules.getProfile(

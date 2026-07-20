@@ -673,6 +673,8 @@ class _MapScreenState extends State<MapScreen> {
       'nb': 'no',
       'da': 'da',
       'fi': 'fi',
+      'es': 'es',
+      'it': 'it',
     };
     return map[appLang] ?? 'sv';
   }

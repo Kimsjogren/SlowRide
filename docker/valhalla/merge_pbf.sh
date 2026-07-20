@@ -17,6 +17,7 @@ PBF_FILES=(
   "$DATA_DIR/finland-latest.osm.pbf"
   "$DATA_DIR/france-latest.osm.pbf"
   "$DATA_DIR/great-britain-latest.osm.pbf"
+  "$DATA_DIR/italy-latest.osm.pbf"
   "$DATA_DIR/norway-latest.osm.pbf"
   "$DATA_DIR/spain-latest.osm.pbf"
   "$DATA_DIR/sweden-latest.osm.pbf"

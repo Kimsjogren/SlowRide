@@ -1531,6 +1531,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'nb': 'no',
       'da': 'da',
       'fi': 'fi',
+      'es': 'es',
+      'it': 'it',
     };
     return map[appLang] ?? 'sv';
   }
