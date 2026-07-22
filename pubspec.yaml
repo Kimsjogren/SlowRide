@@ -54,7 +54,7 @@ dependencies:
   share_plus: any
   flutter_tts: ^4.2.5
   flutter_svg: any
-  in_app_purchase: any
+  in_app_purchase: ^3.3.0
   maplibre_gl: ^0.26.2
   flutter_compass: ^0.8.1
 
