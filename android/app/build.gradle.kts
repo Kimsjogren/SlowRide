@@ -70,8 +70,7 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-    // Google Play requires Billing Library 8.0.0 or newer for new releases.
-    // Keep this explicit even though the Flutter IAP plugin also depends on it,
-    // so Gradle cannot resolve an older transitive Billing Client.
-    implementation("com.android.billingclient:billing:8.0.0")
+    // Keep the app on the latest Google Play Billing Library even when the
+    // Flutter IAP plugin still declares an older compatible version.
+    implementation("com.android.billingclient:billing:9.1.0")
 }
