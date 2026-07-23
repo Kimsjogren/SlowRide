@@ -144,7 +144,11 @@ class SubscriptionService {
     } else if (isWebCheckout) {
       _attachLanguageListener();
       _refreshWebDisplayPrice();
+      _attachAuthListeners();
+      await syncWebEntitlement();
     } else {
+      _attachAuthListeners();
+      await syncWebEntitlement();
       await _startIap();
     }
 
@@ -210,7 +214,6 @@ class SubscriptionService {
   }
 
   void _onAuthChanged() {
-    if (!kIsWeb) return;
     unawaited(syncWebEntitlement(force: true));
   }
 
@@ -222,7 +225,6 @@ class SubscriptionService {
   }
 
   Future<bool> syncWebEntitlement({bool force = false}) async {
-    if (!kIsWeb) return isPro.value;
     if (_webSyncInFlight && !force) return isPro.value;
     if (BackendConfig.forcePro) {
       await activatePro();
@@ -240,8 +242,8 @@ class SubscriptionService {
     try {
       final uid = AuthService.instance.userId.value;
       if (uid == null || uid.isEmpty) {
-        await deactivatePro();
-        return false;
+        await _applyAccountEntitlement(false);
+        return isPro.value;
       }
 
       final rows = await SupabaseService.instance.client
@@ -252,8 +254,8 @@ class SubscriptionService {
           .limit(1);
 
       if (rows.isEmpty) {
-        await deactivatePro();
-        return false;
+        await _applyAccountEntitlement(false);
+        return isPro.value;
       }
 
       final row = Map<String, dynamic>.from(rows.first as Map);
@@ -270,18 +272,43 @@ class SubscriptionService {
           periodEndUtc.isAfter(nowUtc);
 
       if (activeStatus || graceStatus) {
-        await activatePro();
+        await _applyAccountEntitlement(true);
         return true;
       }
 
-      await deactivatePro();
-      return false;
+      await _applyAccountEntitlement(false);
+      return isPro.value;
     } catch (e) {
       debugPrint('Web subscription sync failed: $e');
       return isPro.value;
     } finally {
       _webSyncInFlight = false;
     }
+  }
+
+  /// Applies a server-managed account entitlement without turning it into a
+  /// permanent local store purchase on native platforms.
+  ///
+  /// Native Google Play/App Store purchases remain stored in [_isProKey].
+  /// When an account entitlement is revoked or the user signs out, the app
+  /// falls back to that local store entitlement. Web uses the account
+  /// entitlement as its source of truth and keeps the existing local cache.
+  Future<void> _applyAccountEntitlement(bool active) async {
+    if (kIsWeb) {
+      if (active) {
+        await activatePro();
+      } else {
+        await deactivatePro();
+      }
+      return;
+    }
+
+    if (active) {
+      isPro.value = true;
+      return;
+    }
+
+    isPro.value = _prefs.getBool(_isProKey) ?? false;
   }
 
   Future<void> _startIap() async {
