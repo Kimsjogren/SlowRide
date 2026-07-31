@@ -1630,6 +1630,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Future<List<Map<String, dynamic>>> _fetchMapboxResults(
     String query, {
     int limit = 12,
+    bool useProximity = true,
   }) async {
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
@@ -1645,10 +1646,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'limit': '$limit',
       'country': countries,
       'language': _mapboxLanguageCode(),
-      'types': 'poi,address,street,place,locality,neighborhood',
+      'types': 'address,place,locality,neighborhood,postcode',
     };
 
-    if (_myLocation != null) {
+    if (useProximity && _myLocation != null) {
       params['proximity'] =
           '${_myLocation!.longitude},${_myLocation!.latitude}';
     }
@@ -1674,6 +1675,21 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       if (mapped != null) converted.add(mapped);
     }
     return converted;
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
+    String query, {
+    int limit = 12,
+  }) async {
+    final mapboxRequests = <Future<List<Map<String, dynamic>>>>[
+      _fetchMapboxResults(query, limit: limit),
+      if (_myLocation != null)
+        _fetchMapboxResults(query, limit: limit, useProximity: false),
+    ];
+    final mapboxResponses = await Future.wait(mapboxRequests);
+    final raw = mapboxResponses.expand((results) => results).toList();
+    if (raw.isNotEmpty) return raw;
+    return _fetchNominatimResults(query, limit: math.max(limit, 20));
   }
 
   Future<List<Map<String, dynamic>>> _fetchNominatimResults(
@@ -1851,7 +1867,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         candidates
             .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
             .toList()
-          ..sort((a, b) => b.score.compareTo(a.score));
+          ..sort((a, b) {
+            final current = _myLocation;
+            if (current != null) {
+              double distanceTo(Map<String, dynamic> result) {
+                final lat = double.tryParse(result['lat']?.toString() ?? '');
+                final lon = double.tryParse(result['lon']?.toString() ?? '');
+                if (lat == null || lon == null) return double.infinity;
+                return Geolocator.distanceBetween(
+                  current.latitude,
+                  current.longitude,
+                  lat,
+                  lon,
+                );
+              }
+
+              final byDistance = distanceTo(
+                a.item,
+              ).compareTo(distanceTo(b.item));
+              if (byDistance != 0) return byDistance;
+            }
+            return b.score.compareTo(a.score);
+          });
 
     final seen = <String>{};
     final deduped = <Map<String, dynamic>>[];
@@ -1871,10 +1908,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     if (query.isEmpty) return;
     setState(() => _showSuggestions = false);
     try {
-      var raw = await _fetchMapboxResults(query, limit: 12);
-      if (raw.isEmpty) {
-        raw = await _fetchNominatimResults(query, limit: 20);
-      }
+      final raw = await _fetchPrimaryGeocodingResults(query, limit: 12);
       if (raw.isEmpty) {
         if (!mounted) return;
         setState(() {
@@ -1931,8 +1965,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       }
       setSheetState(() => isSearching = true);
       try {
-        var raw = await _fetchMapboxResults(query, limit: 12);
-        if (raw.isEmpty) raw = await _fetchNominatimResults(query, limit: 15);
+        final raw = await _fetchPrimaryGeocodingResults(query, limit: 12);
         final ranked = _rankAndDedupeSuggestions(raw, query);
         if (!mounted) return;
         setSheetState(() {

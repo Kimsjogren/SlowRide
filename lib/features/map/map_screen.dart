@@ -765,6 +765,7 @@ class _MapScreenState extends State<MapScreen> {
     String query, {
     int limit = 10,
     LatLng? proximity,
+    bool useProximity = true,
   }) async {
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
@@ -780,10 +781,10 @@ class _MapScreenState extends State<MapScreen> {
       'limit': '$limit',
       'country': countries,
       'language': _mapboxLanguageCode(),
-      'types': 'poi,address,street,place,locality,neighborhood',
+      'types': 'address,place,locality,neighborhood,postcode',
     };
 
-    final prox = proximity ?? _currentLocation;
+    final prox = useProximity ? (proximity ?? _currentLocation) : null;
     if (prox != null) {
       params['proximity'] = '${prox.longitude},${prox.latitude}';
     }
@@ -815,12 +816,16 @@ class _MapScreenState extends State<MapScreen> {
     String query, {
     int limit = 15,
     LatLng? proximity,
+    bool includeGlobalResults = true,
   }) async {
-    var raw = await _fetchMapboxResults(
-      query,
-      limit: limit,
-      proximity: proximity,
-    );
+    final effectiveProximity = proximity ?? _currentLocation;
+    final mapboxRequests = <Future<List<Map<String, dynamic>>>>[
+      _fetchMapboxResults(query, limit: limit, proximity: proximity),
+      if (includeGlobalResults && effectiveProximity != null)
+        _fetchMapboxResults(query, limit: limit, useProximity: false),
+    ];
+    final mapboxResponses = await Future.wait(mapboxRequests);
+    var raw = mapboxResponses.expand((results) => results).toList();
     if (raw.isEmpty) {
       raw = await _fetchNominatimResults(
         query,
@@ -863,9 +868,7 @@ class _MapScreenState extends State<MapScreen> {
       final lon = prox.longitude;
       baseParams['viewbox'] =
           '${lon - 0.35},${lat + 0.35},${lon + 0.35},${lat - 0.35}';
-      baseParams['bounded'] = '1';
       structuredParams['viewbox'] = baseParams['viewbox']!;
-      structuredParams['bounded'] = '1';
     }
 
     final response = await http.get(
@@ -1263,7 +1266,28 @@ class _MapScreenState extends State<MapScreen> {
         candidates
             .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
             .toList()
-          ..sort((a, b) => b.score.compareTo(a.score));
+          ..sort((a, b) {
+            final current = _currentLocation;
+            if (current != null) {
+              double distanceTo(Map<String, dynamic> result) {
+                final lat = double.tryParse(result['lat']?.toString() ?? '');
+                final lon = double.tryParse(result['lon']?.toString() ?? '');
+                if (lat == null || lon == null) return double.infinity;
+                return Geolocator.distanceBetween(
+                  current.latitude,
+                  current.longitude,
+                  lat,
+                  lon,
+                );
+              }
+
+              final byDistance = distanceTo(
+                a.item,
+              ).compareTo(distanceTo(b.item));
+              if (byDistance != 0) return byDistance;
+            }
+            return b.score.compareTo(a.score);
+          });
 
     final seen = <String>{};
     final deduped = <Map<String, dynamic>>[];
@@ -1911,6 +1935,7 @@ class _MapScreenState extends State<MapScreen> {
           query,
           limit: 12,
           proximity: currentLocation,
+          includeGlobalResults: false,
         ),
       ),
     );
