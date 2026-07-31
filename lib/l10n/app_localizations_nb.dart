@@ -45,7 +45,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.3 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Fellesskapsvarsler';
@@ -597,7 +597,7 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes din Apple ID én gang. Ingen abonnement og ingen automatisk fornyelse.';
+  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes én gang via appbutikken. Ingen abonnement og ingen automatisk fornyelse.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Personvernregler';
@@ -1074,6 +1074,11 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallUpgradeButton => 'Oppgrader til Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Kjøp Pro permanent · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Gjenopprett kjøp';
 
   @override
@@ -1087,7 +1092,7 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1594,4 +1599,67 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get publicGatheringStarted => 'Pågår';
+
+  @override
+  String get aiRouteButton => 'AI-sjekk ruten';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI-ruteanalyse';
+
+  @override
+  String get aiConsentTitle => 'Bruke AI-ruteanalyse?';
+
+  @override
+  String get aiConsentBody => 'CruizX sender rutefakta som avstand, reisetid, kjøretøytype, veinavn og antall varsler til CruizX AI-tjeneste på Cloudflare. Posisjonen din, destinasjonskoordinater og identitet sendes ikke. AI kan ta feil og endrer aldri ruten din.';
+
+  @override
+  String get aiConsentAccept => 'Godta og fortsett';
+
+  @override
+  String get aiConsentDecline => 'Ikke nå';
+
+  @override
+  String get aiSignInRequired => 'Logg inn for å bruke AI-ruteanalyse.';
+
+  @override
+  String get aiLoading => 'Sjekker ruten…';
+
+  @override
+  String get aiUnavailable => 'AI-ruteanalyse er utilgjengelig akkurat nå. Ruten din er uendret.';
+
+  @override
+  String get aiDailyLimit => 'Du har nådd dagens grense for AI-ruteanalyser.';
+
+  @override
+  String get aiHighlights => 'Fordeler';
+
+  @override
+  String get aiCautions => 'Ting å sjekke';
+
+  @override
+  String get aiRecommendation => 'Anbefaling';
+
+  @override
+  String get aiDisclaimer => 'AI-sammendrag basert bare på tilgjengelige rutedata. Følg skilt og gjeldende veiforhold.';
+
+  @override
+  String get aiReport => 'Rapporter svaret';
+
+  @override
+  String get aiReportTitle => 'Hvorfor rapporterer du svaret?';
+
+  @override
+  String get aiReportIncorrect => 'Feil informasjon';
+
+  @override
+  String get aiReportUnsafe => 'Utrygt råd';
+
+  @override
+  String get aiReportInappropriate => 'Upassende innhold';
+
+  @override
+  String get aiReportOther => 'Annet problem';
+
+  @override
+  String get aiReportSent => 'Takk. AI-svaret er rapportert.';
 }

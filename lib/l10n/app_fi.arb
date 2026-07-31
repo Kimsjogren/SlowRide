@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Ladataan asetuksia...",
   "splashFinalizingStartup": "Viimeistellään käynnistystä...",
   "splashReady": "Valmis",
-  "splashVersionLine": "v1.1.3 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.4 | CruizX by KimTechTool",
   "alertsTitle": "Yhteisön hälytykset",
   "alertsSubtitle": "Ilmoita ja tarkastele tievaaroja, tarkastuksia ja tieolosuhteita.",
   "convoyRequiresSignInTitle": "Saattue vaatii kirjautumisen",
@@ -235,7 +235,7 @@
   "@settingsProPriceOneTime": {
     "placeholders": { "price": {} }
   },
-  "settingsProOneTimeNote": "Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä automaattista uusimista.",  "settingsPrivacyPolicyLabel": "Tietosuojakäytäntö",
+  "settingsProOneTimeNote": "Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran sovelluskaupan kautta. Ei tilausta eikä automaattista uusimista.",  "settingsPrivacyPolicyLabel": "Tietosuojakäytäntö",
   "settingsTermsOfUseLabel": "Käyttöehdot (EULA)",
   "settingsSupportLabel": "Tuki",
   "settingsLinkOpenFailed": "Linkkiä ei voitu avata juuri nyt.",
@@ -443,7 +443,9 @@
   "paywallSubtitle": "Ei rajoituksia. Ei mainoksia. Täysi pääsy.",
   "paywallPrice": "3,49 € / kuukausi",
   "paywallUpgradeButton": "Päivitä Prohon",
-  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallDisclosureAndroid": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.",  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },  "paywallPriceOneTime": "79 kr",  "paywallDisclosureOneTime": "CruizX Pro · {price} · kertaosto. Veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä uusimista.",  "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
+  "paywallLifetimeButton": "Osta Pro pysyvästi · {price}",
+  "@paywallLifetimeButton": { "placeholders": { "price": {} } },
+  "paywallRestoreButton": "Palauta osto",  "paywallDisclosure": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Peruuta milloin tahansa Asetuksista vähintään 24 tuntia ennen uusimista. Veloitetaan Apple ID -tililtäsi.",  "@paywallDisclosure": { "placeholders": { "price": {} } },  "paywallDisclosureAndroid": "CruizX Pro · {price}/kuukausi · uusiutuu automaattisesti. Hallitaan ja laskutetaan Stripen kautta. Peruuta milloin tahansa osoitteessa cruizx.com tai ota yhteyttä tukeen.",  "@paywallDisclosureAndroid": { "placeholders": { "price": {} } },  "paywallPriceOneTime": "249 kr",  "paywallDisclosureOneTime": "CruizX Pro · {price} · kertaosto. Veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä uusimista.",  "@paywallDisclosureOneTime": { "placeholders": { "price": {} } },  "paywallFreeLabel": "Free",
   "paywallProLabel": "Pro",
   "paywallFeatureRoutes": "Reittejä päivässä",
     "paywallStartTrialButton": "Aloita 7 päivän ilmainen kokeilu",
@@ -610,5 +612,15 @@
   "publicGatheringEndAction": "Päätä tapaaminen", "publicGatheringDeleteAction": "Poista tapaaminen", "publicGatheringEndConfirm": "Päätetäänkö tapaaminen nyt? Osallistujat eivät enää löydä sitä.", "publicGatheringDeleteConfirm": "Poistetaanko tapaaminen pysyvästi? Tätä ei voi perua.",
   "publicGatheringReportAction": "Ilmoita tapaamisesta", "publicGatheringBlockAction": "Estä tapaaminen", "publicGatheringReportParticipant": "Ilmoita osallistujasta", "publicGatheringBlockParticipant": "Estä osallistuja", "publicGatheringReportReason": "Mitä haluat ilmoittaa?", "publicGatheringReportSent": "Ilmoitus on lähetetty.", "publicGatheringBlocked": "Estettyä sisältöä ei enää näytetä.",
   "reportReasonInappropriate": "Sopimaton sisältö", "reportReasonHarassment": "Häirintä", "reportReasonDangerous": "Vaarallinen toiminta", "reportReasonSpam": "Roskaposti tai harhaanjohtava", "reportReasonOther": "Muu",
-  "publicGatheringNearbyNotifications": "Ilmoitukset lähellä olevista tapaamisista", "publicGatheringNearbyNotificationsSubtitle": "Ilmoita kerran, kun 25 km:n sisällä oleva julkinen tapaaminen alkaa 24 tunnin kuluessa.", "publicGatheringUpcoming": "Tulossa", "publicGatheringStarted": "Käynnissä"
+  "publicGatheringNearbyNotifications": "Ilmoitukset lähellä olevista tapaamisista", "publicGatheringNearbyNotificationsSubtitle": "Ilmoita kerran, kun 25 km:n sisällä oleva julkinen tapaaminen alkaa 24 tunnin kuluessa.", "publicGatheringUpcoming": "Tulossa", "publicGatheringStarted": "Käynnissä",
+  "aiRouteButton": "AI-tarkista reitti", "aiRouteTitle": "CruizX AI-reittianalyysi",
+  "aiConsentTitle": "Käytetäänkö AI-reittianalyysiä?", "aiConsentBody": "CruizX lähettää reittitietoja, kuten matkan, ajoajan, ajoneuvotyypin, tienimet ja varoitusten määrät, Cloudflaren CruizX AI -palveluun. Sijaintiasi, määränpään koordinaatteja tai henkilöllisyyttäsi ei lähetetä. AI voi erehtyä eikä koskaan muuta reittiäsi.",
+  "aiConsentAccept": "Hyväksy ja jatka", "aiConsentDecline": "Ei nyt",
+  "aiSignInRequired": "Kirjaudu sisään käyttääksesi AI-reittianalyysiä.", "aiLoading": "Tarkistetaan reittiä…",
+  "aiUnavailable": "AI-reittianalyysi ei ole juuri nyt käytettävissä. Reittisi ei muutu.", "aiDailyLimit": "Olet saavuttanut tämän päivän AI-reittianalyysirajan.",
+  "aiHighlights": "Hyvät puolet", "aiCautions": "Tarkistettavaa", "aiRecommendation": "Suositus",
+  "aiDisclaimer": "AI-yhteenveto perustuu vain saatavilla oleviin reittitietoihin. Noudata liikennemerkkejä ja nykyisiä tieolosuhteita.",
+  "aiReport": "Ilmoita vastauksesta", "aiReportTitle": "Miksi ilmoitat vastauksesta?",
+  "aiReportIncorrect": "Virheellistä tietoa", "aiReportUnsafe": "Turvaton neuvo", "aiReportInappropriate": "Sopimatonta sisältöä", "aiReportOther": "Muu ongelma",
+  "aiReportSent": "Kiitos. AI-vastauksesta on ilmoitettu."
 }

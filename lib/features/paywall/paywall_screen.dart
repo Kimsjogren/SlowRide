@@ -20,6 +20,7 @@ class PaywallScreen extends StatefulWidget {
 
 class _PaywallScreenState extends State<PaywallScreen> {
   bool _loading = false;
+  bool _lifetimeLoading = false;
   bool _restoring = false;
 
   @override
@@ -121,6 +122,42 @@ class _PaywallScreenState extends State<PaywallScreen> {
       );
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _buyLifetime() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _lifetimeLoading = true);
+    try {
+      final purchased = await SubscriptionService.instance
+          .purchaseLifetimePro();
+      if (!mounted) return;
+      if (purchased) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.paywallPurchaseSuccess),
+            backgroundColor: const Color(0xFF00913F),
+          ),
+        );
+        Navigator.of(context).pop(true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.paywallPurchaseFailed),
+            backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.paywallPurchaseFailed),
+          backgroundColor: Colors.redAccent.withValues(alpha: 0.85),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _lifetimeLoading = false);
     }
   }
 
@@ -393,6 +430,72 @@ class _PaywallScreenState extends State<PaywallScreen> {
                             ),
                     ),
                   ),
+
+                  if (SubscriptionService.instance.supportsLifetimePurchase)
+                    ValueListenableBuilder<String?>(
+                      valueListenable:
+                          SubscriptionService.instance.localizedLifetimePrice,
+                      builder: (_, lifetimePrice, _) {
+                        if (lifetimePrice == null || lifetimePrice.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: OutlinedButton(
+                                  onPressed: (_loading || _lifetimeLoading)
+                                      ? null
+                                      : _buyLifetime,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(
+                                      color: Color(0xFFFFB800),
+                                      width: 1.5,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  child: _lifetimeLoading
+                                      ? const SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          l10n.paywallLifetimeButton(
+                                            lifetimePrice,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                l10n.settingsProOneTimeNote,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 11,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
 
                   const SizedBox(height: 14),
 

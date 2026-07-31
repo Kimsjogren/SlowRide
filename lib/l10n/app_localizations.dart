@@ -182,7 +182,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.3 | CruizX by KimTechTool'**
+  /// **'v1.1.4 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @alertsTitle.
@@ -1250,7 +1250,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProOneTimeNote.
   ///
   /// In en, this message translates to:
-  /// **'One-time purchase: CruizX Pro (lifetime). Payment is charged once to your Apple ID. No subscription and no auto-renewal.'**
+  /// **'One-time purchase: CruizX Pro (lifetime). Payment is charged once through the app store. No subscription and no auto-renewal.'**
   String get settingsProOneTimeNote;
 
   /// No description provided for @settingsPrivacyPolicyLabel.
@@ -2129,6 +2129,12 @@ abstract class AppLocalizations {
   /// **'Upgrade to Pro'**
   String get paywallUpgradeButton;
 
+  /// No description provided for @paywallLifetimeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy Pro permanently · {price}'**
+  String paywallLifetimeButton(Object price);
+
   /// No description provided for @paywallRestoreButton.
   ///
   /// In en, this message translates to:
@@ -2150,7 +2156,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPriceOneTime.
   ///
   /// In en, this message translates to:
-  /// **'79 kr'**
+  /// **'249 kr'**
   String get paywallPriceOneTime;
 
   /// No description provided for @paywallDisclosureOneTime.
@@ -3112,6 +3118,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'In progress'**
   String get publicGatheringStarted;
+
+  /// No description provided for @aiRouteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'AI route check'**
+  String get aiRouteButton;
+
+  /// No description provided for @aiRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX AI route analysis'**
+  String get aiRouteTitle;
+
+  /// No description provided for @aiConsentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use AI route analysis?'**
+  String get aiConsentTitle;
+
+  /// No description provided for @aiConsentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX sends route facts such as distance, travel time, vehicle type, road names and warning counts to the CruizX AI service on Cloudflare. Your position, destination coordinates and identity are not sent. AI can make mistakes and never changes your route.'**
+  String get aiConsentBody;
+
+  /// No description provided for @aiConsentAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Agree and continue'**
+  String get aiConsentAccept;
+
+  /// No description provided for @aiConsentDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get aiConsentDecline;
+
+  /// No description provided for @aiSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to use AI route analysis.'**
+  String get aiSignInRequired;
+
+  /// No description provided for @aiLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the route…'**
+  String get aiLoading;
+
+  /// No description provided for @aiUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'AI route analysis is unavailable right now. Your route is unchanged.'**
+  String get aiUnavailable;
+
+  /// No description provided for @aiDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reached today\'s limit of AI route analyses.'**
+  String get aiDailyLimit;
+
+  /// No description provided for @aiHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get aiHighlights;
+
+  /// No description provided for @aiCautions.
+  ///
+  /// In en, this message translates to:
+  /// **'Things to check'**
+  String get aiCautions;
+
+  /// No description provided for @aiRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommendation'**
+  String get aiRecommendation;
+
+  /// No description provided for @aiDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'AI summary based only on available route data. Check signs and current road conditions.'**
+  String get aiDisclaimer;
+
+  /// No description provided for @aiReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report answer'**
+  String get aiReport;
+
+  /// No description provided for @aiReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you reporting this answer?'**
+  String get aiReportTitle;
+
+  /// No description provided for @aiReportIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect information'**
+  String get aiReportIncorrect;
+
+  /// No description provided for @aiReportUnsafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe advice'**
+  String get aiReportUnsafe;
+
+  /// No description provided for @aiReportInappropriate.
+  ///
+  /// In en, this message translates to:
+  /// **'Inappropriate content'**
+  String get aiReportInappropriate;
+
+  /// No description provided for @aiReportOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other problem'**
+  String get aiReportOther;
+
+  /// No description provided for @aiReportSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. The AI answer has been reported.'**
+  String get aiReportSent;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

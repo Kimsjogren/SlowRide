@@ -8,6 +8,8 @@
  *   GET  /api/web/pricing          → läs aktivt Stripe-pris för webb/APK
  *   GET  /api/map/speed-bumps      → cachelagrade farthinder från OpenStreetMap
  *   GET  /api/traffic/incidents    → cachelagrad trafikinformation från Trafikverket
+ *   POST /api/ai/route-analysis    → AI-sammanfattning av verifierade ruttfakta
+ *   POST /api/ai/report            → rapportera ett olämpligt AI-svar
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -34,7 +36,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
     "Vary": "Origin",
   };
@@ -121,6 +123,289 @@ async function logEvent(env, kind, campaign, deviceHashHex, ip, meta) {
     },
     body: JSON.stringify([{ kind, campaign, device_hash: deviceHashHex, ip, meta }]),
   });
+}
+
+// --- CruizX AI route analysis --------------------------------------
+
+const AI_DAILY_LIMIT = 15;
+const AI_MODEL = "@cf/zai-org/glm-4.7-flash";
+const AI_LANGUAGES = new Set(["en", "sv", "nb", "da", "fi", "fr", "es", "it"]);
+const AI_VEHICLE_CONTEXT = {
+  "A-tractor":
+    "A speed-limited passenger-car-derived A-tractor; it is not a truck or heavy vehicle.",
+  "Low vehicle":
+    "A low-ground-clearance passenger car using A-tractor speed and road restrictions; avoid high speed bumps and rough or unpaved roads. It is not a truck or heavy vehicle.",
+  "Moped car":
+    "A light moped car (light quadricycle) with restricted road access; it is not a truck or heavy vehicle.",
+  Tractor:
+    "An agricultural tractor, not a truck. No vehicle weight has been supplied.",
+};
+const AI_REPORT_REASONS = new Set([
+  "incorrect",
+  "unsafe",
+  "inappropriate",
+  "other",
+]);
+
+async function authenticatedUser(request, env) {
+  const authorization = request.headers.get("Authorization") || "";
+  if (!authorization.startsWith("Bearer ")) return null;
+  const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: authorization,
+    },
+  });
+  if (!response.ok) return null;
+  const user = await response.json();
+  return isUuid(user?.id) ? user : null;
+}
+
+function aiFiniteNumber(value, min, max) {
+  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function cleanStrings(value, maxItems, maxLength) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.replace(/\s+/g, " ").trim().slice(0, maxLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function validateAiRouteFacts(body) {
+  if (!body || typeof body !== "object" || !AI_LANGUAGES.has(body.language)) return null;
+  if (
+    typeof body.vehicle_type !== "string" ||
+    !Object.hasOwn(AI_VEHICLE_CONTEXT, body.vehicle_type)
+  ) return null;
+  if (typeof body.country_code !== "string" || !/^[A-Z]{2}$/.test(body.country_code)) return null;
+  if (!aiFiniteNumber(body.max_speed_kmh, 5, 130)) return null;
+  const route = body.route;
+  if (!route || typeof route !== "object") return null;
+  if (!aiFiniteNumber(route.distance_km, 0.1, 2000)) return null;
+  if (!aiFiniteNumber(route.duration_minutes, 1, 3000)) return null;
+
+  const alertCounts = {};
+  if (body.alert_counts && typeof body.alert_counts === "object") {
+    for (const [key, value] of Object.entries(body.alert_counts).slice(0, 20)) {
+      if (/^[a-z_]{1,32}$/.test(key) && Number.isInteger(value) && value >= 0 && value <= 500) {
+        alertCounts[key] = value;
+      }
+    }
+  }
+  return {
+    language: body.language,
+    vehicle_type: body.vehicle_type,
+    vehicle_context: AI_VEHICLE_CONTEXT[body.vehicle_type],
+    country_code: body.country_code,
+    max_speed_kmh: body.max_speed_kmh,
+    route: {
+      distance_km: body.route.distance_km,
+      duration_minutes: body.route.duration_minutes,
+      street_names: cleanStrings(body.route.street_names, 24, 80),
+    },
+    alert_counts: alertCounts,
+  };
+}
+
+async function aiUsageToday(env, userHash) {
+  const since = new Date();
+  since.setUTCHours(0, 0, 0, 0);
+  const url =
+    `${env.SUPABASE_URL}/rest/v1/flyer_events?kind=eq.ai_route_analysis` +
+    `&device_hash=eq.${encodeURIComponent(userHash)}` +
+    `&created_at=gte.${encodeURIComponent(since.toISOString())}&select=id&limit=${AI_DAILY_LIMIT}`;
+  const response = await fetch(url, {
+    headers: {
+      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+  });
+  if (!response.ok) return AI_DAILY_LIMIT;
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows.length : AI_DAILY_LIMIT;
+}
+
+const AI_ROUTE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    headline: { type: "string", maxLength: 80 },
+    summary: { type: "string", maxLength: 280 },
+    suitability: { type: "string", enum: ["good", "caution", "not_recommended"] },
+    highlights: {
+      type: "array",
+      maxItems: 3,
+      items: { type: "string", maxLength: 110 },
+    },
+    cautions: {
+      type: "array",
+      maxItems: 3,
+      items: { type: "string", maxLength: 110 },
+    },
+    recommendation: { type: "string", maxLength: 160 },
+  },
+  required: [
+    "headline",
+    "summary",
+    "suitability",
+    "highlights",
+    "cautions",
+    "recommendation",
+  ],
+};
+
+function validateAiAnalysis(value) {
+  if (!value || typeof value !== "object") return null;
+  const stringField = (key, maxLength) => {
+    const text = value[key];
+    return typeof text === "string" && text.trim()
+      ? text.replace(/\s+/g, " ").trim().slice(0, maxLength)
+      : null;
+  };
+  const stringList = (key) => {
+    if (!Array.isArray(value[key]) || value[key].length > 3) return null;
+    const items = cleanStrings(value[key], 3, 110);
+    return items.length === value[key].length ? items : null;
+  };
+  const headline = stringField("headline", 80);
+  const summary = stringField("summary", 280);
+  const recommendation = stringField("recommendation", 160);
+  const highlights = stringList("highlights");
+  const cautions = stringList("cautions");
+  const suitability = value.suitability;
+  if (
+    !headline ||
+    !summary ||
+    !recommendation ||
+    !highlights ||
+    !cautions ||
+    !["good", "caution", "not_recommended"].includes(suitability)
+  ) {
+    return null;
+  }
+  return {
+    headline,
+    summary,
+    suitability,
+    highlights,
+    cautions,
+    recommendation,
+  };
+}
+
+async function handleAiRouteAnalysis(request, env, origin) {
+  if (!env.AI) {
+    return json({ error: "ai_not_configured" }, { status: 503 }, origin);
+  }
+  const user = await authenticatedUser(request, env);
+  if (!user) return json({ error: "sign_in_required" }, { status: 401 }, origin);
+
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > 20_000) {
+    return json({ error: "request_too_large" }, { status: 413 }, origin);
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, { status: 400 }, origin);
+  }
+  const facts = validateAiRouteFacts(body);
+  if (!facts) return json({ error: "invalid_route_facts" }, { status: 400 }, origin);
+
+  const userHash = await sha256Hex(`${env.DEVICE_SALT}|ai|${user.id}`);
+  const usage = await aiUsageToday(env, userHash);
+  if (usage >= AI_DAILY_LIMIT) {
+    return json({ error: "daily_limit", limit: AI_DAILY_LIMIT }, { status: 429 }, origin);
+  }
+
+  try {
+    const aiResult = await env.AI.run(AI_MODEL, {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are CruizX AI route analysis. Analyze only the supplied, already-computed route facts. " +
+            "Never invent roads, restrictions, incidents, weather, police locations, legal guarantees, or missing data. " +
+            "Do not create or modify a route and do not tell the driver to interact with the app while driving. " +
+            "Use the supplied vehicle_context as the exact vehicle classification. Never infer vehicle weight, " +
+            "and never call the selected vehicle a heavy vehicle or truck. " +
+            "Be concise and practical for the supplied slow-vehicle type. Use one short summary sentence, " +
+            "at most three short highlights, at most three short cautions, and one short recommendation. " +
+            "Treat community alerts as unverified. " +
+            `Write every output string in language code ${facts.language}.`,
+        },
+        { role: "user", content: JSON.stringify(facts) },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: AI_ROUTE_SCHEMA,
+      },
+      max_completion_tokens: 360,
+      chat_template_kwargs: { enable_thinking: false },
+      store: false,
+      temperature: 0.2,
+    });
+    const responseContent =
+      aiResult?.response ?? aiResult?.choices?.[0]?.message?.content;
+    const rawAnalysis =
+      typeof responseContent === "string"
+        ? JSON.parse(responseContent)
+        : responseContent;
+    const analysis = validateAiAnalysis(rawAnalysis);
+    if (!analysis) {
+      return json({ error: "ai_invalid_response" }, { status: 502 }, origin);
+    }
+
+    const responseId = crypto.randomUUID();
+    const ip = request.headers.get("CF-Connecting-IP") || "";
+    await logEvent(env, "ai_route_analysis", "app", userHash, ip, {
+      response_id: responseId,
+      model: AI_MODEL,
+      country_code: facts.country_code,
+      vehicle_type: facts.vehicle_type,
+      input_tokens: aiResult?.usage?.prompt_tokens ?? null,
+      output_tokens: aiResult?.usage?.completion_tokens ?? null,
+    });
+    return json({ response_id: responseId, ...analysis }, {
+      headers: { "Cache-Control": "no-store" },
+    }, origin);
+  } catch (error) {
+    const message = String(error?.message || error);
+    console.error("Workers AI route analysis failed", message);
+    if (message.includes("3036") || message.includes("429")) {
+      return json({ error: "daily_limit" }, { status: 429 }, origin);
+    }
+    return json({ error: "ai_invalid_response" }, { status: 502 }, origin);
+  }
+}
+
+async function handleAiReport(request, env, origin) {
+  const user = await authenticatedUser(request, env);
+  if (!user) return json({ error: "sign_in_required" }, { status: 401 }, origin);
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, { status: 400 }, origin);
+  }
+  if (
+    typeof body?.response_id !== "string" ||
+    body.response_id.length > 100 ||
+    !AI_REPORT_REASONS.has(body.reason)
+  ) {
+    return json({ error: "invalid_report" }, { status: 400 }, origin);
+  }
+  const userHash = await sha256Hex(`${env.DEVICE_SALT}|ai|${user.id}`);
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  await logEvent(env, "ai_response_report", "app", userHash, ip, {
+    response_id: body.response_id,
+    reason: body.reason,
+  });
+  return json({ ok: true }, { headers: { "Cache-Control": "no-store" } }, origin);
 }
 
 function isUuid(value) {
@@ -849,15 +1134,23 @@ export default {
       return new Response(null, { headers: corsHeaders(origin) });
     }
 
-    if (url.pathname === "/api/download/apk" && request.method === "GET") {
+    if (
+      (url.pathname === "/api/download/apk" ||
+        url.pathname === "/api/download/apk/1.1.4-127") &&
+      request.method === "GET"
+    ) {
       // Log download event (fire-and-forget)
       const ip = request.headers.get("CF-Connecting-IP") || "";
       const ua = request.headers.get("User-Agent") || "";
       logEvent(env, "apk_download", "website", "", ip, { ua }).catch(() => {});
-      return Response.redirect(
-        "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.3/CruizX-1.1.3-125-free.apk",
-        302
-      );
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location:
+            "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.4/CruizX-1.1.4-127-free.apk",
+          "Cache-Control": "no-store",
+        },
+      });
     }
 
     if (url.pathname === "/api/claim" && request.method === "POST") {
@@ -874,6 +1167,12 @@ export default {
     }
     if (url.pathname === "/api/traffic/incidents" && request.method === "GET") {
       return handleTrafficIncidents(request, env, origin);
+    }
+    if (url.pathname === "/api/ai/route-analysis" && request.method === "POST") {
+      return handleAiRouteAnalysis(request, env, origin);
+    }
+    if (url.pathname === "/api/ai/report" && request.method === "POST") {
+      return handleAiReport(request, env, origin);
     }
     if (url.pathname === "/api/web/pricing" && request.method === "GET") {
       return handleWebPricing(env, origin);

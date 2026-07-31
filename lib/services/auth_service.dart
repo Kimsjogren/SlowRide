@@ -89,6 +89,7 @@ class AuthService {
       await SupabaseService.instance.client.auth.signUp(
         email: normalizedEmail,
         password: password,
+        emailRedirectTo: 'com.cruizx.mobile://login-callback/',
         data: {'display_name': trimmedName},
       );
       // If email confirmation is off, session is active immediately.

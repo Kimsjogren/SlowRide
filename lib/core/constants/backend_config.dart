@@ -132,6 +132,18 @@ class BackendConfig {
     defaultValue: 'https://cruizx.com/api/traffic/incidents',
   );
 
+  /// CruizX AI endpoints. Inference runs behind the Cloudflare Worker and no
+  /// provider key is included in either the iOS or Android app.
+  static const String aiRouteAnalysisUrl = String.fromEnvironment(
+    'AI_ROUTE_ANALYSIS_URL',
+    defaultValue: 'https://cruizx.com/api/ai/route-analysis',
+  );
+
+  static const String aiReportUrl = String.fromEnvironment(
+    'AI_REPORT_URL',
+    defaultValue: 'https://cruizx.com/api/ai/report',
+  );
+
   /// Enable the route simulation button in release builds.
   /// Build with: --dart-define=ENABLE_SIMULATION=true
   static const bool enableSimulation = bool.fromEnvironment(

@@ -14,9 +14,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
+import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
@@ -120,6 +122,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const Duration _roadLimitLookupInterval = Duration(seconds: 10);
   static const double _roadLimitLookupMinMoveMeters = 55;
   LatLng? _myLocation;
+  bool _hasCenteredOnInitialGps = false;
   double _myHeading = 0;
   bool _isFollowingMyPosition = false;
   bool _shareLiveLocation = false;
@@ -137,6 +140,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isRouting = false;
   String _routingStatus = '';
   List<RouteInstruction> _routeInstructions = const [];
+  RouteResult? _activeRoute;
+  bool _isAiAnalyzing = false;
+  bool _isAiLoadingDialogVisible = false;
   double _distToNextManeuver = double.infinity;
 
   // ── Navigation mode state ──────────────────────────────────────────────────
@@ -713,6 +719,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             }
             _distToNextManeuver = newDistToManeuver;
             unawaited(_maybeRefreshRoadSpeedLimit(point));
+
+            if (!_hasCenteredOnInitialGps &&
+                !_isFollowingMyPosition &&
+                _routePoints.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || _hasCenteredOnInitialGps) return;
+                try {
+                  _mapController.move(point, _followZoom);
+                  _hasCenteredOnInitialGps = true;
+                } catch (e) {
+                  debugPrint('Convoy initial GPS centering skipped: $e');
+                }
+              });
+            }
+            if (!hadLocation) {
+              unawaited(_loadAlerts());
+            }
 
             // Voice navigation (fire before setState check).
             if (_isNavigating &&
@@ -2650,6 +2673,331 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
+  void _openAiFromConvoyButton() {
+    if (_activeRoute == null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.mapAddressFieldHint),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _showConvoySearchSheet();
+      return;
+    }
+    _analyzeConvoyRouteWithAi();
+  }
+
+  Future<bool> _ensureConvoyAiConsent(AppLocalizations l10n) async {
+    if (await AiRouteAnalysisService.instance.hasConsent()) return true;
+    if (!mounted) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.aiConsentTitle),
+        content: Text(l10n.aiConsentBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.aiConsentDecline),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.aiConsentAccept),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return false;
+    await AiRouteAnalysisService.instance.setConsent(true);
+    return true;
+  }
+
+  double _distanceToConvoyRouteMeters(LatLng point) {
+    if (_routePoints.isEmpty) return double.infinity;
+    if (_routePoints.length == 1) return _segDist(point, _routePoints.first);
+
+    const lat2m = 111320.0;
+    var best = double.infinity;
+    for (var i = 0; i < _routePoints.length - 1; i++) {
+      final a = _routePoints[i];
+      final b = _routePoints[i + 1];
+      final lng2m =
+          lat2m *
+          math.cos(
+            ((point.latitude + a.latitude + b.latitude) / 3) * math.pi / 180,
+          );
+      final ax = a.longitude * lng2m;
+      final ay = a.latitude * lat2m;
+      final bx = b.longitude * lng2m;
+      final by = b.latitude * lat2m;
+      final px = point.longitude * lng2m;
+      final py = point.latitude * lat2m;
+      final dx = bx - ax;
+      final dy = by - ay;
+      final denominator = dx * dx + dy * dy;
+      final t = denominator == 0
+          ? 0.0
+          : (((px - ax) * dx + (py - ay) * dy) / denominator).clamp(0.0, 1.0);
+      final distance = math.sqrt(
+        math.pow(px - (ax + t * dx), 2) + math.pow(py - (ay + t * dy), 2),
+      );
+      if (distance < best) best = distance;
+    }
+    return best;
+  }
+
+  Map<String, int> _convoyRouteAlertCounts() {
+    final counts = <String, int>{};
+    for (final alert in _alerts) {
+      if (!alert.type.showsProximityWarning ||
+          _distanceToConvoyRouteMeters(alert.position) > 750) {
+        continue;
+      }
+      counts.update(alert.type.key, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return counts;
+  }
+
+  Future<void> _analyzeConvoyRouteWithAi() async {
+    final route = _activeRoute;
+    if (route == null || _isAiAnalyzing) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!await _ensureConvoyAiConsent(l10n) || !mounted) return;
+
+    final token = SupabaseService.instance.isEnabled
+        ? SupabaseService.instance.client.auth.currentSession?.accessToken
+        : null;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.aiSignInRequired)));
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    setState(() => _isAiAnalyzing = true);
+    unawaited(_showConvoyAiLoadingDialog(l10n));
+    AiRouteAnalysis? analysis;
+    try {
+      final streetNames = route.instructions
+          .map((instruction) => instruction.streetName.trim())
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+      analysis = await AiRouteAnalysisService.instance.analyze(
+        language: Localizations.localeOf(context).languageCode,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+        countryCode: UserPreferencesService.instance.countryCode.value,
+        maxSpeedKmh: UserPreferencesService.instance.maxSpeedKmh.value,
+        distanceKm: route.distanceMeters / 1000,
+        durationMinutes: route.durationSeconds / 60,
+        streetNames: streetNames,
+        alertCounts: _convoyRouteAlertCounts(),
+      );
+    } on AiRouteAnalysisException catch (error) {
+      if (!mounted) return;
+      final message = switch (error.code) {
+        'sign_in_required' => l10n.aiSignInRequired,
+        'daily_limit' => l10n.aiDailyLimit,
+        _ => l10n.aiUnavailable,
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    } finally {
+      _closeConvoyAiLoadingDialog();
+      if (mounted) setState(() => _isAiAnalyzing = false);
+    }
+    if (mounted && analysis != null) {
+      await _showConvoyAiAnalysis(analysis);
+    }
+  }
+
+  Future<void> _showConvoyAiLoadingDialog(AppLocalizations l10n) async {
+    _isAiLoadingDialogVisible = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+          title: Image.asset(
+            'assets/CruizX_Ai_transparent.png',
+            height: 135,
+            fit: BoxFit.contain,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 14),
+              Flexible(
+                child: Text(
+                  l10n.aiLoading,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, height: 1.25),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    _isAiLoadingDialogVisible = false;
+  }
+
+  void _closeConvoyAiLoadingDialog() {
+    if (!mounted || !_isAiLoadingDialogVisible) return;
+    _isAiLoadingDialogVisible = false;
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  Future<void> _showConvoyAiAnalysis(AiRouteAnalysis analysis) async {
+    final l10n = AppLocalizations.of(context)!;
+    final color = switch (analysis.suitability) {
+      'good' => const Color(0xFF22A95A),
+      'not_recommended' => const Color(0xFFD32F2F),
+      _ => const Color(0xFFF39C12),
+    };
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 2),
+        title: Image.asset(
+          'assets/CruizX_Ai_transparent.png',
+          height: 145,
+          fit: BoxFit.contain,
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  analysis.headline,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    height: 1.24,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  analysis.summary,
+                  style: const TextStyle(fontSize: 15, height: 1.35),
+                ),
+                if (analysis.highlights.isNotEmpty)
+                  _ConvoyAiAnalysisSection(
+                    title: l10n.aiHighlights,
+                    icon: Icons.check_circle_outline,
+                    color: const Color(0xFF22A95A),
+                    items: analysis.highlights,
+                  ),
+                if (analysis.cautions.isNotEmpty)
+                  _ConvoyAiAnalysisSection(
+                    title: l10n.aiCautions,
+                    icon: Icons.warning_amber_rounded,
+                    color: const Color(0xFFF39C12),
+                    items: analysis.cautions,
+                  ),
+                _ConvoyAiAnalysisSection(
+                  title: l10n.aiRecommendation,
+                  icon: Icons.lightbulb_outline,
+                  color: const Color(0xFF3AA8FF),
+                  items: [analysis.recommendation],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.aiDisclaimer,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _reportConvoyAiAnswer(analysis.responseId),
+            icon: const Icon(Icons.flag_outlined),
+            label: Text(l10n.aiReport),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.ttsVoiceHintDismiss),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportConvoyAiAnswer(String responseId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(l10n.aiReportTitle)),
+            for (final item in <(String, String)>[
+              ('incorrect', l10n.aiReportIncorrect),
+              ('unsafe', l10n.aiReportUnsafe),
+              ('inappropriate', l10n.aiReportInappropriate),
+              ('other', l10n.aiReportOther),
+            ])
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(item.$2),
+                onTap: () => Navigator.pop(sheetContext, item.$1),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await AiRouteAnalysisService.instance.report(
+        responseId: responseId,
+        reason: reason,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiReportSent)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    }
+  }
+
   Widget _favChip({
     required IconData icon,
     required String label,
@@ -2881,7 +3229,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   Future<void> _loadAlerts() async {
-    final center = _myLocation ?? const LatLng(59.3293, 18.0686);
+    final center = _myLocation;
+    if (center == null) return;
     try {
       final results = await Future.wait<List<AlertModel>>([
         _alertsController.fetchNearby(center),
@@ -2932,6 +3281,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _isRouting = true;
       _routeDestination = destination;
       _routePoints = const [];
+      _activeRoute = null;
       _routingStatus = AppLocalizations.of(context)!.mapCalculatingRoute;
       _isFollowingMyPosition = false;
     });
@@ -2971,6 +3321,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final cumDist = _buildCumulativeDist(chosenRoute.points);
       setState(() {
         _routePoints = chosenRoute.points;
+        _activeRoute = chosenRoute;
         _routeInstructions = chosenRoute.instructions;
         _cumulativeDist = cumDist;
         _totalRouteDistM = cumDist.isNotEmpty ? cumDist.last : 0;
@@ -3372,6 +3723,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   void _clearConvoyRoute() {
     setState(() {
       _routePoints = const [];
+      _activeRoute = null;
       _routeDestination = null;
       _pendingDestination = null;
       _isNavigating = false;
@@ -3905,11 +4257,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                     .where(_isPinActive)
                     .toList(growable: false);
                 final meetupPosition = widget.convoy.meetupPosition;
+                final hasInitialMapCenter =
+                    _myLocation != null ||
+                    locations.isNotEmpty ||
+                    meetupPosition != null;
                 final center =
                     _myLocation ??
                     (locations.isNotEmpty
                         ? locations.first.position
-                        : meetupPosition ?? const LatLng(59.3293, 18.0686));
+                        : meetupPosition ?? const LatLng(20, 0));
 
                 return Column(
                   children: [
@@ -3954,7 +4310,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                             child: FlutterMap(
                                               options: MapOptions(
                                                 initialCenter: center,
-                                                initialZoom: _followZoom,
+                                                initialZoom: hasInitialMapCenter
+                                                    ? _followZoom
+                                                    : 2,
                                                 initialRotation: 0,
                                                 onTap: (_, point) =>
                                                     _showQuickHazardPicker(
@@ -5692,6 +6050,33 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
+                                Tooltip(
+                                  message: l10n.aiRouteButton,
+                                  child: _convoyCircleButton(
+                                    onTap: _openAiFromConvoyButton,
+                                    color: _activeRoute != null
+                                        ? const Color(0xFF1B4F9C)
+                                        : null,
+                                    child: _isAiAnalyzing
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Color(0xFF8FCBFF),
+                                            ),
+                                          )
+                                        : const Text(
+                                            'AI',
+                                            style: TextStyle(
+                                              color: Color(0xFF8FCBFF),
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
                                 _convoyCircleButton(
                                   onTap: () {
                                     final me = _myLocation;
@@ -5964,6 +6349,64 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 }
 
 enum _ConvoyRouteOptionType { recommended, alternative, unverified }
+
+class _ConvoyAiAnalysisSection extends StatelessWidget {
+  const _ConvoyAiAnalysisSection({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(top: 5, left: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•', style: TextStyle(fontSize: 15, height: 1.3)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(fontSize: 14.5, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ConvoyRouteOption {
   const _ConvoyRouteOption({required this.route, required this.type});

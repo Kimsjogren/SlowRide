@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.1.3 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Community Alerts';
@@ -597,7 +597,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'One-time purchase: CruizX Pro (lifetime). Payment is charged once to your Apple ID. No subscription and no auto-renewal.';
+  String get settingsProOneTimeNote => 'One-time purchase: CruizX Pro (lifetime). Payment is charged once through the app store. No subscription and no auto-renewal.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Privacy Policy';
@@ -1074,6 +1074,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallUpgradeButton => 'Upgrade to Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Buy Pro permanently · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Restore purchase';
 
   @override
@@ -1087,7 +1092,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1594,4 +1599,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get publicGatheringStarted => 'In progress';
+
+  @override
+  String get aiRouteButton => 'AI route check';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI route analysis';
+
+  @override
+  String get aiConsentTitle => 'Use AI route analysis?';
+
+  @override
+  String get aiConsentBody => 'CruizX sends route facts such as distance, travel time, vehicle type, road names and warning counts to the CruizX AI service on Cloudflare. Your position, destination coordinates and identity are not sent. AI can make mistakes and never changes your route.';
+
+  @override
+  String get aiConsentAccept => 'Agree and continue';
+
+  @override
+  String get aiConsentDecline => 'Not now';
+
+  @override
+  String get aiSignInRequired => 'Sign in to use AI route analysis.';
+
+  @override
+  String get aiLoading => 'Checking the route…';
+
+  @override
+  String get aiUnavailable => 'AI route analysis is unavailable right now. Your route is unchanged.';
+
+  @override
+  String get aiDailyLimit => 'You have reached today\'s limit of AI route analyses.';
+
+  @override
+  String get aiHighlights => 'Highlights';
+
+  @override
+  String get aiCautions => 'Things to check';
+
+  @override
+  String get aiRecommendation => 'Recommendation';
+
+  @override
+  String get aiDisclaimer => 'AI summary based only on available route data. Check signs and current road conditions.';
+
+  @override
+  String get aiReport => 'Report answer';
+
+  @override
+  String get aiReportTitle => 'Why are you reporting this answer?';
+
+  @override
+  String get aiReportIncorrect => 'Incorrect information';
+
+  @override
+  String get aiReportUnsafe => 'Unsafe advice';
+
+  @override
+  String get aiReportInappropriate => 'Inappropriate content';
+
+  @override
+  String get aiReportOther => 'Other problem';
+
+  @override
+  String get aiReportSent => 'Thanks. The AI answer has been reported.';
 }

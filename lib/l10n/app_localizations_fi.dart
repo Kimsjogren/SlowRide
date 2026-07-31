@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.3 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Yhteisön hälytykset';
@@ -597,7 +597,7 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä automaattista uusimista.';
+  String get settingsProOneTimeNote => 'Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran sovelluskaupan kautta. Ei tilausta eikä automaattista uusimista.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Tietosuojakäytäntö';
@@ -1074,6 +1074,11 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallUpgradeButton => 'Päivitä Prohon';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Osta Pro pysyvästi · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Palauta osto';
 
   @override
@@ -1087,7 +1092,7 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1594,4 +1599,67 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get publicGatheringStarted => 'Käynnissä';
+
+  @override
+  String get aiRouteButton => 'AI-tarkista reitti';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI-reittianalyysi';
+
+  @override
+  String get aiConsentTitle => 'Käytetäänkö AI-reittianalyysiä?';
+
+  @override
+  String get aiConsentBody => 'CruizX lähettää reittitietoja, kuten matkan, ajoajan, ajoneuvotyypin, tienimet ja varoitusten määrät, Cloudflaren CruizX AI -palveluun. Sijaintiasi, määränpään koordinaatteja tai henkilöllisyyttäsi ei lähetetä. AI voi erehtyä eikä koskaan muuta reittiäsi.';
+
+  @override
+  String get aiConsentAccept => 'Hyväksy ja jatka';
+
+  @override
+  String get aiConsentDecline => 'Ei nyt';
+
+  @override
+  String get aiSignInRequired => 'Kirjaudu sisään käyttääksesi AI-reittianalyysiä.';
+
+  @override
+  String get aiLoading => 'Tarkistetaan reittiä…';
+
+  @override
+  String get aiUnavailable => 'AI-reittianalyysi ei ole juuri nyt käytettävissä. Reittisi ei muutu.';
+
+  @override
+  String get aiDailyLimit => 'Olet saavuttanut tämän päivän AI-reittianalyysirajan.';
+
+  @override
+  String get aiHighlights => 'Hyvät puolet';
+
+  @override
+  String get aiCautions => 'Tarkistettavaa';
+
+  @override
+  String get aiRecommendation => 'Suositus';
+
+  @override
+  String get aiDisclaimer => 'AI-yhteenveto perustuu vain saatavilla oleviin reittitietoihin. Noudata liikennemerkkejä ja nykyisiä tieolosuhteita.';
+
+  @override
+  String get aiReport => 'Ilmoita vastauksesta';
+
+  @override
+  String get aiReportTitle => 'Miksi ilmoitat vastauksesta?';
+
+  @override
+  String get aiReportIncorrect => 'Virheellistä tietoa';
+
+  @override
+  String get aiReportUnsafe => 'Turvaton neuvo';
+
+  @override
+  String get aiReportInappropriate => 'Sopimatonta sisältöä';
+
+  @override
+  String get aiReportOther => 'Muu ongelma';
+
+  @override
+  String get aiReportSent => 'Kiitos. AI-vastauksesta on ilmoitettu.';
 }

@@ -62,7 +62,8 @@ class MapWidget extends StatefulWidget {
   /// Sign/type of next maneuver. Used to increase zoom for sharper turns.
   final int? nextManeuverSign;
 
-  static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
+  // Neutral fallback shown only while the app waits for its first GPS fix.
+  static const LatLng _defaultCenter = LatLng(20, 0);
 
   @override
   State<MapWidget> createState() => _MapWidgetState();
@@ -97,6 +98,7 @@ class _MapWidgetState extends State<MapWidget>
   Duration? _lastTickAt;
   Duration? _lastCameraTickAt;
   bool _navInitialized = false;
+  bool _hasCenteredOnInitialLocation = false;
   LatLng? _lastLocForBearing;
   int _lastRouteIdx = 0;
 
@@ -143,6 +145,7 @@ class _MapWidgetState extends State<MapWidget>
       ),
     );
     _markerLocation = widget.locationNotifier.value;
+    _hasCenteredOnInitialLocation = _markerLocation != null;
     _rawCompassHdg = widget.headingNotifier.value;
     _arrowHdg = ValueNotifier<double>(_rawCompassHdg);
     widget.locationNotifier.addListener(_onLocationUpdate);
@@ -283,6 +286,22 @@ class _MapWidgetState extends State<MapWidget>
   void _onLocationUpdate() {
     final loc = widget.locationNotifier.value;
     if (loc == null || !mounted) return;
+
+    if (!widget.followUser &&
+        !_hasCenteredOnInitialLocation &&
+        widget.routePoints.isEmpty) {
+      _hasCenteredOnInitialLocation = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        try {
+          _mapController.move(loc, 14.0);
+        } catch (e) {
+          _hasCenteredOnInitialLocation = false;
+          debugPrint('MapWidget initial GPS centering skipped: $e');
+        }
+      });
+    }
+
     // Update ticker targets (no setState — ticker reads these fields directly).
     if (widget.followUser) {
       if (!_navInitialized) {
@@ -657,12 +676,16 @@ class _MapWidgetState extends State<MapWidget>
           // positioning. No oversized box that would push tiles off-screen.
           final mapHeight = h;
 
+          final initialLocation = widget.locationNotifier.value;
           final mapWidget = FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter:
-                  widget.locationNotifier.value ?? MapWidget._defaultCenter,
-              initialZoom: widget.followUser ? _computeNavZoom() : 12.0,
+              initialCenter: initialLocation ?? MapWidget._defaultCenter,
+              initialZoom: widget.followUser
+                  ? _computeNavZoom()
+                  : initialLocation != null
+                  ? 14.0
+                  : 2.0,
               onTap: (_, point) => widget.onTap?.call(point),
               onPositionChanged: (camera, hasGesture) {
                 if (hasGesture && widget.followUser) {

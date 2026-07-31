@@ -45,7 +45,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get splashReady => 'Pronto';
 
   @override
-  String get splashVersionLine => 'v1.1.3 | CruizX di KimTechTool';
+  String get splashVersionLine => 'v1.1.4 | CruizX di KimTechTool';
 
   @override
   String get alertsTitle => 'Avvisi della comunità';
@@ -597,7 +597,7 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Acquisto una tantum: CruizX Pro (a vita). Il pagamento viene addebitato una volta sul tuo ID Apple. Nessun abbonamento e nessun rinnovo automatico.';
+  String get settingsProOneTimeNote => 'Acquisto una tantum: CruizX Pro (a vita). Il pagamento viene addebitato una volta tramite l’app store. Nessun abbonamento e nessun rinnovo automatico.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'politica sulla riservatezza';
@@ -1074,6 +1074,11 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallUpgradeButton => 'Passa a Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Acquista Pro per sempre · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Ripristina l\'acquisto';
 
   @override
@@ -1087,7 +1092,7 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 cor';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1594,4 +1599,67 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get publicGatheringStarted => 'In corso';
+
+  @override
+  String get aiRouteButton => 'Controlla percorso con IA';
+
+  @override
+  String get aiRouteTitle => 'Analisi percorso CruizX IA';
+
+  @override
+  String get aiConsentTitle => 'Usare l’analisi IA del percorso?';
+
+  @override
+  String get aiConsentBody => 'CruizX invia dati del percorso come distanza, durata, tipo di veicolo, nomi delle strade e numero di avvisi al servizio IA CruizX su Cloudflare. La tua posizione, le coordinate della destinazione e la tua identità non vengono inviate. L’IA può sbagliare e non modifica mai il percorso.';
+
+  @override
+  String get aiConsentAccept => 'Accetta e continua';
+
+  @override
+  String get aiConsentDecline => 'Non ora';
+
+  @override
+  String get aiSignInRequired => 'Accedi per usare l’analisi IA del percorso.';
+
+  @override
+  String get aiLoading => 'Controllo del percorso…';
+
+  @override
+  String get aiUnavailable => 'L’analisi IA non è disponibile al momento. Il percorso non è cambiato.';
+
+  @override
+  String get aiDailyLimit => 'Hai raggiunto il limite giornaliero di analisi IA.';
+
+  @override
+  String get aiHighlights => 'Aspetti positivi';
+
+  @override
+  String get aiCautions => 'Da controllare';
+
+  @override
+  String get aiRecommendation => 'Raccomandazione';
+
+  @override
+  String get aiDisclaimer => 'Riepilogo IA basato solo sui dati disponibili. Segui la segnaletica e le condizioni stradali attuali.';
+
+  @override
+  String get aiReport => 'Segnala risposta';
+
+  @override
+  String get aiReportTitle => 'Perché segnali questa risposta?';
+
+  @override
+  String get aiReportIncorrect => 'Informazioni errate';
+
+  @override
+  String get aiReportUnsafe => 'Consiglio non sicuro';
+
+  @override
+  String get aiReportInappropriate => 'Contenuto inappropriato';
+
+  @override
+  String get aiReportOther => 'Altro problema';
+
+  @override
+  String get aiReportSent => 'Grazie. La risposta IA è stata segnalata.';
 }

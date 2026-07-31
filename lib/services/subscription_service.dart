@@ -30,6 +30,10 @@ class SubscriptionService {
   /// product in App Store Connect, so Apple handles the trial natively.
   static const String _monthlyProductId = 'cruizx_pro_monthly_v2';
 
+  /// Non-consumable lifetime Pro unlock. This ID was used by the original
+  /// one-time purchase flow and is also used for the Google Play product.
+  static const String _lifetimeProductId = 'cruizx_pro_lifetime';
+
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
@@ -39,7 +43,8 @@ class SubscriptionService {
   late SharedPreferences _prefs;
   bool _initialized = false;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
-  ProductDetails? _proProduct;
+  ProductDetails? _monthlyProduct;
+  ProductDetails? _lifetimeProduct;
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
   Timer? _webSyncTimer;
@@ -52,6 +57,16 @@ class SubscriptionService {
 
   /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
+
+  /// Localized Google Play price for the optional lifetime unlock.
+  final ValueNotifier<String?> localizedLifetimePrice = ValueNotifier<String?>(
+    null,
+  );
+
+  bool get supportsLifetimePurchase =>
+      !kIsWeb &&
+      !isWebCheckout &&
+      defaultTargetPlatform == TargetPlatform.android;
 
   bool get isWebCheckout => kIsWeb || BackendConfig.webCheckoutOnly;
 
@@ -333,13 +348,32 @@ class SubscriptionService {
 
   Future<void> _loadProductDetails() async {
     try {
-      final response = await _iap.queryProductDetails({_monthlyProductId});
+      final response = await _iap.queryProductDetails({
+        _monthlyProductId,
+        _lifetimeProductId,
+      });
       if (response.productDetails.isEmpty) {
-        debugPrint('IAP product not found: $_monthlyProductId');
+        debugPrint(
+          'IAP products not found: $_monthlyProductId, $_lifetimeProductId',
+        );
         return;
       }
-      _proProduct = response.productDetails.first;
-      localizedPrice.value = _proProduct!.price;
+      for (final product in response.productDetails) {
+        switch (product.id) {
+          case _monthlyProductId:
+            _monthlyProduct = product;
+            localizedPrice.value = product.price;
+          case _lifetimeProductId:
+            _lifetimeProduct = product;
+            localizedLifetimePrice.value = product.price;
+        }
+      }
+      if (_monthlyProduct == null) {
+        debugPrint('IAP product not found: $_monthlyProductId');
+      }
+      if (_lifetimeProduct == null) {
+        debugPrint('IAP product not found: $_lifetimeProductId');
+      }
     } catch (e) {
       debugPrint('Failed to fetch IAP product details: $e');
     }
@@ -347,7 +381,8 @@ class SubscriptionService {
 
   Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
     for (final purchase in updates) {
-      if (purchase.productID != _monthlyProductId) {
+      if (purchase.productID != _monthlyProductId &&
+          purchase.productID != _lifetimeProductId) {
         continue;
       }
 
@@ -446,23 +481,59 @@ class SubscriptionService {
 
     // Retry loading the product a few times before giving up so the purchase
     // prompt reliably triggers even when product details arrive late.
-    if (_proProduct == null) {
-      for (var attempt = 0; attempt < 3 && _proProduct == null; attempt++) {
+    if (_monthlyProduct == null) {
+      for (var attempt = 0; attempt < 3 && _monthlyProduct == null; attempt++) {
         await _loadProductDetails();
-        if (_proProduct == null) {
+        if (_monthlyProduct == null) {
           await Future<void>.delayed(const Duration(milliseconds: 800));
         }
       }
-      if (_proProduct == null) {
+      if (_monthlyProduct == null) {
         throw const StoreUnavailableException();
       }
     }
 
+    return _purchaseProduct(_monthlyProduct!);
+  }
+
+  /// Starts the Google Play non-consumable lifetime Pro purchase.
+  Future<bool> purchaseLifetimePro() async {
+    if (!supportsLifetimePurchase) return false;
+    if (BackendConfig.forceFree) return false;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+
+    if (!await _ensureStoreReady()) {
+      throw const StoreUnavailableException();
+    }
+
+    if (_lifetimeProduct == null) {
+      for (
+        var attempt = 0;
+        attempt < 3 && _lifetimeProduct == null;
+        attempt++
+      ) {
+        await _loadProductDetails();
+        if (_lifetimeProduct == null) {
+          await Future<void>.delayed(const Duration(milliseconds: 800));
+        }
+      }
+      if (_lifetimeProduct == null) {
+        throw const StoreUnavailableException();
+      }
+    }
+
+    return _purchaseProduct(_lifetimeProduct!);
+  }
+
+  Future<bool> _purchaseProduct(ProductDetails product) async {
     final completer = Completer<bool>();
     _purchaseCompleter = completer;
 
     final started = await _iap.buyNonConsumable(
-      purchaseParam: PurchaseParam(productDetails: _proProduct!),
+      purchaseParam: PurchaseParam(productDetails: product),
     );
     if (!started) {
       _purchaseCompleter = null;

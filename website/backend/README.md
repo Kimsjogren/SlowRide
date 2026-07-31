@@ -52,6 +52,8 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `GET /api/stats`: Returnerar `flyer_stats`-vyn. Header: `X-Stats-Token: <STATS_TOKEN>`.
 - `GET /api/web/pricing`: Returnerar aktivt Stripe-pris för webb/APK, lokaliserat per språk.
 - `GET /api/traffic/incidents`: Returnerar cachelagrade, normaliserade livehändelser från Trafikverket utan att exponera API-nyckeln i appen.
+- `POST /api/ai/route-analysis`: Analyserar begränsade ruttfakta med Workers AI för en inloggad användare. GPS-koordinater skickas inte. Appen tillåter 4 anrop per dag för Free och 15 för Pro; Worker-skyddet stoppar vid 15 anrop per användare och dag samt Cloudflares kostnadsfria dagstilldelning.
+- `POST /api/ai/report`: Rapporterar ett AI-svar för uppföljning.
 - `POST /api/web/checkout-session`: Skapar Stripe Checkout Session (`mode=subscription`).
 - `POST /api/web/stripe-webhook`: Tar emot Stripe events och uppdaterar `web_subscriptions`.
 

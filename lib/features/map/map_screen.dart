@@ -30,6 +30,9 @@ import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
+import 'package:slowride/services/ai_route_analysis_service.dart';
+import 'package:slowride/services/supabase_service.dart';
+import 'package:slowride/features/auth/login_screen.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -77,6 +80,9 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _routeStop;
   String _routeStopLabel = '';
   List<LatLng> _routePoints = const [];
+  RouteResult? _activeRoute;
+  bool _isAiAnalyzing = false;
+  bool _isAiLoadingDialogVisible = false;
   String? _searchingRouteStopKey;
 
   // ── Turn-by-turn instructions ─────────────────────────────────────
@@ -560,7 +566,16 @@ class _MapScreenState extends State<MapScreen> {
       } catch (_) {
         try {
           final lastPosition = await Geolocator.getLastKnownPosition();
-          if (lastPosition != null) {
+          final lastPositionAge = lastPosition == null
+              ? null
+              : DateTime.now().difference(lastPosition.timestamp);
+          final isRecentAndAccurate =
+              lastPosition != null &&
+              lastPositionAge != null &&
+              !lastPositionAge.isNegative &&
+              lastPositionAge <= const Duration(minutes: 2) &&
+              lastPosition.accuracy <= 100;
+          if (isRecentAndAccurate) {
             _applyGpsPosition(
               lastPosition,
               hadLocation: _currentLocation != null,
@@ -3070,6 +3085,7 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _routePoints = route.points;
+      _activeRoute = route;
       _cumulativeDist = cumDist;
       _totalRouteDistM = totalDist;
       _instructions = route.instructions;
@@ -3083,6 +3099,297 @@ class _MapScreenState extends State<MapScreen> {
         minutes.toStringAsFixed(0),
       );
     });
+  }
+
+  Future<bool> _ensureAiConsent(AppLocalizations l10n) async {
+    if (await AiRouteAnalysisService.instance.hasConsent()) return true;
+    if (!mounted) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.aiConsentTitle),
+        content: Text(l10n.aiConsentBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.aiConsentDecline),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.aiConsentAccept),
+          ),
+        ],
+      ),
+    );
+    if (accepted == true) {
+      await AiRouteAnalysisService.instance.setConsent(true);
+      return true;
+    }
+    return false;
+  }
+
+  Map<String, int> _routeAlertCounts() {
+    final counts = <String, int>{};
+    for (final alert in _alerts) {
+      if (!alert.type.showsProximityWarning ||
+          _distanceToRouteMeters(alert.position, _routePoints) > 750) {
+        continue;
+      }
+      counts.update(alert.type.key, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return counts;
+  }
+
+  Future<void> _analyzeRouteWithAi() async {
+    final route = _activeRoute;
+    if (route == null || _isAiAnalyzing) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!await _ensureAiConsent(l10n) || !mounted) return;
+
+    final token = SupabaseService.instance.isEnabled
+        ? SupabaseService.instance.client.auth.currentSession?.accessToken
+        : null;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.aiSignInRequired)));
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    setState(() => _isAiAnalyzing = true);
+    unawaited(_showAiLoadingDialog(l10n));
+    AiRouteAnalysis? analysis;
+    try {
+      final streetNames = route.instructions
+          .map((instruction) => instruction.streetName.trim())
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+      analysis = await AiRouteAnalysisService.instance.analyze(
+        language: Localizations.localeOf(context).languageCode,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+        countryCode: UserPreferencesService.instance.countryCode.value,
+        maxSpeedKmh: UserPreferencesService.instance.maxSpeedKmh.value,
+        distanceKm: route.distanceMeters / 1000,
+        durationMinutes: route.durationSeconds / 60,
+        streetNames: streetNames,
+        alertCounts: _routeAlertCounts(),
+      );
+    } on AiRouteAnalysisException catch (error) {
+      if (!mounted) return;
+      final message = switch (error.code) {
+        'sign_in_required' => l10n.aiSignInRequired,
+        'daily_limit' => l10n.aiDailyLimit,
+        _ => l10n.aiUnavailable,
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    } finally {
+      _closeAiLoadingDialog();
+      if (mounted) setState(() => _isAiAnalyzing = false);
+    }
+    if (mounted && analysis != null) await _showAiAnalysis(analysis);
+  }
+
+  Future<void> _showAiLoadingDialog(AppLocalizations l10n) async {
+    _isAiLoadingDialogVisible = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+          title: Image.asset(
+            'assets/CruizX_Ai_transparent.png',
+            height: 135,
+            fit: BoxFit.contain,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 14),
+              Flexible(
+                child: Text(
+                  l10n.aiLoading,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, height: 1.25),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    _isAiLoadingDialogVisible = false;
+  }
+
+  void _closeAiLoadingDialog() {
+    if (!mounted || !_isAiLoadingDialogVisible) return;
+    _isAiLoadingDialogVisible = false;
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  void _openAiFromMapButton() {
+    if (_activeRoute == null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.mapAddressFieldHint),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _showDestinationSearchSheet();
+      return;
+    }
+    _analyzeRouteWithAi();
+  }
+
+  Future<void> _showAiAnalysis(AiRouteAnalysis analysis) async {
+    final l10n = AppLocalizations.of(context)!;
+    final color = switch (analysis.suitability) {
+      'good' => const Color(0xFF22A95A),
+      'not_recommended' => const Color(0xFFD32F2F),
+      _ => const Color(0xFFF39C12),
+    };
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 2),
+        title: Image.asset(
+          'assets/CruizX_Ai_transparent.png',
+          height: 145,
+          fit: BoxFit.contain,
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  analysis.headline,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    height: 1.24,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  analysis.summary,
+                  style: const TextStyle(fontSize: 15, height: 1.35),
+                ),
+                if (analysis.highlights.isNotEmpty)
+                  _AiAnalysisSection(
+                    title: l10n.aiHighlights,
+                    icon: Icons.check_circle_outline,
+                    color: const Color(0xFF22A95A),
+                    items: analysis.highlights,
+                  ),
+                if (analysis.cautions.isNotEmpty)
+                  _AiAnalysisSection(
+                    title: l10n.aiCautions,
+                    icon: Icons.warning_amber_rounded,
+                    color: const Color(0xFFF39C12),
+                    items: analysis.cautions,
+                  ),
+                _AiAnalysisSection(
+                  title: l10n.aiRecommendation,
+                  icon: Icons.lightbulb_outline,
+                  color: const Color(0xFF3AA8FF),
+                  items: [analysis.recommendation],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.aiDisclaimer,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _reportAiAnswer(analysis.responseId),
+            icon: const Icon(Icons.flag_outlined),
+            label: Text(l10n.aiReport),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.ttsVoiceHintDismiss),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportAiAnswer(String responseId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(l10n.aiReportTitle)),
+            for (final item in <(String, String)>[
+              ('incorrect', l10n.aiReportIncorrect),
+              ('unsafe', l10n.aiReportUnsafe),
+              ('inappropriate', l10n.aiReportInappropriate),
+              ('other', l10n.aiReportOther),
+            ])
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(item.$2),
+                onTap: () => Navigator.pop(sheetContext, item.$1),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await AiRouteAnalysisService.instance.report(
+        responseId: responseId,
+        reason: reason,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiReportSent)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    }
   }
 
   Future<void> _handleMapTap(LatLng destination) async {
@@ -3172,6 +3479,7 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         _routePoints = const [];
+        _activeRoute = null;
         _lastNearestIdx = 0;
         _displayNearestIdx = 0;
         _routingStatus = switch (error.code) {
@@ -3264,6 +3572,7 @@ class _MapScreenState extends State<MapScreen> {
 
       setState(() {
         _routePoints = const [];
+        _activeRoute = null;
         _routingStatus = l10n.mapRouteFailed;
       });
     } finally {
@@ -3298,6 +3607,7 @@ class _MapScreenState extends State<MapScreen> {
     }
     setState(() {
       _routePoints = const [];
+      _activeRoute = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
       _destination = null;
@@ -4396,6 +4706,33 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                Tooltip(
+                  message: l10n.aiRouteButton,
+                  child: _mapCircleButton(
+                    onTap: _openAiFromMapButton,
+                    color: _activeRoute != null
+                        ? const Color(0xFF1B4F9C)
+                        : null,
+                    child: _isAiAnalyzing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF8FCBFF),
+                            ),
+                          )
+                        : const Text(
+                            'AI',
+                            style: TextStyle(
+                              color: Color(0xFF8FCBFF),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 // 2D / 3D toggle
                 _mapCircleButton(
                   onTap: () {
@@ -5178,6 +5515,73 @@ class _MapScreenState extends State<MapScreen> {
                                                 ),
                                           if (!_isNavigating) ...[
                                             const SizedBox(height: 8),
+                                            ConstrainedBox(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: 140,
+                                              ),
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                onTap: _isAiAnalyzing
+                                                    ? null
+                                                    : _analyzeRouteWithAi,
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                        vertical: 5,
+                                                      ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      if (_isAiAnalyzing)
+                                                        const SizedBox(
+                                                          width: 14,
+                                                          height: 14,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth: 2,
+                                                                color: Color(
+                                                                  0xFF8FCBFF,
+                                                                ),
+                                                              ),
+                                                        )
+                                                      else
+                                                        const Icon(
+                                                          Icons.auto_awesome,
+                                                          size: 16,
+                                                          color: Color(
+                                                            0xFF8FCBFF,
+                                                          ),
+                                                        ),
+                                                      const SizedBox(width: 6),
+                                                      Flexible(
+                                                        child: Text(
+                                                          _isAiAnalyzing
+                                                              ? l10n.aiLoading
+                                                              : l10n.aiRouteButton,
+                                                          maxLines: 2,
+                                                          textAlign:
+                                                              TextAlign.right,
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Color(
+                                                                  0xFF8FCBFF,
+                                                                ),
+                                                                fontSize: 13,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
                                             GestureDetector(
                                               onTap: _clearRoute,
                                               child: Text(
@@ -5224,6 +5628,64 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 // ── Inline report-alert bottom sheet ─────────────────────────────────────────
+
+class _AiAnalysisSection extends StatelessWidget {
+  const _AiAnalysisSection({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(top: 5, left: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•', style: TextStyle(fontSize: 15, height: 1.3)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(fontSize: 14.5, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class _InlineReportSheet extends StatefulWidget {
   const _InlineReportSheet({

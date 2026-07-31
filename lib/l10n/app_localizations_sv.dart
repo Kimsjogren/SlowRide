@@ -45,7 +45,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.3 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
 
   @override
   String get alertsTitle => 'Community-varningar';
@@ -597,7 +597,7 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Engångsköp: CruizX Pro (livstid). Betalningen debiteras ditt Apple ID en gång. Ingen prenumeration och ingen förnyelse.';
+  String get settingsProOneTimeNote => 'Engångsköp: CruizX Pro (livstid). Betalningen debiteras en gång via appbutiken. Ingen prenumeration och ingen förnyelse.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Integritetspolicy';
@@ -1074,6 +1074,11 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallUpgradeButton => 'Uppgradera till Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Köp Pro permanent · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Återställ köp';
 
   @override
@@ -1087,7 +1092,7 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1594,4 +1599,67 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get publicGatheringStarted => 'Pågår';
+
+  @override
+  String get aiRouteButton => 'AI-kolla rutten';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI-ruttanalys';
+
+  @override
+  String get aiConsentTitle => 'Använd AI-ruttanalys?';
+
+  @override
+  String get aiConsentBody => 'CruizX skickar ruttfakta som avstånd, restid, fordonstyp, vägnamn och antal varningar till CruizX AI-tjänst på Cloudflare. Din position, destinationens koordinater och identitet skickas inte. AI kan göra fel och ändrar aldrig din rutt.';
+
+  @override
+  String get aiConsentAccept => 'Godkänn och fortsätt';
+
+  @override
+  String get aiConsentDecline => 'Inte nu';
+
+  @override
+  String get aiSignInRequired => 'Logga in för att använda AI-ruttanalys.';
+
+  @override
+  String get aiLoading => 'Kontrollerar rutten…';
+
+  @override
+  String get aiUnavailable => 'AI-ruttanalysen är inte tillgänglig just nu. Din rutt är oförändrad.';
+
+  @override
+  String get aiDailyLimit => 'Du har nått dagens gräns för AI-ruttanalyser.';
+
+  @override
+  String get aiHighlights => 'Fördelar';
+
+  @override
+  String get aiCautions => 'Saker att kontrollera';
+
+  @override
+  String get aiRecommendation => 'Rekommendation';
+
+  @override
+  String get aiDisclaimer => 'AI-sammanfattning baserad enbart på tillgänglig ruttdata. Följ skyltning och aktuella vägförhållanden.';
+
+  @override
+  String get aiReport => 'Rapportera svaret';
+
+  @override
+  String get aiReportTitle => 'Varför rapporterar du svaret?';
+
+  @override
+  String get aiReportIncorrect => 'Felaktig information';
+
+  @override
+  String get aiReportUnsafe => 'Osäkert råd';
+
+  @override
+  String get aiReportInappropriate => 'Olämpligt innehåll';
+
+  @override
+  String get aiReportOther => 'Annat problem';
+
+  @override
+  String get aiReportSent => 'Tack. AI-svaret har rapporterats.';
 }
