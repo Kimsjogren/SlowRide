@@ -64,6 +64,8 @@
   "authErrorAllFieldsRequired": "Todos los campos son obligatorios.",
   "authErrorPasswordTooShort": "La contraseña debe tener al menos 6 caracteres.",
   "authErrorConfirmEmail": "Revisa tu correo para confirmar tu cuenta y luego inicia sesión.",
+  "authEmailConfirmedTitle": "Correo electrónico confirmado",
+  "authEmailConfirmedBody": "Tu dirección de correo electrónico ha sido confirmada. Ya has iniciado sesión.",
   "authErrorEmailAndPasswordRequired": "Introduce tu correo y contraseña.",
   "authErrorInvalidCredentials": "Correo o contraseña incorrectos.",
   "authErrorEmailAlreadyInUse": "Ya existe una cuenta con ese correo.",

@@ -66,6 +66,8 @@
   "authErrorAllFieldsRequired": "Kaikki kentät ovat pakollisia.",
   "authErrorPasswordTooShort": "Salasanan on oltava vähintään 6 merkkiä.",
   "authErrorConfirmEmail": "Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.",
+  "authEmailConfirmedTitle": "Sähköposti vahvistettu",
+  "authEmailConfirmedBody": "Sähköpostiosoitteesi on vahvistettu. Olet nyt kirjautunut sisään.",
   "authErrorEmailAndPasswordRequired": "Syötä sähköposti ja salasana.",
   "authErrorInvalidCredentials": "Väärä sähköposti tai salasana.",
   "authErrorEmailAlreadyInUse": "Tällä sähköpostilla on jo tili.",

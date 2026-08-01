@@ -66,6 +66,8 @@
   "authErrorAllFieldsRequired": "All fields are required.",
   "authErrorPasswordTooShort": "Password must be at least 6 characters.",
   "authErrorConfirmEmail": "Check your email to confirm your account, then sign in.",
+  "authEmailConfirmedTitle": "Email confirmed",
+  "authEmailConfirmedBody": "Your email address has been confirmed. You are now signed in.",
   "authErrorEmailAndPasswordRequired": "Enter your email and password.",
   "authErrorInvalidCredentials": "Incorrect email or password.",
   "authErrorEmailAlreadyInUse": "An account with that email already exists.",

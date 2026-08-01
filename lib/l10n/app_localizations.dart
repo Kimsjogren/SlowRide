@@ -491,6 +491,18 @@ abstract class AppLocalizations {
   /// **'Check your email to confirm your account, then sign in.'**
   String get authErrorConfirmEmail;
 
+  /// No description provided for @authEmailConfirmedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email confirmed'**
+  String get authEmailConfirmedTitle;
+
+  /// No description provided for @authEmailConfirmedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email address has been confirmed. You are now signed in.'**
+  String get authEmailConfirmedBody;
+
   /// No description provided for @authErrorEmailAndPasswordRequired.
   ///
   /// In en, this message translates to:

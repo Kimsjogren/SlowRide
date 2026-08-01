@@ -66,6 +66,8 @@
   "authErrorAllFieldsRequired": "Fyll i alla fält.",
   "authErrorPasswordTooShort": "Lösenordet måste vara minst 6 tecken.",
   "authErrorConfirmEmail": "Kolla din e-post och bekräfta kontot, logga sedan in.",
+  "authEmailConfirmedTitle": "E-post bekräftad",
+  "authEmailConfirmedBody": "Din e-postadress har bekräftats. Du är nu inloggad.",
   "authErrorEmailAndPasswordRequired": "Fyll i e-post och lösenord.",
   "authErrorInvalidCredentials": "Fel e-post eller lösenord.",
   "authErrorEmailAlreadyInUse": "Det finns redan ett konto med den e-postadressen.",

@@ -201,6 +201,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get authErrorConfirmEmail => 'Revisa tu correo para confirmar tu cuenta y luego inicia sesión.';
 
   @override
+  String get authEmailConfirmedTitle => 'Correo electrónico confirmado';
+
+  @override
+  String get authEmailConfirmedBody => 'Tu dirección de correo electrónico ha sido confirmada. Ya has iniciado sesión.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Introduce tu correo y contraseña.';
 
   @override

@@ -23,6 +23,8 @@ class AuthService {
   static const String _userNameKey = 'auth_user_name';
   static const String _userEmailKey = 'auth_user_email';
   static const String _avatarUrlKey = 'auth_avatar_url';
+  static const String _pendingEmailConfirmationKey =
+      'auth_pending_email_confirmation';
   // Local mock: stores {"email": {"name":"...", "pw":"..."}}
   static const String _localAccountsKey = 'auth_local_accounts';
 
@@ -86,20 +88,22 @@ class AuthService {
     }
 
     if (SupabaseService.instance.isEnabled) {
-      await SupabaseService.instance.client.auth.signUp(
+      final response = await SupabaseService.instance.client.auth.signUp(
         email: normalizedEmail,
         password: password,
         emailRedirectTo: 'com.cruizx.mobile://login-callback/',
         data: {'display_name': trimmedName},
       );
       // If email confirmation is off, session is active immediately.
-      final user = SupabaseService.instance.client.auth.currentUser;
+      final user = response.session?.user;
       if (user != null) {
+        await _prefs?.remove(_pendingEmailConfirmationKey);
         userId.value = user.id;
         userEmail.value = user.email;
         userName.value = trimmedName;
         isLoggedIn.value = true;
       } else {
+        await _prefs?.setString(_pendingEmailConfirmationKey, normalizedEmail);
         // Email confirmation required — tell the caller.
         throw const AuthException(
           'confirmationEmailSent',
@@ -175,6 +179,45 @@ class AuthService {
     userEmail.value = normalizedEmail;
     userId.value = null;
     isLoggedIn.value = true;
+  }
+
+  /// Synchronizes authentication initiated outside the running UI, such as a
+  /// Supabase email-confirmation deep link. Returns true exactly once when a
+  /// pending registration has been confirmed on this device.
+  Future<bool> handleAuthStateChange(AuthState state) async {
+    if (!SupabaseService.instance.isEnabled) return false;
+    _prefs ??= await SharedPreferences.getInstance();
+
+    final user = state.session?.user;
+    if (user == null) {
+      if (state.event == AuthChangeEvent.signedOut) {
+        userId.value = null;
+        userEmail.value = null;
+        userName.value = null;
+        avatarUrl.value = null;
+        isLoggedIn.value = false;
+      }
+      return false;
+    }
+
+    userId.value = user.id;
+    userEmail.value = user.email;
+    userName.value =
+        user.userMetadata?['display_name'] as String? ??
+        _nameFromEmail(user.email);
+    avatarUrl.value = user.userMetadata?['avatar_url'] as String?;
+    isLoggedIn.value = true;
+
+    final pendingEmail = _prefs?.getString(_pendingEmailConfirmationKey);
+    final confirmedEmail = user.email?.trim().toLowerCase();
+    final wasPendingConfirmation =
+        pendingEmail != null &&
+        pendingEmail == confirmedEmail &&
+        user.emailConfirmedAt != null;
+    if (wasPendingConfirmation) {
+      await _prefs?.remove(_pendingEmailConfirmationKey);
+    }
+    return wasPendingConfirmation;
   }
 
   // ── Password reset (Supabase only) ────────────────────────────────────────

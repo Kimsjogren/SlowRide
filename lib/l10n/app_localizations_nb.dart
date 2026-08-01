@@ -201,6 +201,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authErrorConfirmEmail => 'Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.';
 
   @override
+  String get authEmailConfirmedTitle => 'E-post bekreftet';
+
+  @override
+  String get authEmailConfirmedBody => 'E-postadressen din er bekreftet. Du er nå logget inn.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Skriv inn e-post og passord.';
 
   @override

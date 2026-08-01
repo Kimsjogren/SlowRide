@@ -201,6 +201,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get authErrorConfirmEmail => 'Controlla la tua email per confermare il tuo account, quindi accedi.';
 
   @override
+  String get authEmailConfirmedTitle => 'E-mail confermata';
+
+  @override
+  String get authEmailConfirmedBody => 'Il tuo indirizzo e-mail è stato confermato. Ora hai effettuato l\'accesso.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Inserisci la tua email e la password.';
 
   @override

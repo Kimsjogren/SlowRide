@@ -54,6 +54,15 @@ android {
 
     buildTypes {
         release {
+            // Optimize the Play Store bundle with R8 and remove resources that
+            // are unreachable from the optimized release code.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
             // Use release keystore if available, otherwise keep debug signing for local builds.
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")

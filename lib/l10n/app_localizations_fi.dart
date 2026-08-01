@@ -201,6 +201,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.';
 
   @override
+  String get authEmailConfirmedTitle => 'Sähköposti vahvistettu';
+
+  @override
+  String get authEmailConfirmedBody => 'Sähköpostiosoitteesi on vahvistettu. Olet nyt kirjautunut sisään.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Syötä sähköposti ja salasana.';
 
   @override

@@ -201,6 +201,12 @@ class AppLocalizationsDa extends AppLocalizations {
   String get authErrorConfirmEmail => 'Tjek din e-mail for at bekræfte din konto, og log derefter ind.';
 
   @override
+  String get authEmailConfirmedTitle => 'E-mail bekræftet';
+
+  @override
+  String get authEmailConfirmedBody => 'Din e-mailadresse er blevet bekræftet. Du er nu logget ind.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Indtast e-mail og adgangskode.';
 
   @override

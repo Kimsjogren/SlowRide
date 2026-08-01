@@ -201,6 +201,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrorConfirmEmail => 'Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.';
 
   @override
+  String get authEmailConfirmedTitle => 'Adresse e-mail confirmée';
+
+  @override
+  String get authEmailConfirmedBody => 'Votre adresse e-mail a été confirmée. Vous êtes maintenant connecté.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Entrez votre e-mail et votre mot de passe.';
 
   @override

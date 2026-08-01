@@ -64,6 +64,8 @@
   "authErrorAllFieldsRequired": "Tutti i campi sono obbligatori.",
   "authErrorPasswordTooShort": "La password deve contenere almeno 6 caratteri.",
   "authErrorConfirmEmail": "Controlla la tua email per confermare il tuo account, quindi accedi.",
+  "authEmailConfirmedTitle": "E-mail confermata",
+  "authEmailConfirmedBody": "Il tuo indirizzo e-mail è stato confermato. Ora hai effettuato l'accesso.",
   "authErrorEmailAndPasswordRequired": "Inserisci la tua email e la password.",
   "authErrorInvalidCredentials": "E-mail o password errati.",
   "authErrorEmailAlreadyInUse": "Esiste già un account con quell'e-mail.",

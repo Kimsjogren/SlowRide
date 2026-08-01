@@ -201,6 +201,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authErrorConfirmEmail => 'Kolla din e-post och bekräfta kontot, logga sedan in.';
 
   @override
+  String get authEmailConfirmedTitle => 'E-post bekräftad';
+
+  @override
+  String get authEmailConfirmedBody => 'Din e-postadress har bekräftats. Du är nu inloggad.';
+
+  @override
   String get authErrorEmailAndPasswordRequired => 'Fyll i e-post och lösenord.';
 
   @override

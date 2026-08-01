@@ -66,6 +66,8 @@
   "authErrorAllFieldsRequired": "Alle felt er påkrevd.",
   "authErrorPasswordTooShort": "Passordet må være minst 6 tegn.",
   "authErrorConfirmEmail": "Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.",
+  "authEmailConfirmedTitle": "E-post bekreftet",
+  "authEmailConfirmedBody": "E-postadressen din er bekreftet. Du er nå logget inn.",
   "authErrorEmailAndPasswordRequired": "Skriv inn e-post og passord.",
   "authErrorInvalidCredentials": "Feil e-post eller passord.",
   "authErrorEmailAlreadyInUse": "Det finnes allerede en konto med den e-postadressen.",

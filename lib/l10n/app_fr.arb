@@ -66,6 +66,8 @@
   "authErrorAllFieldsRequired": "Tous les champs sont obligatoires.",
   "authErrorPasswordTooShort": "Le mot de passe doit contenir au moins 6 caractères.",
   "authErrorConfirmEmail": "Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.",
+  "authEmailConfirmedTitle": "Adresse e-mail confirmée",
+  "authEmailConfirmedBody": "Votre adresse e-mail a été confirmée. Vous êtes maintenant connecté.",
   "authErrorEmailAndPasswordRequired": "Entrez votre e-mail et votre mot de passe.",
   "authErrorInvalidCredentials": "E-mail ou mot de passe incorrect.",
   "authErrorEmailAlreadyInUse": "Un compte avec cette adresse e-mail existe déjà.",

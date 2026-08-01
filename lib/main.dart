@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
@@ -20,6 +21,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -66,10 +68,15 @@ class _CruizXAppState extends State<CruizXApp> {
   void _startAuthListener() {
     if (!SupabaseService.instance.isEnabled) return;
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (data) {
+      (data) async {
         debugPrint(
           'Auth event: ${data.event}, session: ${data.session != null}',
         );
+        final emailWasConfirmed = await AuthService.instance
+            .handleAuthStateChange(data);
+        if (emailWasConfirmed) {
+          _showEmailConfirmedDialog();
+        }
         // Password recovery is handled fully in-app via the OTP reset sheet,
         // so we intentionally do not navigate here (avoids a duplicate reset
         // screen and unnecessary MFA prompts).
@@ -79,6 +86,29 @@ class _CruizXAppState extends State<CruizXApp> {
         _showErrorDialog(e.toString());
       },
     );
+  }
+
+  void _showEmailConfirmedDialog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      final l10n = AppLocalizations.of(ctx)!;
+      await showDialog<void>(
+        context: ctx,
+        builder: (_) => AlertDialog(
+          title: Text(l10n.authEmailConfirmedTitle),
+          content: Text(l10n.authEmailConfirmedBody),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.routeBlockedOk),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    });
   }
 
   void _showErrorDialog(String message) {
