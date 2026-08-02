@@ -5,6 +5,7 @@ import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/features/settings/parent_settings_screen.dart';
+import 'package:slowride/features/support/support_chat_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/services/ad_service.dart';
@@ -21,7 +22,7 @@ class SettingsScreen extends StatelessWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(LegalLinks.privacyPolicy);
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
-  static final Uri _supportUri = Uri.parse(LegalLinks.support);
+  static const double _settingsActionCardHeight = 96;
 
   static Widget _proFeatureRow(String text) {
     return Padding(
@@ -510,12 +511,13 @@ class SettingsScreen extends StatelessWidget {
                 // Voice navigation toggle
                 Container(
                   width: double.infinity,
+                  height: _settingsActionCardHeight,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.15),
@@ -563,6 +565,8 @@ class SettingsScreen extends StatelessWidget {
                   valueListenable: UserPreferencesService.instance.useVectorMap,
                   builder: (context, useVector, _) {
                     return Container(
+                      width: double.infinity,
+                      height: _settingsActionCardHeight,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 4,
@@ -625,7 +629,8 @@ class SettingsScreen extends StatelessWidget {
                   },
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    height: _settingsActionCardHeight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(14),
@@ -652,6 +657,8 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
@@ -681,6 +688,84 @@ class SettingsScreen extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SupportChatScreen(),
+                      ),
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      height: _settingsActionCardHeight,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            backgroundColor: Color(0xFF1E6BFF),
+                            child: Icon(
+                              Icons.support_agent,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.supportChatTitle,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.circle,
+                                      color: Color(0xFF28C76F),
+                                      size: 8,
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      l10n.supportChatReplyTime,
+                                      style: const TextStyle(
+                                        color: Colors.white60,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white54,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -871,11 +956,6 @@ class SettingsScreen extends StatelessWidget {
                                 onPressed: () =>
                                     _openExternalLink(context, _termsOfUseUri),
                                 child: Text(l10n.settingsTermsOfUseLabel),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    _openExternalLink(context, _supportUri),
-                                child: Text(l10n.settingsSupportLabel),
                               ),
                             ],
                           ),

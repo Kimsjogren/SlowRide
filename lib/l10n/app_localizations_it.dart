@@ -45,7 +45,46 @@ class AppLocalizationsIt extends AppLocalizations {
   String get splashReady => 'Pronto';
 
   @override
-  String get splashVersionLine => 'v1.1.4 | CruizX di KimTechTool';
+  String get splashVersionLine => 'v1.1.6 | CruizX di KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Centra la mappa sulla mia posizione';
+
+  @override
+  String get a11yStopFollowingLocation => 'Smetti di seguire la mia posizione';
+
+  @override
+  String get a11ySwitchTo2d => 'Passa alla mappa 2D';
+
+  @override
+  String get a11ySwitchTo3d => 'Passa alla mappa 3D';
+
+  @override
+  String get a11yUseDarkMap => 'Usa la mappa scura';
+
+  @override
+  String get a11yUseLightMap => 'Usa la mappa chiara';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Attiva la navigazione vocale';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Disattiva la navigazione vocale';
+
+  @override
+  String get a11yDismissAlert => 'Chiudi l’avviso';
+
+  @override
+  String get a11yClearSearch => 'Cancella la ricerca';
+
+  @override
+  String get a11yOpenSearch => 'Apri la ricerca indirizzo';
+
+  @override
+  String get a11yAddFavorite => 'Aggiungi luogo preferito';
+
+  @override
+  String get a11yConfirmAlert => 'Conferma l’avviso';
 
   @override
   String get alertsTitle => 'Avvisi della comunità';
@@ -613,6 +652,42 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Supporto';
+
+  @override
+  String get supportChatTitle => 'Chat dal vivo con l’assistenza';
+
+  @override
+  String get supportChatReplyTime => 'Rispondiamo entro 24 ore';
+
+  @override
+  String get supportChatWelcome => 'Ciao! Come possiamo aiutarti con CruizX? Scrivi qui il tuo messaggio e ti risponderemo il prima possibile.';
+
+  @override
+  String get supportChatGuestNotice => 'Stai chattando come ospite. La conversazione viene salvata in modo privato su questo dispositivo.';
+
+  @override
+  String get supportChatLoginRequired => 'Accedi per avviare una chat privata con l’assistenza e vedere i messaggi precedenti.';
+
+  @override
+  String get supportChatLoginAction => 'Accedi';
+
+  @override
+  String get supportChatMessageHint => 'Scrivi un messaggio…';
+
+  @override
+  String get supportChatSend => 'Invia messaggio';
+
+  @override
+  String get supportChatSendFailed => 'Impossibile inviare il messaggio. Riprova.';
+
+  @override
+  String get supportChatUnavailable => 'La chat di assistenza non è disponibile al momento. Riprova più tardi.';
+
+  @override
+  String get supportChatTeam => 'Assistenza CruizX';
+
+  @override
+  String get supportChatYou => 'Tu';
 
   @override
   String get settingsLinkOpenFailed => 'Impossibile aprire il collegamento in questo momento.';
@@ -1616,7 +1691,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get aiConsentTitle => 'Usare l’analisi IA del percorso?';
 
   @override
-  String get aiConsentBody => 'CruizX invia dati del percorso come distanza, durata, tipo di veicolo, nomi delle strade e numero di avvisi al servizio IA CruizX su Cloudflare. La tua posizione, le coordinate della destinazione e la tua identità non vengono inviate. L’IA può sbagliare e non modifica mai il percorso.';
+  String get aiConsentBody => 'CruizX utilizza dati come distanza, durata, tipo di veicolo, nomi delle strade e numero di avvisi per analizzare il percorso. La tua posizione esatta, le coordinate della destinazione e la tua identità non vengono condivise. L’analisi può contenere errori e non modifica mai il percorso.';
 
   @override
   String get aiConsentAccept => 'Accetta e continua';

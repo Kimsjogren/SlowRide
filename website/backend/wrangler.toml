@@ -23,3 +23,8 @@ zone_name = "cruizx.com"
 #   wrangler secret put WEB_CHECKOUT_SUCCESS_URL
 #   wrangler secret put WEB_CHECKOUT_CANCEL_URL
 #   wrangler secret put TRAFIKVERKET_KEY     # öppna API:t för livehändelser
+#   wrangler secret put SUPPORT_WEBHOOK_SECRET # verifierar Supabase-webhooken
+#   wrangler secret put SUPPORT_REPLY_SECRET   # signerar tidsbegränsade svarslänkar
+#   wrangler secret put NTFY_SERVER_URL        # exempel: https://ntfy.sh
+#   wrangler secret put NTFY_TOPIC             # privat ntfy-topic
+#   wrangler secret put NTFY_ACCESS_TOKEN      # valfri, rekommenderas

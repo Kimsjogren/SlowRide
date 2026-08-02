@@ -182,8 +182,86 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.4 | CruizX by KimTechTool'**
+  /// **'v1.1.6 | CruizX by KimTechTool'**
   String get splashVersionLine;
+
+  /// No description provided for @a11yCenterOnLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Center the map on my location'**
+  String get a11yCenterOnLocation;
+
+  /// No description provided for @a11yStopFollowingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following my location'**
+  String get a11yStopFollowingLocation;
+
+  /// No description provided for @a11ySwitchTo2d.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to 2D map'**
+  String get a11ySwitchTo2d;
+
+  /// No description provided for @a11ySwitchTo3d.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to 3D map'**
+  String get a11ySwitchTo3d;
+
+  /// No description provided for @a11yUseDarkMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Use dark map'**
+  String get a11yUseDarkMap;
+
+  /// No description provided for @a11yUseLightMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Use light map'**
+  String get a11yUseLightMap;
+
+  /// No description provided for @a11yEnableVoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on voice navigation'**
+  String get a11yEnableVoiceNavigation;
+
+  /// No description provided for @a11yDisableVoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off voice navigation'**
+  String get a11yDisableVoiceNavigation;
+
+  /// No description provided for @a11yDismissAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss the alert'**
+  String get a11yDismissAlert;
+
+  /// No description provided for @a11yClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the search'**
+  String get a11yClearSearch;
+
+  /// No description provided for @a11yOpenSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Open address search'**
+  String get a11yOpenSearch;
+
+  /// No description provided for @a11yAddFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add favorite place'**
+  String get a11yAddFavorite;
+
+  /// No description provided for @a11yConfirmAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm the alert'**
+  String get a11yConfirmAlert;
 
   /// No description provided for @alertsTitle.
   ///
@@ -1282,6 +1360,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Support'**
   String get settingsSupportLabel;
+
+  /// No description provided for @supportChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live support chat'**
+  String get supportChatTitle;
+
+  /// No description provided for @supportChatReplyTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies within 24 hours'**
+  String get supportChatReplyTime;
+
+  /// No description provided for @supportChatWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi! How can we help you with CruizX? Send your message here and we will get back to you as soon as we can.'**
+  String get supportChatWelcome;
+
+  /// No description provided for @supportChatGuestNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'You are chatting as a guest. This conversation is stored privately on this device.'**
+  String get supportChatGuestNotice;
+
+  /// No description provided for @supportChatLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to start a private support chat and view your previous messages.'**
+  String get supportChatLoginRequired;
+
+  /// No description provided for @supportChatLoginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get supportChatLoginAction;
+
+  /// No description provided for @supportChatMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message…'**
+  String get supportChatMessageHint;
+
+  /// No description provided for @supportChatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send message'**
+  String get supportChatSend;
+
+  /// No description provided for @supportChatSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The message could not be sent. Please try again.'**
+  String get supportChatSendFailed;
+
+  /// No description provided for @supportChatUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Support chat is currently unavailable. Please try again later.'**
+  String get supportChatUnavailable;
+
+  /// No description provided for @supportChatTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Support'**
+  String get supportChatTeam;
+
+  /// No description provided for @supportChatYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get supportChatYou;
 
   /// No description provided for @settingsLinkOpenFailed.
   ///
@@ -3152,7 +3302,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiConsentBody.
   ///
   /// In en, this message translates to:
-  /// **'CruizX sends route facts such as distance, travel time, vehicle type, road names and warning counts to the CruizX AI service on Cloudflare. Your position, destination coordinates and identity are not sent. AI can make mistakes and never changes your route.'**
+  /// **'CruizX uses route facts such as distance, travel time, vehicle type, road names and warning counts to analyze the route. Your exact position, destination coordinates and identity are not shared. The analysis may contain errors and never changes your route.'**
   String get aiConsentBody;
 
   /// No description provided for @aiConsentAccept.

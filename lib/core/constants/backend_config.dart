@@ -144,6 +144,13 @@ class BackendConfig {
     defaultValue: 'https://cruizx.com/api/ai/report',
   );
 
+  /// Public CruizX endpoint for private support conversations without an
+  /// account. A random device token is hashed by the backend before storage.
+  static const String supportGuestUrl = String.fromEnvironment(
+    'SUPPORT_GUEST_URL',
+    defaultValue: 'https://cruizx.com/api/support/guest',
+  );
+
   /// Enable the route simulation button in release builds.
   /// Build with: --dart-define=ENABLE_SIMULATION=true
   static const bool enableSimulation = bool.fromEnvironment(

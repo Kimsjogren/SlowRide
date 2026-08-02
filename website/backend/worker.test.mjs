@@ -1,0 +1,205 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import worker from "./worker.js";
+
+const userId = "4de0a0c1-c42e-4dc2-9e8c-7acd9693b3da";
+const baseEnv = {
+  SUPABASE_URL: "https://example.supabase.co",
+  SUPABASE_SERVICE_ROLE_KEY: "service-role",
+  SUPPORT_WEBHOOK_SECRET: "webhook-secret",
+  SUPPORT_REPLY_SECRET: "reply-secret",
+  NTFY_SERVER_URL: "https://ntfy.example",
+  NTFY_TOPIC: "private-topic",
+  NTFY_ACCESS_TOKEN: "ntfy-token",
+};
+
+async function signature(user, expires) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(baseEnv.SUPPORT_REPLY_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const bytes = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${user}.${expires}`)
+  );
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+test("support webhook requires its shared secret", { concurrency: false }, async () => {
+  const response = await worker.fetch(
+    new Request("https://cruizx.com/api/support/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+    baseEnv
+  );
+  assert.equal(response.status, 401);
+});
+
+test("new user support messages are mirrored to ntfy with a reply action", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  let ntfyRequest;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes("/auth/v1/admin/users/")) {
+      return Response.json({ id: userId, email: "driver@example.com" });
+    }
+    if (url === baseEnv.NTFY_SERVER_URL) {
+      ntfyRequest = { init, payload: JSON.parse(init.body) };
+      return Response.json({ id: "notification-id" });
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request("https://cruizx.com/api/support/notify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CruizX-Webhook-Secret": baseEnv.SUPPORT_WEBHOOK_SECRET,
+        },
+        body: JSON.stringify({
+          record: { user_id: userId, sender: "user", body: "Jag behöver hjälp" },
+        }),
+      }),
+      baseEnv
+    );
+    assert.equal(response.status, 200);
+    assert.equal(ntfyRequest.init.headers.Authorization, "Bearer ntfy-token");
+    assert.equal(ntfyRequest.payload.topic, "private-topic");
+    assert.match(ntfyRequest.payload.message, /Jag behöver hjälp/);
+    assert.equal(ntfyRequest.payload.actions[0].label, "Svara");
+    assert.match(ntfyRequest.payload.actions[0].url, /support-reply\.html/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("signed support link can load a conversation and post a reply", { concurrency: false }, async () => {
+  const expires = Math.floor(Date.now() / 1000) + 3600;
+  const signed = await signature(userId, expires);
+  const query = new URLSearchParams({ user: userId, expires: String(expires), signature: signed });
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = input instanceof Request ? input.url : String(input);
+    calls.push({ url, init });
+    if (url.includes("/auth/v1/admin/users/")) {
+      return Response.json({ id: userId, email: "driver@example.com" });
+    }
+    if (url.includes("/rest/v1/support_messages") && (!init.method || init.method === "GET")) {
+      return Response.json([
+        {
+          id: "message-1",
+          sender: "user",
+          body: "Hej",
+          language_code: "sv",
+          created_at: "2026-08-01T12:00:00Z",
+          read_at: null,
+        },
+      ]);
+    }
+    if (url.includes("/rest/v1/support_messages") && init.method === "PATCH") {
+      return new Response(null, { status: 204 });
+    }
+    if (url.endsWith("/rest/v1/support_messages") && init.method === "POST") {
+      return Response.json([{ id: "reply-1", ...JSON.parse(init.body) }], { status: 201 });
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const conversation = await worker.fetch(
+      new Request(`https://cruizx.com/api/support/conversation?${query}`),
+      baseEnv
+    );
+    assert.equal(conversation.status, 200);
+    const conversationBody = await conversation.json();
+    assert.equal(conversationBody.user.email, "driver@example.com");
+    assert.equal(conversationBody.messages[0].body, "Hej");
+
+    const reply = await worker.fetch(
+      new Request(`https://cruizx.com/api/support/reply?${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: "Hej! Hur kan vi hjälpa?" }),
+      }),
+      baseEnv
+    );
+    assert.equal(reply.status, 201);
+    const insert = calls.find(
+      (call) => call.url.endsWith("/rest/v1/support_messages") && call.init.method === "POST"
+    );
+    assert.deepEqual(JSON.parse(insert.init.body), {
+      user_id: userId,
+      sender: "support",
+      body: "Hej! Hur kan vi hjälpa?",
+      language_code: "sv",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("guest support uses a hashed device token for private messages", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  const guestToken = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ";
+  let insertedPayload;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.includes("/rest/v1/support_messages?select=") && url.includes("guest_token_hash=eq.")) {
+      return Response.json([
+        {
+          id: "1",
+          user_id: null,
+          sender: "support",
+          body: "Hej gäst!",
+          language_code: "sv",
+          created_at: "2026-08-02T05:00:00Z",
+          read_at: null,
+        },
+      ]);
+    }
+    if (url.includes("/rest/v1/support_messages?guest_token_hash=eq.")) {
+      return new Response(null, { status: 204 });
+    }
+    if (url.endsWith("/rest/v1/rpc/insert_guest_support_message")) {
+      insertedPayload = JSON.parse(init.body);
+      return Response.json({ id: "2", sender: "user", body: insertedPayload.p_body });
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const headers = { "X-CruizX-Guest-Token": guestToken };
+    const getResponse = await worker.fetch(
+      new Request("https://cruizx.com/api/support/guest", { headers }),
+      baseEnv
+    );
+    assert.equal(getResponse.status, 200);
+    const conversation = await getResponse.json();
+    assert.equal(conversation.messages[0].body, "Hej gäst!");
+
+    const postResponse = await worker.fetch(
+      new Request("https://cruizx.com/api/support/guest", {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ body: "Jag behöver hjälp", language_code: "sv" }),
+      }),
+      baseEnv
+    );
+    assert.equal(postResponse.status, 201);
+    assert.equal(insertedPayload.p_body, "Jag behöver hjälp");
+    assert.match(insertedPayload.p_guest_token_hash, /^[a-f0-9]{64}$/);
+    assert.notEqual(insertedPayload.p_guest_token_hash, guestToken);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

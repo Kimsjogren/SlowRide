@@ -45,7 +45,46 @@ class AppLocalizationsSv extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Centrera kartan på min position';
+
+  @override
+  String get a11yStopFollowingLocation => 'Sluta följa min position';
+
+  @override
+  String get a11ySwitchTo2d => 'Byt till 2D-karta';
+
+  @override
+  String get a11ySwitchTo3d => 'Byt till 3D-karta';
+
+  @override
+  String get a11yUseDarkMap => 'Använd mörk karta';
+
+  @override
+  String get a11yUseLightMap => 'Använd ljus karta';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Slå på röstnavigering';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Stäng av röstnavigering';
+
+  @override
+  String get a11yDismissAlert => 'Stäng varningen';
+
+  @override
+  String get a11yClearSearch => 'Rensa sökningen';
+
+  @override
+  String get a11yOpenSearch => 'Öppna adressökning';
+
+  @override
+  String get a11yAddFavorite => 'Lägg till favoritplats';
+
+  @override
+  String get a11yConfirmAlert => 'Bekräfta varningen';
 
   @override
   String get alertsTitle => 'Community-varningar';
@@ -613,6 +652,42 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Support';
+
+  @override
+  String get supportChatTitle => 'Livechatt med support';
+
+  @override
+  String get supportChatReplyTime => 'Svarar inom 24 h';
+
+  @override
+  String get supportChatWelcome => 'Hej! Hur kan vi hjälpa dig med CruizX? Skriv ditt meddelande här så återkommer vi så snart vi kan.';
+
+  @override
+  String get supportChatGuestNotice => 'Du chattar som gäst. Konversationen sparas privat på den här enheten.';
+
+  @override
+  String get supportChatLoginRequired => 'Logga in för att starta en privat supportchatt och se dina tidigare meddelanden.';
+
+  @override
+  String get supportChatLoginAction => 'Logga in';
+
+  @override
+  String get supportChatMessageHint => 'Skriv ett meddelande…';
+
+  @override
+  String get supportChatSend => 'Skicka meddelande';
+
+  @override
+  String get supportChatSendFailed => 'Meddelandet kunde inte skickas. Försök igen.';
+
+  @override
+  String get supportChatUnavailable => 'Supportchatten är inte tillgänglig just nu. Försök igen senare.';
+
+  @override
+  String get supportChatTeam => 'CruizX Support';
+
+  @override
+  String get supportChatYou => 'Du';
 
   @override
   String get settingsLinkOpenFailed => 'Kunde inte öppna länken just nu.';
@@ -1616,7 +1691,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get aiConsentTitle => 'Använd AI-ruttanalys?';
 
   @override
-  String get aiConsentBody => 'CruizX skickar ruttfakta som avstånd, restid, fordonstyp, vägnamn och antal varningar till CruizX AI-tjänst på Cloudflare. Din position, destinationens koordinater och identitet skickas inte. AI kan göra fel och ändrar aldrig din rutt.';
+  String get aiConsentBody => 'CruizX använder ruttfakta som avstånd, restid, fordonstyp, vägnamn och antal varningar för att analysera rutten. Din exakta position, destinationens koordinater och identitet delas inte. Analysen kan innehålla fel och ändrar aldrig din rutt.';
 
   @override
   String get aiConsentAccept => 'Godkänn och fortsätt';

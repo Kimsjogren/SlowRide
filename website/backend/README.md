@@ -40,6 +40,11 @@ wrangler secret put STRIPE_PRICE_ID
 wrangler secret put WEB_CHECKOUT_SUCCESS_URL
 wrangler secret put WEB_CHECKOUT_CANCEL_URL
 wrangler secret put TRAFIKVERKET_KEY
+wrangler secret put SUPPORT_WEBHOOK_SECRET
+wrangler secret put SUPPORT_REPLY_SECRET
+wrangler secret put NTFY_SERVER_URL
+wrangler secret put NTFY_TOPIC
+wrangler secret put NTFY_ACCESS_TOKEN       # om ntfy-topic är skyddad
 wrangler deploy
 ```
 
@@ -54,6 +59,9 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `GET /api/traffic/incidents`: Returnerar cachelagrade, normaliserade livehändelser från Trafikverket utan att exponera API-nyckeln i appen.
 - `POST /api/ai/route-analysis`: Analyserar begränsade ruttfakta med Workers AI för en inloggad användare. GPS-koordinater skickas inte. Appen tillåter 4 anrop per dag för Free och 15 för Pro; Worker-skyddet stoppar vid 15 anrop per användare och dag samt Cloudflares kostnadsfria dagstilldelning.
 - `POST /api/ai/report`: Rapporterar ett AI-svar för uppföljning.
+- `POST /api/support/notify`: Tar emot signerade databasnotiser och skickar nya användarmeddelanden till ntfy.
+- `GET /api/support/conversation`: Visar konversationen för en tidsbegränsad signerad svarslänk.
+- `POST /api/support/reply`: Skickar ett supportsvar till användarens CruizX-chatt.
 - `POST /api/web/checkout-session`: Skapar Stripe Checkout Session (`mode=subscription`).
 - `POST /api/web/stripe-webhook`: Tar emot Stripe events och uppdaterar `web_subscriptions`.
 
@@ -98,6 +106,20 @@ Notering:
 
 - Klienten skriver inte till tabellen.
 - Endast webhook/backend med service-role ska uppdatera subscription-status.
+
+## Supportnotiser via ntfy
+
+Migrationen `20260801123000_support_ntfy_notifications.sql` skickar nya rader
+med `sender = 'user'` till Worker-endpointen. Lägg dessa två värden i
+Supabase Vault innan flödet aktiveras:
+
+- `support_webhook_url`: `https://cruizx.com/api/support/notify`
+- `support_webhook_secret`: samma slumpmässiga värde som Worker-secret
+  `SUPPORT_WEBHOOK_SECRET`
+
+ntfy-notisen innehåller en svarsknapp med en signerad länk som gäller i sju
+dagar. Service-role, ntfy-token och signeringshemligheter skickas aldrig till
+appen eller webbläsaren.
 
 ## Ändra Pro-priset
 

@@ -11,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
+import 'package:slowride/services/mapbox_search_service.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
@@ -25,6 +26,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
+import 'package:slowride/widgets/accessible_tap_target.dart';
 import 'package:slowride/widgets/vector_map_widget.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/trafikverket_service.dart';
@@ -33,6 +35,7 @@ import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/features/auth/login_screen.dart';
+import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -694,73 +697,6 @@ class _MapScreenState extends State<MapScreen> {
     return map[appLang] ?? 'sv';
   }
 
-  String _mapboxContextValue(List<dynamic> context, List<String> prefixes) {
-    for (final c in context) {
-      if (c is! Map) continue;
-      final id = (c['id'] ?? '').toString();
-      if (prefixes.any((p) => id.startsWith(p))) {
-        final text = (c['text'] ?? c['name'] ?? '').toString().trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-    return '';
-  }
-
-  Map<String, dynamic>? _mapboxFeatureToResult(Map<String, dynamic> feature) {
-    final center = feature['center'];
-    if (center is! List || center.length < 2) return null;
-    final lon = (center[0]).toString();
-    final lat = (center[1]).toString();
-
-    final context = (feature['context'] is List)
-        ? (feature['context'] as List)
-        : const [];
-    final placeTypes = (feature['place_type'] is List)
-        ? (feature['place_type'] as List)
-        : const [];
-    final placeType = placeTypes.isNotEmpty ? placeTypes.first.toString() : '';
-    final properties = (feature['properties'] is Map)
-        ? (feature['properties'] as Map)
-        : const {};
-
-    final featureText = (feature['text'] ?? '').toString().trim();
-    final road = placeType == 'poi'
-        ? _mapboxContextValue(context, ['address.'])
-        : (feature['text'] ?? feature['place_name'] ?? '').toString().trim();
-    final houseNumber = (properties['address'] ?? '').toString().trim();
-    final city = _mapboxContextValue(context, ['place.', 'locality.']);
-    final suburb = _mapboxContextValue(context, ['neighborhood.', 'district.']);
-    final municipality = _mapboxContextValue(context, ['region.']);
-    final country = _mapboxContextValue(context, ['country.']);
-
-    final address = <String, String>{
-      if (road.isNotEmpty) 'road': road,
-      if (houseNumber.isNotEmpty) 'house_number': houseNumber,
-      if (suburb.isNotEmpty) 'suburb': suburb,
-      if (city.isNotEmpty) 'city': city,
-      if (municipality.isNotEmpty) 'municipality': municipality,
-      if (country.isNotEmpty) 'country': country,
-    };
-
-    final title = placeType == 'poi' && featureText.isNotEmpty
-        ? featureText
-        : road.isNotEmpty
-        ? (houseNumber.isNotEmpty ? '$road $houseNumber' : road)
-        : featureText;
-
-    return {
-      'lat': lat,
-      'lon': lon,
-      'place_id': feature['id']?.toString() ?? '$lat,$lon',
-      'importance': feature['relevance'] ?? 0.0,
-      'name': title,
-      'display_name': (feature['place_name'] ?? feature['text'] ?? title)
-          .toString(),
-      'address': address,
-      '_mapbox_place_type': placeType,
-    };
-  }
-
   Future<List<Map<String, dynamic>>> _fetchMapboxResults(
     String query, {
     int limit = 10,
@@ -770,46 +706,15 @@ class _MapScreenState extends State<MapScreen> {
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
 
-    final countries = CountryVehicleRules.supportedCountries
-        .map((c) => c.toLowerCase())
-        .join(',');
-    final path =
-        '/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json';
-    final params = <String, String>{
-      'access_token': token,
-      'autocomplete': 'true',
-      'limit': '$limit',
-      'country': countries,
-      'language': _mapboxLanguageCode(),
-      'types': 'address,place,locality,neighborhood,postcode',
-    };
-
     final prox = useProximity ? (proximity ?? _currentLocation) : null;
-    if (prox != null) {
-      params['proximity'] = '${prox.longitude},${prox.latitude}';
-    }
-
-    final uri = Uri.https('api.mapbox.com', path, params);
-    final response = await http.get(
-      uri,
-      headers: const {
-        'User-Agent': 'CruizX/1.0 (mapbox-search)',
-        'Accept': 'application/json',
-      },
+    return MapboxSearchService.search(
+      query,
+      accessToken: token,
+      language: _mapboxLanguageCode(),
+      countryCodes: CountryVehicleRules.supportedCountries,
+      proximity: prox,
+      limit: limit,
     );
-    if (response.statusCode != 200) return const [];
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map || decoded['features'] is! List) return const [];
-    final features = (decoded['features'] as List)
-        .whereType<Map<String, dynamic>>()
-        .toList();
-    final converted = <Map<String, dynamic>>[];
-    for (final f in features) {
-      final mapped = _mapboxFeatureToResult(f);
-      if (mapped != null) converted.add(mapped);
-    }
-    return converted;
   }
 
   Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
@@ -819,13 +724,14 @@ class _MapScreenState extends State<MapScreen> {
     bool includeGlobalResults = true,
   }) async {
     final effectiveProximity = proximity ?? _currentLocation;
-    final mapboxRequests = <Future<List<Map<String, dynamic>>>>[
-      _fetchMapboxResults(query, limit: limit, proximity: proximity),
-      if (includeGlobalResults && effectiveProximity != null)
-        _fetchMapboxResults(query, limit: limit, useProximity: false),
-    ];
-    final mapboxResponses = await Future.wait(mapboxRequests);
-    var raw = mapboxResponses.expand((results) => results).toList();
+    var raw = await _fetchMapboxResults(
+      query,
+      limit: limit,
+      proximity: proximity,
+    );
+    if (raw.isEmpty && includeGlobalResults && effectiveProximity != null) {
+      raw = await _fetchMapboxResults(query, limit: limit, useProximity: false);
+    }
     if (raw.isEmpty) {
       raw = await _fetchNominatimResults(
         query,
@@ -1267,6 +1173,8 @@ class _MapScreenState extends State<MapScreen> {
             .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
             .toList()
           ..sort((a, b) {
+            final byScore = b.score.compareTo(a.score);
+            if (byScore != 0) return byScore;
             final current = _currentLocation;
             if (current != null) {
               double distanceTo(Map<String, dynamic> result) {
@@ -1286,7 +1194,7 @@ class _MapScreenState extends State<MapScreen> {
               ).compareTo(distanceTo(b.item));
               if (byDistance != 0) return byDistance;
             }
-            return b.score.compareTo(a.score);
+            return 0;
           });
 
     final seen = <String>{};
@@ -2670,10 +2578,12 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _mapCircleButton({
     required VoidCallback onTap,
+    required String semanticLabel,
     required Widget child,
     Color? color,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: semanticLabel,
       onTap: onTap,
       child: Container(
         width: 40,
@@ -2704,7 +2614,8 @@ class _MapScreenState extends State<MapScreen> {
     VoidCallback? onLongPress,
     bool compact = false,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: label,
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
@@ -3132,14 +3043,26 @@ class _MapScreenState extends State<MapScreen> {
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.aiConsentTitle),
-        content: Text(l10n.aiConsentBody),
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
+        title: Text(
+          l10n.aiConsentTitle,
+          style: CruizXAiDialogStyle.titleTextStyle,
+        ),
+        content: Text(
+          l10n.aiConsentBody,
+          style: CruizXAiDialogStyle.bodyTextStyle,
+        ),
         actions: [
           TextButton(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(l10n.aiConsentDecline),
           ),
           FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(l10n.aiConsentAccept),
           ),
@@ -3234,6 +3157,10 @@ class _MapScreenState extends State<MapScreen> {
       builder: (dialogContext) => PopScope(
         canPop: false,
         child: AlertDialog(
+          backgroundColor: CruizXAiDialogStyle.background,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.black87,
+          shape: CruizXAiDialogStyle.shape,
           insetPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 24,
@@ -3251,14 +3178,21 @@ class _MapScreenState extends State<MapScreen> {
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: CircularProgressIndicator(
+                  color: CruizXAiDialogStyle.accent,
+                  strokeWidth: 2.5,
+                ),
               ),
               const SizedBox(width: 14),
               Flexible(
                 child: Text(
                   l10n.aiLoading,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, height: 1.25),
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.25,
+                  ),
                 ),
               ),
             ],
@@ -3300,6 +3234,10 @@ class _MapScreenState extends State<MapScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 2),
         title: Image.asset(
@@ -3326,7 +3264,11 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 10),
                 Text(
                   analysis.summary,
-                  style: const TextStyle(fontSize: 15, height: 1.35),
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
                 ),
                 if (analysis.highlights.isNotEmpty)
                   _AiAnalysisSection(
@@ -3351,7 +3293,11 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 12),
                 Text(
                   l10n.aiDisclaimer,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -3360,11 +3306,13 @@ class _MapScreenState extends State<MapScreen> {
         actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
         actions: [
           TextButton.icon(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
             onPressed: () => _reportAiAnswer(analysis.responseId),
             icon: const Icon(Icons.flag_outlined),
             label: Text(l10n.aiReport),
           ),
           FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.ttsVoiceHintDismiss),
           ),
@@ -4458,7 +4406,7 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                               _favChip(
                                 icon: Icons.add,
-                                label: '+',
+                                label: l10n.a11yAddFavorite,
                                 hasValue: false,
                                 onTap: _promptAddCustomFavorite,
                                 compact: true,
@@ -4482,6 +4430,7 @@ class _MapScreenState extends State<MapScreen> {
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _addressController.text.isNotEmpty
                           ? IconButton(
+                              tooltip: l10n.a11yClearSearch,
                               icon: const Icon(Icons.close),
                               onPressed: () {
                                 _addressController.clear();
@@ -4492,6 +4441,7 @@ class _MapScreenState extends State<MapScreen> {
                               },
                             )
                           : IconButton(
+                              tooltip: l10n.a11yOpenSearch,
                               icon: const Icon(Icons.arrow_forward),
                               onPressed: _showDestinationSearchSheet,
                             ),
@@ -4693,7 +4643,8 @@ class _MapScreenState extends State<MapScreen> {
                             },
                           ),
                         ),
-                        GestureDetector(
+                        AccessibleTapTarget(
+                          label: l10n.a11yDismissAlert,
                           onTap: () => setState(() {
                             _dismissedNearbyAlertId = _nearbyAlert!.id;
                             _nearbyAlert = null;
@@ -4720,6 +4671,9 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 // GPS / re-center button
                 _mapCircleButton(
+                  semanticLabel: _isFollowing
+                      ? l10n.a11yStopFollowingLocation
+                      : l10n.a11yCenterOnLocation,
                   onTap: () => setState(() {
                     _isFollowing = !_isFollowing;
                   }),
@@ -4731,35 +4685,34 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Tooltip(
-                  message: l10n.aiRouteButton,
-                  child: _mapCircleButton(
-                    onTap: _openAiFromMapButton,
-                    color: _activeRoute != null
-                        ? const Color(0xFF1B4F9C)
-                        : null,
-                    child: _isAiAnalyzing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF8FCBFF),
-                            ),
-                          )
-                        : const Text(
-                            'AI',
-                            style: TextStyle(
-                              color: Color(0xFF8FCBFF),
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                            ),
+                _mapCircleButton(
+                  semanticLabel: l10n.aiRouteButton,
+                  onTap: _openAiFromMapButton,
+                  color: _activeRoute != null ? const Color(0xFF1B4F9C) : null,
+                  child: _isAiAnalyzing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF8FCBFF),
                           ),
-                  ),
+                        )
+                      : const Text(
+                          'AI',
+                          style: TextStyle(
+                            color: Color(0xFF8FCBFF),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 8),
                 // 2D / 3D toggle
                 _mapCircleButton(
+                  semanticLabel: _use3DMap
+                      ? l10n.a11ySwitchTo2d
+                      : l10n.a11ySwitchTo3d,
                   onTap: () {
                     setState(() => _use3DMap = !_use3DMap);
                     UserPreferencesService.instance.use3DMap.value = _use3DMap;
@@ -4776,6 +4729,9 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 8),
                 // Light / Dark map style toggle
                 _mapCircleButton(
+                  semanticLabel: _useDarkMap
+                      ? l10n.a11yUseLightMap
+                      : l10n.a11yUseDarkMap,
                   onTap: () => setState(() {
                     _autoMapTheme = false;
                     _useDarkMap = !_useDarkMap;
@@ -4792,6 +4748,9 @@ class _MapScreenState extends State<MapScreen> {
                   valueListenable: TtsService.instance.enabled,
                   builder: (context, ttsOn, _) {
                     return _mapCircleButton(
+                      semanticLabel: ttsOn
+                          ? l10n.a11yDisableVoiceNavigation
+                          : l10n.a11yEnableVoiceNavigation,
                       onTap: () {
                         final wasOff = !ttsOn;
                         TtsService.instance.enabled.value = !ttsOn;
@@ -4822,6 +4781,7 @@ class _MapScreenState extends State<MapScreen> {
                 const SizedBox(height: 8),
                 // Report alert button
                 _mapCircleButton(
+                  semanticLabel: l10n.reportAlertTitle,
                   onTap: _showReportAlertSheet,
                   child: const Icon(
                     Icons.warning_amber_rounded,
@@ -4838,7 +4798,8 @@ class _MapScreenState extends State<MapScreen> {
             Positioned(
               right: 14,
               bottom: 345,
-              child: GestureDetector(
+              child: AccessibleTapTarget(
+                label: l10n.a11yCenterOnLocation,
                 onTap: () {
                   setState(() => _isFollowing = true);
                 },
@@ -5681,6 +5642,7 @@ class _AiAnalysisSection extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   height: 1.2,
@@ -5695,12 +5657,23 @@ class _AiAnalysisSection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•', style: TextStyle(fontSize: 15, height: 1.3)),
+                  const Text(
+                    '•',
+                    style: TextStyle(
+                      color: CruizXAiDialogStyle.mutedText,
+                      fontSize: 15,
+                      height: 1.3,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
-                      style: const TextStyle(fontSize: 14.5, height: 1.3),
+                      style: const TextStyle(
+                        color: CruizXAiDialogStyle.bodyText,
+                        fontSize: 14.5,
+                        height: 1.35,
+                      ),
                     ),
                   ),
                 ],

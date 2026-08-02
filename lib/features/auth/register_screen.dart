@@ -36,6 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscure = true;
   bool _obscureConfirm = true;
   String? _error;
+  bool _isConfirmationNotice = false;
 
   @override
   void dispose() {
@@ -51,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _isConfirmationNotice = false;
     });
     try {
       await AuthService.instance.signUpWithPassword(
@@ -112,11 +114,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
       if (mounted) Navigator.of(context).pop(true);
     } on AuthException catch (e) {
-      setState(
-        () => _error = _localizeAuthError(e, AppLocalizations.of(context)!),
-      );
+      setState(() {
+        _isConfirmationNotice = e.code == AuthErrorCode.confirmationEmailSent;
+        _error = _localizeAuthError(e, AppLocalizations.of(context)!);
+      });
     } catch (_) {
-      setState(() => _error = AppLocalizations.of(context)!.authGenericError);
+      setState(() {
+        _isConfirmationNotice = false;
+        _error = AppLocalizations.of(context)!.authGenericError;
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -260,7 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                         ),
 
-                        // Felmeddelande
+                        // Felmeddelande eller lyckad e-postbekräftelse
                         if (_error != null) ...[
                           const SizedBox(height: 14),
                           Container(
@@ -269,25 +275,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               vertical: 10,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.15),
+                              color: _isConfirmationNotice
+                                  ? const Color(
+                                      0xFF28C76F,
+                                    ).withValues(alpha: 0.15)
+                                  : Colors.red.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.4),
+                                color: _isConfirmationNotice
+                                    ? const Color(
+                                        0xFF28C76F,
+                                      ).withValues(alpha: 0.5)
+                                    : Colors.red.withValues(alpha: 0.4),
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  color: Colors.redAccent,
+                                Icon(
+                                  _isConfirmationNotice
+                                      ? Icons.check_circle_outline
+                                      : Icons.error_outline,
+                                  color: _isConfirmationNotice
+                                      ? const Color(0xFF7FF0AA)
+                                      : Colors.redAccent,
                                   size: 18,
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     _error!,
-                                    style: const TextStyle(
-                                      color: Colors.redAccent,
+                                    style: TextStyle(
+                                      color: _isConfirmationNotice
+                                          ? const Color(0xFF7FF0AA)
+                                          : Colors.redAccent,
                                       fontSize: 13,
                                     ),
                                   ),

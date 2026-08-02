@@ -20,6 +20,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/routing_service.dart';
+import 'package:slowride/services/mapbox_search_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/tts_service.dart';
@@ -34,7 +35,9 @@ import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
+import 'package:slowride/widgets/accessible_tap_target.dart';
 import 'package:slowride/services/destination_history_service.dart';
+import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -1560,73 +1563,6 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     return map[appLang] ?? 'sv';
   }
 
-  String _mapboxContextValue(List<dynamic> context, List<String> prefixes) {
-    for (final c in context) {
-      if (c is! Map) continue;
-      final id = (c['id'] ?? '').toString();
-      if (prefixes.any((p) => id.startsWith(p))) {
-        final text = (c['text'] ?? c['name'] ?? '').toString().trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-    return '';
-  }
-
-  Map<String, dynamic>? _mapboxFeatureToResult(Map<String, dynamic> feature) {
-    final center = feature['center'];
-    if (center is! List || center.length < 2) return null;
-    final lon = (center[0]).toString();
-    final lat = (center[1]).toString();
-
-    final context = (feature['context'] is List)
-        ? (feature['context'] as List)
-        : const [];
-    final placeTypes = (feature['place_type'] is List)
-        ? (feature['place_type'] as List)
-        : const [];
-    final placeType = placeTypes.isNotEmpty ? placeTypes.first.toString() : '';
-    final properties = (feature['properties'] is Map)
-        ? (feature['properties'] as Map)
-        : const {};
-
-    final featureText = (feature['text'] ?? '').toString().trim();
-    final road = placeType == 'poi'
-        ? _mapboxContextValue(context, ['address.'])
-        : (feature['text'] ?? feature['place_name'] ?? '').toString().trim();
-    final houseNumber = (properties['address'] ?? '').toString().trim();
-    final city = _mapboxContextValue(context, ['place.', 'locality.']);
-    final suburb = _mapboxContextValue(context, ['neighborhood.', 'district.']);
-    final municipality = _mapboxContextValue(context, ['region.']);
-    final country = _mapboxContextValue(context, ['country.']);
-
-    final address = <String, String>{
-      if (road.isNotEmpty) 'road': road,
-      if (houseNumber.isNotEmpty) 'house_number': houseNumber,
-      if (suburb.isNotEmpty) 'suburb': suburb,
-      if (city.isNotEmpty) 'city': city,
-      if (municipality.isNotEmpty) 'municipality': municipality,
-      if (country.isNotEmpty) 'country': country,
-    };
-
-    final title = placeType == 'poi' && featureText.isNotEmpty
-        ? featureText
-        : road.isNotEmpty
-        ? (houseNumber.isNotEmpty ? '$road $houseNumber' : road)
-        : featureText;
-
-    return {
-      'lat': lat,
-      'lon': lon,
-      'place_id': feature['id']?.toString() ?? '$lat,$lon',
-      'importance': feature['relevance'] ?? 0.0,
-      'name': title,
-      'display_name': (feature['place_name'] ?? feature['text'] ?? title)
-          .toString(),
-      'address': address,
-      '_mapbox_place_type': placeType,
-    };
-  }
-
   Future<List<Map<String, dynamic>>> _fetchMapboxResults(
     String query, {
     int limit = 12,
@@ -1635,59 +1571,24 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
 
-    final countries = CountryVehicleRules.supportedCountries
-        .map((c) => c.toLowerCase())
-        .join(',');
-    final path =
-        '/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json';
-    final params = <String, String>{
-      'access_token': token,
-      'autocomplete': 'true',
-      'limit': '$limit',
-      'country': countries,
-      'language': _mapboxLanguageCode(),
-      'types': 'address,place,locality,neighborhood,postcode',
-    };
-
-    if (useProximity && _myLocation != null) {
-      params['proximity'] =
-          '${_myLocation!.longitude},${_myLocation!.latitude}';
-    }
-
-    final uri = Uri.https('api.mapbox.com', path, params);
-    final response = await http.get(
-      uri,
-      headers: const {
-        'User-Agent': 'CruizX/1.0 (mapbox-search)',
-        'Accept': 'application/json',
-      },
+    return MapboxSearchService.search(
+      query,
+      accessToken: token,
+      language: _mapboxLanguageCode(),
+      countryCodes: CountryVehicleRules.supportedCountries,
+      proximity: useProximity ? _myLocation : null,
+      limit: limit,
     );
-    if (response.statusCode != 200) return const [];
-
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map || decoded['features'] is! List) return const [];
-    final features = (decoded['features'] as List)
-        .whereType<Map<String, dynamic>>()
-        .toList();
-    final converted = <Map<String, dynamic>>[];
-    for (final f in features) {
-      final mapped = _mapboxFeatureToResult(f);
-      if (mapped != null) converted.add(mapped);
-    }
-    return converted;
   }
 
   Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
     String query, {
     int limit = 12,
   }) async {
-    final mapboxRequests = <Future<List<Map<String, dynamic>>>>[
-      _fetchMapboxResults(query, limit: limit),
-      if (_myLocation != null)
-        _fetchMapboxResults(query, limit: limit, useProximity: false),
-    ];
-    final mapboxResponses = await Future.wait(mapboxRequests);
-    final raw = mapboxResponses.expand((results) => results).toList();
+    var raw = await _fetchMapboxResults(query, limit: limit);
+    if (raw.isEmpty && _myLocation != null) {
+      raw = await _fetchMapboxResults(query, limit: limit, useProximity: false);
+    }
     if (raw.isNotEmpty) return raw;
     return _fetchNominatimResults(query, limit: math.max(limit, 20));
   }
@@ -1868,6 +1769,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
             .toList()
           ..sort((a, b) {
+            final byScore = b.score.compareTo(a.score);
+            if (byScore != 0) return byScore;
             final current = _myLocation;
             if (current != null) {
               double distanceTo(Map<String, dynamic> result) {
@@ -1887,7 +1790,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               ).compareTo(distanceTo(b.item));
               if (byDistance != 0) return byDistance;
             }
-            return b.score.compareTo(a.score);
+            return 0;
           });
 
     final seen = <String>{};
@@ -2681,10 +2584,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   Widget _convoyCircleButton({
     required VoidCallback onTap,
+    required String semanticLabel,
     required Widget child,
     Color? color,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: semanticLabel,
       onTap: onTap,
       child: Container(
         width: 40,
@@ -2727,14 +2632,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text(l10n.aiConsentTitle),
-        content: Text(l10n.aiConsentBody),
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
+        title: Text(
+          l10n.aiConsentTitle,
+          style: CruizXAiDialogStyle.titleTextStyle,
+        ),
+        content: Text(
+          l10n.aiConsentBody,
+          style: CruizXAiDialogStyle.bodyTextStyle,
+        ),
         actions: [
           TextButton(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(l10n.aiConsentDecline),
           ),
           FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext, true),
             child: Text(l10n.aiConsentAccept),
           ),
@@ -2863,6 +2780,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       builder: (dialogContext) => PopScope(
         canPop: false,
         child: AlertDialog(
+          backgroundColor: CruizXAiDialogStyle.background,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.black87,
+          shape: CruizXAiDialogStyle.shape,
           insetPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 24,
@@ -2880,14 +2801,21 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
+                child: CircularProgressIndicator(
+                  color: CruizXAiDialogStyle.accent,
+                  strokeWidth: 2.5,
+                ),
               ),
               const SizedBox(width: 14),
               Flexible(
                 child: Text(
                   l10n.aiLoading,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, height: 1.25),
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.25,
+                  ),
                 ),
               ),
             ],
@@ -2914,6 +2842,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 2),
         title: Image.asset(
@@ -2940,7 +2872,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 const SizedBox(height: 10),
                 Text(
                   analysis.summary,
-                  style: const TextStyle(fontSize: 15, height: 1.35),
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
                 ),
                 if (analysis.highlights.isNotEmpty)
                   _ConvoyAiAnalysisSection(
@@ -2965,7 +2901,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 const SizedBox(height: 12),
                 Text(
                   l10n.aiDisclaimer,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
                 ),
               ],
             ),
@@ -2974,11 +2914,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
         actions: [
           TextButton.icon(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
             onPressed: () => _reportConvoyAiAnswer(analysis.responseId),
             icon: const Icon(Icons.flag_outlined),
             label: Text(l10n.aiReport),
           ),
           FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.ttsVoiceHintDismiss),
           ),
@@ -3039,7 +2981,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     VoidCallback? onLongPress,
     bool compact = false,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: label,
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
@@ -4528,7 +4471,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                               member.position,
                                                           width: 100,
                                                           height: 72,
-                                                          child: GestureDetector(
+                                                          child: AccessibleTapTarget(
+                                                            label: member
+                                                                .userLabel,
                                                             onTap: () =>
                                                                 _showParticipantSafetyActions(
                                                                   member,
@@ -4546,7 +4491,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                         point: pin.position,
                                                         width: 90,
                                                         height: 42,
-                                                        child: GestureDetector(
+                                                        child: AccessibleTapTarget(
+                                                          label: pin.label,
                                                           onTap: () =>
                                                               _showPinOptions(
                                                                 pin,
@@ -4967,7 +4913,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               ),
                                               _favChip(
                                                 icon: Icons.add,
-                                                label: '+',
+                                                label: l10n.a11yAddFavorite,
                                                 hasValue: false,
                                                 onTap: _promptAddCustomFavorite,
                                                 compact: true,
@@ -4995,6 +4941,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 .text
                                                 .isNotEmpty
                                             ? IconButton(
+                                                tooltip: l10n.a11yClearSearch,
                                                 icon: const Icon(Icons.close),
                                                 onPressed: () {
                                                   _addressSearchController
@@ -5006,6 +4953,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 },
                                               )
                                             : IconButton(
+                                                tooltip: l10n.a11yOpenSearch,
                                                 icon: const Icon(
                                                   Icons.arrow_forward,
                                                 ),
@@ -5244,7 +5192,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                           },
                                         ),
                                       ),
-                                      GestureDetector(
+                                      AccessibleTapTarget(
+                                        label: l10n.a11yDismissAlert,
                                         onTap: () => setState(() {
                                           _dismissedNearbyAlertId =
                                               _nearbyAlert!.id;
@@ -6075,6 +6024,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 _convoyCircleButton(
+                                  semanticLabel: l10n.convoyMembers(
+                                    locations.length,
+                                  ),
                                   onTap: () => _fitAllMembers(locations),
                                   child: const Icon(
                                     Icons.people_alt_outlined,
@@ -6083,34 +6035,35 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                Tooltip(
-                                  message: l10n.aiRouteButton,
-                                  child: _convoyCircleButton(
-                                    onTap: _openAiFromConvoyButton,
-                                    color: _activeRoute != null
-                                        ? const Color(0xFF1B4F9C)
-                                        : null,
-                                    child: _isAiAnalyzing
-                                        ? const SizedBox(
-                                            width: 16,
-                                            height: 16,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Color(0xFF8FCBFF),
-                                            ),
-                                          )
-                                        : const Text(
-                                            'AI',
-                                            style: TextStyle(
-                                              color: Color(0xFF8FCBFF),
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 13,
-                                            ),
+                                _convoyCircleButton(
+                                  semanticLabel: l10n.aiRouteButton,
+                                  onTap: _openAiFromConvoyButton,
+                                  color: _activeRoute != null
+                                      ? const Color(0xFF1B4F9C)
+                                      : null,
+                                  child: _isAiAnalyzing
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF8FCBFF),
                                           ),
-                                  ),
+                                        )
+                                      : const Text(
+                                          'AI',
+                                          style: TextStyle(
+                                            color: Color(0xFF8FCBFF),
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 13,
+                                          ),
+                                        ),
                                 ),
                                 const SizedBox(height: 8),
                                 _convoyCircleButton(
+                                  semanticLabel: _isFollowingMyPosition
+                                      ? l10n.a11yStopFollowingLocation
+                                      : l10n.a11yCenterOnLocation,
                                   onTap: () {
                                     final me = _myLocation;
                                     if (me == null) return;
@@ -6151,6 +6104,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 const SizedBox(height: 8),
                                 // 2D / 3D toggle
                                 _convoyCircleButton(
+                                  semanticLabel: _use3DMap
+                                      ? l10n.a11ySwitchTo2d
+                                      : l10n.a11ySwitchTo3d,
                                   onTap: () {
                                     setState(() => _use3DMap = !_use3DMap);
                                     UserPreferencesService
@@ -6173,6 +6129,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 const SizedBox(height: 8),
                                 // Light / Dark map style toggle
                                 _convoyCircleButton(
+                                  semanticLabel: _useDarkMap
+                                      ? l10n.a11yUseLightMap
+                                      : l10n.a11yUseDarkMap,
                                   onTap: () {
                                     setState(() {
                                       _useDarkMap = !_useDarkMap;
@@ -6193,6 +6152,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   valueListenable: TtsService.instance.enabled,
                                   builder: (context, ttsOn, _) {
                                     return _convoyCircleButton(
+                                      semanticLabel: ttsOn
+                                          ? l10n.a11yDisableVoiceNavigation
+                                          : l10n.a11yEnableVoiceNavigation,
                                       onTap: () {
                                         TtsService.instance.enabled.value =
                                             !ttsOn;
@@ -6210,6 +6172,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 const SizedBox(height: 8),
                                 // Report alert button
                                 _convoyCircleButton(
+                                  semanticLabel: l10n.reportAlertTitle,
                                   onTap: _showReportAlertSheet,
                                   child: const Icon(
                                     Icons.warning_amber_rounded,
@@ -6410,6 +6373,7 @@ class _ConvoyAiAnalysisSection extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   height: 1.2,
@@ -6424,12 +6388,23 @@ class _ConvoyAiAnalysisSection extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('•', style: TextStyle(fontSize: 15, height: 1.3)),
+                  const Text(
+                    '•',
+                    style: TextStyle(
+                      color: CruizXAiDialogStyle.mutedText,
+                      fontSize: 15,
+                      height: 1.3,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       item,
-                      style: const TextStyle(fontSize: 14.5, height: 1.3),
+                      style: const TextStyle(
+                        color: CruizXAiDialogStyle.bodyText,
+                        fontSize: 14.5,
+                        height: 1.35,
+                      ),
                     ),
                   ),
                 ],

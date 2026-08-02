@@ -10,6 +10,11 @@
  *   GET  /api/traffic/incidents    → cachelagrad trafikinformation från Trafikverket
  *   POST /api/ai/route-analysis    → AI-sammanfattning av verifierade ruttfakta
  *   POST /api/ai/report            → rapportera ett olämpligt AI-svar
+ *   POST /api/support/notify       → skicka nytt supportmeddelande till ntfy
+ *   GET  /api/support/guest        → hämta en privat gästkonversation
+ *   POST /api/support/guest        → skicka ett privat gästmeddelande
+ *   GET  /api/support/conversation → hämta en signerad supportkonversation
+ *   POST /api/support/reply        → svara i en signerad supportkonversation
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -36,7 +41,7 @@ function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-CruizX-Guest-Token",
     "Access-Control-Allow-Credentials": "true",
     "Vary": "Origin",
   };
@@ -579,6 +584,361 @@ async function verifyStripeWebhook(request, env, rawBody) {
   return v1.some((candidate) => constantTimeEqual(candidate, expected));
 }
 
+// --- Support inbox + ntfy ------------------------------------------
+
+const SUPPORT_REPLY_LIFETIME_SECONDS = 7 * 24 * 60 * 60;
+
+function normalizeNtfyTopic(rawTopic) {
+  let topic = String(rawTopic || "").trim();
+  topic = topic.replace(/^NTFY_TOPIC\s*=\s*/i, "").trim();
+  topic = topic.replace(/^(["'])(.*)\1$/, "$2").trim();
+
+  try {
+    const url = new URL(topic);
+    topic = url.pathname.split("/").findLast(Boolean) || "";
+  } catch (_) {
+    if (topic.includes("/")) {
+      topic = topic.split("/").findLast(Boolean) || "";
+    }
+  }
+
+  return topic;
+}
+
+async function supportReplySignature(env, userId, expires) {
+  return hmacSha256Hex(env.SUPPORT_REPLY_SECRET, `${userId}.${expires}`);
+}
+
+async function validateSupportReplyAccess(url, env) {
+  if (!env.SUPPORT_REPLY_SECRET) return null;
+  const userId = (url.searchParams.get("user") || "").trim();
+  const guestHash = (url.searchParams.get("guest") || "").trim().toLowerCase();
+  const expires = Number(url.searchParams.get("expires"));
+  const signature = (url.searchParams.get("signature") || "").trim().toLowerCase();
+  const now = Math.floor(Date.now() / 1000);
+  if (
+    (isUuid(userId) === /^[a-f0-9]{64}$/.test(guestHash)) ||
+    !Number.isInteger(expires) ||
+    expires < now ||
+    expires > now + SUPPORT_REPLY_LIFETIME_SECONDS + 300 ||
+    !/^[a-f0-9]{64}$/.test(signature)
+  ) {
+    return null;
+  }
+  const identity = userId || `guest:${guestHash}`;
+  const expected = await supportReplySignature(env, identity, expires);
+  return constantTimeEqual(signature, expected)
+    ? { userId: userId || null, guestHash: guestHash || null, expires }
+    : null;
+}
+
+function supportSupabaseHeaders(env, extra = {}) {
+  return {
+    "apikey": env.SUPABASE_SERVICE_ROLE_KEY,
+    "Authorization": `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+    ...extra,
+  };
+}
+
+async function loadSupportUser(env, userId) {
+  const response = await fetch(
+    `${env.SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+    { headers: supportSupabaseHeaders(env) }
+  );
+  if (!response.ok) return { id: userId, email: "" };
+  const user = await response.json();
+  return {
+    id: userId,
+    email: typeof user?.email === "string" ? user.email : "",
+  };
+}
+
+async function handleSupportNotify(request, env) {
+  if (
+    !env.SUPPORT_WEBHOOK_SECRET ||
+    !env.SUPPORT_REPLY_SECRET ||
+    !env.NTFY_SERVER_URL ||
+    !env.NTFY_TOPIC
+  ) {
+    return new Response("support notifications not configured", { status: 503 });
+  }
+
+  const suppliedSecret = request.headers.get("X-CruizX-Webhook-Secret") || "";
+  if (!constantTimeEqual(suppliedSecret, env.SUPPORT_WEBHOOK_SECRET)) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return new Response("invalid json", { status: 400 });
+  }
+
+  const record = payload?.record;
+  const hasUser = isUuid(record?.user_id);
+  const hasGuest = /^[a-f0-9]{64}$/.test(String(record?.guest_token_hash || ""));
+  if (
+    !record ||
+    hasUser === hasGuest ||
+    record.sender !== "user" ||
+    typeof record.body !== "string" ||
+    !record.body.trim()
+  ) {
+    return new Response("ignored", { status: 202 });
+  }
+
+  const user = hasUser
+    ? await loadSupportUser(env, record.user_id)
+    : { id: `guest:${record.guest_token_hash.slice(0, 10)}`, email: "Gäst i CruizX" };
+  const expires = Math.floor(Date.now() / 1000) + SUPPORT_REPLY_LIFETIME_SECONDS;
+  const identity = hasUser ? record.user_id : `guest:${record.guest_token_hash}`;
+  const signature = await supportReplySignature(env, identity, expires);
+  const replyUrl = new URL("https://cruizx.com/support-reply.html");
+  if (hasUser) replyUrl.searchParams.set("user", record.user_id);
+  else replyUrl.searchParams.set("guest", record.guest_token_hash);
+  replyUrl.searchParams.set("expires", String(expires));
+  replyUrl.searchParams.set("signature", signature);
+
+  const ntfyBase = env.NTFY_SERVER_URL.replace(/\/+$/, "");
+  const ntfyTopic = normalizeNtfyTopic(env.NTFY_TOPIC);
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(ntfyTopic)) {
+    console.error("ntfy support notification topic is invalid", {
+      length: ntfyTopic.length,
+    });
+    return new Response("ntfy topic invalid", { status: 503 });
+  }
+  const ntfyPayload = {
+    topic: ntfyTopic,
+    title: "Nytt supportmeddelande i CruizX",
+    message: `${user.email || "Okänd användare"}\n\n${record.body.trim().slice(0, 2000)}`,
+    priority: 4,
+    tags: ["speech_balloon"],
+    click: replyUrl.toString(),
+    actions: [
+      {
+        action: "view",
+        label: "Svara",
+        url: replyUrl.toString(),
+        clear: true,
+      },
+    ],
+  };
+  const headers = { "Content-Type": "application/json" };
+  if (env.NTFY_ACCESS_TOKEN) {
+    headers.Authorization = `Bearer ${env.NTFY_ACCESS_TOKEN}`;
+  }
+  const ntfyResponse = await fetch(ntfyBase, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(ntfyPayload),
+  });
+  if (!ntfyResponse.ok) {
+    const ntfyError = (await ntfyResponse.text()).slice(0, 1000);
+    console.error("ntfy support notification failed", {
+      status: ntfyResponse.status,
+      error: ntfyError,
+    });
+    const fallbackResponse = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/rpc/publish_support_ntfy`,
+      {
+        method: "POST",
+        headers: supportSupabaseHeaders(env, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ p_payload: ntfyPayload }),
+      }
+    );
+    if (fallbackResponse.ok) {
+      return new Response("ok (fallback queued)", { status: 200 });
+    }
+    return new Response(`ntfy failed: ${ntfyResponse.status}`, { status: 502 });
+  }
+  return new Response("ok", { status: 200 });
+}
+
+async function handleGuestSupport(request, env, origin) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return json({ error: "support_not_configured" }, { status: 503 }, origin);
+  }
+
+  const guestToken = (
+    request.headers.get("X-CruizX-Guest-Token") || ""
+  ).trim();
+  if (!/^[A-Za-z0-9_-]{43,128}$/.test(guestToken)) {
+    return json({ error: "invalid_guest_token" }, { status: 401 }, origin);
+  }
+  const guestHash = await sha256Hex(guestToken);
+
+  if (request.method === "GET") {
+    const ownerFilter = `guest_token_hash=eq.${guestHash}`;
+    const messagesResponse = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/support_messages` +
+        `?select=id,user_id,sender,body,language_code,created_at,read_at` +
+        `&${ownerFilter}&order=created_at.asc&limit=500`,
+      { headers: supportSupabaseHeaders(env) }
+    );
+    if (!messagesResponse.ok) {
+      return json({ error: "conversation_unavailable" }, { status: 502 }, origin);
+    }
+    const messages = await messagesResponse.json();
+
+    const readResponse = await fetch(
+      `${env.SUPABASE_URL}/rest/v1/support_messages` +
+        `?${ownerFilter}&sender=eq.support&read_at=is.null`,
+      {
+        method: "PATCH",
+        headers: supportSupabaseHeaders(env, {
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+        }),
+        body: JSON.stringify({ read_at: new Date().toISOString() }),
+      }
+    );
+    if (!readResponse.ok) {
+      console.error("guest support read receipt failed", {
+        status: readResponse.status,
+      });
+    }
+
+    return json(
+      { status: "ok", messages: Array.isArray(messages) ? messages : [] },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
+      origin
+    );
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, { status: 400 }, origin);
+  }
+  const body = typeof payload?.body === "string" ? payload.body.trim() : "";
+  if (!body || body.length > 2000) {
+    return json({ error: "invalid_message" }, { status: 400 }, origin);
+  }
+  const supportedLanguages = new Set(["sv", "en", "da", "nb", "fi", "fr", "es", "it"]);
+  const requestedLanguage = String(payload?.language_code || "en").toLowerCase();
+  const languageCode = supportedLanguages.has(requestedLanguage)
+    ? requestedLanguage
+    : "en";
+
+  const insertResponse = await fetch(
+    `${env.SUPABASE_URL}/rest/v1/rpc/insert_guest_support_message`,
+    {
+      method: "POST",
+      headers: supportSupabaseHeaders(env, {
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({
+        p_guest_token_hash: guestHash,
+        p_body: body,
+        p_language_code: languageCode,
+      }),
+    }
+  );
+  if (!insertResponse.ok) {
+    const status = insertResponse.status === 429 ? 429 : 502;
+    return json({ error: "message_failed" }, { status }, origin);
+  }
+  const inserted = await insertResponse.json();
+  const message = Array.isArray(inserted) ? inserted[0] : inserted;
+  return json(
+    { status: "ok", message: message || null },
+    { status: 201, headers: { "Cache-Control": "no-store" } },
+    origin
+  );
+}
+
+async function handleSupportConversation(request, env, origin) {
+  const url = new URL(request.url);
+  const access = await validateSupportReplyAccess(url, env);
+  if (!access) {
+    return json({ error: "invalid_or_expired_link" }, { status: 401 }, origin);
+  }
+
+  const ownerFilter = access.userId
+    ? `user_id=eq.${encodeURIComponent(access.userId)}`
+    : `guest_token_hash=eq.${access.guestHash}`;
+  const messagesUrl =
+    `${env.SUPABASE_URL}/rest/v1/support_messages` +
+    `?select=id,sender,body,language_code,created_at,read_at` +
+    `&${ownerFilter}` +
+    `&order=created_at.asc&limit=500`;
+  const [messagesResponse, user] = await Promise.all([
+    fetch(messagesUrl, { headers: supportSupabaseHeaders(env) }),
+    access.userId
+      ? loadSupportUser(env, access.userId)
+      : Promise.resolve({ id: `guest:${access.guestHash.slice(0, 10)}`, email: "Gäst i CruizX" }),
+  ]);
+  if (!messagesResponse.ok) {
+    return json({ error: "conversation_unavailable" }, { status: 502 }, origin);
+  }
+
+  const messages = await messagesResponse.json();
+  fetch(
+    `${env.SUPABASE_URL}/rest/v1/support_messages` +
+      `?${ownerFilter}&sender=eq.user&read_at=is.null`,
+    {
+      method: "PATCH",
+      headers: supportSupabaseHeaders(env, {
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+      }),
+      body: JSON.stringify({ read_at: new Date().toISOString() }),
+    }
+  ).catch(() => {});
+
+  return json(
+    { status: "ok", user, messages: Array.isArray(messages) ? messages : [] },
+    { status: 200, headers: { "Cache-Control": "no-store" } },
+    origin
+  );
+}
+
+async function handleSupportReply(request, env, origin) {
+  const url = new URL(request.url);
+  const access = await validateSupportReplyAccess(url, env);
+  if (!access) {
+    return json({ error: "invalid_or_expired_link" }, { status: 401 }, origin);
+  }
+
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, { status: 400 }, origin);
+  }
+  const body = typeof payload?.body === "string" ? payload.body.trim() : "";
+  if (!body || body.length > 2000) {
+    return json({ error: "invalid_message" }, { status: 400 }, origin);
+  }
+
+  const insertResponse = await fetch(`${env.SUPABASE_URL}/rest/v1/support_messages`, {
+    method: "POST",
+    headers: supportSupabaseHeaders(env, {
+      "Content-Type": "application/json",
+      "Prefer": "return=representation",
+    }),
+    body: JSON.stringify({
+      ...(access.userId
+        ? { user_id: access.userId }
+        : { guest_token_hash: access.guestHash }),
+      sender: "support",
+      body,
+      language_code: "sv",
+    }),
+  });
+  if (!insertResponse.ok) {
+    return json({ error: "reply_failed" }, { status: 502 }, origin);
+  }
+  const rows = await insertResponse.json();
+  return json(
+    { status: "ok", message: Array.isArray(rows) ? rows[0] : null },
+    { status: 201, headers: { "Cache-Control": "no-store" } },
+    origin
+  );
+}
+
 async function upsertWebSubscription(env, row) {
   const res = await fetch(
     `${env.SUPABASE_URL}/rest/v1/web_subscriptions?on_conflict=user_id,provider`,
@@ -978,8 +1338,8 @@ async function handleSpeedBumps(request, origin) {
 const TRAFIKVERKET_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json";
 
 function trafikverketPoint(wgs84) {
-  const match = String(wgs84 || "").match(
-    /POINT\s*\(([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\)/i
+  const match = /POINT\s*\(([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\)/i.exec(
+    String(wgs84 || "")
   );
   if (!match) return null;
   const lng = Number(match[1]);
@@ -987,25 +1347,16 @@ function trafikverketPoint(wgs84) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
-async function handleTrafficIncidents(request, env, origin) {
-  if (!env.TRAFIKVERKET_KEY) {
-    return json({ error: "traffic_service_not_configured" }, { status: 503 }, origin);
-  }
-
+function parseTrafficCoordinates(request) {
   const url = new URL(request.url);
   const lat = finiteNumber(url.searchParams.get("lat"), -90, 90);
   const lng = finiteNumber(url.searchParams.get("lng"), -180, 180);
   const requestedRadius = finiteNumber(url.searchParams.get("radius_km") || "50", 5, 75);
-  if (lat === null || lng === null || requestedRadius === null) {
-    return json(
-      { error: "invalid_coordinates", message: "lat, lng och radius_km måste vara giltiga tal." },
-      { status: 400 },
-      origin
-    );
-  }
+  if (lat === null || lng === null || requestedRadius === null) return null;
+  return { lat, lng, requestedRadius };
+}
 
-  // Nearby clients share one cache entry. The query radius is expanded to
-  // cover users close to a grid-cell edge.
+function trafficCacheContext(lat, lng, requestedRadius) {
   const cellSize = 0.05;
   const queryLat = Math.round(lat / cellSize) * cellSize;
   const queryLng = Math.round(lng / cellSize) * cellSize;
@@ -1014,6 +1365,145 @@ async function handleTrafficIncidents(request, env, origin) {
     `https://cruizx-traffic-cache.invalid/incidents?lat=${queryLat.toFixed(2)}` +
       `&lng=${queryLng.toFixed(2)}&radius_km=${radiusKm}`
   );
+  return { queryLat, queryLng, radiusKm, cacheKey };
+}
+
+function trafikverketBoundingBox(queryLat, queryLng, radiusKm) {
+  const latDelta = radiusKm / 111.0;
+  const cosLat = Math.max(0.2, Math.cos((queryLat * Math.PI) / 180));
+  const lngDelta = radiusKm / (111.0 * cosLat);
+  return {
+    minLat: queryLat - latDelta,
+    maxLat: queryLat + latDelta,
+    minLng: queryLng - lngDelta,
+    maxLng: queryLng + lngDelta,
+  };
+}
+
+function trafikverketQueryXml(apiKey, bounds) {
+  return `<REQUEST>
+  <LOGIN authenticationkey="${apiKey}" />
+  <QUERY objecttype="Situation" namespace="Road.TrafficInfo" schemaversion="1.6" limit="150">
+    <FILTER>
+      <WITHIN name="Deviation.Geometry.WGS84" shape="box" value="${bounds.minLng} ${bounds.minLat}, ${bounds.maxLng} ${bounds.maxLat}" />
+    </FILTER>
+  </QUERY>
+</REQUEST>`;
+}
+
+function boolString(value) {
+  return String(value).toLowerCase() === "true";
+}
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
+function parseDeviationTimeRange(deviation) {
+  const startTime = deviation?.StartTime ? String(deviation.StartTime) : null;
+  const endTime = deviation?.EndTime ? String(deviation.EndTime) : null;
+  return { startTime, endTime };
+}
+
+function isDeviationActive(startTime, endTime, nowMs) {
+  if (startTime && Date.parse(startTime) > nowMs) return false;
+  if (endTime && Date.parse(endTime) < nowMs) return false;
+  return true;
+}
+
+function buildIncident(id, point, deviation, startTime, endTime) {
+  return {
+    id,
+    ...point,
+    header: String(deviation?.Header || ""),
+    road_number: String(deviation?.RoadNumber || ""),
+    icon_id: String(deviation?.IconId || ""),
+    message_code: String(deviation?.MessageCode || ""),
+    severity: String(deviation?.SeverityCode || ""),
+    start_time: startTime,
+    end_time: endTime,
+  };
+}
+
+function collectDeviationIncident(deviation, seen, nowMs) {
+  if (boolString(deviation?.Suspended)) return null;
+
+  const point = trafikverketPoint(deviation?.Geometry?.WGS84);
+  if (!point) return null;
+
+  const id = String(deviation?.Id || "");
+  if (!id || seen.has(id)) return null;
+
+  const { startTime, endTime } = parseDeviationTimeRange(deviation);
+  if (!isDeviationActive(startTime, endTime, nowMs)) return null;
+
+  seen.add(id);
+  return buildIncident(id, point, deviation, startTime, endTime);
+}
+
+function collectTrafficIncidents(result) {
+  const incidents = [];
+  const seen = new Set();
+  const nowMs = Date.now();
+
+  for (const situation of result.Situation || []) {
+    if (boolString(situation?.Deleted)) continue;
+
+    for (const deviation of asArray(situation.Deviation)) {
+      const incident = collectDeviationIncident(deviation, seen, nowMs);
+      if (incident) incidents.push(incident);
+    }
+  }
+
+  return incidents;
+}
+
+async function fetchTrafficPayload(xmlBody) {
+  let response;
+  try {
+    response = await fetch(TRAFIKVERKET_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml", Accept: "application/json" },
+      body: xmlBody,
+    });
+  } catch (error) {
+    return { error: { error: "traffic_service_unavailable", detail: String(error) }, status: 502 };
+  }
+
+  if (!response.ok) {
+    return {
+      error: { error: "traffic_service_unavailable", status: response.status },
+      status: 502,
+    };
+  }
+
+  try {
+    const payload = await response.json();
+    return { payload };
+  } catch (_) {
+    return { error: { error: "traffic_service_invalid_response" }, status: 502 };
+  }
+}
+
+async function handleTrafficIncidents(request, env, origin) {
+  if (!env.TRAFIKVERKET_KEY) {
+    return json({ error: "traffic_service_not_configured" }, { status: 503 }, origin);
+  }
+
+  const coordinates = parseTrafficCoordinates(request);
+  if (!coordinates) {
+    return json(
+      { error: "invalid_coordinates", message: "lat, lng och radius_km måste vara giltiga tal." },
+      { status: 400 },
+      origin
+    );
+  }
+  const { lat, lng, requestedRadius } = coordinates;
+
+  // Nearby clients share one cache entry. The query radius is expanded to
+  // cover users close to a grid-cell edge.
+  const { queryLat, queryLng, radiusKm, cacheKey } = trafficCacheContext(lat, lng, requestedRadius);
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) {
@@ -1025,82 +1515,16 @@ async function handleTrafficIncidents(request, env, origin) {
     );
   }
 
-  const latDelta = radiusKm / 111.0;
-  const cosLat = Math.max(0.2, Math.cos((queryLat * Math.PI) / 180));
-  const lngDelta = radiusKm / (111.0 * cosLat);
-  const minLat = queryLat - latDelta;
-  const maxLat = queryLat + latDelta;
-  const minLng = queryLng - lngDelta;
-  const maxLng = queryLng + lngDelta;
-  const query = `<REQUEST>
-  <LOGIN authenticationkey="${env.TRAFIKVERKET_KEY}" />
-  <QUERY objecttype="Situation" namespace="Road.TrafficInfo" schemaversion="1.6" limit="150">
-    <FILTER>
-      <WITHIN name="Deviation.Geometry.WGS84" shape="box" value="${minLng} ${minLat}, ${maxLng} ${maxLat}" />
-    </FILTER>
-  </QUERY>
-</REQUEST>`;
-
-  let response;
-  try {
-    response = await fetch(TRAFIKVERKET_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/xml", Accept: "application/json" },
-      body: query,
-    });
-  } catch (error) {
-    return json({ error: "traffic_service_unavailable", detail: String(error) }, { status: 502 }, origin);
+  const bounds = trafikverketBoundingBox(queryLat, queryLng, radiusKm);
+  const query = trafikverketQueryXml(env.TRAFIKVERKET_KEY, bounds);
+  const fetched = await fetchTrafficPayload(query);
+  if (fetched.error) {
+    return json(fetched.error, { status: fetched.status }, origin);
   }
-
-  if (!response.ok) {
-    return json(
-      { error: "traffic_service_unavailable", status: response.status },
-      { status: 502 },
-      origin
-    );
-  }
-
-  let payload;
-  try {
-    payload = await response.json();
-  } catch (_) {
-    return json({ error: "traffic_service_invalid_response" }, { status: 502 }, origin);
-  }
+  const payload = fetched.payload;
 
   const result = payload?.RESPONSE?.RESULT?.[0] || {};
-  const incidents = [];
-  const seen = new Set();
-  for (const situation of result.Situation || []) {
-    if (String(situation?.Deleted).toLowerCase() === "true") continue;
-    const deviations = Array.isArray(situation.Deviation)
-      ? situation.Deviation
-      : situation.Deviation
-        ? [situation.Deviation]
-        : [];
-    for (const deviation of deviations) {
-      if (String(deviation?.Suspended).toLowerCase() === "true") continue;
-      const point = trafikverketPoint(deviation?.Geometry?.WGS84);
-      if (!point) continue;
-      const id = String(deviation?.Id || "");
-      if (!id || seen.has(id)) continue;
-      const startTime = deviation?.StartTime ? String(deviation.StartTime) : null;
-      if (startTime && Date.parse(startTime) > Date.now()) continue;
-      const endTime = deviation?.EndTime ? String(deviation.EndTime) : null;
-      if (endTime && Date.parse(endTime) < Date.now()) continue;
-      seen.add(id);
-      incidents.push({
-        id,
-        ...point,
-        header: String(deviation?.Header || ""),
-        road_number: String(deviation?.RoadNumber || ""),
-        icon_id: String(deviation?.IconId || ""),
-        message_code: String(deviation?.MessageCode || ""),
-        severity: String(deviation?.SeverityCode || ""),
-        start_time: startTime,
-        end_time: endTime,
-      });
-    }
-  }
+  const incidents = collectTrafficIncidents(result);
 
   const data = {
     source: "trafikverket",
@@ -1125,63 +1549,64 @@ async function handleTrafficIncidents(request, env, origin) {
 
 // --- Entry ----------------------------------------------------------
 
+const APK_REDIRECT_PATHS = new Set(["/api/download/apk", "/api/download/apk/1.1.4-127"]);
+const APK_REDIRECT_URL =
+  "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.4/CruizX-1.1.4-127-free.apk";
+
+function handleApkDownload(request, env) {
+  // Log download event (fire-and-forget)
+  const ip = request.headers.get("CF-Connecting-IP") || "";
+  const ua = request.headers.get("User-Agent") || "";
+  logEvent(env, "apk_download", "website", "", ip, { ua }).catch(() => {});
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: APK_REDIRECT_URL,
+      "Cache-Control": "no-store",
+    },
+  });
+}
+
+function routeRequest(request, env, origin, pathname) {
+  const routeKey = `${request.method} ${pathname}`;
+  const routes = {
+    "POST /api/claim": () => handleClaim(request, env, origin),
+    "POST /api/scan": () => handleScan(request, env, origin),
+    "GET /api/stats": () => handleStats(request, env, origin),
+    "GET /api/map/speed-bumps": () => handleSpeedBumps(request, origin),
+    "GET /api/traffic/incidents": () => handleTrafficIncidents(request, env, origin),
+    "POST /api/ai/route-analysis": () => handleAiRouteAnalysis(request, env, origin),
+    "POST /api/ai/report": () => handleAiReport(request, env, origin),
+    "POST /api/support/notify": () => handleSupportNotify(request, env),
+    "GET /api/support/guest": () => handleGuestSupport(request, env, origin),
+    "POST /api/support/guest": () => handleGuestSupport(request, env, origin),
+    "GET /api/support/conversation": () => handleSupportConversation(request, env, origin),
+    "POST /api/support/reply": () => handleSupportReply(request, env, origin),
+    "GET /api/web/pricing": () => handleWebPricing(env, origin),
+    "POST /api/web/checkout-session": () => handleWebCheckoutSession(request, env, origin),
+    "POST /api/web/stripe-webhook": () => handleStripeWebhook(request, env),
+  };
+
+  return routes[routeKey] || null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
+    const { pathname } = url;
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders(origin) });
     }
 
-    if (
-      (url.pathname === "/api/download/apk" ||
-        url.pathname === "/api/download/apk/1.1.4-127") &&
-      request.method === "GET"
-    ) {
-      // Log download event (fire-and-forget)
-      const ip = request.headers.get("CF-Connecting-IP") || "";
-      const ua = request.headers.get("User-Agent") || "";
-      logEvent(env, "apk_download", "website", "", ip, { ua }).catch(() => {});
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location:
-            "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.4/CruizX-1.1.4-127-free.apk",
-          "Cache-Control": "no-store",
-        },
-      });
+    if (request.method === "GET" && APK_REDIRECT_PATHS.has(pathname)) {
+      return handleApkDownload(request, env);
     }
 
-    if (url.pathname === "/api/claim" && request.method === "POST") {
-      return handleClaim(request, env, origin);
-    }
-    if (url.pathname === "/api/scan" && request.method === "POST") {
-      return handleScan(request, env, origin);
-    }
-    if (url.pathname === "/api/stats" && request.method === "GET") {
-      return handleStats(request, env, origin);
-    }
-    if (url.pathname === "/api/map/speed-bumps" && request.method === "GET") {
-      return handleSpeedBumps(request, origin);
-    }
-    if (url.pathname === "/api/traffic/incidents" && request.method === "GET") {
-      return handleTrafficIncidents(request, env, origin);
-    }
-    if (url.pathname === "/api/ai/route-analysis" && request.method === "POST") {
-      return handleAiRouteAnalysis(request, env, origin);
-    }
-    if (url.pathname === "/api/ai/report" && request.method === "POST") {
-      return handleAiReport(request, env, origin);
-    }
-    if (url.pathname === "/api/web/pricing" && request.method === "GET") {
-      return handleWebPricing(env, origin);
-    }
-    if (url.pathname === "/api/web/checkout-session" && request.method === "POST") {
-      return handleWebCheckoutSession(request, env, origin);
-    }
-    if (url.pathname === "/api/web/stripe-webhook" && request.method === "POST") {
-      return handleStripeWebhook(request, env);
+    const handler = routeRequest(request, env, origin, pathname);
+    if (handler) {
+      return handler();
     }
 
     return json({ error: "not_found" }, { status: 404 }, origin);

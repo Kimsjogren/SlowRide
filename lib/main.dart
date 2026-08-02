@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
@@ -172,11 +173,13 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
 
   int _progress = 0;
   String _startupStatus = '';
+  String _versionLine = '';
   bool _defaultsInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadVersionLine());
     _runStartupProgress();
   }
 
@@ -189,7 +192,26 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     }
 
     _startupStatus = AppLocalizations.of(context)!.splashPreparingStartup;
+    if (_versionLine.isEmpty) {
+      _versionLine = AppLocalizations.of(context)!.splashVersionLine;
+    }
     _defaultsInitialized = true;
+  }
+
+  Future<void> _loadVersionLine() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      final localizedLine = AppLocalizations.of(context)!.splashVersionLine;
+      setState(() {
+        _versionLine = localizedLine.replaceFirst(
+          RegExp(r'v\d+\.\d+\.\d+'),
+          'v${packageInfo.version}',
+        );
+      });
+    } catch (_) {
+      // Keep the localized fallback if package metadata is unavailable.
+    }
   }
 
   Future<void> _runStartupProgress() async {
@@ -336,7 +358,7 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
             right: 40,
             bottom: 12,
             child: Text(
-              AppLocalizations.of(context)!.splashVersionLine,
+              _versionLine,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.white.withValues(alpha: 0.75),
               ),

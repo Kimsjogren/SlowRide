@@ -45,7 +45,46 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.4 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Keskitä kartta sijaintiini';
+
+  @override
+  String get a11yStopFollowingLocation => 'Lopeta sijaintini seuraaminen';
+
+  @override
+  String get a11ySwitchTo2d => 'Vaihda 2D-karttaan';
+
+  @override
+  String get a11ySwitchTo3d => 'Vaihda 3D-karttaan';
+
+  @override
+  String get a11yUseDarkMap => 'Käytä tummaa karttaa';
+
+  @override
+  String get a11yUseLightMap => 'Käytä vaaleaa karttaa';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Ota ääninavigointi käyttöön';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Poista ääninavigointi käytöstä';
+
+  @override
+  String get a11yDismissAlert => 'Sulje varoitus';
+
+  @override
+  String get a11yClearSearch => 'Tyhjennä haku';
+
+  @override
+  String get a11yOpenSearch => 'Avaa osoitehaku';
+
+  @override
+  String get a11yAddFavorite => 'Lisää suosikkipaikka';
+
+  @override
+  String get a11yConfirmAlert => 'Vahvista varoitus';
 
   @override
   String get alertsTitle => 'Yhteisön hälytykset';
@@ -613,6 +652,42 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Tuki';
+
+  @override
+  String get supportChatTitle => 'Tuen live-chat';
+
+  @override
+  String get supportChatReplyTime => 'Vastaamme 24 tunnin kuluessa';
+
+  @override
+  String get supportChatWelcome => 'Hei! Kuinka voimme auttaa CruizXin kanssa? Kirjoita viestisi tähän, niin vastaamme mahdollisimman pian.';
+
+  @override
+  String get supportChatGuestNotice => 'Keskustelet vieraana. Keskustelu tallennetaan yksityisesti tälle laitteelle.';
+
+  @override
+  String get supportChatLoginRequired => 'Kirjaudu sisään aloittaaksesi yksityisen tukikeskustelun ja nähdäksesi aiemmat viestisi.';
+
+  @override
+  String get supportChatLoginAction => 'Kirjaudu sisään';
+
+  @override
+  String get supportChatMessageHint => 'Kirjoita viesti…';
+
+  @override
+  String get supportChatSend => 'Lähetä viesti';
+
+  @override
+  String get supportChatSendFailed => 'Viestiä ei voitu lähettää. Yritä uudelleen.';
+
+  @override
+  String get supportChatUnavailable => 'Tukikeskustelu ei ole juuri nyt käytettävissä. Yritä myöhemmin uudelleen.';
+
+  @override
+  String get supportChatTeam => 'CruizX-tuki';
+
+  @override
+  String get supportChatYou => 'Sinä';
 
   @override
   String get settingsLinkOpenFailed => 'Linkkiä ei voitu avata juuri nyt.';
@@ -1616,7 +1691,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get aiConsentTitle => 'Käytetäänkö AI-reittianalyysiä?';
 
   @override
-  String get aiConsentBody => 'CruizX lähettää reittitietoja, kuten matkan, ajoajan, ajoneuvotyypin, tienimet ja varoitusten määrät, Cloudflaren CruizX AI -palveluun. Sijaintiasi, määränpään koordinaatteja tai henkilöllisyyttäsi ei lähetetä. AI voi erehtyä eikä koskaan muuta reittiäsi.';
+  String get aiConsentBody => 'CruizX käyttää reittitietoja, kuten matkaa, ajoaikaa, ajoneuvotyyppiä, tienimiä ja varoitusten määrää, reitin analysointiin. Tarkkaa sijaintiasi, määränpään koordinaatteja tai henkilöllisyyttäsi ei jaeta. Analyysi voi sisältää virheitä eikä koskaan muuta reittiäsi.';
 
   @override
   String get aiConsentAccept => 'Hyväksy ja jatka';
