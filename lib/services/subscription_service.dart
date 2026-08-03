@@ -58,7 +58,7 @@ class SubscriptionService {
   /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
 
-  /// Localized Google Play price for the optional lifetime unlock.
+  /// Localized App Store or Google Play price for the optional lifetime unlock.
   final ValueNotifier<String?> localizedLifetimePrice = ValueNotifier<String?>(
     null,
   );
@@ -66,7 +66,8 @@ class SubscriptionService {
   bool get supportsLifetimePurchase =>
       !kIsWeb &&
       !isWebCheckout &&
-      defaultTargetPlatform == TargetPlatform.android;
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   bool get isWebCheckout => kIsWeb || BackendConfig.webCheckoutOnly;
 
@@ -496,7 +497,7 @@ class SubscriptionService {
     return _purchaseProduct(_monthlyProduct!);
   }
 
-  /// Starts the Google Play non-consumable lifetime Pro purchase.
+  /// Starts the App Store or Google Play non-consumable lifetime Pro purchase.
   Future<bool> purchaseLifetimePro() async {
     if (!supportsLifetimePurchase) return false;
     if (BackendConfig.forceFree) return false;

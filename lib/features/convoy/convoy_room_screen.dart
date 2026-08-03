@@ -146,6 +146,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   RouteResult? _activeRoute;
   bool _isAiAnalyzing = false;
   bool _isAiLoadingDialogVisible = false;
+  bool _analyzeNextSelectedRouteWithAi = false;
+  bool _aiDestinationSelectionStarted = false;
   double _distToNextManeuver = double.infinity;
 
   // ── Navigation mode state ──────────────────────────────────────────────────
@@ -1809,6 +1811,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final l10n = AppLocalizations.of(context)!;
     final query = rawQuery.trim();
     if (query.isEmpty) return;
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
     setState(() => _showSuggestions = false);
     try {
       final raw = await _fetchPrimaryGeocodingResults(query, limit: 12);
@@ -1817,6 +1822,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         setState(() {
           _routingStatus = l10n.mapAddressNotFound;
         });
+        _cancelPendingConvoyAiRouteAnalysis();
         return;
       }
       final ranked = _rankAndDedupeSuggestions(raw, query);
@@ -1830,6 +1836,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _routingStatus = l10n.mapAddressLookupFailed);
+      _cancelPendingConvoyAiRouteAnalysis();
     }
   }
 
@@ -2611,7 +2618,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
-  void _openAiFromConvoyButton() {
+  Future<void> _openAiFromConvoyButton() async {
     if (_activeRoute == null) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2620,10 +2627,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           duration: const Duration(seconds: 2),
         ),
       );
-      _showConvoySearchSheet();
+      _analyzeNextSelectedRouteWithAi = true;
+      _aiDestinationSelectionStarted = false;
+      await _showConvoySearchSheet();
+      if (!_aiDestinationSelectionStarted) {
+        _cancelPendingConvoyAiRouteAnalysis();
+      }
       return;
     }
-    _analyzeConvoyRouteWithAi();
+    await _analyzeConvoyRouteWithAi();
+  }
+
+  void _cancelPendingConvoyAiRouteAnalysis() {
+    _analyzeNextSelectedRouteWithAi = false;
+    _aiDestinationSelectionStarted = false;
+  }
+
+  void _analyzeSelectedConvoyRouteIfRequested() {
+    if (!_analyzeNextSelectedRouteWithAi || _activeRoute == null) return;
+    _cancelPendingConvoyAiRouteAnalysis();
+    unawaited(_analyzeConvoyRouteWithAi());
   }
 
   Future<bool> _ensureConvoyAiConsent(AppLocalizations l10n) async {
@@ -3243,6 +3266,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   Future<void> _routeToDestination(LatLng destination) async {
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
     if (_myLocation == null) {
       // GPS not ready yet — save destination, auto-retry on first fix.
       setState(() {
@@ -3312,6 +3338,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         )!.mapRouteReady(km.toStringAsFixed(1), minutes.toString());
         _isFollowingMyPosition = false;
       });
+      _analyzeSelectedConvoyRouteIfRequested();
       // Zoom to fit the full route so the driver sees start→destination.
       if (chosenRoute.points.length >= 2) {
         final bounds = LatLngBounds.fromPoints(chosenRoute.points);
@@ -3407,7 +3434,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _routingStatus = AppLocalizations.of(context)!.mapRouteFailed;
       });
     } finally {
-      if (mounted) setState(() => _isRouting = false);
+      if (mounted) {
+        setState(() => _isRouting = false);
+        if (_activeRoute == null) {
+          _cancelPendingConvoyAiRouteAnalysis();
+        }
+      }
     }
   }
 

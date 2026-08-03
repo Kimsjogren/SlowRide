@@ -86,6 +86,8 @@ class _MapScreenState extends State<MapScreen> {
   RouteResult? _activeRoute;
   bool _isAiAnalyzing = false;
   bool _isAiLoadingDialogVisible = false;
+  bool _analyzeNextSelectedRouteWithAi = false;
+  bool _aiDestinationSelectionStarted = false;
   String? _searchingRouteStopKey;
 
   // ── Turn-by-turn instructions ─────────────────────────────────────
@@ -1584,6 +1586,9 @@ class _MapScreenState extends State<MapScreen> {
     if (query.isEmpty) {
       return;
     }
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
 
     setState(() {
       _isRouting = true;
@@ -1601,6 +1606,7 @@ class _MapScreenState extends State<MapScreen> {
           _isRouting = false;
           _routingStatus = l10n.mapAddressNotFound;
         });
+        _cancelPendingAiRouteAnalysis();
         return;
       }
       final ranked = _rankAndDedupeSuggestions(raw, query);
@@ -1630,6 +1636,7 @@ class _MapScreenState extends State<MapScreen> {
         _isRouting = false;
         _routingStatus = l10n.mapAddressLookupFailed;
       });
+      _cancelPendingAiRouteAnalysis();
     }
   }
 
@@ -3035,6 +3042,18 @@ class _MapScreenState extends State<MapScreen> {
         minutes.toStringAsFixed(0),
       );
     });
+    _analyzeSelectedRouteIfRequested();
+  }
+
+  void _cancelPendingAiRouteAnalysis() {
+    _analyzeNextSelectedRouteWithAi = false;
+    _aiDestinationSelectionStarted = false;
+  }
+
+  void _analyzeSelectedRouteIfRequested() {
+    if (!_analyzeNextSelectedRouteWithAi || _activeRoute == null) return;
+    _cancelPendingAiRouteAnalysis();
+    unawaited(_analyzeRouteWithAi());
   }
 
   Future<bool> _ensureAiConsent(AppLocalizations l10n) async {
@@ -3209,7 +3228,7 @@ class _MapScreenState extends State<MapScreen> {
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  void _openAiFromMapButton() {
+  Future<void> _openAiFromMapButton() async {
     if (_activeRoute == null) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3218,10 +3237,15 @@ class _MapScreenState extends State<MapScreen> {
           duration: const Duration(seconds: 2),
         ),
       );
-      _showDestinationSearchSheet();
+      _analyzeNextSelectedRouteWithAi = true;
+      _aiDestinationSelectionStarted = false;
+      await _showDestinationSearchSheet();
+      if (!_aiDestinationSelectionStarted) {
+        _cancelPendingAiRouteAnalysis();
+      }
       return;
     }
-    _analyzeRouteWithAi();
+    await _analyzeRouteWithAi();
   }
 
   Future<void> _showAiAnalysis(AiRouteAnalysis analysis) async {
@@ -3368,6 +3392,9 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _handleMapTap(LatLng destination) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
 
     if (_currentLocation == null) {
       // Save destination so auto-retry fires when first GPS fix arrives.
@@ -3380,6 +3407,7 @@ class _MapScreenState extends State<MapScreen> {
 
     // ── Free tier route limit ─────────────────────────────────────────
     if (!SubscriptionService.instance.canStartRoute()) {
+      _cancelPendingAiRouteAnalysis();
       await Navigator.of(context).push(
         MaterialPageRoute<bool>(
           builder: (_) => const PaywallScreen(reason: PaywallReason.routeLimit),
@@ -3553,6 +3581,7 @@ class _MapScreenState extends State<MapScreen> {
         setState(() {
           _isRouting = false;
         });
+        if (_activeRoute == null) _cancelPendingAiRouteAnalysis();
       }
     }
   }

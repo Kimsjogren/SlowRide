@@ -24,6 +24,65 @@ class SettingsScreen extends StatelessWidget {
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
   static const double _settingsActionCardHeight = 96;
 
+  static Widget _settingsActionIcon(IconData icon) {
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: const Color(0xFF1E6BFF),
+      child: Icon(icon, color: Colors.white, size: 22),
+    );
+  }
+
+  static Widget _settingsToggleContent({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return MergeSemantics(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onChanged(!value),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _settingsActionIcon(icon),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch(
+              value: value,
+              activeThumbColor: const Color(0xFF00C8FF),
+              onChanged: onChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   static Widget _proFeatureRow(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -512,10 +571,7 @@ class SettingsScreen extends StatelessWidget {
                 Container(
                   width: double.infinity,
                   height: _settingsActionCardHeight,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(14),
@@ -526,35 +582,12 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<bool>(
                     valueListenable: TtsService.instance.enabled,
                     builder: (context, ttsEnabled, _) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l10n.settingsVoiceNavigation,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            l10n.settingsVoiceNavigationSubtitle,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                            ),
-                          ),
-                          secondary: Icon(
-                            ttsEnabled ? Icons.volume_up : Icons.volume_off,
-                            color: ttsEnabled
-                                ? const Color(0xFF00C8FF)
-                                : Colors.white38,
-                          ),
-                          value: ttsEnabled,
-                          activeThumbColor: const Color(0xFF00C8FF),
-                          onChanged: (v) =>
-                              TtsService.instance.enabled.value = v,
-                        ),
+                      return _settingsToggleContent(
+                        icon: ttsEnabled ? Icons.volume_up : Icons.volume_off,
+                        title: l10n.settingsVoiceNavigation,
+                        subtitle: l10n.settingsVoiceNavigationSubtitle,
+                        value: ttsEnabled,
+                        onChanged: (v) => TtsService.instance.enabled.value = v,
                       );
                     },
                   ),
@@ -567,10 +600,7 @@ class SettingsScreen extends StatelessWidget {
                     return Container(
                       width: double.infinity,
                       height: _settingsActionCardHeight,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
@@ -580,32 +610,13 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: Material(
                         color: Colors.transparent,
-                        child: SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l10n.settingsVectorMap,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            useVector
-                                ? l10n.settingsVectorMapOn
-                                : l10n.settingsVectorMapOff,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                            ),
-                          ),
-                          secondary: Icon(
-                            Icons.map_outlined,
-                            color: useVector
-                                ? const Color(0xFF00C8FF)
-                                : Colors.white38,
-                          ),
+                        child: _settingsToggleContent(
+                          icon: Icons.map_outlined,
+                          title: l10n.settingsVectorMap,
+                          subtitle: useVector
+                              ? l10n.settingsVectorMapOn
+                              : l10n.settingsVectorMapOff,
                           value: useVector,
-                          activeThumbColor: const Color(0xFF00C8FF),
                           onChanged: (v) =>
                               UserPreferencesService
                                       .instance
@@ -630,7 +641,7 @@ class SettingsScreen extends StatelessWidget {
                   child: Container(
                     width: double.infinity,
                     height: _settingsActionCardHeight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(14),
@@ -640,20 +651,7 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF00C8FF,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.family_restroom,
-                            color: Color(0xFF00C8FF),
-                            size: 24,
-                          ),
-                        ),
+                        _settingsActionIcon(Icons.family_restroom),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
@@ -704,10 +702,7 @@ class SettingsScreen extends StatelessWidget {
                     child: Container(
                       width: double.infinity,
                       height: _settingsActionCardHeight,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 16,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(14),
@@ -717,14 +712,8 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const CircleAvatar(
-                            backgroundColor: Color(0xFF1E6BFF),
-                            child: Icon(
-                              Icons.support_agent,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
+                          _settingsActionIcon(Icons.support_agent),
+                          const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,

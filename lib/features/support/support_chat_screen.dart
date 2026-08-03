@@ -66,7 +66,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
     return AppBackground(
+      showLogo: !keyboardVisible,
       logoAsset: 'assets/CruizX_support_transparent.png',
       logoHeight: 170,
       centerLogo: true,
@@ -91,11 +93,16 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             }
             return Column(
               children: [
-                _ResponseTimeBanner(l10n: l10n),
-                if (chat.isGuest) _GuestBanner(l10n: l10n),
+                if (!keyboardVisible) _ResponseTimeBanner(l10n: l10n),
+                if (!keyboardVisible && chat.isGuest) _GuestBanner(l10n: l10n),
                 Expanded(
                   child: Container(
-                    margin: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                    margin: EdgeInsets.fromLTRB(
+                      12,
+                      keyboardVisible ? 4 : 10,
+                      12,
+                      8,
+                    ),
                     decoration: BoxDecoration(
                       color: _chatPanelBlue,
                       borderRadius: BorderRadius.circular(18),
