@@ -3454,6 +3454,8 @@ class _MapScreenState extends State<MapScreen> {
                 'A-tractor' => l10n.settingsVehicleAtractor,
                 'Low vehicle' => l10n.settingsVehicleLowVehicle,
                 'Moped car' => l10n.settingsVehicleMopedCar,
+                'Moped class I' => l10n.settingsVehicleMopedClassI,
+                'Moped class II' => l10n.settingsVehicleMopedClassII,
                 'Tractor' => l10n.settingsVehicleTractor,
                 _ => preferences.vehicleType.value,
               },
@@ -3502,6 +3504,8 @@ class _MapScreenState extends State<MapScreen> {
           'A-tractor' => l10n.settingsVehicleAtractor,
           'Low vehicle' => l10n.settingsVehicleLowVehicle,
           'Moped car' => l10n.settingsVehicleMopedCar,
+          'Moped class I' => l10n.settingsVehicleMopedClassI,
+          'Moped class II' => l10n.settingsVehicleMopedClassII,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => preferences.vehicleType.value,
         };

@@ -142,8 +142,32 @@ const AI_VEHICLE_CONTEXT = {
     "A low-ground-clearance passenger car using A-tractor speed and road restrictions; avoid high speed bumps and rough or unpaved roads. It is not a truck or heavy vehicle.",
   "Moped car":
     "A light moped car (light quadricycle) with restricted road access; it is not a truck or heavy vehicle.",
+  "Moped class I":
+    "A two-wheeled class I moped limited to 45 km/h; avoid motorways, motor-traffic roads, cycleways, and roads without moped access. It is not a moped car or a heavy vehicle.",
+  "Moped class II":
+    "A two-wheeled Swedish class II moped with a construction speed of no more than 25 km/h and power no more than 1 kW. Apply the supplied country's local road-position rules. It is not an e-bike, moped car, or heavy vehicle.",
   Tractor:
     "An agricultural tractor, not a truck. No vehicle weight has been supplied.",
+};
+const AI_MOPED_COUNTRY_CONTEXT = {
+  SE: "Sweden: moped class I may not use motorways, motor-traffic roads, or ordinary cycleways.",
+  NO: "Norway: moped AM146 may not use motorways, motor-traffic roads, or ordinary cycleways; a two-wheel moped may use a bus lane unless signs restrict it.",
+  DK: "Denmark: a large moped uses the roadway, not the cycleway, and may not use motorways or motor-traffic roads.",
+  FI: "Finland: moped AM/120 may not use motorways or motor-traffic roads; use a cycleway only where signs explicitly allow mopeds.",
+  FR: "France: a cyclomoteur may not use autoroutes or voies express; use a cycleway only where local rules explicitly permit it.",
+  ES: "Spain: a ciclomotor may not use autopistas or autovías and must use a passable shoulder where required on conventional interurban roads.",
+  IT: "Italy: a ciclomotore may not use autostrade, strade extraurbane principali, or cycle-only infrastructure.",
+  GB: "Great Britain: a category AM moped may not use motorways. An ordinary dual carriageway is not automatically prohibited, but high-speed roads require extra caution.",
+};
+const AI_MOPED_II_COUNTRY_CONTEXT = {
+  SE: "Sweden: a two-wheel class II moped follows bicycle traffic rules and normally uses a cycleway unless a supplementary sign prohibits mopeds.",
+  NO: "Norway has no direct class-II equivalent: apply local moped rules, use the roadway, and do not use motorways, motor-traffic roads, or cycleways.",
+  DK: "Denmark: treat it as a small moped; a two-wheel small moped normally must use the cycleway unless signs say otherwise.",
+  FI: "Finland has no direct equivalent for every class-II design: use the conservative local moped road rules unless the vehicle is legally an L1e-A powered cycle and signs permit otherwise.",
+  FR: "France has no direct class-II category: apply cyclomoteur road access, keep the 25 km/h vehicle limit, and use cycleways only where explicitly permitted.",
+  ES: "Spain: apply ciclomotor rules; do not use autopistas or autovías and use a passable shoulder where required on conventional interurban roads.",
+  IT: "Italy: apply ciclomotore rules; do not use autostrade, strade extraurbane principali, or cycle-only infrastructure.",
+  GB: "Great Britain: treat a no-pedal vehicle limited to 25 km/h as category Q; use roads, not cycle lanes or tracks, and do not use motorways.",
 };
 const AI_REPORT_REASONS = new Set([
   "incorrect",
@@ -203,7 +227,13 @@ function validateAiRouteFacts(body) {
   return {
     language: body.language,
     vehicle_type: body.vehicle_type,
-    vehicle_context: AI_VEHICLE_CONTEXT[body.vehicle_type],
+    vehicle_context:
+      AI_VEHICLE_CONTEXT[body.vehicle_type] +
+      (body.vehicle_type === "Moped class I"
+        ? ` ${AI_MOPED_COUNTRY_CONTEXT[body.country_code] || AI_MOPED_COUNTRY_CONTEXT.SE}`
+        : body.vehicle_type === "Moped class II"
+          ? ` ${AI_MOPED_II_COUNTRY_CONTEXT[body.country_code] || AI_MOPED_II_COUNTRY_CONTEXT.SE}`
+          : ""),
     country_code: body.country_code,
     max_speed_kmh: body.max_speed_kmh,
     route: {

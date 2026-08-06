@@ -43,6 +43,14 @@ enum MapMarkerStyle {
   mgoRed,
   mgoBlack,
   mgoYellow,
+  scooterBlack,
+  scooterBlue,
+  scooterGold,
+  scooterRed,
+  crossMopedBlack,
+  crossMopedBlue,
+  crossMopedGold,
+  crossMopedRed,
 }
 
 class UserPreferencesService {

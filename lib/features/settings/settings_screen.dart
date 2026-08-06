@@ -226,6 +226,14 @@ class SettingsScreen extends StatelessWidget {
                                 child: Text(l10n.settingsVehicleMopedCar),
                               ),
                               DropdownMenuItem(
+                                value: 'Moped class I',
+                                child: Text(l10n.settingsVehicleMopedClassI),
+                              ),
+                              DropdownMenuItem(
+                                value: 'Moped class II',
+                                child: Text(l10n.settingsVehicleMopedClassII),
+                              ),
+                              DropdownMenuItem(
                                 value: 'Tractor',
                                 child: Text(l10n.settingsVehicleTractor),
                               ),
@@ -1160,6 +1168,19 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
         _MarkerBrandGroup(
           title: l10n.settingsMapMarkerCategoryLigier,
           options: byCategory(MapMarkerCategory.ligier),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsMapMarkerMopeds,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerScooter,
+          options: byCategory(MapMarkerCategory.mopedScooter),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCrossMoped,
+          options: byCategory(MapMarkerCategory.mopedCross),
         ),
       ],
     ),

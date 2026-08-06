@@ -77,7 +77,7 @@ class RoutingService {
     _providerOsrmPublic,
   ];
 
-  // Motorway keywords in all 7 supported app languages + English.
+  // Motorway keywords in all supported app languages + English.
   // Used to hard-reject routes that contain motorway segments for slow vehicles
   // (A-tractor ≤ 30 km/h, moped car ≤ 45 km/h, tractor ≤ 40 km/h).
   static const List<String> _motorwayKeywords = [
@@ -85,10 +85,52 @@ class RoutingService {
     'motorväg', 'motortrafikled', // Swedish
     'motorvei', 'motortrafikkvei', // Norwegian
     'motorvej', 'motortrafikvej', // Danish
-    'moottoritie', // Finnish
+    'moottoritie', 'moottoriliikennetie', // Finnish
     'autoroute', 'voie express', // French
     'autopista', 'autovía', 'autovia', // Spanish
+    'autostrada', 'strada extraurbana principale', 'superstrada', // Italian
   ];
+
+  List<String> _forbiddenRoadKeywordsFor(
+    String countryCode,
+    String vehicleType,
+  ) {
+    if (vehicleType != 'Moped class I' && vehicleType != 'Moped class II') {
+      return _motorwayKeywords;
+    }
+
+    // A British category AM moped is prohibited on motorways, but an ordinary
+    // dual carriageway is not automatically prohibited. Other supported
+    // countries also prohibit their motorway-like motor-road category.
+    return switch (countryCode) {
+      'SE' => const ['motorway', 'freeway', 'motorväg', 'motortrafikled'],
+      'NO' => const ['motorway', 'freeway', 'motorvei', 'motortrafikkvei'],
+      'DK' => const ['motorway', 'freeway', 'motorvej', 'motortrafikvej'],
+      'FI' => const [
+        'motorway',
+        'freeway',
+        'moottoritie',
+        'moottoriliikennetie',
+      ],
+      'FR' => const ['motorway', 'freeway', 'autoroute', 'voie express'],
+      'ES' => const ['motorway', 'freeway', 'autopista', 'autovía', 'autovia'],
+      'IT' => const [
+        'motorway',
+        'freeway',
+        'autostrada',
+        'strada extraurbana principale',
+        'superstrada',
+      ],
+      'GB' => const ['motorway', 'freeway'],
+      _ => _motorwayKeywords,
+    };
+  }
+
+  @visibleForTesting
+  List<String> debugForbiddenRoadKeywords({
+    required String countryCode,
+    required String vehicleType,
+  }) => _forbiddenRoadKeywordsFor(countryCode, vehicleType);
 
   /// Hard-rejects a route for slow vehicles (legal max ≤ 45 km/h) if any
   /// turn instruction text or street name contains a motorway keyword.
@@ -111,7 +153,10 @@ class RoutingService {
     for (final instruction in route.instructions) {
       final text = instruction.text.toLowerCase();
       final street = instruction.streetName.toLowerCase();
-      for (final keyword in _motorwayKeywords) {
+      for (final keyword in _forbiddenRoadKeywordsFor(
+        countryCode,
+        vehicleType,
+      )) {
         if (text.contains(keyword) || street.contains(keyword)) {
           throw const RoutingException(
             RoutingErrorCode.routeNotAllowedForVehicle,
@@ -190,27 +235,51 @@ class RoutingService {
       vehicleType,
     );
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
-    final costing = isSlowVehicle ? 'motor_scooter' : 'auto';
-    final costingOptions = <String, dynamic>{
-      // Clamp top_speed to the vehicle's legal maximum so Valhalla never
-      // optimises for a speed the vehicle cannot legally achieve on any road.
-      'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
-      'use_highways': profile.useHighways,
-      'use_tolls': profile.useTolls,
-      'use_ferry': profile.useFerry,
-      // For slow vehicles, shortest tends to avoid long detours over larger
-      // fast roads and keeps routing on local road networks.
-      'shortest': isSlowVehicle,
-    };
-    if (isSlowVehicle) {
-      costingOptions['use_primary'] = 0.0;
+    final useCyclewayRouting =
+        vehicleType == 'Moped class II' && profile.prefersCycleways;
+    final costing = useCyclewayRouting
+        ? 'bicycle'
+        : (isSlowVehicle ? 'motor_scooter' : 'auto');
+    final costingOptions = useCyclewayRouting
+        ? <String, dynamic>{
+            // Sweden and Denmark require a two-wheel low-speed moped to use
+            // cycleways by default. Bicycle costing is the Valhalla profile
+            // that can traverse that network; local signs still take priority.
+            'bicycle_type': 'Hybrid',
+            'cycling_speed': userSpeedKmh.clamp(5.0, maxLegalSpeedKmh).round(),
+            'use_roads': 0.0,
+            'use_hills': 0.5,
+            'use_ferry': profile.useFerry,
+            'avoid_bad_surfaces': 1.0,
+            'shortest': true,
+            'ignore_access': false,
+          }
+        : <String, dynamic>{
+            // Clamp top_speed to the vehicle's legal maximum so Valhalla never
+            // optimises for a speed the vehicle cannot legally achieve on any road.
+            'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
+            'use_highways': profile.useHighways,
+            'use_tolls': profile.useTolls,
+            'use_ferry': profile.useFerry,
+            // For slow vehicles, shortest tends to avoid long detours over larger
+            // fast roads and keeps routing on local road networks.
+            'shortest': isSlowVehicle,
+          };
+    if (isSlowVehicle && !useCyclewayRouting) {
+      costingOptions['use_primary'] = profile.usePrimary;
       costingOptions['disable_hierarchy_pruning'] = true;
+      // Respect OSM access tags for moped/mofa/motor_scooter. This is
+      // especially important for cycleways and locally restricted roads.
+      costingOptions['ignore_access'] = false;
     }
-    if (vehicleType == 'Low vehicle') {
+    if (!useCyclewayRouting &&
+        (vehicleType == 'Low vehicle' || profile.excludeUnpaved)) {
       // A low vehicle follows the A-tractor speed profile, but must also stay
       // away from tracks and roads tagged as unpaved whenever the map data
       // makes that possible.
-      costingOptions['use_tracks'] = 0.0;
+      costingOptions['use_tracks'] = vehicleType == 'Low vehicle'
+          ? 0.0
+          : profile.useTracks;
       costingOptions['exclude_unpaved'] = true;
     }
 
@@ -268,6 +337,12 @@ class RoutingService {
     required String vehicleType,
     required String countryCode,
   }) {
+    // The other configured providers use car profiles and cannot correctly
+    // represent mandatory cycleway routing for class-II mopeds. Valhalla can
+    // switch between bicycle and motor-scooter costing per country.
+    if (vehicleType == 'Moped class II') {
+      return const [_providerValhalla];
+    }
     final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
     final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
       countryCode,
@@ -394,6 +469,13 @@ class RoutingService {
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
+    // The UI can request a last-resort relaxed route for legacy slow vehicle
+    // profiles. A class I moped must never bypass its country-specific road
+    // restrictions, even when no legal route can be found.
+    final effectiveRelaxedLegalChecks =
+        relaxedLegalChecks &&
+        vehicleType != 'Moped class I' &&
+        vehicleType != 'Moped class II';
     final eligibleProviders = _eligibleProvidersFor(
       configuredProvider: BackendConfig.routingProvider,
       vehicleType: vehicleType,
@@ -414,7 +496,7 @@ class RoutingService {
           vehicleType: vehicleType,
           userSpeedKmh: userSpeed,
           countryCode: country,
-          relaxedLegalChecks: relaxedLegalChecks,
+          relaxedLegalChecks: effectiveRelaxedLegalChecks,
           avoidLocations: avoidLocations,
         );
         lastUsedProvider = provider;
@@ -667,7 +749,11 @@ class RoutingService {
     // OSRM returns car travel times. Recalculate using the vehicle's actual
     // max speed so A-tractor (30 km/h) and Moped car (45 km/h) show
     // realistic times.
-    final vehicleMaxSpeedKmh = userSpeedKmh;
+    final maxLegalSpeedKmh = CountryVehicleRules.maxLegalSpeedFor(
+      countryCode,
+      vehicleType,
+    );
+    final vehicleMaxSpeedKmh = userSpeedKmh.clamp(1.0, maxLegalSpeedKmh);
     // Use 85% of max speed as realistic average (traffic lights, bends, etc.)
     final avgSpeedMs = (vehicleMaxSpeedKmh * 0.85) / 3.6;
     final calculatedDurationSeconds = avgSpeedMs > 0
@@ -772,7 +858,7 @@ class RoutingService {
       vehicleType,
     );
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
-    final vehicleMaxSpeedKmh = userSpeedKmh;
+    final vehicleMaxSpeedKmh = userSpeedKmh.clamp(1.0, maxLegalSpeedKmh);
 
     final requestPayload = _buildValhallaRequestPayload(
       origin: origin,
@@ -1052,10 +1138,9 @@ class RoutingService {
             trip,
             vehicleType: vehicleType,
             countryCode: country,
-            // Alternatives are already generated with use_primary:0 and no
-            // highways/tolls, so they stay legal. Use relaxed checks here so a
-            // single brush against a bigger road doesn't drop the whole option.
-            relaxedLegalChecks: true,
+            // An alternative must pass the same legal checks as the primary
+            // route. Never trade legality for an extra route choice.
+            relaxedLegalChecks: false,
             vehicleMaxSpeedKmh: userSpeed,
             isSlowVehicle: isSlowVehicle,
           ),

@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Keskitä kartta sijaintiini';
@@ -253,6 +253,21 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Tällä sähköpostilla on jo tili.';
+
+  @override
+  String get authErrorInvalidEmail => 'Sähköpostiosoite ei kelpaa. Tarkista se ja yritä uudelleen.';
+
+  @override
+  String get authErrorRateLimited => 'Liian monta yritystä lyhyessä ajassa. Odota hetki ja yritä uudelleen.';
+
+  @override
+  String get authErrorSignUpDisabled => 'Uusia tilejä ei voi luoda juuri nyt. Ota yhteyttä CruizX-tukeen.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'Vahvistussähköpostia ei voitu lähettää. Yritä hetken kuluttua uudelleen.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Tilipalveluun ei saatu yhteyttä. Tarkista internetyhteys ja yritä uudelleen.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Reaaliaikaista saattuetta ei ole vielä määritetty. Lisää backend-konfiguraatio jakaaksesi live-sijainnit käyttäjien kesken.';
@@ -588,6 +603,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Mopoauto';
 
   @override
+  String get settingsVehicleMopedClassI => 'Luokan I mopo';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Luokan II mopo (25 km/h)';
+
+  @override
   String get settingsVehicleTractor => 'Traktori';
 
   @override
@@ -754,6 +775,15 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopot';
+
+  @override
+  String get settingsMapMarkerScooter => 'Skootteri';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Crossimopo';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';

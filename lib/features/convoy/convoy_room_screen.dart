@@ -3385,6 +3385,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           'A-tractor' => l10n.settingsVehicleAtractor,
           'Low vehicle' => l10n.settingsVehicleLowVehicle,
           'Moped car' => l10n.settingsVehicleMopedCar,
+          'Moped class I' => l10n.settingsVehicleMopedClassI,
+          'Moped class II' => l10n.settingsVehicleMopedClassII,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => vehicleType,
         };
@@ -3590,6 +3592,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'A-tractor' => l10n.settingsVehicleAtractor,
       'Low vehicle' => l10n.settingsVehicleLowVehicle,
       'Moped car' => l10n.settingsVehicleMopedCar,
+      'Moped class I' => l10n.settingsVehicleMopedClassI,
+      'Moped class II' => l10n.settingsVehicleMopedClassII,
       'Tractor' => l10n.settingsVehicleTractor,
       _ => vehicleType,
     };

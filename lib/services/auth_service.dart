@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:slowride/services/supabase_service.dart';
 
 class AuthService {
@@ -88,27 +88,38 @@ class AuthService {
     }
 
     if (SupabaseService.instance.isEnabled) {
-      final response = await SupabaseService.instance.client.auth.signUp(
-        email: normalizedEmail,
-        password: password,
-        emailRedirectTo: 'com.cruizx.mobile://login-callback/',
-        data: {'display_name': trimmedName},
-      );
-      // If email confirmation is off, session is active immediately.
-      final user = response.session?.user;
-      if (user != null) {
-        await _prefs?.remove(_pendingEmailConfirmationKey);
-        userId.value = user.id;
-        userEmail.value = user.email;
-        userName.value = trimmedName;
-        isLoggedIn.value = true;
-      } else {
-        await _prefs?.setString(_pendingEmailConfirmationKey, normalizedEmail);
-        // Email confirmation required — tell the caller.
-        throw const AuthException(
-          'confirmationEmailSent',
-          code: AuthErrorCode.confirmationEmailSent,
+      try {
+        final response = await SupabaseService.instance.client.auth.signUp(
+          email: normalizedEmail,
+          password: password,
+          emailRedirectTo: 'com.cruizx.mobile://login-callback/',
+          data: {'display_name': trimmedName},
         );
+        // If email confirmation is off, session is active immediately.
+        final user = response.session?.user;
+        if (user != null) {
+          await _prefs?.remove(_pendingEmailConfirmationKey);
+          userId.value = user.id;
+          userEmail.value = user.email;
+          userName.value = trimmedName;
+          isLoggedIn.value = true;
+        } else {
+          await _prefs?.setString(
+            _pendingEmailConfirmationKey,
+            normalizedEmail,
+          );
+          // Email confirmation required — tell the caller.
+          throw const AuthException(
+            'confirmationEmailSent',
+            code: AuthErrorCode.confirmationEmailSent,
+          );
+        }
+      } on supabase.AuthException catch (error) {
+        debugPrint(
+          'Supabase signup failed: code=${error.code}, '
+          'status=${error.statusCode}',
+        );
+        throw _mapSupabaseSignUpError(error);
       }
       return;
     }
@@ -131,6 +142,71 @@ class AuthService {
     userEmail.value = normalizedEmail;
     userId.value = null;
     isLoggedIn.value = true;
+  }
+
+  AuthException _mapSupabaseSignUpError(supabase.AuthException error) {
+    final code = error.code?.toLowerCase() ?? '';
+    final message = error.message.toLowerCase();
+
+    if (code == 'email_exists' ||
+        code == 'user_already_exists' ||
+        code == 'identity_already_exists' ||
+        message.contains('already registered') ||
+        message.contains('already exists')) {
+      return const AuthException(
+        'emailAlreadyInUse',
+        code: AuthErrorCode.emailAlreadyInUse,
+      );
+    }
+    if (code == 'weak_password' ||
+        (message.contains('password') &&
+            (message.contains('weak') || message.contains('at least')))) {
+      return const AuthException(
+        'passwordTooShort',
+        code: AuthErrorCode.passwordTooShort,
+      );
+    }
+    if (code == 'validation_failed' &&
+        (message.contains('email') || message.contains('address'))) {
+      return const AuthException(
+        'invalidEmail',
+        code: AuthErrorCode.invalidEmail,
+      );
+    }
+    if (code == 'over_request_rate_limit' ||
+        code == 'over_email_send_rate_limit' ||
+        message.contains('rate limit') ||
+        message.contains('too many')) {
+      return const AuthException(
+        'rateLimited',
+        code: AuthErrorCode.rateLimited,
+      );
+    }
+    if (code == 'signup_disabled' ||
+        code == 'email_provider_disabled' ||
+        code == 'provider_disabled') {
+      return const AuthException(
+        'signUpDisabled',
+        code: AuthErrorCode.signUpDisabled,
+      );
+    }
+    if (message.contains('confirmation email') ||
+        message.contains('sending email') ||
+        message.contains('send email') ||
+        message.contains('smtp')) {
+      return const AuthException(
+        'emailDeliveryFailed',
+        code: AuthErrorCode.emailDeliveryFailed,
+      );
+    }
+    if (code == 'request_timeout' ||
+        error is supabase.AuthRetryableFetchException) {
+      return const AuthException(
+        'networkUnavailable',
+        code: AuthErrorCode.networkUnavailable,
+      );
+    }
+    return AuthException(error.message, code: AuthErrorCode.unknown);
   }
 
   /// Signs in with email + password. Works locally (no Supabase needed).
@@ -184,13 +260,13 @@ class AuthService {
   /// Synchronizes authentication initiated outside the running UI, such as a
   /// Supabase email-confirmation deep link. Returns true exactly once when a
   /// pending registration has been confirmed on this device.
-  Future<bool> handleAuthStateChange(AuthState state) async {
+  Future<bool> handleAuthStateChange(supabase.AuthState state) async {
     if (!SupabaseService.instance.isEnabled) return false;
     _prefs ??= await SharedPreferences.getInstance();
 
     final user = state.session?.user;
     if (user == null) {
-      if (state.event == AuthChangeEvent.signedOut) {
+      if (state.event == supabase.AuthChangeEvent.signedOut) {
         userId.value = null;
         userEmail.value = null;
         userName.value = null;
@@ -251,7 +327,7 @@ class AuthService {
     final response = await SupabaseService.instance.client.auth.verifyOTP(
       email: email,
       token: normalizedCode,
-      type: OtpType.recovery,
+      type: supabase.OtpType.recovery,
     );
     if (response.user == null) throw StateError('otp_verification_failed');
   }
@@ -272,7 +348,7 @@ class AuthService {
       throw StateError('realtime_backend_missing');
     }
     await SupabaseService.instance.client.auth.updateUser(
-      UserAttributes(password: newPassword),
+      supabase.UserAttributes(password: newPassword),
     );
   }
 
@@ -304,7 +380,7 @@ class AuthService {
     final response = await SupabaseService.instance.client.auth.verifyOTP(
       email: pendingEmail,
       token: normalizedCode,
-      type: OtpType.email,
+      type: supabase.OtpType.email,
     );
     final user = response.user;
     if (user == null) throw StateError('otp_verification_failed');
@@ -322,8 +398,8 @@ class AuthService {
     if (!SupabaseService.instance.isEnabled) return false;
     final aal = SupabaseService.instance.client.auth.mfa
         .getAuthenticatorAssuranceLevel();
-    return aal.currentLevel == AuthenticatorAssuranceLevels.aal1 &&
-        aal.nextLevel == AuthenticatorAssuranceLevels.aal2;
+    return aal.currentLevel == supabase.AuthenticatorAssuranceLevels.aal1 &&
+        aal.nextLevel == supabase.AuthenticatorAssuranceLevels.aal2;
   }
 
   /// Returns true when the user has enrolled at least one TOTP factor.
@@ -331,7 +407,7 @@ class AuthService {
     if (!SupabaseService.instance.isEnabled) return false;
     final factors = await SupabaseService.instance.client.auth.mfa
         .listFactors();
-    return factors.totp.any((f) => f.status == FactorStatus.verified);
+    return factors.totp.any((f) => f.status == supabase.FactorStatus.verified);
   }
 
   /// Enroll a new TOTP factor. Returns the TOTP QR-code SVG string, the
@@ -341,7 +417,7 @@ class AuthService {
       throw StateError('realtime_backend_missing');
     }
     final res = await SupabaseService.instance.client.auth.mfa.enroll(
-      factorType: FactorType.totp,
+      factorType: supabase.FactorType.totp,
       issuer: 'CruizX',
       friendlyName: 'CruizX 2FA',
     );
@@ -396,7 +472,7 @@ class AuthService {
     final factors = await SupabaseService.instance.client.auth.mfa
         .listFactors();
     final verified = factors.totp.where(
-      (f) => f.status == FactorStatus.verified,
+      (f) => f.status == supabase.FactorStatus.verified,
     );
     return verified.isEmpty ? null : verified.first.id;
   }
@@ -443,7 +519,7 @@ class AuthService {
           .uploadBinary(
             path,
             bytes,
-            fileOptions: const FileOptions(upsert: true),
+            fileOptions: const supabase.FileOptions(upsert: true),
           );
 
       final bucket = SupabaseService.instance.client.storage.from('avatars');
@@ -461,7 +537,7 @@ class AuthService {
 
       // Save to user metadata.
       await SupabaseService.instance.client.auth.updateUser(
-        UserAttributes(data: {'avatar_url': remoteUrl}),
+        supabase.UserAttributes(data: {'avatar_url': remoteUrl}),
       );
 
       avatarUrl.value = remoteUrl;
@@ -558,5 +634,10 @@ enum AuthErrorCode {
   emailAndPasswordRequired,
   invalidCredentials,
   emailAlreadyInUse,
+  invalidEmail,
+  rateLimited,
+  signUpDisabled,
+  emailDeliveryFailed,
+  networkUnavailable,
   unknown,
 }

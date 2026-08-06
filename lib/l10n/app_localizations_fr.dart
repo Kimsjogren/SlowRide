@@ -45,7 +45,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get splashReady => 'Prêt';
 
   @override
-  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centrer la carte sur ma position';
@@ -253,6 +253,21 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Un compte avec cette adresse e-mail existe déjà.';
+
+  @override
+  String get authErrorInvalidEmail => 'L’adresse e-mail n’est pas valide. Vérifiez-la et réessayez.';
+
+  @override
+  String get authErrorRateLimited => 'Trop de tentatives en peu de temps. Patientez un instant et réessayez.';
+
+  @override
+  String get authErrorSignUpDisabled => 'La création de nouveaux comptes est momentanément indisponible. Contactez l’assistance CruizX.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'L’e-mail de confirmation n’a pas pu être envoyé. Réessayez dans quelques instants.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Impossible de se connecter au service de compte. Vérifiez votre connexion Internet et réessayez.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Le convoi en temps réel n\'est pas configuré. Ajoutez la configuration backend pour partager les positions en direct entre utilisateurs.';
@@ -588,6 +603,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Voiture sans permis';
 
   @override
+  String get settingsVehicleMopedClassI => 'Cyclomoteur classe I';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Cyclomoteur classe II (25 km/h)';
+
+  @override
   String get settingsVehicleTractor => 'Tracteur';
 
   @override
@@ -754,6 +775,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Cyclomoteurs';
+
+  @override
+  String get settingsMapMarkerScooter => 'Scooter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Cyclomoteur cross';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';

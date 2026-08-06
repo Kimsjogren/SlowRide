@@ -45,7 +45,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centrera kartan på min position';
@@ -253,6 +253,21 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Det finns redan ett konto med den e-postadressen.';
+
+  @override
+  String get authErrorInvalidEmail => 'E-postadressen är ogiltig. Kontrollera den och försök igen.';
+
+  @override
+  String get authErrorRateLimited => 'För många försök på kort tid. Vänta en stund och försök igen.';
+
+  @override
+  String get authErrorSignUpDisabled => 'Det går inte att skapa nya konton just nu. Kontakta CruizX Support.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'Bekräftelsemejlet kunde inte skickas. Försök igen om en stund.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Kunde inte ansluta till kontotjänsten. Kontrollera internetanslutningen och försök igen.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Realtime-konvoj är inte konfigurerad ännu. Lägg till backend-konfiguration för att dela liveposition mellan användare.';
@@ -588,6 +603,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Mopedbil';
 
   @override
+  String get settingsVehicleMopedClassI => 'Moped klass I';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Moped klass II (25 km/h)';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
 
   @override
@@ -754,6 +775,15 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopeder';
+
+  @override
+  String get settingsMapMarkerScooter => 'Scooter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Crossmoped';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';

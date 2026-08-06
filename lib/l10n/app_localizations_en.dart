@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.1.6 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Center the map on my location';
@@ -253,6 +253,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'An account with that email already exists.';
+
+  @override
+  String get authErrorInvalidEmail => 'The email address is invalid. Check it and try again.';
+
+  @override
+  String get authErrorRateLimited => 'Too many attempts in a short time. Wait a moment and try again.';
+
+  @override
+  String get authErrorSignUpDisabled => 'New accounts cannot be created right now. Contact CruizX Support.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'The confirmation email could not be sent. Please try again shortly.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Could not connect to the account service. Check your internet connection and try again.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Realtime convoy is not configured yet. Add backend config to share live positions between users.';
@@ -588,6 +603,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Moped car';
 
   @override
+  String get settingsVehicleMopedClassI => 'Class I moped';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Class II moped (25 km/h)';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
 
   @override
@@ -754,6 +775,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopeds';
+
+  @override
+  String get settingsMapMarkerScooter => 'Scooter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Cross moped';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';

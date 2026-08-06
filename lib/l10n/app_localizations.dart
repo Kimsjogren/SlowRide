@@ -182,7 +182,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.6 | CruizX by KimTechTool'**
+  /// **'v1.1.7 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @a11yCenterOnLocation.
@@ -598,6 +598,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An account with that email already exists.'**
   String get authErrorEmailAlreadyInUse;
+
+  /// No description provided for @authErrorInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'The email address is invalid. Check it and try again.'**
+  String get authErrorInvalidEmail;
+
+  /// No description provided for @authErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts in a short time. Wait a moment and try again.'**
+  String get authErrorRateLimited;
+
+  /// No description provided for @authErrorSignUpDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'New accounts cannot be created right now. Contact CruizX Support.'**
+  String get authErrorSignUpDisabled;
+
+  /// No description provided for @authErrorEmailDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The confirmation email could not be sent. Please try again shortly.'**
+  String get authErrorEmailDeliveryFailed;
+
+  /// No description provided for @authErrorNetworkUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the account service. Check your internet connection and try again.'**
+  String get authErrorNetworkUnavailable;
 
   /// No description provided for @convoyRealtimeBackendMissing.
   ///
@@ -1241,6 +1271,18 @@ abstract class AppLocalizations {
   /// **'Moped car'**
   String get settingsVehicleMopedCar;
 
+  /// No description provided for @settingsVehicleMopedClassI.
+  ///
+  /// In en, this message translates to:
+  /// **'Class I moped'**
+  String get settingsVehicleMopedClassI;
+
+  /// No description provided for @settingsVehicleMopedClassII.
+  ///
+  /// In en, this message translates to:
+  /// **'Class II moped (25 km/h)'**
+  String get settingsVehicleMopedClassII;
+
   /// No description provided for @settingsVehicleTractor.
   ///
   /// In en, this message translates to:
@@ -1564,6 +1606,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'BMW'**
   String get settingsMapMarkerBmw;
+
+  /// No description provided for @settingsMapMarkerMopeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Mopeds'**
+  String get settingsMapMarkerMopeds;
+
+  /// No description provided for @settingsMapMarkerScooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Scooter'**
+  String get settingsMapMarkerScooter;
+
+  /// No description provided for @settingsMapMarkerCrossMoped.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross moped'**
+  String get settingsMapMarkerCrossMoped;
 
   /// No description provided for @settingsMapMarkerTractor.
   ///

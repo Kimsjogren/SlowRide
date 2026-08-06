@@ -46,6 +46,105 @@ void main() {
       }
     });
 
+    test('class I moped uses 45 km/h moped rules in every country', () {
+      for (final country in CountryVehicleRules.supportedCountries) {
+        final moped = CountryVehicleRules.getProfile(country, 'Moped class I');
+        final mopedCar = CountryVehicleRules.getProfile(country, 'Moped car');
+
+        expect(moped, isNot(same(mopedCar)), reason: country);
+        expect(moped.maxLegalSpeedKmh, 45, reason: country);
+        expect(moped.useHighways, 0, reason: country);
+        expect(moped.usePrimary, 0, reason: country);
+        expect(moped.useTracks, 0, reason: country);
+        expect(moped.excludeUnpaved, isTrue, reason: country);
+        expect(moped.allowsCyclewaysByDefault, isFalse, reason: country);
+        expect(moped.legalCategory, isNotEmpty, reason: country);
+      }
+
+      expect(
+        CountryVehicleRules.getProfile(
+          'ES',
+          'Moped class I',
+        ).requiresRoadShoulderWhereAvailable,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'NO',
+          'Moped class I',
+        ).allowsTwoWheelBusLanes,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile('GB', 'Moped class I').forbidsMotorRoads,
+        isFalse,
+      );
+    });
+
+    test('class I moped motorway words follow each country', () {
+      expect(
+        service.debugForbiddenRoadKeywords(
+          countryCode: 'IT',
+          vehicleType: 'Moped class I',
+        ),
+        containsAll(['autostrada', 'strada extraurbana principale']),
+      );
+      expect(
+        service.debugForbiddenRoadKeywords(
+          countryCode: 'FI',
+          vehicleType: 'Moped class I',
+        ),
+        contains('moottoriliikennetie'),
+      );
+      expect(
+        service.debugForbiddenRoadKeywords(
+          countryCode: 'GB',
+          vehicleType: 'Moped class I',
+        ),
+        isNot(contains('expressway')),
+      );
+    });
+
+    test('class II moped has explicit 25 km/h rules in every country', () {
+      for (final country in CountryVehicleRules.supportedCountries) {
+        final moped = CountryVehicleRules.getProfile(country, 'Moped class II');
+
+        expect(moped.defaultSpeedKmh, 25, reason: country);
+        expect(moped.maxLegalSpeedKmh, 25, reason: country);
+        expect(moped.useHighways, 0, reason: country);
+        expect(moped.useTracks, 0, reason: country);
+        expect(moped.excludeUnpaved, isTrue, reason: country);
+        expect(moped.legalCategory, isNotEmpty, reason: country);
+      }
+
+      expect(
+        CountryVehicleRules.getProfile('SE', 'Moped class II').prefersCycleways,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile('DK', 'Moped class II').prefersCycleways,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile('NO', 'Moped class II').prefersCycleways,
+        isFalse,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'ES',
+          'Moped class II',
+        ).requiresRoadShoulderWhereAvailable,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'GB',
+          'Moped class II',
+        ).forbidsMotorRoads,
+        isFalse,
+      );
+    });
+
     test('A-tractor uses motor_scooter profile and avoids fast roads', () {
       final payload = service.debugBuildValhallaRequestPayload(
         origin: origin,
@@ -85,6 +184,68 @@ void main() {
       expect(costingOptions['top_speed'], 45);
       expect(costingOptions['use_highways'], 0.0);
       expect(costingOptions['use_primary'], 0.0);
+    });
+
+    test('class I moped uses motor_scooter at no more than 45 km/h', () {
+      final payload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Moped class I',
+        userSpeedKmh: 90,
+        countryCode: 'SE',
+      );
+
+      expect(payload['costing'], 'motor_scooter');
+
+      final costingOptions =
+          (payload['costing_options'] as Map<String, dynamic>)['motor_scooter']
+              as Map<String, dynamic>;
+      expect(costingOptions['top_speed'], 45);
+      expect(costingOptions['use_highways'], 0.0);
+      expect(costingOptions['use_primary'], 0.0);
+      expect(costingOptions['use_tracks'], 0.0);
+      expect(costingOptions['exclude_unpaved'], isTrue);
+      expect(costingOptions['ignore_access'], isFalse);
+      expect(costingOptions['use_tolls'], 0.5);
+      expect(costingOptions['disable_hierarchy_pruning'], isTrue);
+    });
+
+    test('Swedish class II moped prefers cycleways at 25 km/h', () {
+      final payload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Moped class II',
+        userSpeedKmh: 90,
+        countryCode: 'SE',
+      );
+
+      expect(payload['costing'], 'bicycle');
+      final costingOptions =
+          (payload['costing_options'] as Map<String, dynamic>)['bicycle']
+              as Map<String, dynamic>;
+      expect(costingOptions['cycling_speed'], 25);
+      expect(costingOptions['use_roads'], 0.0);
+      expect(costingOptions['avoid_bad_surfaces'], 1.0);
+      expect(costingOptions['ignore_access'], isFalse);
+    });
+
+    test('Norwegian class II moped stays on motor-scooter road profile', () {
+      final payload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Moped class II',
+        userSpeedKmh: 90,
+        countryCode: 'NO',
+      );
+
+      expect(payload['costing'], 'motor_scooter');
+      final costingOptions =
+          (payload['costing_options'] as Map<String, dynamic>)['motor_scooter']
+              as Map<String, dynamic>;
+      expect(costingOptions['top_speed'], 25);
+      expect(costingOptions['use_primary'], 0.0);
+      expect(costingOptions['use_tracks'], 0.0);
+      expect(costingOptions['exclude_unpaved'], isTrue);
     });
 
     test('low vehicle uses A-tractor speed and excludes unpaved roads', () {
@@ -143,6 +304,16 @@ void main() {
       expect(providers.first, 'valhalla');
       expect(providers, isNot(contains('osrm_public')));
       expect(providers, isNot(contains('osrm_self_hosted')));
+    });
+
+    test('class II moped only uses Valhalla legal routing', () {
+      final providers = service.debugEligibleProviders(
+        configuredProvider: 'graphhopper',
+        vehicleType: 'Moped class II',
+        countryCode: 'SE',
+      );
+
+      expect(providers, ['valhalla']);
     });
 
     test('GraphHopper fallback keeps motorway, ferry and toll avoids', () {

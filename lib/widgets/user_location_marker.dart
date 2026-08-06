@@ -12,6 +12,8 @@ enum MapMarkerCategory {
   pickup,
   atraktor,
   tractor,
+  mopedScooter,
+  mopedCross,
 }
 
 class MapMarkerOption {
@@ -89,6 +91,62 @@ class UserLocationMarker extends StatelessWidget {
       assetPath: null,
       labelBuilder: _dotLabel,
       tint: Color(0xFF25C281),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterBlack,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_black.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterBlue,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_blue.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterGold,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_gold.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterRed,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_red.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedBlack,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_black.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedBlue,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_blue.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedGold,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_gold.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedRed,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_red.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarBlue,
@@ -330,6 +388,8 @@ class UserLocationMarker extends StatelessWidget {
       MapMarkerCategory.pickup => l10n.settingsMapMarkerCategoryPickup,
       MapMarkerCategory.atraktor => l10n.settingsMapMarkerCategoryAtractor,
       MapMarkerCategory.tractor => l10n.settingsMapMarkerCategoryTractor,
+      MapMarkerCategory.mopedScooter => l10n.settingsMapMarkerScooter,
+      MapMarkerCategory.mopedCross => l10n.settingsMapMarkerCrossMoped,
     };
   }
 
@@ -495,6 +555,9 @@ String _pickupLabel(AppLocalizations l10n) => l10n.settingsMapMarkerPickup;
 String _miniLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMini;
 String _bmwLabel(AppLocalizations l10n) => l10n.settingsMapMarkerBmw;
 String _tractorLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTractor;
+String _scooterLabel(AppLocalizations l10n) => l10n.settingsMapMarkerScooter;
+String _crossMopedLabel(AppLocalizations l10n) =>
+    l10n.settingsMapMarkerCrossMoped;
 String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
 String _blueLabel(AppLocalizations l10n) => l10n.settingsColorBlue;
 String _greenLabel(AppLocalizations l10n) => l10n.settingsColorGreen;

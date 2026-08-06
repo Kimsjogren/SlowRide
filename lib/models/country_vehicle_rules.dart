@@ -36,11 +36,12 @@ class CountryVehicleRules {
     String countryCode,
     String vehicleType,
   ) {
-    // Low vehicles use the same legal speed and road-class restrictions as
-    // A-tractors. RoutingService adds the extra surface restrictions.
-    final profileVehicleType = vehicleType == 'Low vehicle'
-        ? 'A-tractor'
-        : vehicleType;
+    // Low vehicles use A-tractor rules. Class I mopeds have explicit profiles
+    // because their road-position and access rules differ between countries.
+    final profileVehicleType = switch (vehicleType) {
+      'Low vehicle' => 'A-tractor',
+      _ => vehicleType,
+    };
     return _profiles['${countryCode}_$profileVehicleType'] ??
         _profiles['SE_$profileVehicleType'] ??
         _defaultProfile;
@@ -124,6 +125,19 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.0,
     ),
+    // Moped klass I (L1e-B): max 45 km/h. No motorway, motor-traffic road,
+    // cycleway, footway, or pedestrian-only path.
+    'SE_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Moped klass I',
+      useFerry: 0.3,
+    ),
+    // Two-wheel class II moped: max 25 km/h and bicycle traffic rules. It
+    // normally uses a cycleway unless a supplementary sign prohibits mopeds.
+    'SE_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Moped klass II',
+      useFerry: 0.3,
+      prefersCycleways: true,
+    ),
     // Traktor: motorväg förbjudet, färja tillåten.
     'SE_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -150,6 +164,20 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.5,
     ),
+    // AM146 two-wheel moped: no motorway/motor-traffic road or cycleway.
+    // Two-wheel mopeds may use bus lanes unless signs restrict access.
+    'NO_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Moped AM146',
+      useFerry: 0.7,
+      allowsTwoWheelBusLanes: true,
+    ),
+    // Norway has no direct Swedish class-II category. Route the 25 km/h
+    // vehicle under local moped road rules and keep it off cycleways.
+    'NO_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Moped (25 km/t)',
+      useFerry: 0.7,
+      allowsTwoWheelBusLanes: true,
+    ),
     // Traktor: ferries very common and allowed in Norway.
     'NO_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -174,6 +202,19 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+    ),
+    // Stor knallert: roadway only, not cycleway, motorway, or motor-traffic
+    // road. The Danish 30 km/h "lille knallert" is a separate class.
+    'DK_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Stor knallert',
+      useFerry: 0.5,
+    ),
+    // A 25 km/h vehicle falls within "lille knallert" (legal ceiling 30).
+    // A two-wheel small moped must use the cycleway unless signs say otherwise.
+    'DK_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Lille knallert',
+      useFerry: 0.5,
+      prefersCycleways: true,
     ),
     'DK_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -201,6 +242,19 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.3,
     ),
+    // AM/120 mopo (L1e-B): max 45 km/h; no motorway/motor-traffic road.
+    // Cycleways are excluded unless local signs explicitly allow mopeds.
+    'FI_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Mopo AM/120',
+      useFerry: 0.5,
+    ),
+    // No direct class-II equivalent for every Swedish class-II design. A
+    // pedal-equipped L1e-A may follow cycle rules, but other mopeds do not;
+    // default to the conservative local moped road profile.
+    'FI_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Mopo / L1e-A (25 km/h)',
+      useFerry: 0.5,
+    ),
     // Traktori: up to 40 km/h in Finland.
     'FI_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 40,
@@ -226,6 +280,18 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+    ),
+    // Cyclomoteur: max 45 km/h; excluded from autoroutes/voies express.
+    // Cycleways are excluded unless the local authority explicitly permits it.
+    'FR_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Cyclomoteur',
+      useFerry: 0.5,
+    ),
+    // France has no direct class-II category. Keep the vehicle's 25 km/h
+    // construction limit and use cyclomoteur access rules.
+    'FR_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Cyclomoteur (25 km/h)',
+      useFerry: 0.5,
     ),
     // Tracteur agricole: older models limited to 25 km/h (Art. R413-12),
     // but 2016 reform allows EU T1 tractors up to 40 km/h on public roads.
@@ -255,6 +321,20 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.3,
     ),
+    // Ciclomotor: max 45 km/h; no autopista/autovía. On conventional
+    // interurban roads the rider must use the passable shoulder when present.
+    'ES_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Ciclomotor',
+      useFerry: 0.5,
+      requiresRoadShoulderWhereAvailable: true,
+    ),
+    // Spain treats it as a ciclomotor. It must use a passable shoulder on
+    // conventional interurban roads and may not use autopistas/autovías.
+    'ES_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Ciclomotor (25 km/h)',
+      useFerry: 0.5,
+      requiresRoadShoulderWhereAvailable: true,
+    ),
     // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
     'ES_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -283,6 +363,18 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.3,
     ),
+    // Ciclomotore: max 45 km/h; forbidden on autostrade and strade
+    // extraurbane principali, and on cycle-only infrastructure.
+    'IT_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Ciclomotore',
+      useFerry: 0.5,
+    ),
+    // Italy treats the vehicle as a ciclomotore; the Swedish vehicle's lower
+    // 25 km/h construction speed remains the routing ceiling.
+    'IT_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Ciclomotore (25 km/h)',
+      useFerry: 0.5,
+    ),
     // Agricultural machines: normally 40 km/h with pneumatic-equivalent
     // running gear (15 km/h otherwise). Use 30 km/h as the safe default.
     'IT_Tractor': VehicleRoutingProfile(
@@ -310,6 +402,21 @@ class CountryVehicleRules {
       useTolls: 0.0,
       useFerry: 0.3,
     ),
+    // Category AM moped: max 45 km/h. Motorways are forbidden; ordinary dual
+    // carriageways remain legally possible, although the router penalises
+    // high-speed primary roads for safety. Cycle-only lanes remain excluded.
+    'GB_Moped class I': VehicleRoutingProfile.mopedClassI(
+      legalCategory: 'Category AM moped',
+      useFerry: 0.5,
+      forbidsMotorRoads: false,
+    ),
+    // Category Q covers two/three-wheel vehicles without pedals at no more
+    // than 25 km/h. They use roads, not cycle tracks or cycle lanes.
+    'GB_Moped class II': VehicleRoutingProfile.mopedClassII(
+      legalCategory: 'Category Q (25 km/h)',
+      useFerry: 0.5,
+      forbidsMotorRoads: false,
+    ),
     'GB_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
@@ -328,7 +435,48 @@ class VehicleRoutingProfile {
     required this.useHighways,
     required this.useTolls,
     required this.useFerry,
+    this.usePrimary = 0.0,
+    this.useTracks = 0.5,
+    this.excludeUnpaved = false,
+    this.legalCategory,
+    this.allowsCyclewaysByDefault = false,
+    this.requiresRoadShoulderWhereAvailable = false,
+    this.allowsTwoWheelBusLanes = false,
+    this.forbidsMotorRoads = true,
+    this.prefersCycleways = false,
   });
+
+  const VehicleRoutingProfile.mopedClassI({
+    required this.legalCategory,
+    required this.useFerry,
+    this.requiresRoadShoulderWhereAvailable = false,
+    this.allowsTwoWheelBusLanes = false,
+    this.forbidsMotorRoads = true,
+  }) : defaultSpeedKmh = 45,
+       maxLegalSpeedKmh = 45,
+       useHighways = 0.0,
+       useTolls = 0.5,
+       usePrimary = 0.0,
+       useTracks = 0.0,
+       excludeUnpaved = true,
+       allowsCyclewaysByDefault = false,
+       prefersCycleways = false;
+
+  const VehicleRoutingProfile.mopedClassII({
+    required this.legalCategory,
+    required this.useFerry,
+    this.prefersCycleways = false,
+    this.requiresRoadShoulderWhereAvailable = false,
+    this.allowsTwoWheelBusLanes = false,
+    this.forbidsMotorRoads = true,
+  }) : defaultSpeedKmh = 25,
+       maxLegalSpeedKmh = 25,
+       useHighways = 0.0,
+       useTolls = 0.5,
+       usePrimary = 0.0,
+       useTracks = 0.0,
+       excludeUnpaved = true,
+       allowsCyclewaysByDefault = prefersCycleways;
 
   /// Default speed for this vehicle type (km/h).
   final double defaultSpeedKmh;
@@ -344,4 +492,31 @@ class VehicleRoutingProfile {
 
   /// Valhalla ferry avoidance: 0.0 = avoid ferries, 1.0 = use freely.
   final double useFerry;
+
+  /// Preference for primary roads. Kept at zero for vulnerable slow vehicles.
+  final double usePrimary;
+
+  /// Preference for tracks. Class I mopeds avoid tracks by default.
+  final double useTracks;
+
+  /// Whether unpaved ways should be excluded where map data permits it.
+  final bool excludeUnpaved;
+
+  /// Local legal name, retained for audits and server-side safety context.
+  final String? legalCategory;
+
+  /// Whether ordinary cycleways are legal without an explicit moped sign.
+  final bool allowsCyclewaysByDefault;
+
+  /// Spain requires the passable shoulder on conventional interurban roads.
+  final bool requiresRoadShoulderWhereAvailable;
+
+  /// Norway permits two-wheel mopeds in bus lanes unless signs say otherwise.
+  final bool allowsTwoWheelBusLanes;
+
+  /// Whether the country's motorway-like motor-road class is also forbidden.
+  final bool forbidsMotorRoads;
+
+  /// Whether routing should prefer cycleways under the local two-wheel rules.
+  final bool prefersCycleways;
 }
