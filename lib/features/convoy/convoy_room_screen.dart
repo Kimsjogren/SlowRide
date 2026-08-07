@@ -155,6 +155,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isNavigationPanelExpanded = false;
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
+  String _nextManeuverStreetName = '';
   String _currentStreetName = '';
   String _lastSpokenManeuver = '';
   bool _spokenEarlyWarning = false;
@@ -654,6 +655,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             double newDistToManeuver = double.infinity;
             int? newSign;
             String? newText;
+            String? newManeuverStreetName;
             String? newStreetName;
             double? newRemaining;
             double headingForArrow = newHeading;
@@ -696,8 +698,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 newDistToManeuver = dist;
                 newSign = next.sign;
                 newText = next.text;
+                newManeuverStreetName = next.streetName;
               } else {
                 newText = '';
+                newManeuverStreetName = '';
               }
 
               // ROUTE-LOCKED HEADING: Use route direction exclusively when
@@ -784,11 +788,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 !_isFollowingMyPosition ||
                 newSign != null ||
                 newText != null ||
+                newManeuverStreetName != null ||
                 newStreetName != null;
             if (needsRebuild) {
               setState(() {
                 if (newSign != null) _nextManeuverSign = newSign;
                 if (newText != null) _nextManeuverText = newText;
+                if (newManeuverStreetName != null) {
+                  _nextManeuverStreetName = newManeuverStreetName;
+                }
                 if (newStreetName != null) _currentStreetName = newStreetName;
               });
             }
@@ -1209,6 +1217,40 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         .trim();
 
     return cleaned.isNotEmpty ? cleaned : t;
+  }
+
+  String? _localizedManeuverTarget(
+    AppLocalizations l10n,
+    String streetName,
+    String instructionText,
+  ) {
+    final parsedTarget = _maneuverTargetFromText(instructionText);
+    final target = streetName.trim().isNotEmpty
+        ? streetName.trim()
+        : parsedTarget;
+    if (target == null || target.isEmpty) return null;
+
+    final normalized = target
+        .toLowerCase()
+        .replaceFirst(
+          RegExp(
+            r'^(?:the|a|an|den|det|en|ett|le|la|les|un|une|el|los|las|il|lo|i|gli|die|der|das)\s+',
+          ),
+          '',
+        )
+        .trim();
+    return switch (normalized) {
+      'cycleway' ||
+      'cycle path' ||
+      'cycle track' ||
+      'bike path' => l10n.mapManeuverGenericCycleway,
+      'footway' ||
+      'walkway' ||
+      'pedestrian path' => l10n.mapManeuverGenericFootway,
+      'path' || 'trail' => l10n.mapManeuverGenericPath,
+      'road' || 'street' => l10n.mapManeuverGenericRoad,
+      _ => target,
+    };
   }
 
   String _localizedManeuverPrimaryText(
@@ -3333,6 +3375,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _distToNextManeuver = double.infinity;
         _nextManeuverSign = 0;
         _nextManeuverText = '';
+        _nextManeuverStreetName = '';
         _routingStatus = AppLocalizations.of(
           context,
         )!.mapRouteReady(km.toStringAsFixed(1), minutes.toString());
@@ -3387,6 +3430,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           'Moped car' => l10n.settingsVehicleMopedCar,
           'Moped class I' => l10n.settingsVehicleMopedClassI,
           'Moped class II' => l10n.settingsVehicleMopedClassII,
+          'Electric scooter' => l10n.settingsVehicleElectricScooter,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => vehicleType,
         };
@@ -3594,6 +3638,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'Moped car' => l10n.settingsVehicleMopedCar,
       'Moped class I' => l10n.settingsVehicleMopedClassI,
       'Moped class II' => l10n.settingsVehicleMopedClassII,
+      'Electric scooter' => l10n.settingsVehicleElectricScooter,
       'Tractor' => l10n.settingsVehicleTractor,
       _ => vehicleType,
     };
@@ -3746,6 +3791,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _distToNextManeuver = double.infinity;
       _nextManeuverSign = 0;
       _nextManeuverText = '';
+      _nextManeuverStreetName = '';
       _currentStreetName = '';
       _lastSpokenManeuver = '';
       _spokenEarlyWarning = false;
@@ -5132,7 +5178,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),
-                                                  if (_maneuverTargetFromText(
+                                                  if (_localizedManeuverTarget(
+                                                        l10n,
+                                                        _nextManeuverStreetName,
                                                         _nextManeuverText,
                                                       ) !=
                                                       null)
@@ -5143,7 +5191,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           ),
                                                       child: Text(
                                                         l10n.mapManeuverTowardRoad(
-                                                          _maneuverTargetFromText(
+                                                          _localizedManeuverTarget(
+                                                            l10n,
+                                                            _nextManeuverStreetName,
                                                             _nextManeuverText,
                                                           )!,
                                                         ),

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Laster innstillinger...",
   "splashFinalizingStartup": "Fullfører oppstart...",
   "splashReady": "Klar",
-  "splashVersionLine": "v1.1.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Sentrer kartet på posisjonen min",
   "a11yStopFollowingLocation": "Slutt å følge posisjonen min",
   "a11ySwitchTo2d": "Bytt til 2D-kart",
@@ -230,6 +230,8 @@
   "settingsVehicleMopedCar": "Mopedbil",
   "settingsVehicleMopedClassI": "Moped klasse I",
   "settingsVehicleMopedClassII": "Moped klasse II (25 km/t)",
+  "settingsVehicleElectricScooter": "Elsparkesykkel",
+  "settingsElectricScooterLegalNotice": "Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.",
   "settingsVehicleTractor": "Traktor",
   "settingsSpeedUnitKmh": "km/t",
   "settingsSpeedUnitMph": "mph",
@@ -245,7 +247,7 @@
   "settingsProStatusInactive": "Ikke aktiv",
   "settingsProDescriptionActive": "Du har tilgang til alle Pro-funksjoner.",
   "settingsProDescriptionInactive": "Lås opp alle funksjoner med CruizX Pro.",
-  "settingsProFeatureRoutes": "Ubegrensede ruter",
+  "settingsProFeatureRoutes": "Flere AI-ruteanalyser",
   "settingsProFeatureConvoy": "Ubegrenset antall konvojmedlemmer",
   "settingsProFeatureAds": "Ingen reklame",
   "settingsProFeatureSupport": "Prioritert støtte",
@@ -388,6 +390,10 @@
     }
   },
   "mapManeuverTowardRoad": "Mot {road}",
+  "mapManeuverGenericCycleway": "sykkelveien",
+  "mapManeuverGenericFootway": "gangveien",
+  "mapManeuverGenericPath": "stien",
+  "mapManeuverGenericRoad": "veien",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -497,8 +503,8 @@
   "paywallStartTrialButton": "Start 7 dagers gratis prøveperiode",
   "paywallTrialNote": "7 dager gratis, deretter {price} som engangskjøp.",
   "@paywallTrialNote": { "placeholders": { "price": {} } },
-  "paywallFeatureRoutes": "Ruter per dag",
-  "paywallFreeRouteLimit": "4 ruter",
+  "paywallFeatureRoutes": "Navigasjonsruter",
+  "paywallFreeRouteLimit": "Ubegrenset",
   "paywallProRouteLimit": "Ubegrenset",
   "paywallFeatureConvoy": "Kolonne",
   "paywallFreeConvoyLimit": "1 aktiv, 2 medlemmer",
@@ -506,8 +512,10 @@
   "paywallFeatureAds": "Annonser",
   "paywallFreeAds": "Vises",
   "paywallProAds": "Ingen",
-  "paywallRouteLimitTitle": "Rutegrensen nådd",
-  "paywallRouteLimitBody": "Gratisbrukere kan beregne 4 ruter per dag. Oppgrader til Pro for ubegrenset navigasjon.",
+  "paywallRouteLimitTitle": "Ubegrensede ruter",
+  "paywallRouteLimitBody": "Navigasjonsruter er også ubegrensede i gratisversjonen.",
+  "routeUpgradePromptTitle": "Fortsette uten reklame?",
+  "routeUpgradePromptBody": "Du har opprettet to ruter i dag. Gratisversjonen har ubegrensede ruter, mens Pro fjerner reklame og låser opp flere funksjoner. Vil du oppgradere?",
   "paywallConvoyLimitTitle": "Kolonnegrensen nådd",
   "paywallConvoyLimitBody": "Gratisbrukere kan bare være med i 1 kolonne om gangen.",
   "paywallMemberLimitTitle": "Kolonnen er full",
@@ -522,9 +530,9 @@
   "profileFreePlan": "Gratisplan",
   "profileProPlan": "Pro-plan",
   "profileUpgradeToPro": "Oppgrader til Pro",
-  "profileRoutesUsed": "Ruter i dag: {count} / {max}",
+  "profileRoutesUsed": "Ruter i dag: {count}",
   "@profileRoutesUsed": {
-    "placeholders": { "count": {}, "max": {} }
+    "placeholders": { "count": {} }
   },
   "profileChangePhoto": "Bytt profilbilde",
   "profileTakePhoto": "Ta bilde",

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Laddar inställningar...",
   "splashFinalizingStartup": "Slutför uppstart...",
   "splashReady": "Klar",
-  "splashVersionLine": "v1.1.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Centrera kartan på min position",
   "a11yStopFollowingLocation": "Sluta följa min position",
   "a11ySwitchTo2d": "Byt till 2D-karta",
@@ -230,6 +230,8 @@
   "settingsVehicleMopedCar": "Mopedbil",
   "settingsVehicleMopedClassI": "Moped klass I",
   "settingsVehicleMopedClassII": "Moped klass II (25 km/h)",
+  "settingsVehicleElectricScooter": "Elsparkcykel",
+  "settingsElectricScooterLegalNotice": "Använd endast en trafikgodkänd elsparkcykel där lokala regler tillåter det. Skyltning, kommunala regler och hyrzoner gäller alltid före rutten.",
   "settingsVehicleTractor": "Traktor",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
@@ -245,7 +247,7 @@
   "settingsProStatusInactive": "Inte aktiv",
   "settingsProDescriptionActive": "Du har tillgång till alla Pro-funktioner.",
   "settingsProDescriptionInactive": "Låsa upp alla funktioner med CruizX Pro.",
-  "settingsProFeatureRoutes": "Obegränsade rutter",
+  "settingsProFeatureRoutes": "Fler AI-ruttanalyser",
   "settingsProFeatureConvoy": "Obegränsat antal konvojmedlemmar",
   "settingsProFeatureAds": "Ingen reklam",
   "settingsProFeatureSupport": "Prioriterad support",
@@ -388,6 +390,10 @@
     }
   },
   "mapManeuverTowardRoad": "Mot {road}",
+  "mapManeuverGenericCycleway": "cykelvägen",
+  "mapManeuverGenericFootway": "gångvägen",
+  "mapManeuverGenericPath": "stigen",
+  "mapManeuverGenericRoad": "vägen",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -497,8 +503,8 @@
   "paywallStartTrialButton": "Starta 7 dagars gratisperiod",
   "paywallTrialNote": "7 dagar gratis, sedan {price} som engångsköp.",
   "@paywallTrialNote": { "placeholders": { "price": {} } },
-  "paywallFeatureRoutes": "Rutter per dag",
-  "paywallFreeRouteLimit": "4 rutter",
+  "paywallFeatureRoutes": "Navigationsrutter",
+  "paywallFreeRouteLimit": "Obegränsat",
   "paywallProRouteLimit": "Obegränsat",
   "paywallFeatureConvoy": "Konvoj",
   "paywallFreeConvoyLimit": "1 aktiv, 2 medlemmar",
@@ -506,8 +512,10 @@
   "paywallFeatureAds": "Reklam",
   "paywallFreeAds": "Visas",
   "paywallProAds": "Ingen",
-  "paywallRouteLimitTitle": "Dagsgränsen nådd",
-  "paywallRouteLimitBody": "Free-användare kan beräkna 4 rutter per dag. Uppgradera till Pro för obegränsad navigering.",
+  "paywallRouteLimitTitle": "Obegränsade rutter",
+  "paywallRouteLimitBody": "Navigationsrutter är obegränsade även i Free-versionen.",
+  "routeUpgradePromptTitle": "Kör vidare utan reklam?",
+  "routeUpgradePromptBody": "Du har skapat två rutter idag. Free har obegränsade rutter, men Pro tar bort reklamen och låser upp fler funktioner. Vill du uppgradera?",
   "paywallConvoyLimitTitle": "Konvojgräns nådd",
   "paywallConvoyLimitBody": "Free-användare kan bara vara med i 1 konvoj åt gången.",
   "paywallMemberLimitTitle": "Konvojen är full",
@@ -522,9 +530,9 @@
   "profileFreePlan": "Free-plan",
   "profileProPlan": "Pro-plan",
   "profileUpgradeToPro": "Uppgradera till Pro",
-  "profileRoutesUsed": "Rutter idag: {count} / {max}",
+  "profileRoutesUsed": "Rutter idag: {count}",
   "@profileRoutesUsed": {
-    "placeholders": { "count": {}, "max": {} }
+    "placeholders": { "count": {} }
   },
   "profileChangePhoto": "Byt profilbild",
   "profileTakePhoto": "Ta foto",

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Caricamento preferenze...",
   "splashFinalizingStartup": "Finalizzazione dell'avvio...",
   "splashReady": "Pronto",
-  "splashVersionLine": "v1.1.7 | CruizX di KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX di KimTechTool",
   "a11yCenterOnLocation": "Centra la mappa sulla mia posizione",
   "a11yStopFollowingLocation": "Smetti di seguire la mia posizione",
   "a11ySwitchTo2d": "Passa alla mappa 2D",
@@ -228,6 +228,8 @@
   "settingsVehicleMopedCar": "Minicar",
   "settingsVehicleMopedClassI": "Ciclomotore classe I",
   "settingsVehicleMopedClassII": "Ciclomotore classe II (25 km/h)",
+  "settingsVehicleElectricScooter": "Monopattino elettrico",
+  "settingsElectricScooterLegalNotice": "Usa solo un monopattino elettrico omologato dove le norme locali lo consentono. Segnaletica, regole comunali e zone di noleggio hanno sempre la precedenza sul percorso.",
   "settingsVehicleTractor": "Trattore",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
@@ -243,7 +245,7 @@
   "settingsProStatusInactive": "Non attivo",
   "settingsProDescriptionActive": "Hai accesso a tutte le funzionalità Pro.",
   "settingsProDescriptionInactive": "Sblocca tutte le funzionalità con CruizX Pro.",
-  "settingsProFeatureRoutes": "Percorsi illimitati",
+  "settingsProFeatureRoutes": "Più analisi dei percorsi con IA",
   "settingsProFeatureConvoy": "Membri del convoglio illimitati",
   "settingsProFeatureAds": "Nessuna pubblicità",
   "settingsProFeatureSupport": "Supporto prioritario",
@@ -411,6 +413,10 @@
     }
   },
   "mapManeuverTowardRoad": "Verso {road}",
+  "mapManeuverGenericCycleway": "la pista ciclabile",
+  "mapManeuverGenericFootway": "il percorso pedonale",
+  "mapManeuverGenericPath": "il sentiero",
+  "mapManeuverGenericRoad": "la strada",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -556,8 +562,8 @@
       "price": {}
     }
   },
-  "paywallFeatureRoutes": "Percorsi giornalieri",
-  "paywallFreeRouteLimit": "4 percorsi",
+  "paywallFeatureRoutes": "Percorsi di navigazione",
+  "paywallFreeRouteLimit": "Illimitati",
   "paywallProRouteLimit": "Illimitato",
   "paywallFeatureConvoy": "Convoglio",
   "paywallFreeConvoyLimit": "1 attivo, 2 membri",
@@ -565,8 +571,10 @@
   "paywallFeatureAds": "Annunci",
   "paywallFreeAds": "Mostrato",
   "paywallProAds": "Nessuno",
-  "paywallRouteLimitTitle": "Limite del percorso raggiunto",
-  "paywallRouteLimitBody": "Gli utenti gratuiti possono calcolare 4 percorsi al giorno. Passa a Pro per una navigazione illimitata.",
+  "paywallRouteLimitTitle": "Percorsi illimitati",
+  "paywallRouteLimitBody": "I percorsi di navigazione sono illimitati anche nella versione gratuita.",
+  "routeUpgradePromptTitle": "Continuare senza pubblicità?",
+  "routeUpgradePromptBody": "Hai creato due percorsi oggi. La versione gratuita include percorsi illimitati, mentre Pro rimuove la pubblicità e sblocca altre funzioni. Vuoi passare a Pro?",
   "paywallConvoyLimitTitle": "Limite del convoglio raggiunto",
   "paywallConvoyLimitBody": "Gli utenti gratuiti possono far parte di un solo convoglio alla volta.",
   "paywallMemberLimitTitle": "Il convoglio è pieno",
@@ -581,11 +589,10 @@
   "profileFreePlan": "Piano gratuito",
   "profileProPlan": "Piano professionale",
   "profileUpgradeToPro": "Passa a Pro",
-  "profileRoutesUsed": "Percorsi oggi: {count} / {max}",
+  "profileRoutesUsed": "Percorsi oggi: {count}",
   "@profileRoutesUsed": {
     "placeholders": {
-      "count": {},
-      "max": {}
+      "count": {}
     }
   },
   "profileChangePhoto": "Cambia foto del profilo",

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Chargement des préférences...",
   "splashFinalizingStartup": "Finalisation du démarrage...",
   "splashReady": "Prêt",
-  "splashVersionLine": "v1.1.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Centrer la carte sur ma position",
   "a11yStopFollowingLocation": "Arrêter de suivre ma position",
   "a11ySwitchTo2d": "Passer à la carte 2D",
@@ -230,6 +230,8 @@
   "settingsVehicleMopedCar": "Voiture sans permis",
   "settingsVehicleMopedClassI": "Cyclomoteur classe I",
   "settingsVehicleMopedClassII": "Cyclomoteur classe II (25 km/h)",
+  "settingsVehicleElectricScooter": "Trottinette électrique",
+  "settingsElectricScooterLegalNotice": "Utilisez uniquement une trottinette électrique homologuée là où les règles locales l’autorisent. La signalisation, les règles municipales et les zones de location priment toujours sur l’itinéraire.",
   "settingsVehicleTractor": "Tracteur",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
@@ -245,7 +247,7 @@
   "settingsProStatusInactive": "Non actif",
   "settingsProDescriptionActive": "Vous avez accès à toutes les fonctionnalités Pro.",
   "settingsProDescriptionInactive": "Débloquez toutes les fonctionnalités avec CruizX Pro.",
-  "settingsProFeatureRoutes": "Itinéraires illimités",
+  "settingsProFeatureRoutes": "Plus d’analyses d’itinéraire par IA",
   "settingsProFeatureConvoy": "Membres de convoi illimités",
   "settingsProFeatureAds": "Aucune publicité",
   "settingsProFeatureSupport": "Support prioritaire",
@@ -388,6 +390,10 @@
     }
   },
   "mapManeuverTowardRoad": "Vers {road}",
+  "mapManeuverGenericCycleway": "la piste cyclable",
+  "mapManeuverGenericFootway": "la voie piétonne",
+  "mapManeuverGenericPath": "le chemin",
+  "mapManeuverGenericRoad": "la route",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -497,8 +503,8 @@
   "paywallStartTrialButton": "Commencer l'essai gratuit de 7 jours",
   "paywallTrialNote": "7 jours gratuits, puis {price} en achat unique.",
   "@paywallTrialNote": { "placeholders": { "price": {} } },
-  "paywallFeatureRoutes": "Itinéraires par jour",
-  "paywallFreeRouteLimit": "4 itinéraires",
+  "paywallFeatureRoutes": "Itinéraires de navigation",
+  "paywallFreeRouteLimit": "Illimité",
   "paywallProRouteLimit": "Illimité",
   "paywallFeatureConvoy": "Convoi",
   "paywallFreeConvoyLimit": "1 actif, 2 membres",
@@ -506,8 +512,10 @@
   "paywallFeatureAds": "Publicités",
   "paywallFreeAds": "Affichées",
   "paywallProAds": "Aucune",
-  "paywallRouteLimitTitle": "Limite d'itinéraires atteinte",
-  "paywallRouteLimitBody": "Les utilisateurs gratuits peuvent calculer 4 itinéraires par jour. Passez à Pro pour une navigation illimitée.",
+  "paywallRouteLimitTitle": "Itinéraires illimités",
+  "paywallRouteLimitBody": "Les itinéraires de navigation sont également illimités dans la version gratuite.",
+  "routeUpgradePromptTitle": "Continuer sans publicité ?",
+  "routeUpgradePromptBody": "Vous avez créé deux itinéraires aujourd’hui. La version gratuite offre des itinéraires illimités, tandis que Pro supprime les publicités et débloque davantage de fonctionnalités. Souhaitez-vous passer à Pro ?",
   "paywallConvoyLimitTitle": "Limite de convoi atteinte",
   "paywallConvoyLimitBody": "Les utilisateurs gratuits ne peuvent être que dans 1 convoi à la fois.",
   "paywallMemberLimitTitle": "Le convoi est complet",
@@ -522,9 +530,9 @@
   "profileFreePlan": "Plan gratuit",
   "profileProPlan": "Plan Pro",
   "profileUpgradeToPro": "Passer à Pro",
-  "profileRoutesUsed": "Itinéraires aujourd'hui : {count} / {max}",
+  "profileRoutesUsed": "Itinéraires aujourd'hui : {count}",
   "@profileRoutesUsed": {
-    "placeholders": { "count": {}, "max": {} }
+    "placeholders": { "count": {} }
   },
   "profileChangePhoto": "Changer la photo de profil",
   "profileTakePhoto": "Prendre une photo",

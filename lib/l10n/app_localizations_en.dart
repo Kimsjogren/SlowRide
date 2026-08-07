@@ -45,7 +45,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Center the map on my location';
@@ -609,6 +609,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVehicleMopedClassII => 'Class II moped (25 km/h)';
 
   @override
+  String get settingsVehicleElectricScooter => 'Electric scooter';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
 
   @override
@@ -638,7 +644,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Unlock all features with CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Unlimited routes';
+  String get settingsProFeatureRoutes => 'More AI route analyses';
 
   @override
   String get settingsProFeatureConvoy => 'Unlimited convoy members';
@@ -1008,6 +1014,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get mapManeuverGenericCycleway => 'the cycleway';
+
+  @override
+  String get mapManeuverGenericFootway => 'the footway';
+
+  @override
+  String get mapManeuverGenericPath => 'the path';
+
+  @override
+  String get mapManeuverGenericRoad => 'the road';
+
+  @override
   String get mapSimulateButton => 'Simulate';
 
   @override
@@ -1225,10 +1243,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Routes per day';
+  String get paywallFeatureRoutes => 'Navigation routes';
 
   @override
-  String get paywallFreeRouteLimit => '4 routes';
+  String get paywallFreeRouteLimit => 'Unlimited';
 
   @override
   String get paywallProRouteLimit => 'Unlimited';
@@ -1252,10 +1270,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallProAds => 'None';
 
   @override
-  String get paywallRouteLimitTitle => 'Route limit reached';
+  String get paywallRouteLimitTitle => 'Unlimited routes';
 
   @override
-  String get paywallRouteLimitBody => 'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.';
+  String get paywallRouteLimitBody => 'Navigation routes are unlimited in the Free version too.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Continue without ads?';
+
+  @override
+  String get routeUpgradePromptBody => 'You have created two routes today. Free includes unlimited routes, while Pro removes ads and unlocks more features. Would you like to upgrade?';
 
   @override
   String get paywallConvoyLimitTitle => 'Convoy limit reached';
@@ -1300,8 +1324,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileUpgradeToPro => 'Upgrade to Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Routes today: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Routes today: $count';
   }
 
   @override

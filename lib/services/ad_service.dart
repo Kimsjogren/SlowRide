@@ -175,47 +175,45 @@ class AdService {
     );
   }
 
-  /// Shows one interstitial between routes 2 and 4 for free users. If the ad
-  /// is not ready before route 3, it remains eligible before route 4.
-  Future<void> showRouteInterstitialIfNeeded() async {
+  /// Shows an interstitial before every route after the first for free users.
+  /// Returns true only when an ad was displayed and dismissed normally.
+  Future<bool> showRouteInterstitialIfNeeded() async {
     final subscriptions = SubscriptionService.instance;
-    if (!subscriptions.shouldShowRouteInterstitial) return;
+    if (!subscriptions.shouldShowRouteInterstitial) return false;
 
     final ad = _routeInterstitial;
     if (ad == null) {
       _preloadRouteInterstitial();
-      return;
+      return false;
     }
 
     _routeInterstitial = null;
-    final completer = Completer<void>();
-    void finish() {
-      if (!completer.isCompleted) completer.complete();
+    final completer = Completer<bool>();
+    void finish(bool wasShown) {
+      if (!completer.isCompleted) completer.complete(wasShown);
     }
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (_) {
-        subscriptions.recordRouteInterstitialShown();
-      },
       onAdDismissedFullScreenContent: (a) {
         a.dispose();
-        finish();
+        finish(true);
         _preloadRouteInterstitial();
       },
       onAdFailedToShowFullScreenContent: (a, _) {
         a.dispose();
-        finish();
+        finish(false);
         _preloadRouteInterstitial();
       },
     );
 
     try {
       await ad.show();
-      await completer.future;
+      return await completer.future;
     } catch (_) {
       ad.dispose();
-      finish();
+      finish(false);
       _preloadRouteInterstitial();
+      return false;
     }
   }
 

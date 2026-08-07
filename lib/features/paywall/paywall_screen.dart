@@ -190,9 +190,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
     final String? reasonTitle;
     final String? reasonBody;
     switch (widget.reason) {
-      case PaywallReason.routeLimit:
-        reasonTitle = l10n.paywallRouteLimitTitle;
-        reasonBody = l10n.paywallRouteLimitBody;
       case PaywallReason.convoyLimit:
         reasonTitle = l10n.paywallConvoyLimitTitle;
         reasonBody = l10n.paywallConvoyLimitBody;
@@ -651,12 +648,6 @@ class _FeatureTable extends StatelessWidget {
         children: [
           // Header row
           _HeaderRow(l10n: l10n),
-          _divider(),
-          _FeatureRow(
-            feature: l10n.paywallFeatureRoutes,
-            freeValue: l10n.paywallFreeRouteLimit,
-            proValue: l10n.paywallProRouteLimit,
-          ),
           _divider(),
           _FeatureRow(
             feature: l10n.paywallFeatureConvoy,

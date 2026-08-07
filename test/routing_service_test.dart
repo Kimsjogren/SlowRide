@@ -145,6 +145,72 @@ void main() {
       );
     });
 
+    test('electric scooter uses explicit rules in every country', () {
+      const expectedSpeeds = <String, double>{
+        'SE': 20,
+        'NO': 20,
+        'DK': 20,
+        'FI': 25,
+        'FR': 25,
+        'ES': 25,
+        'IT': 20,
+        'GB': 25,
+      };
+
+      for (final country in CountryVehicleRules.supportedCountries) {
+        final scooter = CountryVehicleRules.getProfile(
+          country,
+          'Electric scooter',
+        );
+        expect(
+          scooter.maxLegalSpeedKmh,
+          expectedSpeeds[country],
+          reason: country,
+        );
+        expect(scooter.prefersCycleways, isTrue, reason: country);
+        expect(scooter.useHighways, 0, reason: country);
+        expect(scooter.useTracks, 0, reason: country);
+        expect(scooter.excludeUnpaved, isTrue, reason: country);
+        expect(scooter.legalCategory, isNotEmpty, reason: country);
+      }
+
+      expect(
+        CountryVehicleRules.getProfile('ES', 'Electric scooter').urbanRoadsOnly,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'GB',
+          'Electric scooter',
+        ).requiresApprovedRental,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'NO',
+          'Electric scooter',
+        ).allowsFootwaysAtWalkingSpeed,
+        isTrue,
+      );
+      expect(
+        CountryVehicleRules.getProfile(
+          'IT',
+          'Electric scooter',
+        ).maxRoadSpeedLimitKmh,
+        50,
+      );
+      for (final country in CountryVehicleRules.supportedCountries) {
+        expect(
+          CountryVehicleRules.maxSelectableSpeedFor(
+            country,
+            'Electric scooter',
+          ),
+          40,
+          reason: country,
+        );
+      }
+    });
+
     test('A-tractor uses motor_scooter profile and avoids fast roads', () {
       final payload = service.debugBuildValhallaRequestPayload(
         origin: origin,
@@ -248,6 +314,38 @@ void main() {
       expect(costingOptions['exclude_unpaved'], isTrue);
     });
 
+    test('electric scooter uses country speed and cycleway preferences', () {
+      final swedishPayload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Electric scooter',
+        userSpeedKmh: 90,
+        countryCode: 'SE',
+      );
+      final spanishPayload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Electric scooter',
+        userSpeedKmh: 90,
+        countryCode: 'ES',
+      );
+
+      expect(swedishPayload['costing'], 'bicycle');
+      final swedishOptions =
+          (swedishPayload['costing_options'] as Map<String, dynamic>)['bicycle']
+              as Map<String, dynamic>;
+      expect(swedishOptions['cycling_speed'], 20);
+      expect(swedishOptions['use_roads'], 0.1);
+      expect(swedishOptions['avoid_bad_surfaces'], 1.0);
+
+      final spanishOptions =
+          (spanishPayload['costing_options'] as Map<String, dynamic>)['bicycle']
+              as Map<String, dynamic>;
+      expect(spanishOptions['cycling_speed'], 25);
+      expect(spanishOptions['use_roads'], 0.8);
+      expect(spanishOptions['use_ferry'], 0.0);
+    });
+
     test('low vehicle uses A-tractor speed and excludes unpaved roads', () {
       final payload = service.debugBuildValhallaRequestPayload(
         origin: origin,
@@ -310,6 +408,16 @@ void main() {
       final providers = service.debugEligibleProviders(
         configuredProvider: 'graphhopper',
         vehicleType: 'Moped class II',
+        countryCode: 'SE',
+      );
+
+      expect(providers, ['valhalla']);
+    });
+
+    test('electric scooter only uses Valhalla legal routing', () {
+      final providers = service.debugEligibleProviders(
+        configuredProvider: 'graphhopper',
+        vehicleType: 'Electric scooter',
         countryCode: 'SE',
       );
 

@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Cargando preferencias...",
   "splashFinalizingStartup": "Finalizando inicio...",
   "splashReady": "Listo",
-  "splashVersionLine": "v1.1.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Centrar el mapa en mi ubicación",
   "a11yStopFollowingLocation": "Dejar de seguir mi ubicación",
   "a11ySwitchTo2d": "Cambiar al mapa 2D",
@@ -228,6 +228,8 @@
   "settingsVehicleMopedCar": "Coche sin carnet",
   "settingsVehicleMopedClassI": "Ciclomotor clase I",
   "settingsVehicleMopedClassII": "Ciclomotor clase II (25 km/h)",
+  "settingsVehicleElectricScooter": "Patinete eléctrico",
+  "settingsElectricScooterLegalNotice": "Utiliza únicamente un patinete eléctrico autorizado donde lo permitan las normas locales. La señalización, las ordenanzas municipales y las zonas de alquiler siempre prevalecen sobre la ruta.",
   "settingsVehicleTractor": "Tractor",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
@@ -243,7 +245,7 @@
   "settingsProStatusInactive": "No activo",
   "settingsProDescriptionActive": "Tienes acceso a todas las funciones Pro.",
   "settingsProDescriptionInactive": "Desbloquea todas las funciones con CruizX Pro.",
-  "settingsProFeatureRoutes": "Rutas ilimitadas",
+  "settingsProFeatureRoutes": "Más análisis de rutas con IA",
   "settingsProFeatureConvoy": "Miembros de convoy ilimitados",
   "settingsProFeatureAds": "Sin anuncios",
   "settingsProFeatureSupport": "Soporte prioritario",
@@ -386,6 +388,10 @@
     }
   },
   "mapManeuverTowardRoad": "Hacia {road}",
+  "mapManeuverGenericCycleway": "el carril bici",
+  "mapManeuverGenericFootway": "la vía peatonal",
+  "mapManeuverGenericPath": "el sendero",
+  "mapManeuverGenericRoad": "la carretera",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -495,8 +501,8 @@
   "paywallStartTrialButton": "Empezar prueba gratis de 7 días",
   "paywallTrialNote": "7 días gratis, luego {price} como compra única.",
   "@paywallTrialNote": { "placeholders": { "price": {} } },
-  "paywallFeatureRoutes": "Rutas por día",
-  "paywallFreeRouteLimit": "4 rutas",
+  "paywallFeatureRoutes": "Rutas de navegación",
+  "paywallFreeRouteLimit": "Ilimitadas",
   "paywallProRouteLimit": "Ilimitadas",
   "paywallFeatureConvoy": "Convoy",
   "paywallFreeConvoyLimit": "1 activo, 2 miembros",
@@ -504,8 +510,10 @@
   "paywallFeatureAds": "Anuncios",
   "paywallFreeAds": "Mostrados",
   "paywallProAds": "Ninguno",
-  "paywallRouteLimitTitle": "Límite de rutas alcanzado",
-  "paywallRouteLimitBody": "Los usuarios gratuitos pueden calcular 4 rutas por día. Actualiza a Pro para navegación ilimitada.",
+  "paywallRouteLimitTitle": "Rutas ilimitadas",
+  "paywallRouteLimitBody": "Las rutas de navegación también son ilimitadas en la versión gratuita.",
+  "routeUpgradePromptTitle": "¿Continuar sin anuncios?",
+  "routeUpgradePromptBody": "Has creado dos rutas hoy. La versión gratuita incluye rutas ilimitadas, mientras que Pro elimina los anuncios y desbloquea más funciones. ¿Quieres actualizar?",
   "paywallConvoyLimitTitle": "Límite de convoy alcanzado",
   "paywallConvoyLimitBody": "Los usuarios gratuitos solo pueden estar en 1 convoy a la vez.",
   "paywallMemberLimitTitle": "Convoy lleno",
@@ -520,9 +528,9 @@
   "profileFreePlan": "Plan gratuito",
   "profileProPlan": "Plan Pro",
   "profileUpgradeToPro": "Actualizar a Pro",
-  "profileRoutesUsed": "Rutas hoy: {count} / {max}",
+  "profileRoutesUsed": "Rutas hoy: {count}",
   "@profileRoutesUsed": {
-    "placeholders": { "count": {}, "max": {} }
+    "placeholders": { "count": {} }
   },
   "profileChangePhoto": "Cambiar foto de perfil",
   "profileTakePhoto": "Tomar foto",

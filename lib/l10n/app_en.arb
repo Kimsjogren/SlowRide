@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Loading preferences...",
   "splashFinalizingStartup": "Finalizing startup...",
   "splashReady": "Ready",
-  "splashVersionLine": "v1.1.7 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Center the map on my location",
   "a11yStopFollowingLocation": "Stop following my location",
   "a11ySwitchTo2d": "Switch to 2D map",
@@ -230,6 +230,8 @@
   "settingsVehicleMopedCar": "Moped car",
   "settingsVehicleMopedClassI": "Class I moped",
   "settingsVehicleMopedClassII": "Class II moped (25 km/h)",
+  "settingsVehicleElectricScooter": "Electric scooter",
+  "settingsElectricScooterLegalNotice": "Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.",
   "settingsVehicleTractor": "Tractor",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
@@ -245,7 +247,7 @@
   "settingsProStatusInactive": "Not active",
   "settingsProDescriptionActive": "You have access to all Pro features.",
   "settingsProDescriptionInactive": "Unlock all features with CruizX Pro.",
-  "settingsProFeatureRoutes": "Unlimited routes",
+  "settingsProFeatureRoutes": "More AI route analyses",
   "settingsProFeatureConvoy": "Unlimited convoy members",
   "settingsProFeatureAds": "No ads",
   "settingsProFeatureSupport": "Priority support",
@@ -388,6 +390,10 @@
     }
   },
   "mapManeuverTowardRoad": "Toward {road}",
+  "mapManeuverGenericCycleway": "the cycleway",
+  "mapManeuverGenericFootway": "the footway",
+  "mapManeuverGenericPath": "the path",
+  "mapManeuverGenericRoad": "the road",
   "@mapManeuverTowardRoad": {
     "placeholders": {
       "road": {}
@@ -497,8 +503,8 @@
   "paywallStartTrialButton": "Start 7-day free trial",
   "paywallTrialNote": "7 days free, then {price} as a one-time purchase.",
   "@paywallTrialNote": { "placeholders": { "price": {} } },
-  "paywallFeatureRoutes": "Routes per day",
-  "paywallFreeRouteLimit": "4 routes",
+  "paywallFeatureRoutes": "Navigation routes",
+  "paywallFreeRouteLimit": "Unlimited",
   "paywallProRouteLimit": "Unlimited",
   "paywallFeatureConvoy": "Convoy",
   "paywallFreeConvoyLimit": "1 active, 2 members",
@@ -506,8 +512,10 @@
   "paywallFeatureAds": "Ads",
   "paywallFreeAds": "Shown",
   "paywallProAds": "None",
-  "paywallRouteLimitTitle": "Route limit reached",
-  "paywallRouteLimitBody": "Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.",
+  "paywallRouteLimitTitle": "Unlimited routes",
+  "paywallRouteLimitBody": "Navigation routes are unlimited in the Free version too.",
+  "routeUpgradePromptTitle": "Continue without ads?",
+  "routeUpgradePromptBody": "You have created two routes today. Free includes unlimited routes, while Pro removes ads and unlocks more features. Would you like to upgrade?",
   "paywallConvoyLimitTitle": "Convoy limit reached",
   "paywallConvoyLimitBody": "Free users can only be in 1 convoy at a time.",
   "paywallMemberLimitTitle": "Convoy is full",
@@ -522,9 +530,9 @@
   "profileFreePlan": "Free plan",
   "profileProPlan": "Pro plan",
   "profileUpgradeToPro": "Upgrade to Pro",
-  "profileRoutesUsed": "Routes today: {count} / {max}",
+  "profileRoutesUsed": "Routes today: {count}",
   "@profileRoutesUsed": {
-    "placeholders": { "count": {}, "max": {} }
+    "placeholders": { "count": {} }
   },
   "profileChangePhoto": "Change profile photo",
   "profileTakePhoto": "Take photo",

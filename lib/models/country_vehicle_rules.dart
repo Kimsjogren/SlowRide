@@ -57,6 +57,16 @@ class CountryVehicleRules {
     return getProfile(countryCode, vehicleType).maxLegalSpeedKmh;
   }
 
+  /// Highest value exposed by the user speed control.
+  ///
+  /// Electric scooters can be configured up to 40 km/h for private-area and
+  /// hardware calibration use. Public-road routing remains capped separately
+  /// by [maxLegalSpeedFor].
+  static double maxSelectableSpeedFor(String countryCode, String vehicleType) {
+    if (vehicleType == 'Electric scooter') return 40;
+    return maxLegalSpeedFor(countryCode, vehicleType) + 5;
+  }
+
   /// Attempt to detect country from GPS coordinates.
   /// Returns null if coordinates don't match any supported country.
   static String? countryFromCoordinates(double lat, double lon) {
@@ -138,6 +148,14 @@ class CountryVehicleRules {
       useFerry: 0.3,
       prefersCycleways: true,
     ),
+    // A compliant Swedish e-scooter is legally a bicycle: max 20 km/h and
+    // 250 W, with bicycle access and no pavement riding.
+    'SE_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'Cykel (elsparkcykel)',
+      maxSpeedKmh: 20,
+      useFerry: 0.3,
+      useRoads: 0.1,
+    ),
     // Traktor: motorväg förbjudet, färja tillåten.
     'SE_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -178,6 +196,15 @@ class CountryVehicleRules {
       useFerry: 0.7,
       allowsTwoWheelBusLanes: true,
     ),
+    // Small electric motor vehicle: max 20 km/h. Cycle lanes, shared paths,
+    // roads and considerate pavement use are permitted under local rules.
+    'NO_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'Liten elektrisk motorvogn',
+      maxSpeedKmh: 20,
+      useFerry: 0.7,
+      useRoads: 0.1,
+      allowsFootwaysAtWalkingSpeed: true,
+    ),
     // Traktor: ferries very common and allowed in Norway.
     'NO_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -215,6 +242,14 @@ class CountryVehicleRules {
       legalCategory: 'Lille knallert',
       useFerry: 0.5,
       prefersCycleways: true,
+    ),
+    // Electric scooters follow bicycle rules, must use a cycleway when one is
+    // present, and may not be capable of more than 20 km/h.
+    'DK_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'El-løbehjul',
+      maxSpeedKmh: 20,
+      useFerry: 0.5,
+      useRoads: 0.0,
     ),
     'DK_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -255,6 +290,13 @@ class CountryVehicleRules {
       legalCategory: 'Mopo / L1e-A (25 km/h)',
       useFerry: 0.5,
     ),
+    // Light electric vehicle: max 25 km/h and 1 kW, following bicycle rules.
+    'FI_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'Kevyt sähköajoneuvo',
+      maxSpeedKmh: 25,
+      useFerry: 0.5,
+      useRoads: 0.1,
+    ),
     // Traktori: up to 40 km/h in Finland.
     'FI_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 40,
@@ -292,6 +334,14 @@ class CountryVehicleRules {
     'FR_Moped class II': VehicleRoutingProfile.mopedClassII(
       legalCategory: 'Cyclomoteur (25 km/h)',
       useFerry: 0.5,
+    ),
+    // EDPM: max 25 km/h. Cycle lanes/tracks are mandatory when present;
+    // outside built-up areas use greenways/cycleways unless locally authorised.
+    'FR_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'EDPM / trottinette électrique',
+      maxSpeedKmh: 25,
+      useFerry: 0.5,
+      useRoads: 0.0,
     ),
     // Tracteur agricole: older models limited to 25 km/h (Art. R413-12),
     // but 2016 reform allows EU T1 tractors up to 40 km/h on public roads.
@@ -335,6 +385,15 @@ class CountryVehicleRules {
       useFerry: 0.5,
       requiresRoadShoulderWhereAvailable: true,
     ),
+    // VMP: 6–25 km/h and urban routes only. Municipal ordinances decide which
+    // urban roads are authorised; interurban roads and urban tunnels are banned.
+    'ES_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'VMP / patinete eléctrico',
+      maxSpeedKmh: 25,
+      useFerry: 0.0,
+      useRoads: 0.8,
+      urbanRoadsOnly: true,
+    ),
     // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
     'ES_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
@@ -374,6 +433,15 @@ class CountryVehicleRules {
     'IT_Moped class II': VehicleRoutingProfile.mopedClassII(
       legalCategory: 'Ciclomotore (25 km/h)',
       useFerry: 0.5,
+    ),
+    // Electric scooter: max 20 km/h (6 km/h in pedestrian areas). In built-up
+    // areas it may use roads limited to 50 km/h and authorised cycle routes.
+    'IT_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'Monopattino elettrico',
+      maxSpeedKmh: 20,
+      useFerry: 0.3,
+      useRoads: 0.25,
+      maxRoadSpeedLimitKmh: 50,
     ),
     // Agricultural machines: normally 40 km/h with pneumatic-equivalent
     // running gear (15 km/h otherwise). Use 30 km/h as the safe default.
@@ -417,6 +485,16 @@ class CountryVehicleRules {
       useFerry: 0.5,
       forbidsMotorRoads: false,
     ),
+    // Public-road use is limited to approved rental trials. Private e-scooters
+    // remain illegal on public roads and in public spaces.
+    'GB_Electric scooter': VehicleRoutingProfile.electricScooter(
+      legalCategory: 'Approved rental e-scooter',
+      maxSpeedKmh: 25,
+      useFerry: 0.0,
+      useRoads: 0.4,
+      requiresApprovedRental: true,
+      forbidsMotorRoads: false,
+    ),
     'GB_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
@@ -444,6 +522,11 @@ class VehicleRoutingProfile {
     this.allowsTwoWheelBusLanes = false,
     this.forbidsMotorRoads = true,
     this.prefersCycleways = false,
+    this.useRoads = 0.5,
+    this.urbanRoadsOnly = false,
+    this.requiresApprovedRental = false,
+    this.allowsFootwaysAtWalkingSpeed = false,
+    this.maxRoadSpeedLimitKmh,
   });
 
   const VehicleRoutingProfile.mopedClassI({
@@ -460,7 +543,12 @@ class VehicleRoutingProfile {
        useTracks = 0.0,
        excludeUnpaved = true,
        allowsCyclewaysByDefault = false,
-       prefersCycleways = false;
+       prefersCycleways = false,
+       useRoads = 0.5,
+       urbanRoadsOnly = false,
+       requiresApprovedRental = false,
+       allowsFootwaysAtWalkingSpeed = false,
+       maxRoadSpeedLimitKmh = null;
 
   const VehicleRoutingProfile.mopedClassII({
     required this.legalCategory,
@@ -476,7 +564,34 @@ class VehicleRoutingProfile {
        usePrimary = 0.0,
        useTracks = 0.0,
        excludeUnpaved = true,
-       allowsCyclewaysByDefault = prefersCycleways;
+       allowsCyclewaysByDefault = prefersCycleways,
+       useRoads = 0.0,
+       urbanRoadsOnly = false,
+       requiresApprovedRental = false,
+       allowsFootwaysAtWalkingSpeed = false,
+       maxRoadSpeedLimitKmh = null;
+
+  const VehicleRoutingProfile.electricScooter({
+    required this.legalCategory,
+    required double maxSpeedKmh,
+    required this.useFerry,
+    required this.useRoads,
+    this.urbanRoadsOnly = false,
+    this.requiresApprovedRental = false,
+    this.allowsFootwaysAtWalkingSpeed = false,
+    this.maxRoadSpeedLimitKmh,
+    this.forbidsMotorRoads = true,
+  }) : defaultSpeedKmh = maxSpeedKmh,
+       maxLegalSpeedKmh = maxSpeedKmh,
+       useHighways = 0.0,
+       useTolls = 0.0,
+       usePrimary = 0.0,
+       useTracks = 0.0,
+       excludeUnpaved = true,
+       allowsCyclewaysByDefault = true,
+       prefersCycleways = true,
+       requiresRoadShoulderWhereAvailable = false,
+       allowsTwoWheelBusLanes = false;
 
   /// Default speed for this vehicle type (km/h).
   final double defaultSpeedKmh;
@@ -519,4 +634,19 @@ class VehicleRoutingProfile {
 
   /// Whether routing should prefer cycleways under the local two-wheel rules.
   final bool prefersCycleways;
+
+  /// Bicycle-costing preference for ordinary roads (0 = prefer cycleways).
+  final double useRoads;
+
+  /// Whether public routing is restricted to locally authorised urban roads.
+  final bool urbanRoadsOnly;
+
+  /// Whether public-road use requires an approved rental scheme.
+  final bool requiresApprovedRental;
+
+  /// Whether pavement/footway use is allowed only at walking speed.
+  final bool allowsFootwaysAtWalkingSpeed;
+
+  /// Maximum posted road speed where this vehicle is permitted, if specified.
+  final double? maxRoadSpeedLimitKmh;
 }

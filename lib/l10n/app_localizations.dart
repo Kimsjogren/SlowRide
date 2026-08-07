@@ -182,7 +182,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.7 | CruizX by KimTechTool'**
+  /// **'v1.1.9 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @a11yCenterOnLocation.
@@ -1283,6 +1283,18 @@ abstract class AppLocalizations {
   /// **'Class II moped (25 km/h)'**
   String get settingsVehicleMopedClassII;
 
+  /// No description provided for @settingsVehicleElectricScooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Electric scooter'**
+  String get settingsVehicleElectricScooter;
+
+  /// No description provided for @settingsElectricScooterLegalNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.'**
+  String get settingsElectricScooterLegalNotice;
+
   /// No description provided for @settingsVehicleTractor.
   ///
   /// In en, this message translates to:
@@ -1340,7 +1352,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProFeatureRoutes.
   ///
   /// In en, this message translates to:
-  /// **'Unlimited routes'**
+  /// **'More AI route analyses'**
   String get settingsProFeatureRoutes;
 
   /// No description provided for @settingsProFeatureConvoy.
@@ -2033,6 +2045,30 @@ abstract class AppLocalizations {
   /// **'Toward {road}'**
   String mapManeuverTowardRoad(Object road);
 
+  /// No description provided for @mapManeuverGenericCycleway.
+  ///
+  /// In en, this message translates to:
+  /// **'the cycleway'**
+  String get mapManeuverGenericCycleway;
+
+  /// No description provided for @mapManeuverGenericFootway.
+  ///
+  /// In en, this message translates to:
+  /// **'the footway'**
+  String get mapManeuverGenericFootway;
+
+  /// No description provided for @mapManeuverGenericPath.
+  ///
+  /// In en, this message translates to:
+  /// **'the path'**
+  String get mapManeuverGenericPath;
+
+  /// No description provided for @mapManeuverGenericRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'the road'**
+  String get mapManeuverGenericRoad;
+
   /// No description provided for @mapSimulateButton.
   ///
   /// In en, this message translates to:
@@ -2414,13 +2450,13 @@ abstract class AppLocalizations {
   /// No description provided for @paywallFeatureRoutes.
   ///
   /// In en, this message translates to:
-  /// **'Routes per day'**
+  /// **'Navigation routes'**
   String get paywallFeatureRoutes;
 
   /// No description provided for @paywallFreeRouteLimit.
   ///
   /// In en, this message translates to:
-  /// **'4 routes'**
+  /// **'Unlimited'**
   String get paywallFreeRouteLimit;
 
   /// No description provided for @paywallProRouteLimit.
@@ -2468,14 +2504,26 @@ abstract class AppLocalizations {
   /// No description provided for @paywallRouteLimitTitle.
   ///
   /// In en, this message translates to:
-  /// **'Route limit reached'**
+  /// **'Unlimited routes'**
   String get paywallRouteLimitTitle;
 
   /// No description provided for @paywallRouteLimitBody.
   ///
   /// In en, this message translates to:
-  /// **'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.'**
+  /// **'Navigation routes are unlimited in the Free version too.'**
   String get paywallRouteLimitBody;
+
+  /// No description provided for @routeUpgradePromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without ads?'**
+  String get routeUpgradePromptTitle;
+
+  /// No description provided for @routeUpgradePromptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have created two routes today. Free includes unlimited routes, while Pro removes ads and unlocks more features. Would you like to upgrade?'**
+  String get routeUpgradePromptBody;
 
   /// No description provided for @paywallConvoyLimitTitle.
   ///
@@ -2564,8 +2612,8 @@ abstract class AppLocalizations {
   /// No description provided for @profileRoutesUsed.
   ///
   /// In en, this message translates to:
-  /// **'Routes today: {count} / {max}'**
-  String profileRoutesUsed(Object count, Object max);
+  /// **'Routes today: {count}'**
+  String profileRoutesUsed(Object count);
 
   /// No description provided for @profileChangePhoto.
   ///

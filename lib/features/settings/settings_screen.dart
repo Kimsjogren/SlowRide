@@ -197,52 +197,94 @@ class SettingsScreen extends StatelessWidget {
                       ValueListenableBuilder<String>(
                         valueListenable: preferences.vehicleType,
                         builder: (context, vehicleType, _) {
-                          return DropdownButtonFormField<String>(
-                            dropdownColor: const Color(0xFF0A1F63),
-                            style: valueStyle,
-                            iconEnabledColor: Colors.white70,
-                            initialValue: vehicleType,
-                            decoration: InputDecoration(
-                              labelText: l10n.settingsVehicleTypeLabel,
-                              labelStyle: labelStyle,
-                              enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white24),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              DropdownMenu<String>(
+                                initialSelection: vehicleType,
+                                expandedInsets: EdgeInsets.zero,
+                                menuHeight: 360,
+                                selectOnly: true,
+                                enableSearch: false,
+                                requestFocusOnTap: false,
+                                textStyle: valueStyle,
+                                label: Text(l10n.settingsVehicleTypeLabel),
+                                trailingIcon: const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Colors.white70,
+                                ),
+                                selectedTrailingIcon: const Icon(
+                                  Icons.arrow_drop_up,
+                                  color: Colors.white70,
+                                ),
+                                inputDecorationTheme:
+                                    const InputDecorationTheme(
+                                      labelStyle: labelStyle,
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Colors.white24,
+                                        ),
+                                      ),
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Colors.white54,
+                                        ),
+                                      ),
+                                    ),
+                                menuStyle: const MenuStyle(
+                                  alignment: AlignmentDirectional.bottomStart,
+                                  backgroundColor: WidgetStatePropertyAll(
+                                    Color(0xFF0A1F63),
+                                  ),
+                                ),
+                                dropdownMenuEntries: [
+                                  DropdownMenuEntry(
+                                    value: 'A-tractor',
+                                    label: l10n.settingsVehicleAtractor,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Low vehicle',
+                                    label: l10n.settingsVehicleLowVehicle,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Moped car',
+                                    label: l10n.settingsVehicleMopedCar,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Moped class I',
+                                    label: l10n.settingsVehicleMopedClassI,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Moped class II',
+                                    label: l10n.settingsVehicleMopedClassII,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Electric scooter',
+                                    label: l10n.settingsVehicleElectricScooter,
+                                  ),
+                                  DropdownMenuEntry(
+                                    value: 'Tractor',
+                                    label: l10n.settingsVehicleTractor,
+                                  ),
+                                ],
+                                onSelected: (value) {
+                                  if (value != null) {
+                                    preferences.vehicleType.value = value;
+                                  }
+                                },
                               ),
-                              focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white54),
-                              ),
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'A-tractor',
-                                child: Text(l10n.settingsVehicleAtractor),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Low vehicle',
-                                child: Text(l10n.settingsVehicleLowVehicle),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Moped car',
-                                child: Text(l10n.settingsVehicleMopedCar),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Moped class I',
-                                child: Text(l10n.settingsVehicleMopedClassI),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Moped class II',
-                                child: Text(l10n.settingsVehicleMopedClassII),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Tractor',
-                                child: Text(l10n.settingsVehicleTractor),
-                              ),
+                              if (vehicleType == 'Electric scooter') ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  l10n.settingsElectricScooterLegalNotice,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
                             ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                preferences.vehicleType.value = value;
-                              }
-                            },
                           );
                         },
                       ),
@@ -474,14 +516,11 @@ class SettingsScreen extends StatelessWidget {
                                   final speedUnitLabel = unit == SpeedUnit.kmh
                                       ? l10n.settingsSpeedUnitKmh
                                       : l10n.settingsSpeedUnitMph;
-                                  // Slider max = legal limit + 5 km/h so the
-                                  // user can fine-tune for their actual avg speed.
-                                  final legalMax =
-                                      CountryVehicleRules.maxLegalSpeedFor(
+                                  final sliderMaxKmh =
+                                      CountryVehicleRules.maxSelectableSpeedFor(
                                         country,
                                         preferences.vehicleType.value,
                                       );
-                                  final sliderMaxKmh = legalMax + 5.0;
                                   final minDisplay = unit == SpeedUnit.kmh
                                       ? 15.0
                                       : 9.0;
@@ -872,7 +911,6 @@ class SettingsScreen extends StatelessWidget {
 
                           // ── Feature list ─────────────────────────
                           if (!isPro) ...[
-                            _proFeatureRow(l10n.settingsProFeatureRoutes),
                             _proFeatureRow(l10n.settingsProFeatureConvoy),
                             _proFeatureRow(l10n.settingsProFeatureAds),
                             _proFeatureRow(l10n.settingsProFeatureSupport),
@@ -1181,6 +1219,15 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
         _MarkerBrandGroup(
           title: l10n.settingsMapMarkerCrossMoped,
           options: byCategory(MapMarkerCategory.mopedCross),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsVehicleElectricScooter,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsVehicleElectricScooter,
+          options: byCategory(MapMarkerCategory.electricScooter),
         ),
       ],
     ),

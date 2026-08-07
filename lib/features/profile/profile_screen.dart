@@ -558,8 +558,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         Text(
                                           l10n.profileRoutesUsed(
                                             sub.routesToday,
-                                            SubscriptionService
-                                                .freeMaxDailyRoutes,
                                           ),
                                           style: const TextStyle(
                                             color: Colors.white60,

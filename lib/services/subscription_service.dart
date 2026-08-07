@@ -10,7 +10,7 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
-enum PaywallReason { routeLimit, convoyLimit, memberLimit }
+enum PaywallReason { convoyLimit, memberLimit }
 
 /// Thrown when the store connection or product cannot be reached so the UI can
 /// show a clear message instead of a silent failure.
@@ -22,7 +22,6 @@ class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
-  static const int freeMaxDailyRoutes = 4;
   static const int freeMaxConvoyMembers = 2;
 
   /// App Store Connect product ID for the auto-renewable monthly subscription.
@@ -37,7 +36,8 @@ class SubscriptionService {
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
-  static const String _routeInterstitialDateKey = 'sub_route_interstitial_date';
+  static const String _routeUpgradePromptDateKey =
+      'sub_route_upgrade_prompt_date_v1';
 
   final InAppPurchase _iap = InAppPurchase.instance;
   late SharedPreferences _prefs;
@@ -423,8 +423,6 @@ class SubscriptionService {
     return _prefs.getInt(_routeCountKey) ?? 0;
   }
 
-  bool canStartRoute() => isPro.value || routesToday < freeMaxDailyRoutes;
-
   void recordRoute() {
     final today = _todayString;
     final savedDate = _prefs.getString(_routeDateKey) ?? '';
@@ -433,17 +431,43 @@ class SubscriptionService {
     _prefs.setInt(_routeCountKey, count + 1);
   }
 
-  /// Free users see at most one route interstitial per day. It is eligible
-  /// before route 3, with route 4 acting as a retry if the ad was not loaded.
+  /// Free users see an interstitial before every route after the first route
+  /// of the day. Route tracking is only used for ad timing; navigation itself
+  /// remains unlimited.
   bool get shouldShowRouteInterstitial {
-    if (isPro.value) return false;
-    final count = routesToday;
-    if (count < 2 || count >= freeMaxDailyRoutes) return false;
-    return _prefs.getString(_routeInterstitialDateKey) != _todayString;
+    return routeInterstitialEligible(
+      isPro: isPro.value,
+      routesToday: routesToday,
+    );
   }
 
-  void recordRouteInterstitialShown() {
-    _prefs.setString(_routeInterstitialDateKey, _todayString);
+  @visibleForTesting
+  static bool routeInterstitialEligible({
+    required bool isPro,
+    required int routesToday,
+  }) => !isPro && routesToday >= 1;
+
+  /// Shown after an ad once two routes have already been created that day.
+  /// The prompt is reset automatically on the next local calendar day.
+  bool get shouldShowDailyRouteUpgradePrompt {
+    return dailyRouteUpgradePromptEligible(
+      isPro: isPro.value,
+      routesToday: routesToday,
+      lastPromptDate: _prefs.getString(_routeUpgradePromptDateKey),
+      today: _todayString,
+    );
+  }
+
+  @visibleForTesting
+  static bool dailyRouteUpgradePromptEligible({
+    required bool isPro,
+    required int routesToday,
+    required String? lastPromptDate,
+    required String today,
+  }) => !isPro && routesToday >= 2 && lastPromptDate != today;
+
+  void recordDailyRouteUpgradePromptShown() {
+    _prefs.setString(_routeUpgradePromptDateKey, _todayString);
   }
 
   String get _todayString {

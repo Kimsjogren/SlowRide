@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
@@ -95,7 +94,9 @@ class RoutingService {
     String countryCode,
     String vehicleType,
   ) {
-    if (vehicleType != 'Moped class I' && vehicleType != 'Moped class II') {
+    if (vehicleType != 'Moped class I' &&
+        vehicleType != 'Moped class II' &&
+        vehicleType != 'Electric scooter') {
       return _motorwayKeywords;
     }
 
@@ -167,7 +168,7 @@ class RoutingService {
   }
 
   String _graphHopperLocale() {
-    final code = UserPreferencesService.instance.languageCode.value;
+    final code = _effectiveLanguageCode();
     return switch (code) {
       'sv' => 'sv',
       'en' => 'en',
@@ -182,7 +183,7 @@ class RoutingService {
   }
 
   String _valhallaLanguage() {
-    final code = UserPreferencesService.instance.languageCode.value;
+    final code = _effectiveLanguageCode();
     return switch (code) {
       'sv' => 'sv-SE',
       'en' => 'en-US',
@@ -194,6 +195,11 @@ class RoutingService {
       'it' => 'it-IT',
       _ => 'en-US',
     };
+  }
+
+  String _effectiveLanguageCode() {
+    return UserPreferencesService.instance.languageCode.value ??
+        PlatformDispatcher.instance.locale.languageCode;
   }
 
   @visibleForTesting
@@ -236,7 +242,9 @@ class RoutingService {
     );
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
     final useCyclewayRouting =
-        vehicleType == 'Moped class II' && profile.prefersCycleways;
+        (vehicleType == 'Moped class II' ||
+            vehicleType == 'Electric scooter') &&
+        profile.prefersCycleways;
     final costing = useCyclewayRouting
         ? 'bicycle'
         : (isSlowVehicle ? 'motor_scooter' : 'auto');
@@ -247,7 +255,7 @@ class RoutingService {
             // that can traverse that network; local signs still take priority.
             'bicycle_type': 'Hybrid',
             'cycling_speed': userSpeedKmh.clamp(5.0, maxLegalSpeedKmh).round(),
-            'use_roads': 0.0,
+            'use_roads': profile.useRoads,
             'use_hills': 0.5,
             'use_ferry': profile.useFerry,
             'avoid_bad_surfaces': 1.0,
@@ -338,9 +346,9 @@ class RoutingService {
     required String countryCode,
   }) {
     // The other configured providers use car profiles and cannot correctly
-    // represent mandatory cycleway routing for class-II mopeds. Valhalla can
-    // switch between bicycle and motor-scooter costing per country.
-    if (vehicleType == 'Moped class II') {
+    // represent mandatory cycleway routing for class-II mopeds or electric
+    // scooters. Valhalla can switch costing per vehicle and country.
+    if (vehicleType == 'Moped class II' || vehicleType == 'Electric scooter') {
       return const [_providerValhalla];
     }
     final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
@@ -475,7 +483,8 @@ class RoutingService {
     final effectiveRelaxedLegalChecks =
         relaxedLegalChecks &&
         vehicleType != 'Moped class I' &&
-        vehicleType != 'Moped class II';
+        vehicleType != 'Moped class II' &&
+        vehicleType != 'Electric scooter';
     final eligibleProviders = _eligibleProvidersFor(
       configuredProvider: BackendConfig.routingProvider,
       vehicleType: vehicleType,

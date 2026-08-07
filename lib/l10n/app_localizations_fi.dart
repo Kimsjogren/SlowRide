@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Keskitä kartta sijaintiini';
@@ -609,6 +609,12 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVehicleMopedClassII => 'Luokan II mopo (25 km/h)';
 
   @override
+  String get settingsVehicleElectricScooter => 'Sähköpotkulauta';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Käytä vain tieliikenteeseen hyväksyttyä sähköpotkulautaa siellä, missä paikalliset säännöt sen sallivat. Liikennemerkit, kuntakohtaiset säännöt ja vuokrausalueet ovat aina reittiä ensisijaisia.';
+
+  @override
   String get settingsVehicleTractor => 'Traktori';
 
   @override
@@ -638,7 +644,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Avaa kaikki ominaisuudet CruizX Prolla.';
 
   @override
-  String get settingsProFeatureRoutes => 'Rajattomat reitit';
+  String get settingsProFeatureRoutes => 'Enemmän AI-reittianalyysejä';
 
   @override
   String get settingsProFeatureConvoy => 'Rajaton saattue';
@@ -1008,6 +1014,18 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
+  String get mapManeuverGenericCycleway => 'pyörätietä';
+
+  @override
+  String get mapManeuverGenericFootway => 'kävelytietä';
+
+  @override
+  String get mapManeuverGenericPath => 'polkua';
+
+  @override
+  String get mapManeuverGenericRoad => 'tietä';
+
+  @override
   String get mapSimulateButton => 'Simuloi';
 
   @override
@@ -1225,10 +1243,10 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Reittejä päivässä';
+  String get paywallFeatureRoutes => 'Navigointireitit';
 
   @override
-  String get paywallFreeRouteLimit => '4 reittiä';
+  String get paywallFreeRouteLimit => 'Rajaton';
 
   @override
   String get paywallProRouteLimit => 'Rajaton';
@@ -1252,10 +1270,16 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallProAds => 'Ei mainoksia';
 
   @override
-  String get paywallRouteLimitTitle => 'Päivittäinen reittirajaus saavutettu';
+  String get paywallRouteLimitTitle => 'Rajattomat reitit';
 
   @override
-  String get paywallRouteLimitBody => 'Ilmaiskäyttäjät voivat laskea 4 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
+  String get paywallRouteLimitBody => 'Navigointireitit ovat rajattomia myös ilmaisversiossa.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Jatka ilman mainoksia?';
+
+  @override
+  String get routeUpgradePromptBody => 'Olet luonut tänään kaksi reittiä. Ilmaisversiossa on rajattomasti reittejä, kun taas Pro poistaa mainokset ja avaa lisää ominaisuuksia. Haluatko päivittää?';
 
   @override
   String get paywallConvoyLimitTitle => 'Saattueraja saavutettu';
@@ -1300,8 +1324,8 @@ class AppLocalizationsFi extends AppLocalizations {
   String get profileUpgradeToPro => 'Päivitä Prohon';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Reitit tänään: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Reitit tänään: $count';
   }
 
   @override

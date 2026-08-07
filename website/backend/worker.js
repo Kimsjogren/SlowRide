@@ -146,6 +146,8 @@ const AI_VEHICLE_CONTEXT = {
     "A two-wheeled class I moped limited to 45 km/h; avoid motorways, motor-traffic roads, cycleways, and roads without moped access. It is not a moped car or a heavy vehicle.",
   "Moped class II":
     "A two-wheeled Swedish class II moped with a construction speed of no more than 25 km/h and power no more than 1 kW. Apply the supplied country's local road-position rules. It is not an e-bike, moped car, or heavy vehicle.",
+  "Electric scooter":
+    "A road-legal stand-up electric scooter for one person. Apply the supplied country's exact speed, access, and public-road rules. Never describe it as a moped, motorcycle, or heavy vehicle.",
   Tractor:
     "An agricultural tractor, not a truck. No vehicle weight has been supplied.",
 };
@@ -168,6 +170,16 @@ const AI_MOPED_II_COUNTRY_CONTEXT = {
   ES: "Spain: apply ciclomotor rules; do not use autopistas or autovías and use a passable shoulder where required on conventional interurban roads.",
   IT: "Italy: apply ciclomotore rules; do not use autostrade, strade extraurbane principali, or cycle-only infrastructure.",
   GB: "Great Britain: treat a no-pedal vehicle limited to 25 km/h as category Q; use roads, not cycle lanes or tracks, and do not use motorways.",
+};
+const AI_ELECTRIC_SCOOTER_COUNTRY_CONTEXT = {
+  SE: "Sweden: only a scooter limited to 20 km/h and 250 W is treated as a bicycle and allowed in public traffic; use bicycle infrastructure and never the pavement.",
+  NO: "Norway: maximum 20 km/h; cycle lanes, shared paths and roads are allowed, while pavement use is only considerate and at walking speed around pedestrians.",
+  DK: "Denmark: maximum 20 km/h and bicycle rules apply; use the cycleway when one is present.",
+  FI: "Finland: a light electric vehicle may be at most 25 km/h and 1 kW and follows bicycle traffic rules, normally using the cycle path.",
+  FR: "France: an EDPM is limited to 25 km/h and must use cycle lanes or tracks when present; outside built-up areas use greenways or cycleways unless local authorities expressly allow a road.",
+  ES: "Spain: a VMP is limited to 6–25 km/h and may use only locally authorised urban roads; pavements, pedestrian zones, crossings, interurban roads, motorways, expressways, and urban tunnels are prohibited.",
+  IT: "Italy: an electric scooter is limited to 20 km/h, or 6 km/h in pedestrian areas; use authorised urban roads up to 50 km/h and permitted cycle infrastructure, and follow current identification and insurance requirements.",
+  GB: "Great Britain: private e-scooters are illegal on public roads and public spaces. Only an approved rental-trial scooter may use authorised roads and cycle lanes in a trial area; pavements and motorways are prohibited.",
 };
 const AI_REPORT_REASONS = new Set([
   "incorrect",
@@ -233,6 +245,8 @@ function validateAiRouteFacts(body) {
         ? ` ${AI_MOPED_COUNTRY_CONTEXT[body.country_code] || AI_MOPED_COUNTRY_CONTEXT.SE}`
         : body.vehicle_type === "Moped class II"
           ? ` ${AI_MOPED_II_COUNTRY_CONTEXT[body.country_code] || AI_MOPED_II_COUNTRY_CONTEXT.SE}`
+          : body.vehicle_type === "Electric scooter"
+            ? ` ${AI_ELECTRIC_SCOOTER_COUNTRY_CONTEXT[body.country_code] || AI_ELECTRIC_SCOOTER_COUNTRY_CONTEXT.SE}`
           : ""),
     country_code: body.country_code,
     max_speed_kmh: body.max_speed_kmh,
@@ -1579,9 +1593,13 @@ async function handleTrafficIncidents(request, env, origin) {
 
 // --- Entry ----------------------------------------------------------
 
-const APK_REDIRECT_PATHS = new Set(["/api/download/apk", "/api/download/apk/1.1.4-127"]);
+const APK_REDIRECT_PATHS = new Set([
+  "/api/download/apk",
+  "/api/download/apk/1.1.4-127",
+  "/api/download/apk/1.1.9-135",
+]);
 const APK_REDIRECT_URL =
-  "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.4/CruizX-1.1.4-127-free.apk";
+  "https://github.com/Kimsjogren/SlowRide/releases/download/v1.1.9/CruizX-1.1.9-135-free.apk";
 
 function handleApkDownload(request, env) {
   // Log download event (fire-and-forget)

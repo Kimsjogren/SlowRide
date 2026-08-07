@@ -22,13 +22,13 @@ import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/services/favorite_places_service.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
+import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/accessible_tap_target.dart';
 import 'package:slowride/widgets/vector_map_widget.dart';
-import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
@@ -94,6 +94,7 @@ class _MapScreenState extends State<MapScreen> {
   List<RouteInstruction> _instructions = const [];
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
+  String _nextManeuverStreetName = '';
   double _distToNextManeuver = 0;
   String _lastSpokenManeuver = '';
   bool _spokenEarlyWarning = false;
@@ -2989,6 +2990,40 @@ class _MapScreenState extends State<MapScreen> {
     return cleaned.isNotEmpty ? cleaned : t;
   }
 
+  String? _localizedManeuverTarget(
+    AppLocalizations l10n,
+    String streetName,
+    String instructionText,
+  ) {
+    final parsedTarget = _maneuverTargetFromText(instructionText);
+    final target = streetName.trim().isNotEmpty
+        ? streetName.trim()
+        : parsedTarget;
+    if (target == null || target.isEmpty) return null;
+
+    final normalized = target
+        .toLowerCase()
+        .replaceFirst(
+          RegExp(
+            r'^(?:the|a|an|den|det|en|ett|le|la|les|un|une|el|los|las|il|lo|i|gli|die|der|das)\s+',
+          ),
+          '',
+        )
+        .trim();
+    return switch (normalized) {
+      'cycleway' ||
+      'cycle path' ||
+      'cycle track' ||
+      'bike path' => l10n.mapManeuverGenericCycleway,
+      'footway' ||
+      'walkway' ||
+      'pedestrian path' => l10n.mapManeuverGenericFootway,
+      'path' || 'trail' => l10n.mapManeuverGenericPath,
+      'road' || 'street' => l10n.mapManeuverGenericRoad,
+      _ => target,
+    };
+  }
+
   String _localizedManeuverPrimaryText(
     AppLocalizations l10n,
     int sign,
@@ -3035,6 +3070,7 @@ class _MapScreenState extends State<MapScreen> {
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
       _nextManeuverText = '';
+      _nextManeuverStreetName = '';
       _nextManeuverSign = 0;
       _distToNextManeuver = 0;
       _routingStatus = l10n.mapRouteReady(
@@ -3389,6 +3425,46 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  Future<bool> _showDailyRouteUpgradePrompt(AppLocalizations l10n) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF0A1F63),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          l10n.routeUpgradePromptTitle,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          l10n.routeUpgradePromptBody,
+          style: const TextStyle(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(
+              l10n.aiConsentDecline,
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFFFB800),
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.paywallUpgradeButton),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   Future<void> _handleMapTap(LatLng destination) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
@@ -3405,19 +3481,22 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    // ── Free tier route limit ─────────────────────────────────────────
-    if (!SubscriptionService.instance.canStartRoute()) {
-      _cancelPendingAiRouteAnalysis();
-      await Navigator.of(context).push(
-        MaterialPageRoute<bool>(
-          builder: (_) => const PaywallScreen(reason: PaywallReason.routeLimit),
-        ),
-      );
-      return;
-    }
-
-    await AdService.instance.showRouteInterstitialIfNeeded();
+    final routeAdShown = await AdService.instance
+        .showRouteInterstitialIfNeeded();
     if (!mounted) return;
+
+    final subscriptions = SubscriptionService.instance;
+    if (routeAdShown && subscriptions.shouldShowDailyRouteUpgradePrompt) {
+      subscriptions.recordDailyRouteUpgradePromptShown();
+      final shouldUpgrade = await _showDailyRouteUpgradePrompt(l10n);
+      if (!mounted) return;
+      if (shouldUpgrade) {
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute<bool>(builder: (_) => const PaywallScreen()));
+        if (!mounted) return;
+      }
+    }
 
     setState(() {
       _isRouting = true;
@@ -3456,6 +3535,7 @@ class _MapScreenState extends State<MapScreen> {
                 'Moped car' => l10n.settingsVehicleMopedCar,
                 'Moped class I' => l10n.settingsVehicleMopedClassI,
                 'Moped class II' => l10n.settingsVehicleMopedClassII,
+                'Electric scooter' => l10n.settingsVehicleElectricScooter,
                 'Tractor' => l10n.settingsVehicleTractor,
                 _ => preferences.vehicleType.value,
               },
@@ -3506,6 +3586,7 @@ class _MapScreenState extends State<MapScreen> {
           'Moped car' => l10n.settingsVehicleMopedCar,
           'Moped class I' => l10n.settingsVehicleMopedClassI,
           'Moped class II' => l10n.settingsVehicleMopedClassII,
+          'Electric scooter' => l10n.settingsVehicleElectricScooter,
           'Tractor' => l10n.settingsVehicleTractor,
           _ => preferences.vehicleType.value,
         };
@@ -3625,6 +3706,7 @@ class _MapScreenState extends State<MapScreen> {
       _isFollowing = false;
       _instructions = const [];
       _nextManeuverText = '';
+      _nextManeuverStreetName = '';
       _nextManeuverSign = 0;
       _distToNextManeuver = 0;
       _currentStreetName = '';
@@ -3662,6 +3744,7 @@ class _MapScreenState extends State<MapScreen> {
 
     int? newSign;
     String? newText;
+    String? newManeuverStreetName;
     double? newDist;
     double? newRemaining;
     String? newStreetName;
@@ -3709,9 +3792,11 @@ class _MapScreenState extends State<MapScreen> {
           }
           newSign = next.sign;
           newText = next.text;
+          newManeuverStreetName = next.streetName;
           newDist = dist;
         } else {
           newText = '';
+          newManeuverStreetName = '';
         }
       }
     }
@@ -3744,6 +3829,9 @@ class _MapScreenState extends State<MapScreen> {
       }
       if (newSign != null) _nextManeuverSign = newSign;
       if (newText != null) _nextManeuverText = newText;
+      if (newManeuverStreetName != null) {
+        _nextManeuverStreetName = newManeuverStreetName;
+      }
       if (newDist != null) _distToNextManeuver = newDist;
       if (newStreetName != null) _currentStreetName = newStreetName;
 
@@ -4594,7 +4682,9 @@ class _MapScreenState extends State<MapScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (_maneuverTargetFromText(
+                                    if (_localizedManeuverTarget(
+                                          l10n,
+                                          _nextManeuverStreetName,
                                           _nextManeuverText,
                                         ) !=
                                         null)
@@ -4602,7 +4692,9 @@ class _MapScreenState extends State<MapScreen> {
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
                                           l10n.mapManeuverTowardRoad(
-                                            _maneuverTargetFromText(
+                                            _localizedManeuverTarget(
+                                              l10n,
+                                              _nextManeuverStreetName,
                                               _nextManeuverText,
                                             )!,
                                           ),
@@ -4826,42 +4918,6 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
 
-          // Re-center button — appears when user pans away during navigation.
-          if (_isNavigating && !_isFollowing)
-            Positioned(
-              right: 14,
-              bottom: 345,
-              child: AccessibleTapTarget(
-                label: l10n.a11yCenterOnLocation,
-                onTap: () {
-                  setState(() => _isFollowing = true);
-                },
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xEE0A1F63),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF3AA8FF),
-                      width: 1.5,
-                    ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black45,
-                        blurRadius: 8,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.my_location,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
           // ── Current street name pill ────────────────────────────────
           if (_isNavigating && _currentStreetName.isNotEmpty)
             Positioned(

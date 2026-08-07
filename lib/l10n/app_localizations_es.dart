@@ -45,7 +45,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get splashReady => 'Listo';
 
   @override
-  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centrar el mapa en mi ubicación';
@@ -609,6 +609,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsVehicleMopedClassII => 'Ciclomotor clase II (25 km/h)';
 
   @override
+  String get settingsVehicleElectricScooter => 'Patinete eléctrico';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Utiliza únicamente un patinete eléctrico autorizado donde lo permitan las normas locales. La señalización, las ordenanzas municipales y las zonas de alquiler siempre prevalecen sobre la ruta.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
 
   @override
@@ -638,7 +644,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Desbloquea todas las funciones con CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Rutas ilimitadas';
+  String get settingsProFeatureRoutes => 'Más análisis de rutas con IA';
 
   @override
   String get settingsProFeatureConvoy => 'Miembros de convoy ilimitados';
@@ -1008,6 +1014,18 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get mapManeuverGenericCycleway => 'el carril bici';
+
+  @override
+  String get mapManeuverGenericFootway => 'la vía peatonal';
+
+  @override
+  String get mapManeuverGenericPath => 'el sendero';
+
+  @override
+  String get mapManeuverGenericRoad => 'la carretera';
+
+  @override
   String get mapSimulateButton => 'Simular';
 
   @override
@@ -1225,10 +1243,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Rutas por día';
+  String get paywallFeatureRoutes => 'Rutas de navegación';
 
   @override
-  String get paywallFreeRouteLimit => '4 rutas';
+  String get paywallFreeRouteLimit => 'Ilimitadas';
 
   @override
   String get paywallProRouteLimit => 'Ilimitadas';
@@ -1252,10 +1270,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paywallProAds => 'Ninguno';
 
   @override
-  String get paywallRouteLimitTitle => 'Límite de rutas alcanzado';
+  String get paywallRouteLimitTitle => 'Rutas ilimitadas';
 
   @override
-  String get paywallRouteLimitBody => 'Los usuarios gratuitos pueden calcular 4 rutas por día. Actualiza a Pro para navegación ilimitada.';
+  String get paywallRouteLimitBody => 'Las rutas de navegación también son ilimitadas en la versión gratuita.';
+
+  @override
+  String get routeUpgradePromptTitle => '¿Continuar sin anuncios?';
+
+  @override
+  String get routeUpgradePromptBody => 'Has creado dos rutas hoy. La versión gratuita incluye rutas ilimitadas, mientras que Pro elimina los anuncios y desbloquea más funciones. ¿Quieres actualizar?';
 
   @override
   String get paywallConvoyLimitTitle => 'Límite de convoy alcanzado';
@@ -1300,8 +1324,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileUpgradeToPro => 'Actualizar a Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Rutas hoy: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Rutas hoy: $count';
   }
 
   @override

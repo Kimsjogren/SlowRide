@@ -45,7 +45,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.7 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centrera kartan på min position';
@@ -609,6 +609,12 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsVehicleMopedClassII => 'Moped klass II (25 km/h)';
 
   @override
+  String get settingsVehicleElectricScooter => 'Elsparkcykel';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Använd endast en trafikgodkänd elsparkcykel där lokala regler tillåter det. Skyltning, kommunala regler och hyrzoner gäller alltid före rutten.';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
 
   @override
@@ -638,7 +644,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Låsa upp alla funktioner med CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Obegränsade rutter';
+  String get settingsProFeatureRoutes => 'Fler AI-ruttanalyser';
 
   @override
   String get settingsProFeatureConvoy => 'Obegränsat antal konvojmedlemmar';
@@ -1008,6 +1014,18 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
+  String get mapManeuverGenericCycleway => 'cykelvägen';
+
+  @override
+  String get mapManeuverGenericFootway => 'gångvägen';
+
+  @override
+  String get mapManeuverGenericPath => 'stigen';
+
+  @override
+  String get mapManeuverGenericRoad => 'vägen';
+
+  @override
   String get mapSimulateButton => 'Simulera';
 
   @override
@@ -1225,10 +1243,10 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Rutter per dag';
+  String get paywallFeatureRoutes => 'Navigationsrutter';
 
   @override
-  String get paywallFreeRouteLimit => '4 rutter';
+  String get paywallFreeRouteLimit => 'Obegränsat';
 
   @override
   String get paywallProRouteLimit => 'Obegränsat';
@@ -1252,10 +1270,16 @@ class AppLocalizationsSv extends AppLocalizations {
   String get paywallProAds => 'Ingen';
 
   @override
-  String get paywallRouteLimitTitle => 'Dagsgränsen nådd';
+  String get paywallRouteLimitTitle => 'Obegränsade rutter';
 
   @override
-  String get paywallRouteLimitBody => 'Free-användare kan beräkna 4 rutter per dag. Uppgradera till Pro för obegränsad navigering.';
+  String get paywallRouteLimitBody => 'Navigationsrutter är obegränsade även i Free-versionen.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Kör vidare utan reklam?';
+
+  @override
+  String get routeUpgradePromptBody => 'Du har skapat två rutter idag. Free har obegränsade rutter, men Pro tar bort reklamen och låser upp fler funktioner. Vill du uppgradera?';
 
   @override
   String get paywallConvoyLimitTitle => 'Konvojgräns nådd';
@@ -1300,8 +1324,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get profileUpgradeToPro => 'Uppgradera till Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Rutter idag: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Rutter idag: $count';
   }
 
   @override
