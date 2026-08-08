@@ -32,7 +32,7 @@ Future<void> main() async {
 
   PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('PlatformDispatcher error: $error\n$stack');
-    return false;
+    return true;
   };
 
   try {

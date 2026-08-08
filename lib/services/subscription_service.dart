@@ -608,8 +608,9 @@ class SubscriptionService {
       return true;
     }
 
-    final available = await _iap.isAvailable();
-    if (!available) return false;
+    if (!await _ensureStoreReady()) {
+      return false;
+    }
 
     final completer = Completer<bool>();
     _restoreCompleter = completer;

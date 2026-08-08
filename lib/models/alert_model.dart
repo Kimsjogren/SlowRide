@@ -188,9 +188,12 @@ class AlertModel {
     Iterable<AlertModel> alerts,
     LatLng position, {
     String? excludedId,
+    AlertModel? dismissedAlert,
   }) {
     final candidates = alerts.where((alert) {
       return alert.id != excludedId &&
+          !(dismissedAlert != null &&
+              alert.matchesNearbyWarning(dismissedAlert)) &&
           alert.type.showsProximityWarning &&
           alert.distanceTo(position) <= alert.type.warningRadiusMeters;
     }).toList();
@@ -201,6 +204,16 @@ class AlertModel {
       return a.distanceTo(position).compareTo(b.distanceTo(position));
     });
     return candidates.first;
+  }
+
+  /// Treats warnings of the same type in nearly the same place as the same
+  /// proximity banner, even if a backend refresh changes the id.
+  bool matchesNearbyWarning(
+    AlertModel other, {
+    double maxDistanceMeters = 120,
+  }) {
+    return type == other.type &&
+        distanceTo(other.position) <= maxDistanceMeters;
   }
 
   /// Haversine distance in metres to [other].

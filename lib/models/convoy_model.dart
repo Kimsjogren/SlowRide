@@ -62,8 +62,8 @@ class ConvoyModel {
       isJoined: map['isJoined'] == true,
       isPublic:
           map['isPublic'] == true || map['visibility']?.toString() == 'public',
-      meetupLat: (map['meetupLat'] ?? map['meetup_lat'] as num?)?.toDouble(),
-      meetupLng: (map['meetupLng'] ?? map['meetup_lng'] as num?)?.toDouble(),
+      meetupLat: ((map['meetupLat'] ?? map['meetup_lat']) as num?)?.toDouble(),
+      meetupLng: ((map['meetupLng'] ?? map['meetup_lng']) as num?)?.toDouble(),
       meetupLabel:
           (map['meetupLabel'] ?? map['meetup_label'])?.toString() ?? '',
       startsAt: DateTime.tryParse(

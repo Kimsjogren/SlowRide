@@ -45,7 +45,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get splashReady => 'Pronto';
 
   @override
-  String get splashVersionLine => 'v1.1.9 | CruizX di KimTechTool';
+  String get splashVersionLine => 'v1.1.8 | CruizX di KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centra la mappa sulla mia posizione';

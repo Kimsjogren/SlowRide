@@ -17,7 +17,7 @@ void main() {
     await tester.pumpWidget(const CruizXApp());
 
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.text('v1.1.9 | CruizX by KimTechTool'), findsOneWidget);
+    expect(find.text('v1.1.8 | CruizX by KimTechTool'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();

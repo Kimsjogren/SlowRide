@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.9+139
+version: 1.1.8+143
 
 environment:
   sdk: ^3.11.0
@@ -33,43 +33,36 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  flutter_map: any
-  geolocator: any
-  latlong2: any
-  http: any
-  shared_preferences: any
-  firebase_core: any
-  cloud_firestore: any
-  supabase_flutter: any
-  google_mobile_ads: any
-  permission_handler: any
-  flutter_local_notifications: any
   app_tracking_transparency: any
-  url_launcher: any
-  image_picker: any
-  image_cropper: any
-  share_plus: any
-  package_info_plus: ^10.2.0
-  flutter_tts: ^4.2.5
-  flutter_svg: any
-  in_app_purchase: ^3.3.0
-  maplibre_gl: ^0.26.2
+  firebase_core: any
   flutter_compass: ^0.8.1
+  flutter_local_notifications: any
+  flutter_map: any
+  flutter_svg: any
+  flutter_tts: ^4.2.5
+  geolocator: any
+  google_mobile_ads: any
+  http: any
+  image_cropper: any
+  image_picker: any
+  in_app_purchase: ^3.3.0
+  intl: ^0.20.2
+  latlong2: any
+  maplibre_gl: ^0.26.2
+  package_info_plus: ^10.2.0
+  permission_handler: any
+  share_plus: any
+  shared_preferences: any
+  supabase_flutter: any
+  url_launcher: any
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  dependency_validator: ^5.0.5
   flutter_launcher_icons: any
+  very_good_analysis: ^10.3.0
 
 flutter_launcher_icons:
   android: true

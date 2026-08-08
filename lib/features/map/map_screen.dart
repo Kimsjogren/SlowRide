@@ -36,6 +36,7 @@ import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
+import 'package:slowride/widgets/navigation_eta_badge.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -104,6 +105,7 @@ class _MapScreenState extends State<MapScreen> {
   // Cumulative distance from route start to each point (metres).
   List<double> _cumulativeDist = const [];
   double _totalRouteDistM = 0;
+  double _remainingDistM = 0;
   // Per-trip tracking: accumulated while _isNavigating is true.
   DateTime? _tripStartTime;
   LatLng? _lastNavPos;
@@ -139,7 +141,7 @@ class _MapScreenState extends State<MapScreen> {
   List<LatLng> _chargingStations = const [];
   // Nearest alert within 400 m while navigating (for proximity warning).
   AlertModel? _nearbyAlert;
-  String? _dismissedNearbyAlertId;
+  AlertModel? _dismissedNearbyAlert;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -2584,6 +2586,56 @@ class _MapScreenState extends State<MapScreen> {
     return rawDelay.clamp(0.0, cap);
   }
 
+  String _formatEta() {
+    final l10n = AppLocalizations.of(context)!;
+    if (!_isNavigating || _remainingDistM <= 50) return '';
+
+    double remainingSec;
+    final lastMovement = _etaLastMovementAt;
+    final hasFreshLiveSpeed =
+        _etaSmoothedSpeedKmh > 0 &&
+        lastMovement != null &&
+        DateTime.now().difference(lastMovement) <= _etaPauseGrace;
+
+    if (hasFreshLiveSpeed) {
+      final baseSec = _remainingDistM / (_etaSmoothedSpeedKmh / 3.6);
+      final nearestIdx = _lastNearestIdx.clamp(0, _routePoints.length - 1);
+      int instructionIndex = 0;
+      for (int i = 0; i < _instructions.length - 1; i++) {
+        if (_instructions[i + 1].pointIndex > nearestIdx) {
+          instructionIndex = i;
+          break;
+        }
+        instructionIndex = i + 1;
+      }
+      final maneuvers = _remainingManeuversFrom(instructionIndex);
+      remainingSec =
+          baseSec +
+          _etaManeuverDelaySeconds(
+            turns: maneuvers.$1,
+            complexTurns: maneuvers.$2,
+            remainingMeters: _remainingDistM,
+          );
+    } else if (_activeRoute != null && _totalRouteDistM > 0) {
+      final routeFraction = (_remainingDistM / _totalRouteDistM).clamp(
+        0.0,
+        1.0,
+      );
+      remainingSec = _activeRoute!.durationSeconds * routeFraction;
+    } else {
+      return '';
+    }
+
+    final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
+    final h = arrival.hour.toString().padLeft(2, '0');
+    final m = arrival.minute.toString().padLeft(2, '0');
+    final hhmm = '$h:$m';
+    final minLeft = (remainingSec / 60).ceil();
+    if (minLeft < 1) return l10n.convoyEtaArrived;
+    if (minLeft < 60) return l10n.convoyEtaMinutes(minLeft, hhmm);
+    return l10n.convoyEtaHours(minLeft ~/ 60, minLeft % 60, hhmm);
+  }
+
   Widget _mapCircleButton({
     required VoidCallback onTap,
     required String semanticLabel,
@@ -3066,6 +3118,7 @@ class _MapScreenState extends State<MapScreen> {
       _activeRoute = route;
       _cumulativeDist = cumDist;
       _totalRouteDistM = totalDist;
+      _remainingDistM = totalDist;
       _instructions = route.instructions;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
@@ -3712,15 +3765,34 @@ class _MapScreenState extends State<MapScreen> {
       _currentStreetName = '';
       _cumulativeDist = const [];
       _totalRouteDistM = 0;
+      _remainingDistM = 0;
       _tripStartTime = null;
       _tripDistanceM = 0;
       _lastNavPos = null;
       _etaSmoothedSpeedKmh = 0;
       _etaLastMovementAt = null;
       _nearbyAlert = null;
-      _dismissedNearbyAlertId = null;
+      _dismissedNearbyAlert = null;
       _isSimulating = false;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
+    });
+  }
+
+  void _pruneDismissedNearbyAlert(LatLng currentPos) {
+    final dismissed = _dismissedNearbyAlert;
+    if (dismissed == null) return;
+    final releaseDistance = dismissed.type.warningRadiusMeters + 150;
+    if (dismissed.distanceTo(currentPos) > releaseDistance) {
+      _dismissedNearbyAlert = null;
+    }
+  }
+
+  void _dismissNearbyAlert() {
+    final nearbyAlert = _nearbyAlert;
+    if (nearbyAlert == null) return;
+    setState(() {
+      _dismissedNearbyAlert = nearbyAlert;
+      _nearbyAlert = null;
     });
   }
 
@@ -3736,6 +3808,8 @@ class _MapScreenState extends State<MapScreen> {
     if (_isNavigating) {
       SlowRoadService.instance.addPoint(currentPos, newSpeed);
     }
+
+    _pruneDismissedNearbyAlert(currentPos);
 
     double newTripDist = _tripDistanceM;
     if (_isNavigating && _lastNavPos != null) {
@@ -3840,6 +3914,7 @@ class _MapScreenState extends State<MapScreen> {
         _announceManeuver(newText, newDist);
       }
       if (newRemaining != null) {
+        _remainingDistM = newRemaining;
         final remKm = newRemaining / 1000;
         final distStr = remKm >= 1.0
             ? '${remKm.toStringAsFixed(1)} km ${l10n.mapRemaining}'
@@ -3864,7 +3939,7 @@ class _MapScreenState extends State<MapScreen> {
       _nearbyAlert = AlertModel.mostRelevantNearby(
         _alerts,
         currentPos,
-        excludedId: _dismissedNearbyAlertId,
+        dismissedAlert: _dismissedNearbyAlert,
       );
     });
 
@@ -4602,7 +4677,7 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       padding: const EdgeInsets.fromLTRB(12, 10, 14, 11),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Builder(
                             builder: (_) {
@@ -4712,6 +4787,8 @@ class _MapScreenState extends State<MapScreen> {
                               },
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          NavigationEtaBadge(eta: _formatEta()),
                         ],
                       ),
                     ),
@@ -4728,25 +4805,31 @@ class _MapScreenState extends State<MapScreen> {
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: _nearbyAlert!.type == AlertType.roadClosure
                           ? const Color(0xF2B71C1C)
-                          : const Color(0xEEF57F17),
-                      border: const Border(
-                        bottom: BorderSide(color: Color(0x66FFCC02), width: 1),
-                      ),
+                          : const Color(0xF2D97706),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                      horizontal: 12,
+                      vertical: 8,
                     ),
                     child: Row(
                       children: [
                         Text(
                           _nearbyAlert!.type.emoji,
-                          style: const TextStyle(fontSize: 22),
+                          style: const TextStyle(fontSize: 18),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Builder(
                             builder: (ctx) {
@@ -4761,23 +4844,23 @@ class _MapScreenState extends State<MapScreen> {
                                 ),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  height: 1.15,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               );
                             },
                           ),
                         ),
                         AccessibleTapTarget(
                           label: l10n.a11yDismissAlert,
-                          onTap: () => setState(() {
-                            _dismissedNearbyAlertId = _nearbyAlert!.id;
-                            _nearbyAlert = null;
-                          }),
+                          onTap: _dismissNearbyAlert,
                           child: const Icon(
                             Icons.close,
                             color: Colors.white70,
-                            size: 18,
+                            size: 16,
                           ),
                         ),
                       ],

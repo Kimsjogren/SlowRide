@@ -1165,6 +1165,15 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
 
   return [
     _MarkerVehicleGroup(
+      title: l10n.settingsMapMarkerCategoryClassic,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCategoryClassic,
+          options: byCategory(MapMarkerCategory.classic),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
       title: l10n.settingsVehicleAtractor,
       brands: [
         _MarkerBrandGroup(

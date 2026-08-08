@@ -38,6 +38,7 @@ import 'package:slowride/widgets/user_location_marker.dart';
 import 'package:slowride/widgets/accessible_tap_target.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
+import 'package:slowride/widgets/navigation_eta_badge.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -117,7 +118,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   AlertModel? _nearbyAlert;
-  String? _dismissedNearbyAlertId;
+  AlertModel? _dismissedNearbyAlert;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -776,10 +777,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             }
 
             // Proximity check.
+            _pruneDismissedNearbyAlert(point);
             _nearbyAlert = AlertModel.mostRelevantNearby(
               _alerts,
               point,
-              excludedId: _dismissedNearbyAlertId,
+              dismissedAlert: _dismissedNearbyAlert,
             );
 
             // Only call setState when UI-visible text actually changes, or
@@ -3802,6 +3804,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _etaLastMovementAt = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
+      _nearbyAlert = null;
+      _dismissedNearbyAlert = null;
+    });
+  }
+
+  void _pruneDismissedNearbyAlert(LatLng currentPos) {
+    final dismissed = _dismissedNearbyAlert;
+    if (dismissed == null) return;
+    final releaseDistance = dismissed.type.warningRadiusMeters + 150;
+    if (dismissed.distanceTo(currentPos) > releaseDistance) {
+      _dismissedNearbyAlert = null;
+    }
+  }
+
+  void _dismissNearbyAlert() {
+    final nearbyAlert = _nearbyAlert;
+    if (nearbyAlert == null) return;
+    setState(() {
+      _dismissedNearbyAlert = nearbyAlert;
+      _nearbyAlert = null;
     });
   }
 
@@ -4740,6 +4762,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ),
                                     ),
                                     child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Icon(
                                           _shareLiveLocation
@@ -5213,6 +5237,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                             },
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
+                                        NavigationEtaBadge(eta: _formatEta()),
                                       ],
                                     ),
                                   ),
@@ -5230,30 +5256,35 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               child: Material(
                                 color: Colors.transparent,
                                 child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color:
                                         _nearbyAlert!.type ==
                                             AlertType.roadClosure
                                         ? const Color(0xF2B71C1C)
-                                        : const Color(0xEEF57F17),
-                                    border: const Border(
-                                      bottom: BorderSide(
-                                        color: Color(0x66FFCC02),
-                                        width: 1,
+                                        : const Color(0xF2D97706),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
                                   child: Row(
                                     children: [
                                       Text(
                                         _nearbyAlert!.type.emoji,
-                                        style: const TextStyle(fontSize: 22),
+                                        style: const TextStyle(fontSize: 18),
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Builder(
                                           builder: (ctx) {
@@ -5271,24 +5302,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               ),
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                                height: 1.15,
                                               ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             );
                                           },
                                         ),
                                       ),
                                       AccessibleTapTarget(
                                         label: l10n.a11yDismissAlert,
-                                        onTap: () => setState(() {
-                                          _dismissedNearbyAlertId =
-                                              _nearbyAlert!.id;
-                                          _nearbyAlert = null;
-                                        }),
+                                        onTap: _dismissNearbyAlert,
                                         child: const Icon(
                                           Icons.close,
                                           color: Colors.white70,
-                                          size: 18,
+                                          size: 16,
                                         ),
                                       ),
                                     ],
