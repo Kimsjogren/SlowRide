@@ -22,13 +22,13 @@ class SettingsScreen extends StatelessWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(LegalLinks.privacyPolicy);
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
-  static const double _settingsActionCardHeight = 96;
+  static const double _settingsActionCardMinHeight = 84;
 
   static Widget _settingsActionIcon(IconData icon) {
     return CircleAvatar(
-      radius: 20,
+      radius: 18,
       backgroundColor: const Color(0xFF1E6BFF),
-      child: Icon(icon, color: Colors.white, size: 22),
+      child: Icon(icon, color: Colors.white, size: 20),
     );
   }
 
@@ -56,7 +56,11 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -65,7 +69,7 @@ class SettingsScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -159,6 +163,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showVectorMapToggle =
+        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
 
@@ -166,11 +172,12 @@ class SettingsScreen extends StatelessWidget {
     const valueStyle = TextStyle(color: Colors.white, fontSize: 16);
 
     return AppBackground(
+      logoHeight: 74,
       child: Column(
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               children: [
                 Container(
                   width: double.infinity,
@@ -617,7 +624,9 @@ class SettingsScreen extends StatelessWidget {
                 // Voice navigation toggle
                 Container(
                   width: double.infinity,
-                  height: _settingsActionCardHeight,
+                  constraints: const BoxConstraints(
+                    minHeight: _settingsActionCardMinHeight,
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.08),
@@ -639,43 +648,49 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                const SizedBox(height: 12),
-                // Vector map toggle
-                ValueListenableBuilder<bool>(
-                  valueListenable: UserPreferencesService.instance.useVectorMap,
-                  builder: (context, useVector, _) {
-                    return Container(
-                      width: double.infinity,
-                      height: _settingsActionCardHeight,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                if (!showVectorMapToggle) const SizedBox(height: 16),
+                if (showVectorMapToggle) ...[
+                  const SizedBox(height: 12),
+                  // Vector map toggle
+                  ValueListenableBuilder<bool>(
+                    valueListenable:
+                        UserPreferencesService.instance.useVectorMap,
+                    builder: (context, useVector, _) {
+                      return Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(
+                          minHeight: _settingsActionCardMinHeight,
                         ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: _settingsToggleContent(
-                          icon: Icons.map_outlined,
-                          title: l10n.settingsVectorMap,
-                          subtitle: useVector
-                              ? l10n.settingsVectorMapOn
-                              : l10n.settingsVectorMapOff,
-                          value: useVector,
-                          onChanged: (v) =>
-                              UserPreferencesService
-                                      .instance
-                                      .useVectorMap
-                                      .value =
-                                  v,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: _settingsToggleContent(
+                            icon: Icons.map_outlined,
+                            title: l10n.settingsVectorMap,
+                            subtitle: useVector
+                                ? l10n.settingsVectorMapOn
+                                : l10n.settingsVectorMapOff,
+                            value: useVector,
+                            onChanged: (v) =>
+                                UserPreferencesService
+                                        .instance
+                                        .useVectorMap
+                                        .value =
+                                    v,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 // Parent Mode card
                 GestureDetector(
                   onTap: () {
@@ -687,7 +702,9 @@ class SettingsScreen extends StatelessWidget {
                   },
                   child: Container(
                     width: double.infinity,
-                    height: _settingsActionCardHeight,
+                    constraints: const BoxConstraints(
+                      minHeight: _settingsActionCardMinHeight,
+                    ),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
@@ -748,7 +765,9 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     child: Container(
                       width: double.infinity,
-                      height: _settingsActionCardHeight,
+                      constraints: const BoxConstraints(
+                        minHeight: _settingsActionCardMinHeight,
+                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.08),
@@ -1029,8 +1048,8 @@ class _MarkerStyleChoice extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        width: 102,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        width: 88,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: selected ? 0.16 : 0.08),
           borderRadius: BorderRadius.circular(14),
@@ -1110,8 +1129,19 @@ class _MarkerBrandSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (brand.title.isNotEmpty) ...[
+          Text(
+            brand.title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.78),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         SizedBox(
-          height: 96,
+          height: 84,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: brand.options.length,
@@ -1129,7 +1159,7 @@ class _MarkerBrandSection extends StatelessWidget {
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 74,
+                  size: 54,
                   selected: selected,
                 ),
               );

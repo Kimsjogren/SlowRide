@@ -15,6 +15,9 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "CruizXMapKitView") {
       CruizXMapKitViewPlugin.register(with: registrar)
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AppleMapSearchPlugin") {
+      AppleMapSearchPlugin.register(with: registrar)
+    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "CruizXCarPlayBridge") {
       CarPlayManager.shared.configureFlutterBridge(with: registrar.messenger())
     }

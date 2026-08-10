@@ -46,7 +46,7 @@ class UserLocationMarker extends StatelessWidget {
     super.key,
     required this.headingNotifier,
     required this.lockNorthUp,
-    this.size = 42,
+    this.size = 38,
     this.backgroundColor = const Color(0xFF1E90FF),
     this.borderColor = Colors.white,
     this.borderWidth = 2.5,
@@ -91,7 +91,8 @@ class UserLocationMarker extends StatelessWidget {
       category: MapMarkerCategory.classic,
       assetPath: null,
       labelBuilder: _dotLabel,
-      tint: Color(0xFF25C281),
+      rotatesWithHeading: true,
+      tint: Color(0xFF19A7FF),
     ),
     MapMarkerOption(
       style: MapMarkerStyle.scooterBlack,
@@ -411,7 +412,7 @@ class UserLocationMarker extends StatelessWidget {
 
   static Widget stylePreview(
     MapMarkerStyle style, {
-    double size = 56,
+    double size = 50,
     bool selected = false,
   }) {
     final option = optionFor(style);
@@ -432,7 +433,7 @@ class UserLocationMarker extends StatelessWidget {
             final rotatesWithHeading =
                 !lockNorthUp && option.rotatesWithHeading;
             final tint = option.tint ?? backgroundColor;
-            final previewSize = option.assetPath != null ? size * 1.12 : size;
+            final previewSize = size;
 
             return Center(
               child: Transform.rotate(
@@ -441,7 +442,7 @@ class UserLocationMarker extends StatelessWidget {
                   option: option,
                   size: previewSize,
                   selected: true,
-                  assetScale: option.assetPath != null ? 1.48 : 1.16,
+                  assetScale: option.assetPath != null ? 1.0 : 1.08,
                   forceTint: tint,
                   borderColor: borderColor,
                   borderWidth: borderWidth,
@@ -461,7 +462,7 @@ class _MarkerPreview extends StatelessWidget {
     required this.option,
     required this.size,
     required this.selected,
-    this.assetScale = 1.16,
+    this.assetScale = 1.0,
     this.forceTint,
     this.borderColor,
     this.borderWidth,
@@ -489,8 +490,8 @@ class _MarkerPreview extends StatelessWidget {
           children: [
             if (effectiveGlow)
               Container(
-                width: size * 0.70,
-                height: size * 0.70,
+                width: size * 0.56,
+                height: size * 0.56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -498,8 +499,8 @@ class _MarkerPreview extends StatelessWidget {
                       color: Colors.white.withValues(
                         alpha: selected ? 0.20 : 0.12,
                       ),
-                      blurRadius: selected ? 22 : 14,
-                      spreadRadius: selected ? 3 : 1,
+                      blurRadius: selected ? 18 : 12,
+                      spreadRadius: selected ? 2 : 0.5,
                     ),
                   ],
                 ),
@@ -516,6 +517,15 @@ class _MarkerPreview extends StatelessWidget {
             ),
           ],
         ),
+      );
+    }
+
+    if (option.style == MapMarkerStyle.dot) {
+      return _FlatClassicMarker(
+        size: size,
+        tint: forceTint ?? option.tint ?? const Color(0xFF19A7FF),
+        borderColor: borderColor ?? (selected ? Colors.white : Colors.white70),
+        showOuterGlow: showOuterGlow ?? selected,
       );
     }
 
@@ -540,21 +550,81 @@ class _MarkerPreview extends StatelessWidget {
         ),
         border: Border.all(
           color: borderColor ?? (selected ? Colors.white : Colors.white70),
-          width: borderWidth ?? (selected ? 2.0 : 1.2),
+          width: borderWidth ?? (selected ? 1.8 : 1.0),
         ),
         boxShadow: [
           if (showOuterGlow ?? selected)
             BoxShadow(
               color: tint.withValues(alpha: 0.36),
-              blurRadius: 18,
-              spreadRadius: 2,
+              blurRadius: 14,
+              spreadRadius: 1.5,
             ),
         ],
       ),
       child: Icon(
         icon,
         color: Colors.white,
-        size: option.style == MapMarkerStyle.dot ? size * 0.42 : size * 0.56,
+        size: size * 0.50,
+      ),
+    );
+  }
+}
+
+class _FlatClassicMarker extends StatelessWidget {
+  const _FlatClassicMarker({
+    required this.size,
+    required this.tint,
+    required this.borderColor,
+    required this.showOuterGlow,
+  });
+
+  final double size;
+  final Color tint;
+  final Color borderColor;
+  final bool showOuterGlow;
+
+  @override
+  Widget build(BuildContext context) {
+    const outlineOffsets = <Offset>[
+      Offset(-1.2, 0),
+      Offset(1.2, 0),
+      Offset(0, -1.2),
+      Offset(0, 1.2),
+    ];
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (showOuterGlow)
+            Icon(
+              Icons.navigation_rounded,
+              color: tint.withValues(alpha: 0.28),
+              size: size * 0.92,
+              shadows: [
+                Shadow(
+                  color: tint.withValues(alpha: 0.42),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+          for (final offset in outlineOffsets)
+            Transform.translate(
+              offset: offset,
+              child: Icon(
+                Icons.navigation_rounded,
+                color: borderColor,
+                size: size * 0.72,
+              ),
+            ),
+          Icon(
+            Icons.navigation_rounded,
+            color: tint,
+            size: size * 0.72,
+          ),
+        ],
       ),
     );
   }

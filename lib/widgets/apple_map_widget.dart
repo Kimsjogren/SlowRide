@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/services/user_preferences_service.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 class AppleMapWidget extends StatefulWidget {
   const AppleMapWidget({
     super.key,
     required this.locationNotifier,
     required this.headingNotifier,
+    required this.markerStyle,
     this.destination,
     this.routePoints = const [],
     this.alerts = const [],
@@ -27,6 +32,7 @@ class AppleMapWidget extends StatefulWidget {
 
   final ValueNotifier<LatLng?> locationNotifier;
   final ValueNotifier<double> headingNotifier;
+  final MapMarkerStyle markerStyle;
   final LatLng? destination;
   final List<LatLng> routePoints;
   final List<AlertModel> alerts;
@@ -46,35 +52,42 @@ class AppleMapWidget extends StatefulWidget {
 
 class _AppleMapWidgetState extends State<AppleMapWidget> {
   MethodChannel? _channel;
-  Timer? _syncDebounce;
+  Timer? _stateSyncDebounce;
+  Timer? _headingSyncDebounce;
+  Timer? _userPanCooldownTimer;
   String? _lastPayloadJson;
+  double? _lastHeading;
+  bool _userPanning = false;
 
   @override
   void initState() {
     super.initState();
-    widget.locationNotifier.addListener(_scheduleSync);
-    widget.headingNotifier.addListener(_scheduleSync);
+    widget.locationNotifier.addListener(_scheduleStateSync);
+    widget.headingNotifier.addListener(_scheduleHeadingSync);
   }
 
   @override
   void didUpdateWidget(covariant AppleMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.locationNotifier != widget.locationNotifier) {
-      oldWidget.locationNotifier.removeListener(_scheduleSync);
-      widget.locationNotifier.addListener(_scheduleSync);
+      oldWidget.locationNotifier.removeListener(_scheduleStateSync);
+      widget.locationNotifier.addListener(_scheduleStateSync);
     }
     if (oldWidget.headingNotifier != widget.headingNotifier) {
-      oldWidget.headingNotifier.removeListener(_scheduleSync);
-      widget.headingNotifier.addListener(_scheduleSync);
+      oldWidget.headingNotifier.removeListener(_scheduleHeadingSync);
+      widget.headingNotifier.addListener(_scheduleHeadingSync);
     }
-    _scheduleSync();
+    _scheduleStateSync();
+    _scheduleHeadingSync();
   }
 
   @override
   void dispose() {
-    widget.locationNotifier.removeListener(_scheduleSync);
-    widget.headingNotifier.removeListener(_scheduleSync);
-    _syncDebounce?.cancel();
+    widget.locationNotifier.removeListener(_scheduleStateSync);
+    widget.headingNotifier.removeListener(_scheduleHeadingSync);
+    _stateSyncDebounce?.cancel();
+    _headingSyncDebounce?.cancel();
+    _userPanCooldownTimer?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }
@@ -82,7 +95,8 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
   void _onPlatformViewCreated(int id) {
     _channel = MethodChannel('cruizx/mapkit_view_$id');
     _channel?.setMethodCallHandler(_handleMethodCall);
-    _scheduleSync(immediate: true);
+    _scheduleStateSync(immediate: true);
+    _scheduleHeadingSync(immediate: true);
   }
 
   Future<void> _handleMethodCall(MethodCall call) async {
@@ -103,18 +117,33 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
     }
   }
 
-  void _scheduleSync({bool immediate = false}) {
+  void _scheduleStateSync({bool immediate = false}) {
     if (_channel == null) return;
     if (immediate) {
-      _syncDebounce?.cancel();
+      _stateSyncDebounce?.cancel();
       unawaited(_syncState());
       return;
     }
 
-    _syncDebounce?.cancel();
-    _syncDebounce = Timer(
+    _stateSyncDebounce?.cancel();
+    _stateSyncDebounce = Timer(
       const Duration(milliseconds: 90),
       () => unawaited(_syncState()),
+    );
+  }
+
+  void _scheduleHeadingSync({bool immediate = false}) {
+    if (_channel == null) return;
+    if (immediate) {
+      _headingSyncDebounce?.cancel();
+      unawaited(_syncHeading());
+      return;
+    }
+
+    _headingSyncDebounce?.cancel();
+    _headingSyncDebounce = Timer(
+      const Duration(milliseconds: 24),
+      () => unawaited(_syncHeading()),
     );
   }
 
@@ -124,7 +153,7 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
 
     final payload = <String, Object?>{
       'location': _encodePoint(widget.locationNotifier.value),
-      'heading': widget.headingNotifier.value,
+      'markerStyle': _encodeMarkerStyle(widget.markerStyle),
       'destination': _encodePoint(widget.destination),
       'routePoints': widget.routePoints
           .map(
@@ -154,11 +183,52 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
     }
   }
 
+  Future<void> _syncHeading() async {
+    final channel = _channel;
+    if (channel == null) return;
+    if (!widget.followUser) {
+      _lastHeading = null;
+      return;
+    }
+
+    final heading = widget.headingNotifier.value;
+    if (_lastHeading == heading) return;
+
+    try {
+      await channel.invokeMethod<void>('setHeading', <String, Object?>{
+        'heading': heading,
+      });
+      _lastHeading = heading;
+    } on MissingPluginException {
+      // The native view only exists on iOS.
+    } catch (error, stackTrace) {
+      debugPrint('AppleMapWidget heading sync failed: $error\n$stackTrace');
+    }
+  }
+
   Map<String, double>? _encodePoint(LatLng? point) {
     if (point == null) return null;
     return {
       'latitude': point.latitude,
       'longitude': point.longitude,
+    };
+  }
+
+  Map<String, Object?> _encodeMarkerStyle(MapMarkerStyle style) {
+    final option = UserLocationMarker.optionFor(style);
+    return {
+      'styleName': style.name,
+      'resolvedStyleName': option.style.name,
+      'assetPath': option.assetPath,
+      'rotatesWithHeading': option.rotatesWithHeading,
+      'tintArgb': option.tint?.toARGB32(),
+      'iconName': switch (option.style) {
+        MapMarkerStyle.navigation => 'navigation',
+        MapMarkerStyle.compass => 'compass',
+        MapMarkerStyle.triangle => 'triangle',
+        MapMarkerStyle.dot => 'flatArrow',
+        _ => null,
+      },
     };
   }
 
@@ -169,11 +239,28 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return UiKitView(
-      viewType: 'cruizx/mapkit-view',
-      onPlatformViewCreated: _onPlatformViewCreated,
-      creationParams: const <String, Object?>{},
-      creationParamsCodec: const StandardMessageCodec(),
+    return Listener(
+      onPointerDown: (_) {
+        if (widget.followUser && !_userPanning) {
+          _userPanning = true;
+          widget.onUserPanned?.call();
+          _userPanCooldownTimer?.cancel();
+          _userPanCooldownTimer = Timer(const Duration(milliseconds: 900), () {
+            if (mounted) {
+              _userPanning = false;
+            }
+          });
+        }
+      },
+      child: UiKitView(
+        viewType: 'cruizx/mapkit-view',
+        gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+          Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
+        },
+        onPlatformViewCreated: _onPlatformViewCreated,
+        creationParams: const <String, Object?>{},
+        creationParamsCodec: const StandardMessageCodec(),
+      ),
     );
   }
 }

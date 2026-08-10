@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/mapbox_search_service.dart';
+import 'package:slowride/services/apple_map_search_service.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
@@ -48,8 +49,6 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  static const bool _skipIosPermissionPromptForQa = !kReleaseMode;
-
   final RoutingService _routingService = RoutingService();
   final TextEditingController _addressController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -164,6 +163,13 @@ class _MapScreenState extends State<MapScreen> {
 
   bool _countryAutoDetected = false;
   bool _localizedDefaultsSet = false;
+  int _mapViewEpoch = 0;
+
+  bool get _usingAppleMapKit =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  bool get _supportsVectorMapOnCurrentPlatform => !_usingAppleMapKit;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -195,11 +201,16 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) _onExternalNavigationRequest();
     });
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
-    // Respect settings toggle, with vector as default if self-hosted tiles available.
-    _useVectorMap = UserPreferencesService.instance.useVectorMap.value;
-    UserPreferencesService.instance.useVectorMap.addListener(
-      _onUseVectorMapChanged,
-    );
+    // iOS now always uses MapKit, so the vector-map preference only applies
+    // on platforms where the MapLibre path is still available.
+    _useVectorMap =
+        _supportsVectorMapOnCurrentPlatform &&
+        UserPreferencesService.instance.useVectorMap.value;
+    if (_supportsVectorMapOnCurrentPlatform) {
+      UserPreferencesService.instance.useVectorMap.addListener(
+        _onUseVectorMapChanged,
+      );
+    }
     // Auto-pick a dark map at night and a light map during the day.
     _useDarkMap = _isNightTime();
     // Lazy-load prefs for speed calibration (fire-and-forget).
@@ -528,11 +539,6 @@ class _MapScreenState extends State<MapScreen> {
       if (!serviceEnabled) return null;
 
       var permission = await Geolocator.checkPermission();
-      if (_skipIosPermissionPromptForQa &&
-          defaultTargetPlatform == TargetPlatform.iOS &&
-          permission == LocationPermission.denied) {
-        return null;
-      }
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -580,11 +586,6 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       var permission = await Geolocator.checkPermission();
-      if (_skipIosPermissionPromptForQa &&
-          defaultTargetPlatform == TargetPlatform.iOS &&
-          permission == LocationPermission.denied) {
-        return;
-      }
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -671,9 +672,11 @@ class _MapScreenState extends State<MapScreen> {
     _alertsTimer?.cancel();
     _positionSubscription?.cancel();
     _compassSubscription?.cancel();
-    UserPreferencesService.instance.useVectorMap.removeListener(
-      _onUseVectorMapChanged,
-    );
+    if (_supportsVectorMapOnCurrentPlatform) {
+      UserPreferencesService.instance.useVectorMap.removeListener(
+        _onUseVectorMapChanged,
+      );
+    }
     super.dispose();
   }
 
@@ -686,6 +689,13 @@ class _MapScreenState extends State<MapScreen> {
       final previousHeading = _deviceCompassHeading;
       if (previousHeading == null) {
         _deviceCompassHeading = normalizedHeading;
+      } else if (_usingAppleMapKit) {
+        // Keep iOS heading calm enough to avoid sensor jitter while the native
+        // marker animation handles the visual smoothing.
+        final shortestTurn =
+            ((normalizedHeading - previousHeading + 540) % 360) - 180;
+        _deviceCompassHeading =
+            (previousHeading + shortestTurn * 0.36 + 360) % 360;
       } else {
         final shortestTurn =
             ((normalizedHeading - previousHeading + 540) % 360) - 180;
@@ -696,7 +706,7 @@ class _MapScreenState extends State<MapScreen> {
       // MapLibre already renders its native compass marker. The raster map
       // needs the device heading only while its camera is not following the
       // user; in follow mode the existing route/GPS heading remains active.
-      if (!_isFollowing && !_useVectorMap) {
+      if (!_isFollowing && (_usingAppleMapKit || !_useVectorMap)) {
         _headingNotifier.value = _deviceCompassHeading!;
       }
     });
@@ -706,7 +716,9 @@ class _MapScreenState extends State<MapScreen> {
     if (mounted) {
       setState(
         () =>
-            _useVectorMap = UserPreferencesService.instance.useVectorMap.value,
+            _useVectorMap =
+                _supportsVectorMapOnCurrentPlatform &&
+                UserPreferencesService.instance.useVectorMap.value,
       );
     }
   }
@@ -767,6 +779,25 @@ class _MapScreenState extends State<MapScreen> {
     bool includeGlobalResults = true,
   }) async {
     final effectiveProximity = proximity ?? _currentLocation;
+    if (AppleMapSearchService.isSupported) {
+      var appleResults = await AppleMapSearchService.search(
+        query,
+        proximity: effectiveProximity,
+        limit: limit,
+      );
+      if (appleResults.isEmpty &&
+          includeGlobalResults &&
+          effectiveProximity != null) {
+        appleResults = await AppleMapSearchService.search(
+          query,
+          limit: limit,
+        );
+      }
+      if (appleResults.isNotEmpty) {
+        return appleResults;
+      }
+    }
+
     var raw = await _fetchMapboxResults(
       query,
       limit: limit,
@@ -2145,12 +2176,14 @@ class _MapScreenState extends State<MapScreen> {
     required String vehicleName,
     required List<_RouteOption> options,
   }) async {
-    final l10n = AppLocalizations.of(context)!;
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
     return showModalBottomSheet<_RouteOption>(
-      context: context,
+      context: rootNavigator.context,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) {
+      builder: (sheetContext) {
+        final l10n = AppLocalizations.of(sheetContext)!;
         return SafeArea(
           top: false,
           child: Container(
@@ -2257,7 +2290,7 @@ class _MapScreenState extends State<MapScreen> {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      onTap: () => Navigator.of(ctx).pop(option),
+                      onTap: () => Navigator.of(sheetContext).pop(option),
                     ),
                   );
                 }),
@@ -3787,6 +3820,7 @@ class _MapScreenState extends State<MapScreen> {
       SlowRoadService.instance.cancelSession();
     }
     setState(() {
+      _mapViewEpoch++;
       _routePoints = const [];
       _activeRoute = null;
       _lastNearestIdx = 0;
@@ -3795,9 +3829,12 @@ class _MapScreenState extends State<MapScreen> {
       _destinationLabel = '';
       _routeStop = null;
       _routeStopLabel = '';
+      _isRouting = false;
       _isNavigating = false;
       _isNavigationPanelExpanded = false;
       _isFollowing = false;
+      _showSuggestions = false;
+      _suggestions = const [];
       _instructions = const [];
       _nextManeuverText = '';
       _nextManeuverStreetName = '';
@@ -3919,7 +3956,9 @@ class _MapScreenState extends State<MapScreen> {
 
     _locationNotifier.value = currentPos;
     final deviceControlsRasterArrow =
-        !_isFollowing && !_useVectorMap && _deviceCompassHeading != null;
+        !_isFollowing &&
+        (_usingAppleMapKit || !_useVectorMap) &&
+        _deviceCompassHeading != null;
     if (newSpeed > 0.5 && !deviceControlsRasterArrow) {
       var headingForArrow = heading;
       if (_isNavigating &&
@@ -4379,30 +4418,42 @@ class _MapScreenState extends State<MapScreen> {
                             )
                           : _routePoints;
                       if (useAppleMapKit) {
-                        return AppleMapWidget(
-                          key: const ValueKey('apple-mapkit'),
-                          locationNotifier: _locationNotifier,
-                          headingNotifier: _headingNotifier,
-                          destination: _destination,
-                          routePoints: routeForMap,
-                          alerts: _alerts,
-                          nextManeuverDistanceMeters: _isNavigating
-                              ? _distToNextManeuver
-                              : null,
-                          nextManeuverSign: _isNavigating
-                              ? _nextManeuverSign
-                              : null,
-                          onTap: _isNavigating ? null : _handleMapTap,
-                          followUser: _isFollowing && _currentLocation != null,
-                          use3D: _isNavigating && _use3DMap,
-                          darkMode: _useDarkMap,
-                          onUserPanned: () =>
-                              setState(() => _isFollowing = false),
+                        return ValueListenableBuilder<MapMarkerStyle>(
+                          valueListenable: preferences.mapMarkerStyle,
+                          builder: (context, markerStyle, _) {
+                            return AppleMapWidget(
+                              key: ValueKey('apple-mapkit-$_mapViewEpoch'),
+                              locationNotifier: _locationNotifier,
+                              headingNotifier: _headingNotifier,
+                              markerStyle: markerStyle,
+                              destination: _destination,
+                              routePoints: routeForMap,
+                              alerts: _alerts,
+                              nextManeuverDistanceMeters: _isNavigating
+                                  ? _distToNextManeuver
+                                  : null,
+                              nextManeuverSign: _isNavigating
+                                  ? _nextManeuverSign
+                                  : null,
+                              onTap: _isNavigating ? null : _handleMapTap,
+                              followUser:
+                                  _isFollowing && _currentLocation != null,
+                              use3D: _isNavigating && _use3DMap,
+                              darkMode: _useDarkMap,
+                              onUserPanned: () {
+                                if (!_isFollowing) return;
+                                setState(() {
+                                  _isFollowing = false;
+                                  _mapViewEpoch++;
+                                });
+                              },
+                            );
+                          },
                         );
                       }
                       if (_useVectorMap && BackendConfig.hasSelfHostedTiles) {
                         return VectorMapWidget(
-                          key: const ValueKey('vector'),
+                          key: ValueKey('vector-$_mapViewEpoch'),
                           locationNotifier: _locationNotifier,
                           headingNotifier: _headingNotifier,
                           destination: _destination,
@@ -4418,12 +4469,17 @@ class _MapScreenState extends State<MapScreen> {
                           followUser: _isFollowing && _currentLocation != null,
                           use3D: _isNavigating && _use3DMap,
                           darkMode: _useDarkMap,
-                          onUserPanned: () =>
-                              setState(() => _isFollowing = false),
+                          onUserPanned: () {
+                            if (!_isFollowing) return;
+                            setState(() {
+                              _isFollowing = false;
+                              _mapViewEpoch++;
+                            });
+                          },
                         );
                       }
                       return MapWidget(
-                        key: const ValueKey('raster'),
+                        key: ValueKey('raster-$_mapViewEpoch'),
                         locationNotifier: _locationNotifier,
                         headingNotifier: _headingNotifier,
                         destination: _destination,
@@ -4449,8 +4505,13 @@ class _MapScreenState extends State<MapScreen> {
                         followUser: _isFollowing && _currentLocation != null,
                         use3D: _isNavigating && _use3DMap,
                         darkMode: _useDarkMap,
-                        onUserPanned: () =>
-                            setState(() => _isFollowing = false),
+                        onUserPanned: () {
+                          if (!_isFollowing) return;
+                          setState(() {
+                            _isFollowing = false;
+                            _mapViewEpoch++;
+                          });
+                        },
                       );
                     },
                   ),
@@ -5046,7 +5107,11 @@ class _MapScreenState extends State<MapScreen> {
                       ? l10n.a11yStopFollowingLocation
                       : l10n.a11yCenterOnLocation,
                   onTap: () => setState(() {
-                    _isFollowing = !_isFollowing;
+                    final nextFollowing = !_isFollowing;
+                    if (_isFollowing && !nextFollowing) {
+                      _mapViewEpoch++;
+                    }
+                    _isFollowing = nextFollowing;
                   }),
                   color: _isFollowing ? const Color(0xFF1E6BFF) : null,
                   child: Icon(
