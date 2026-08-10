@@ -14,6 +14,7 @@
 		5A11C0017F9C100100000001 /* CarPlayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A11C0007F9C100100000001 /* CarPlayManager.swift */; };
 		5A11C0037F9C100100000001 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A11C0027F9C100100000001 /* CarPlaySceneDelegate.swift */; };
 		5A11C0057F9C100100000001 /* CarPlayMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A11C0047F9C100100000001 /* CarPlayMapViewController.swift */; };
+		5A11C0087F9C100100000001 /* FlutterMapKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A11C0077F9C100100000001 /* FlutterMapKitView.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
@@ -57,6 +58,7 @@
 		5A11C0007F9C100100000001 /* CarPlayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayManager.swift; sourceTree = "<group>"; };
 		5A11C0027F9C100100000001 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
 		5A11C0047F9C100100000001 /* CarPlayMapViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayMapViewController.swift; sourceTree = "<group>"; };
+		5A11C0077F9C100100000001 /* FlutterMapKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlutterMapKitView.swift; sourceTree = "<group>"; };
 		43C09F370C8E61340CA4D50B /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		48C042F0B175BEE346C60F66 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -165,6 +167,7 @@
 				5A11C0007F9C100100000001 /* CarPlayManager.swift */,
 				5A11C0027F9C100100000001 /* CarPlaySceneDelegate.swift */,
 				5A11C0047F9C100100000001 /* CarPlayMapViewController.swift */,
+				5A11C0077F9C100100000001 /* FlutterMapKitView.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
@@ -421,6 +424,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A11C0057F9C100100000001 /* CarPlayMapViewController.swift in Sources */,
+				5A11C0087F9C100100000001 /* FlutterMapKitView.swift in Sources */,
 				5A11C0017F9C100100000001 /* CarPlayManager.swift in Sources */,
 				5A11C0037F9C100100000001 /* CarPlaySceneDelegate.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,

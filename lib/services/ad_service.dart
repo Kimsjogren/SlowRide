@@ -83,6 +83,13 @@ class AdService {
   }
 
   Future<void> initialize() async {
+    if (!kReleaseMode && Platform.isIOS) {
+      debugPrint(
+        '[AdService] Skipping ads and consent in debug iOS builds for QA.',
+      );
+      return;
+    }
+
     // Step 1: UMP consent (GDPR/EEA) – must run before MobileAds.initialize()
     await _requestConsent();
 

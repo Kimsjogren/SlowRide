@@ -27,6 +27,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/studded_tire_zones.dart';
 import 'package:slowride/services/carplay_bridge_service.dart';
 import 'package:slowride/services/charging_station_service.dart';
+import 'package:slowride/widgets/apple_map_widget.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/accessible_tap_target.dart';
 import 'package:slowride/widgets/vector_map_widget.dart';
@@ -47,6 +48,8 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const bool _skipIosPermissionPromptForQa = !kReleaseMode;
+
   final RoutingService _routingService = RoutingService();
   final TextEditingController _addressController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
@@ -525,6 +528,11 @@ class _MapScreenState extends State<MapScreen> {
       if (!serviceEnabled) return null;
 
       var permission = await Geolocator.checkPermission();
+      if (_skipIosPermissionPromptForQa &&
+          defaultTargetPlatform == TargetPlatform.iOS &&
+          permission == LocationPermission.denied) {
+        return null;
+      }
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -572,6 +580,11 @@ class _MapScreenState extends State<MapScreen> {
       }
 
       var permission = await Geolocator.checkPermission();
+      if (_skipIosPermissionPromptForQa &&
+          defaultTargetPlatform == TargetPlatform.iOS &&
+          permission == LocationPermission.denied) {
+        return;
+      }
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -4356,12 +4369,37 @@ class _MapScreenState extends State<MapScreen> {
                 child: RepaintBoundary(
                   child: Builder(
                     builder: (context) {
+                      final useAppleMapKit =
+                          !kIsWeb &&
+                          defaultTargetPlatform == TargetPlatform.iOS;
                       final routeForMap =
                           _isNavigating && _displayNearestIdx > 0
                           ? _routePoints.sublist(
                               _displayNearestIdx.clamp(0, _routePoints.length),
                             )
                           : _routePoints;
+                      if (useAppleMapKit) {
+                        return AppleMapWidget(
+                          key: const ValueKey('apple-mapkit'),
+                          locationNotifier: _locationNotifier,
+                          headingNotifier: _headingNotifier,
+                          destination: _destination,
+                          routePoints: routeForMap,
+                          alerts: _alerts,
+                          nextManeuverDistanceMeters: _isNavigating
+                              ? _distToNextManeuver
+                              : null,
+                          nextManeuverSign: _isNavigating
+                              ? _nextManeuverSign
+                              : null,
+                          onTap: _isNavigating ? null : _handleMapTap,
+                          followUser: _isFollowing && _currentLocation != null,
+                          use3D: _isNavigating && _use3DMap,
+                          darkMode: _useDarkMap,
+                          onUserPanned: () =>
+                              setState(() => _isFollowing = false),
+                        );
+                      }
                       if (_useVectorMap && BackendConfig.hasSelfHostedTiles) {
                         return VectorMapWidget(
                           key: const ValueKey('vector'),

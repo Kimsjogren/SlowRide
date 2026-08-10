@@ -309,10 +309,12 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final size = MediaQuery.sizeOf(context);
-    final logoWidth = size.width * 0.82;
-    final barWidth = size.width * 0.62;
+    final isCompactHeight = size.height < 500;
+    final logoWidth = isCompactHeight ? size.width * 0.48 : size.width * 0.82;
+    final logoHeight = isCompactHeight ? size.height * 0.2 : size.height * 0.28;
+    final barWidth = isCompactHeight ? size.width * 0.48 : size.width * 0.62;
+    final horizontalPadding = isCompactHeight ? 20.0 : 32.0;
 
     return Scaffold(
       body: Stack(
@@ -323,40 +325,55 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
           // Centered logo + progress section
           Align(
             alignment: Alignment.center,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset('assets/logga_nobg.png', width: logoWidth),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: barWidth,
-                  child: LinearProgressIndicator(
-                    value: _progress / 100,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(999),
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF37C871),
+            child: SafeArea(
+              minimum: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: logoWidth,
+                        maxHeight: logoHeight,
+                      ),
+                      child: Image.asset(
+                        'assets/logga_nobg.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                  ),
+                    SizedBox(height: isCompactHeight ? 8 : 12),
+                    SizedBox(
+                      width: barWidth,
+                      child: LinearProgressIndicator(
+                        value: _progress / 100,
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(999),
+                        backgroundColor: Colors.white.withValues(alpha: 0.25),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF37C871),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '$_progress%',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _startupStatus,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  '$_progress%',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _startupStatus,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+              ),
             ),
           ),
           // Version text bottom-right
