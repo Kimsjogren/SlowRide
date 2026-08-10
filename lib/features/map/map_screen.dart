@@ -25,6 +25,7 @@ import 'package:slowride/features/alerts/alerts_controller.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/models/studded_tire_zones.dart';
+import 'package:slowride/services/carplay_bridge_service.dart';
 import 'package:slowride/services/charging_station_service.dart';
 import 'package:slowride/widgets/map_widget.dart';
 import 'package:slowride/widgets/accessible_tap_target.dart';
@@ -184,6 +185,12 @@ class _MapScreenState extends State<MapScreen> {
     NavigationRequestService.instance.pendingDestination.addListener(
       _onExternalNavigationRequest,
     );
+    NavigationRequestService.instance.stopNavigationRequests.addListener(
+      _onExternalNavigationStopRequest,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _onExternalNavigationRequest();
+    });
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
     // Respect settings toggle, with vector as default if self-hosted tiles available.
     _useVectorMap = UserPreferencesService.instance.useVectorMap.value;
@@ -271,11 +278,26 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _onExternalNavigationRequest() {
-    final dest = NavigationRequestService.instance.pendingDestination.value;
-    if (dest != null) {
+    final request = NavigationRequestService.instance.pendingDestination.value;
+    if (request != null) {
+      final label = request.label?.trim() ?? '';
+      final address = request.address?.trim() ?? '';
+      if (label.isNotEmpty || address.isNotEmpty) {
+        _addressController.text = address.isNotEmpty ? address : label;
+        _destinationLabel = label.isNotEmpty ? label : address;
+        _searchFocus.unfocus();
+      }
       NavigationRequestService.instance.consume();
-      _handleMapTap(dest);
+      _handleMapTap(request.destination);
     }
+  }
+
+  void _onExternalNavigationStopRequest() {
+    if (!mounted) return;
+    if (_activeRoute == null && _destination == null && !_isNavigating) {
+      return;
+    }
+    _clearRoute();
   }
 
   Future<void> _loadAlerts() async {
@@ -623,6 +645,9 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     NavigationRequestService.instance.pendingDestination.removeListener(
       _onExternalNavigationRequest,
+    );
+    NavigationRequestService.instance.stopNavigationRequests.removeListener(
+      _onExternalNavigationStopRequest,
     );
     _locationNotifier.dispose();
     _headingNotifier.dispose();
@@ -3132,6 +3157,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     });
     _analyzeSelectedRouteIfRequested();
+    unawaited(_syncCarPlayNavigationState());
   }
 
   void _cancelPendingAiRouteAnalysis() {
@@ -3631,6 +3657,7 @@ class _MapScreenState extends State<MapScreen> {
             l10n.mapRouteNotAllowedForVehicle,
         };
       });
+      unawaited(_syncCarPlayNavigationState());
 
       if (isRouteBlocked) {
         final vehicleName = switch (preferences.vehicleType.value) {
@@ -3714,6 +3741,7 @@ class _MapScreenState extends State<MapScreen> {
         _activeRoute = null;
         _routingStatus = l10n.mapRouteFailed;
       });
+      unawaited(_syncCarPlayNavigationState());
     } finally {
       if (mounted) {
         setState(() {
@@ -3776,6 +3804,7 @@ class _MapScreenState extends State<MapScreen> {
       _isSimulating = false;
       _routingStatus = AppLocalizations.of(context)!.mapTapToSelectDestination;
     });
+    unawaited(CarPlayBridgeService.instance.clearNavigationState());
   }
 
   void _pruneDismissedNearbyAlert(LatLng currentPos) {
@@ -3943,7 +3972,102 @@ class _MapScreenState extends State<MapScreen> {
       );
     });
 
+    unawaited(_syncCarPlayNavigationState());
     unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
+  }
+
+  Future<void> _syncCarPlayNavigationState() {
+    final destination = _destination;
+    final activeRoute = _activeRoute;
+    final hasRoute = destination != null && activeRoute != null;
+    final upcomingManeuvers = _buildCarPlayUpcomingManeuvers();
+
+    double? remainingDurationSeconds;
+    if (hasRoute) {
+      if (_isNavigating && _totalRouteDistM > 0 && _remainingDistM >= 0) {
+        final routeFraction = (_remainingDistM / _totalRouteDistM).clamp(
+          0.0,
+          1.0,
+        );
+        remainingDurationSeconds = activeRoute.durationSeconds * routeFraction;
+      } else {
+        remainingDurationSeconds = activeRoute.durationSeconds;
+      }
+    }
+
+    return CarPlayBridgeService.instance.updateNavigationState(
+      hasRoute: hasRoute,
+      isNavigating: _isNavigating,
+      destination: destination,
+      destinationLabel: _destinationLabel,
+      destinationAddress: _addressController.text.trim(),
+      totalDistanceMeters: hasRoute ? activeRoute.distanceMeters : null,
+      remainingDistanceMeters: hasRoute
+          ? (_isNavigating ? _remainingDistM : activeRoute.distanceMeters)
+          : null,
+      remainingDurationSeconds: remainingDurationSeconds,
+      nextManeuverText: _nextManeuverText,
+      currentStreetName: _currentStreetName,
+      upcomingManeuvers: upcomingManeuvers,
+    );
+  }
+
+  List<Map<String, Object?>> _buildCarPlayUpcomingManeuvers() {
+    if (_instructions.length < 2 || _routePoints.isEmpty) {
+      return const [];
+    }
+
+    final currentPos = _currentLocation;
+    final nearestIdx = currentPos != null
+        ? _nearestRoutePointIndex(currentPos)
+        : _lastNearestIdx.clamp(0, _routePoints.length - 1);
+
+    int instructionIndex = 0;
+    for (int i = 0; i < _instructions.length - 1; i++) {
+      if (_instructions[i + 1].pointIndex > nearestIdx) {
+        instructionIndex = i;
+        break;
+      }
+      instructionIndex = i + 1;
+    }
+
+    final maneuvers = <Map<String, Object?>>[];
+    for (
+      int i = instructionIndex + 1;
+      i < _instructions.length && maneuvers.length < 3;
+      i++
+    ) {
+      final instruction = _instructions[i];
+      final distanceMeters = i == instructionIndex + 1
+          ? _distanceToInstructionFromRouteIndex(nearestIdx, instruction)
+          : instruction.distanceMeters;
+
+      maneuvers.add({
+        'id':
+            '${instruction.pointIndex}_${instruction.sign}_${instruction.text}',
+        'text': instruction.text,
+        'streetName': instruction.streetName,
+        'sign': instruction.sign,
+        'distanceMeters': distanceMeters,
+      });
+    }
+
+    return maneuvers;
+  }
+
+  double _distanceToInstructionFromRouteIndex(
+    int nearestIdx,
+    RouteInstruction instruction,
+  ) {
+    var distance = 0.0;
+    for (
+      int i = nearestIdx;
+      i < instruction.pointIndex && i < _routePoints.length - 1;
+      i++
+    ) {
+      distance += _segDist(_routePoints[i], _routePoints[i + 1]);
+    }
+    return distance;
   }
 
   // ── GPS simulation ────────────────────────────────────────────────────────
@@ -3972,6 +4096,7 @@ class _MapScreenState extends State<MapScreen> {
       _lastNavPos = _routePoints[0];
       _currentLocation = _routePoints[0];
     });
+    unawaited(_syncCarPlayNavigationState());
     _locationNotifier.value = _routePoints[0];
     _simTimer = Timer.periodic(
       _simInterval,
@@ -5644,6 +5769,9 @@ class _MapScreenState extends State<MapScreen> {
                                                       _lastNavPos =
                                                           _currentLocation;
                                                     });
+                                                    unawaited(
+                                                      _syncCarPlayNavigationState(),
+                                                    );
                                                   },
                                                   child: Container(
                                                     padding:

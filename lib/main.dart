@@ -12,6 +12,7 @@ import 'package:slowride/features/settings/settings_screen.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/carplay_bridge_service.dart';
 import 'package:slowride/services/firebase_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/public_gathering_notification_service.dart';
@@ -44,6 +45,11 @@ Future<void> main() async {
     await SupabaseService.instance.initialize();
   } catch (e, st) {
     debugPrint('Supabase init error: $e\n$st');
+  }
+  try {
+    await CarPlayBridgeService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('CarPlay bridge init error: $e\n$st');
   }
   runApp(const CruizXApp());
 }
@@ -398,8 +404,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _onNavigationRequest() {
-    final dest = NavigationRequestService.instance.pendingDestination.value;
-    if (dest != null && mounted) {
+    final request = NavigationRequestService.instance.pendingDestination.value;
+    if (request != null && mounted) {
       setState(() => _index = 0);
     }
   }

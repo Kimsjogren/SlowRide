@@ -78,6 +78,7 @@ flutter {
 }
 
 dependencies {
+    implementation("androidx.core:core-ktx:1.18.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // Keep the app on the latest Google Play Billing Library even when the
     // Flutter IAP plugin still declares an older compatible version.
