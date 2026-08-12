@@ -652,6 +652,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVehicleTractor => 'Tractor';
 
   @override
+  String get settingsVehicleCar => 'Car';
+
+  @override
   String get settingsSpeedUnitKmh => 'km/h';
 
   @override

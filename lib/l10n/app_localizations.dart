@@ -1310,6 +1310,12 @@ abstract class AppLocalizations {
   /// **'Tractor'**
   String get settingsVehicleTractor;
 
+  /// No description provided for @settingsVehicleCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get settingsVehicleCar;
+
   /// No description provided for @settingsSpeedUnitKmh.
   ///
   /// In en, this message translates to:

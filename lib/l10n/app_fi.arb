@@ -234,6 +234,7 @@
   "settingsElectricScooterLegalNotice": "Käytä vain tieliikenteeseen hyväksyttyä sähköpotkulautaa siellä, missä paikalliset säännöt sen sallivat. Liikennemerkit, kuntakohtaiset säännöt ja vuokrausalueet ovat aina reittiä ensisijaisia.",
   "settingsEscooterRentalOnlyNotice": "Isossa-Britanniassa vain hyväksytyt vuokrasähköpotkulaudat ovat laillisia yleisillä teillä. Yksityisiä sähköpotkulautoja saa käyttää vain yksityisalueella maanomistajan luvalla.",
   "settingsVehicleTractor": "Traktori",
+  "settingsVehicleCar": "Auto",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
   "settingsMaxSpeedWithUnit": "Maksiminopeus: {value} {unit}",

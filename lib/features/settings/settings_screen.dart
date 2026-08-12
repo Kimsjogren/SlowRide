@@ -273,6 +273,10 @@ class SettingsScreen extends StatelessWidget {
                                     value: 'Tractor',
                                     label: l10n.settingsVehicleTractor,
                                   ),
+                                  DropdownMenuEntry(
+                                    value: 'Car',
+                                    label: l10n.settingsVehicleCar,
+                                  ),
                                 ],
                                 onSelected: (value) {
                                   if (value != null) {
@@ -295,9 +299,11 @@ class SettingsScreen extends StatelessWidget {
                                 ValueListenableBuilder<String>(
                                   valueListenable: preferences.countryCode,
                                   builder: (context, country, _) {
-                                    final rentalOnly = CountryVehicleRules
-                                        .getProfile(country, 'Electric scooter')
-                                        .requiresApprovedRental;
+                                    final rentalOnly =
+                                        CountryVehicleRules.getProfile(
+                                          country,
+                                          'Electric scooter',
+                                        ).requiresApprovedRental;
                                     if (!rentalOnly) {
                                       return const SizedBox.shrink();
                                     }
@@ -315,8 +321,7 @@ class SettingsScreen extends StatelessWidget {
                                           const SizedBox(width: 6),
                                           Expanded(
                                             child: Text(
-                                              l10n
-                                                  .settingsEscooterRentalOnlyNotice,
+                                              l10n.settingsEscooterRentalOnlyNotice,
                                               style: const TextStyle(
                                                 color: Color(0xFFFFD27A),
                                                 fontSize: 12,

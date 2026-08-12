@@ -3717,6 +3717,7 @@ class _MapScreenState extends State<MapScreen> {
                 'Moped class II' => l10n.settingsVehicleMopedClassII,
                 'Electric scooter' => l10n.settingsVehicleElectricScooter,
                 'Tractor' => l10n.settingsVehicleTractor,
+                'Car' => l10n.settingsVehicleCar,
                 _ => preferences.vehicleType.value,
               },
               options: options,
@@ -3773,6 +3774,7 @@ class _MapScreenState extends State<MapScreen> {
           'Moped class II' => l10n.settingsVehicleMopedClassII,
           'Electric scooter' => l10n.settingsVehicleElectricScooter,
           'Tractor' => l10n.settingsVehicleTractor,
+          'Car' => l10n.settingsVehicleCar,
           _ => preferences.vehicleType.value,
         };
 
@@ -4197,6 +4199,7 @@ class _MapScreenState extends State<MapScreen> {
       'a-traktor' => 30.0,
       'tractor' => 30.0,
       'moped_car' => 45.0,
+      'Car' => 90.0,
       _ => 50.0,
     };
     SlowRoadService.instance.startSession(vt);

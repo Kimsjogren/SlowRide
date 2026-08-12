@@ -234,6 +234,7 @@
   "settingsElectricScooterLegalNotice": "Använd endast en trafikgodkänd elsparkcykel där lokala regler tillåter det. Skyltning, kommunala regler och hyrzoner gäller alltid före rutten.",
   "settingsEscooterRentalOnlyNotice": "I Storbritannien är endast godkända hyr-elsparkcyklar lagliga på allmän väg. Privata elsparkcyklar får bara användas på privat mark med markägarens tillstånd.",
   "settingsVehicleTractor": "Traktor",
+  "settingsVehicleCar": "Bil",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
   "settingsMaxSpeedWithUnit": "Maxhastighet: {value} {unit}",

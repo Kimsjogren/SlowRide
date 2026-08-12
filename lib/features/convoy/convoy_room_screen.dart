@@ -3592,6 +3592,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           'Moped class II' => l10n.settingsVehicleMopedClassII,
           'Electric scooter' => l10n.settingsVehicleElectricScooter,
           'Tractor' => l10n.settingsVehicleTractor,
+          'Car' => l10n.settingsVehicleCar,
           _ => vehicleType,
         };
 
@@ -3800,6 +3801,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'Moped class II' => l10n.settingsVehicleMopedClassII,
       'Electric scooter' => l10n.settingsVehicleElectricScooter,
       'Tractor' => l10n.settingsVehicleTractor,
+      'Car' => l10n.settingsVehicleCar,
       _ => vehicleType,
     };
     return showModalBottomSheet<_ConvoyRouteOption>(

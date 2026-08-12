@@ -234,6 +234,7 @@
   "settingsElectricScooterLegalNotice": "Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.",
   "settingsEscooterRentalOnlyNotice": "In the UK, only approved rental e-scooters are legal on public roads. Private e-scooters may only be used on private land with the landowner’s permission.",
   "settingsVehicleTractor": "Tractor",
+  "settingsVehicleCar": "Car",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
   "settingsMaxSpeedWithUnit": "Max speed: {value} {unit}",

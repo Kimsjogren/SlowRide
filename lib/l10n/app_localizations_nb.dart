@@ -651,6 +651,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsVehicleTractor => 'Traktor';
 
   @override
+  String get settingsVehicleCar => 'Bil';
+
+  @override
   String get settingsSpeedUnitKmh => 'km/t';
 
   @override

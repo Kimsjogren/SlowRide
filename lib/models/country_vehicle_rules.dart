@@ -517,6 +517,67 @@ class CountryVehicleRules {
       useFerry: 0.3,
       forbidsMotorRoads: false,
     ),
+
+    // ── Ordinary car (all countries) ────────────────────────────────────
+    // A normal passenger car: motorways, tolls and ferries allowed, routed
+    // with unrestricted `auto` costing (maxLegalSpeed > 45 so no slow-vehicle
+    // road-class limits apply). Speeds reflect each country's motorway limit.
+    'SE_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 110,
+      maxLegalSpeedKmh: 120,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'NO_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 100,
+      maxLegalSpeedKmh: 110,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'DK_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 120,
+      maxLegalSpeedKmh: 130,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'FI_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 110,
+      maxLegalSpeedKmh: 120,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'FR_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 120,
+      maxLegalSpeedKmh: 130,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'ES_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 110,
+      maxLegalSpeedKmh: 120,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'IT_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 120,
+      maxLegalSpeedKmh: 130,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
+    'GB_Car': VehicleRoutingProfile(
+      defaultSpeedKmh: 100,
+      maxLegalSpeedKmh: 112,
+      useHighways: 1.0,
+      useTolls: 1.0,
+      useFerry: 0.5,
+    ),
   };
 }
 
