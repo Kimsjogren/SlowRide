@@ -650,6 +650,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Utiliza únicamente un patinete eléctrico autorizado donde lo permitan las normas locales. La señalización, las ordenanzas municipales y las zonas de alquiler siempre prevalecen sobre la ruta.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'En el Reino Unido, solo los patinetes eléctricos de alquiler autorizados son legales en la vía pública. Los patinetes privados solo pueden usarse en terrenos privados con permiso del propietario.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
 
   @override

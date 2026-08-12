@@ -645,6 +645,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'In the UK, only approved rental e-scooters are legal on public roads. Private e-scooters may only be used on private land with the landowner’s permission.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
 
   @override

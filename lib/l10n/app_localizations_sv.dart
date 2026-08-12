@@ -643,6 +643,10 @@ class AppLocalizationsSv extends AppLocalizations {
       'Använd endast en trafikgodkänd elsparkcykel där lokala regler tillåter det. Skyltning, kommunala regler och hyrzoner gäller alltid före rutten.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'I Storbritannien är endast godkända hyr-elsparkcyklar lagliga på allmän väg. Privata elsparkcyklar får bara användas på privat mark med markägarens tillstånd.';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
 
   @override

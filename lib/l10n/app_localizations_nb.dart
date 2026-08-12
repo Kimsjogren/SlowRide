@@ -644,6 +644,10 @@ class AppLocalizationsNb extends AppLocalizations {
       'Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'I Storbritannia er bare godkjente utleie-elsparkesykler lovlige på offentlig vei. Private elsparkesykler kan bare brukes på privat grunn med grunneierens tillatelse.';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
 
   @override

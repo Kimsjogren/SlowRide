@@ -232,6 +232,7 @@
   "settingsVehicleMopedClassII": "Cyclomoteur classe II (25 km/h)",
   "settingsVehicleElectricScooter": "Trottinette électrique",
   "settingsElectricScooterLegalNotice": "Utilisez uniquement une trottinette électrique homologuée là où les règles locales l’autorisent. La signalisation, les règles municipales et les zones de location priment toujours sur l’itinéraire.",
+  "settingsEscooterRentalOnlyNotice": "Au Royaume-Uni, seules les trottinettes électriques de location homologuées sont autorisées sur la voie publique. Les trottinettes privées ne peuvent être utilisées que sur un terrain privé avec l’accord du propriétaire.",
   "settingsVehicleTractor": "Tracteur",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",

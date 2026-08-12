@@ -645,6 +645,10 @@ class AppLocalizationsFi extends AppLocalizations {
       'Käytä vain tieliikenteeseen hyväksyttyä sähköpotkulautaa siellä, missä paikalliset säännöt sen sallivat. Liikennemerkit, kuntakohtaiset säännöt ja vuokrausalueet ovat aina reittiä ensisijaisia.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'Isossa-Britanniassa vain hyväksytyt vuokrasähköpotkulaudat ovat laillisia yleisillä teillä. Yksityisiä sähköpotkulautoja saa käyttää vain yksityisalueella maanomistajan luvalla.';
+
+  @override
   String get settingsVehicleTractor => 'Traktori';
 
   @override

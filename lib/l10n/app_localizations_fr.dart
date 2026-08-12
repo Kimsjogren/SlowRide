@@ -652,6 +652,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Utilisez uniquement une trottinette électrique homologuée là où les règles locales l’autorisent. La signalisation, les règles municipales et les zones de location priment toujours sur l’itinéraire.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'Au Royaume-Uni, seules les trottinettes électriques de location homologuées sont autorisées sur la voie publique. Les trottinettes privées ne peuvent être utilisées que sur un terrain privé avec l’accord du propriétaire.';
+
+  @override
   String get settingsVehicleTractor => 'Tracteur';
 
   @override

@@ -655,6 +655,10 @@ class AppLocalizationsIt extends AppLocalizations {
       'Usa solo un monopattino elettrico omologato dove le norme locali lo consentono. Segnaletica, regole comunali e zone di noleggio hanno sempre la precedenza sul percorso.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'Nel Regno Unito solo i monopattini elettrici a noleggio autorizzati sono legali su strada pubblica. I monopattini privati possono essere usati solo su terreno privato con il permesso del proprietario.';
+
+  @override
   String get settingsVehicleTractor => 'Trattore';
 
   @override

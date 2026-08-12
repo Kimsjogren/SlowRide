@@ -232,6 +232,7 @@
   "settingsVehicleMopedClassII": "Moped klasse II (25 km/t)",
   "settingsVehicleElectricScooter": "Elsparkesykkel",
   "settingsElectricScooterLegalNotice": "Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.",
+  "settingsEscooterRentalOnlyNotice": "I Storbritannia er bare godkjente utleie-elsparkesykler lovlige på offentlig vei. Private elsparkesykler kan bare brukes på privat grunn med grunneierens tillatelse.",
   "settingsVehicleTractor": "Traktor",
   "settingsSpeedUnitKmh": "km/t",
   "settingsSpeedUnitMph": "mph",

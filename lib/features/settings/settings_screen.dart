@@ -290,6 +290,46 @@ class SettingsScreen extends StatelessWidget {
                                     height: 1.35,
                                   ),
                                 ),
+                                // Country-specific hard warning (e.g. UK: private
+                                // e-scooters are illegal on public roads).
+                                ValueListenableBuilder<String>(
+                                  valueListenable: preferences.countryCode,
+                                  builder: (context, country, _) {
+                                    final rentalOnly = CountryVehicleRules
+                                        .getProfile(country, 'Electric scooter')
+                                        .requiresApprovedRental;
+                                    if (!rentalOnly) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                            Icons.warning_amber_rounded,
+                                            color: Color(0xFFFFB020),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              l10n
+                                                  .settingsEscooterRentalOnlyNotice,
+                                              style: const TextStyle(
+                                                color: Color(0xFFFFD27A),
+                                                fontSize: 12,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
                               ],
                             ],
                           );

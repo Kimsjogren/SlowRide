@@ -645,6 +645,10 @@ class AppLocalizationsDa extends AppLocalizations {
       'Brug kun et lovligt el-løbehjul, hvor lokale regler tillader det. Skiltning, kommunale regler og udlejningszoner gælder altid frem for ruten.';
 
   @override
+  String get settingsEscooterRentalOnlyNotice =>
+      'I Storbritannien er kun godkendte leje-elløbehjul lovlige på offentlig vej. Private elløbehjul må kun bruges på privat grund med ejerens tilladelse.';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
 
   @override

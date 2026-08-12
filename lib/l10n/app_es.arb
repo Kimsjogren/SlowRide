@@ -230,6 +230,7 @@
   "settingsVehicleMopedClassII": "Ciclomotor clase II (25 km/h)",
   "settingsVehicleElectricScooter": "Patinete eléctrico",
   "settingsElectricScooterLegalNotice": "Utiliza únicamente un patinete eléctrico autorizado donde lo permitan las normas locales. La señalización, las ordenanzas municipales y las zonas de alquiler siempre prevalecen sobre la ruta.",
+  "settingsEscooterRentalOnlyNotice": "En el Reino Unido, solo los patinetes eléctricos de alquiler autorizados son legales en la vía pública. Los patinetes privados solo pueden usarse en terrenos privados con permiso del propietario.",
   "settingsVehicleTractor": "Tractor",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",

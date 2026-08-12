@@ -230,6 +230,7 @@
   "settingsVehicleMopedClassII": "Ciclomotore classe II (25 km/h)",
   "settingsVehicleElectricScooter": "Monopattino elettrico",
   "settingsElectricScooterLegalNotice": "Usa solo un monopattino elettrico omologato dove le norme locali lo consentono. Segnaletica, regole comunali e zone di noleggio hanno sempre la precedenza sul percorso.",
+  "settingsEscooterRentalOnlyNotice": "Nel Regno Unito solo i monopattini elettrici a noleggio autorizzati sono legali su strada pubblica. I monopattini privati possono essere usati solo su terreno privato con il permesso del proprietario.",
   "settingsVehicleTractor": "Trattore",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",

@@ -232,6 +232,7 @@
   "settingsVehicleMopedClassII": "Moped klass II (25 km/h)",
   "settingsVehicleElectricScooter": "Elsparkcykel",
   "settingsElectricScooterLegalNotice": "Använd endast en trafikgodkänd elsparkcykel där lokala regler tillåter det. Skyltning, kommunala regler och hyrzoner gäller alltid före rutten.",
+  "settingsEscooterRentalOnlyNotice": "I Storbritannien är endast godkända hyr-elsparkcyklar lagliga på allmän väg. Privata elsparkcyklar får bara användas på privat mark med markägarens tillstånd.",
   "settingsVehicleTractor": "Traktor",
   "settingsSpeedUnitKmh": "km/h",
   "settingsSpeedUnitMph": "mph",
