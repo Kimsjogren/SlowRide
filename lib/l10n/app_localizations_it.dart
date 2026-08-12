@@ -33,7 +33,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get splashLoadingCoreModules => 'Caricamento dei moduli principali...';
 
   @override
-  String get splashInitializingAccountSession => 'Inizializzazione della sessione dell\'account in corso...';
+  String get splashInitializingAccountSession =>
+      'Inizializzazione della sessione dell\'account in corso...';
 
   @override
   String get splashLoadingPreferences => 'Caricamento preferenze...';
@@ -90,13 +91,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get alertsTitle => 'Avvisi della comunità';
 
   @override
-  String get alertsSubtitle => 'Segnala e visualizza i pericoli stradali, i controlli e le condizioni stradali.';
+  String get alertsSubtitle =>
+      'Segnala e visualizza i pericoli stradali, i controlli e le condizioni stradali.';
 
   @override
   String get convoyRequiresSignInTitle => 'Il convoglio richiede l\'accesso';
 
   @override
-  String get convoyRequiresSignInSubtitle => 'Accedi o crea un account qui per creare gruppi di convogli e vedere posizioni in tempo reale.';
+  String get convoyRequiresSignInSubtitle =>
+      'Accedi o crea un account qui per creare gruppi di convogli e vedere posizioni in tempo reale.';
 
   @override
   String get signIn => 'Accedi';
@@ -138,10 +141,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get signInOtpSent => 'Codice OTP inviato alla tua email.';
 
   @override
-  String get signUpOtpSent => 'Codice di creazione dell\'account inviato alla tua email.';
+  String get signUpOtpSent =>
+      'Codice di creazione dell\'account inviato alla tua email.';
 
   @override
-  String get signInOtpInvalid => 'Impossibile verificare l\'OTP. Controlla il tuo codice e riprova.';
+  String get signInOtpInvalid =>
+      'Impossibile verificare l\'OTP. Controlla il tuo codice e riprova.';
 
   @override
   String get signUpNoAccountAction => 'Non hai un account? Creane uno';
@@ -150,7 +155,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get signUpHaveAccountAction => 'Hai già un account? Accedi';
 
   @override
-  String get authGenericError => 'Qualcosa è andato storto. Per favore riprova.';
+  String get authGenericError =>
+      'Qualcosa è andato storto. Per favore riprova.';
 
   @override
   String get authWelcomeBack => 'Bentornati su CruizX';
@@ -174,7 +180,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get authPasswordRequired => 'Inserisci la tua password';
 
   @override
-  String get authPasswordMinLength => 'Almeno 6 caratteri';
+  String get authPasswordMinLength =>
+      'Almeno 6 caratteri, un numero e un carattere speciale';
 
   @override
   String get authConfirmPasswordLabel => 'Conferma password';
@@ -207,19 +214,22 @@ class AppLocalizationsIt extends AppLocalizations {
   String get authForgotPasswordTitle => 'Reimposta la password';
 
   @override
-  String get authForgotPasswordDescription => 'Inserisci il tuo indirizzo email e ti invieremo un collegamento per reimpostare la password.';
+  String get authForgotPasswordDescription =>
+      'Inserisci il tuo indirizzo email e ti invieremo un collegamento per reimpostare la password.';
 
   @override
   String get authForgotPasswordButton => 'Invia collegamento di reimpostazione';
 
   @override
-  String get authForgotPasswordSuccess => 'Se l\'account esiste, abbiamo inviato un collegamento di reimpostazione alla tua email.';
+  String get authForgotPasswordSuccess =>
+      'Se l\'account esiste, abbiamo inviato un collegamento di reimpostazione alla tua email.';
 
   @override
   String get authResetPasswordTitle => 'Nuova password';
 
   @override
-  String get authResetPasswordDescription => 'Inserisci la tua nuova password qui sotto.';
+  String get authResetPasswordDescription =>
+      'Inserisci la tua nuova password qui sotto.';
 
   @override
   String get authNewPasswordLabel => 'Nuova password';
@@ -234,49 +244,61 @@ class AppLocalizationsIt extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Tutti i campi sono obbligatori.';
 
   @override
-  String get authErrorPasswordTooShort => 'La password deve contenere almeno 6 caratteri.';
+  String get authErrorPasswordTooShort =>
+      'La password deve contenere almeno 6 caratteri, inclusi un numero e un carattere speciale.';
 
   @override
-  String get authErrorConfirmEmail => 'Controlla la tua email per confermare il tuo account, quindi accedi.';
+  String get authErrorConfirmEmail =>
+      'Controlla la tua email per confermare il tuo account, quindi accedi.';
 
   @override
   String get authEmailConfirmedTitle => 'E-mail confermata';
 
   @override
-  String get authEmailConfirmedBody => 'Il tuo indirizzo e-mail è stato confermato. Ora hai effettuato l\'accesso.';
+  String get authEmailConfirmedBody =>
+      'Il tuo indirizzo e-mail è stato confermato. Ora hai effettuato l\'accesso.';
 
   @override
-  String get authErrorEmailAndPasswordRequired => 'Inserisci la tua email e la password.';
+  String get authErrorEmailAndPasswordRequired =>
+      'Inserisci la tua email e la password.';
 
   @override
   String get authErrorInvalidCredentials => 'E-mail o password errati.';
 
   @override
-  String get authErrorEmailAlreadyInUse => 'Esiste già un account con quell\'e-mail.';
+  String get authErrorEmailAlreadyInUse =>
+      'Esiste già un account con quell\'e-mail.';
 
   @override
-  String get authErrorInvalidEmail => 'L’indirizzo e-mail non è valido. Controllalo e riprova.';
+  String get authErrorInvalidEmail =>
+      'L’indirizzo e-mail non è valido. Controllalo e riprova.';
 
   @override
-  String get authErrorRateLimited => 'Troppi tentativi in poco tempo. Attendi un momento e riprova.';
+  String get authErrorRateLimited =>
+      'Troppi tentativi in poco tempo. Attendi un momento e riprova.';
 
   @override
-  String get authErrorSignUpDisabled => 'Al momento non è possibile creare nuovi account. Contatta l’assistenza CruizX.';
+  String get authErrorSignUpDisabled =>
+      'Al momento non è possibile creare nuovi account. Contatta l’assistenza CruizX.';
 
   @override
-  String get authErrorEmailDeliveryFailed => 'Non è stato possibile inviare l’e-mail di conferma. Riprova tra poco.';
+  String get authErrorEmailDeliveryFailed =>
+      'Non è stato possibile inviare l’e-mail di conferma. Riprova tra poco.';
 
   @override
-  String get authErrorNetworkUnavailable => 'Impossibile connettersi al servizio account. Controlla la connessione Internet e riprova.';
+  String get authErrorNetworkUnavailable =>
+      'Impossibile connettersi al servizio account. Controlla la connessione Internet e riprova.';
 
   @override
-  String get convoyRealtimeBackendMissing => 'Il convoglio in tempo reale non è ancora configurato. Aggiungi la configurazione del backend per condividere posizioni live tra gli utenti.';
+  String get convoyRealtimeBackendMissing =>
+      'Il convoglio in tempo reale non è ancora configurato. Aggiungi la configurazione del backend per condividere posizioni live tra gli utenti.';
 
   @override
   String get convoyModeTitle => 'Modalità convoglio';
 
   @override
-  String get convoyModeSubtitle => 'Crea guida di gruppo con una destinazione condivisa e posizioni in tempo reale.';
+  String get convoyModeSubtitle =>
+      'Crea guida di gruppo con una destinazione condivisa e posizioni in tempo reale.';
 
   @override
   String get convoyCreateButton => 'Crea convoglio';
@@ -285,7 +307,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringsTitle => 'Incontri pubblici';
 
   @override
-  String get publicGatheringsSubtitle => 'Trova un punto di incontro, partecipa pubblicamente e scegli se mostrare la tua posizione dal vivo.';
+  String get publicGatheringsSubtitle =>
+      'Trova un punto di incontro, partecipa pubblicamente e scegli se mostrare la tua posizione dal vivo.';
 
   @override
   String get publicGatheringsMineTab => 'Mio';
@@ -294,7 +317,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringsPublicTab => 'Pubblico';
 
   @override
-  String get publicGatheringsEmpty => 'Non ci sono incontri pubblici attivi al momento.';
+  String get publicGatheringsEmpty =>
+      'Non ci sono incontri pubblici attivi al momento.';
 
   @override
   String get publicGatheringCreateButton => 'Crea un incontro pubblico';
@@ -303,22 +327,27 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringCreateTitle => 'Nuovo incontro pubblico';
 
   @override
-  String get publicGatheringPlaceHint => 'Luogo d\'incontro, ad es. la piazza della città';
+  String get publicGatheringPlaceHint =>
+      'Luogo d\'incontro, ad es. la piazza della città';
 
   @override
-  String get publicGatheringLocationExplanation => 'L\'incontro viene posizionato nella tua posizione attuale e rimane attivo per 6 ore. La posizione dal vivo è facoltativa per ogni partecipante.';
+  String get publicGatheringLocationExplanation =>
+      'L\'incontro viene posizionato nella tua posizione attuale e rimane attivo per 6 ore. La posizione dal vivo è facoltativa per ogni partecipante.';
 
   @override
-  String get publicGatheringLocationRequired => 'Per impostare il luogo dell\'incontro è necessario l\'accesso alla posizione.';
+  String get publicGatheringLocationRequired =>
+      'Per impostare il luogo dell\'incontro è necessario l\'accesso alla posizione.';
 
   @override
   String get publicGatheringPublish => 'Pubblicare';
 
   @override
-  String get publicGatheringStartSharing => 'Condividi la mia posizione dal vivo';
+  String get publicGatheringStartSharing =>
+      'Condividi la mia posizione dal vivo';
 
   @override
-  String get publicGatheringStopSharing => 'Interrompi la condivisione della mia posizione live';
+  String get publicGatheringStopSharing =>
+      'Interrompi la condivisione della mia posizione live';
 
   @override
   String get convoyOpenButton => 'Aprire';
@@ -330,19 +359,22 @@ class AppLocalizationsIt extends AppLocalizations {
   String get convoyLeaveButton => 'Partire';
 
   @override
-  String get convoyJoinFirstHint => 'Unisciti prima al convoglio, quindi toccalo per aprire la chat e la mappa.';
+  String get convoyJoinFirstHint =>
+      'Unisciti prima al convoglio, quindi toccalo per aprire la chat e la mappa.';
 
   @override
   String get convoyJoinByCodeTitle => 'Unisciti al convoglio';
 
   @override
-  String get convoyJoinByCodeHint => 'Inserisci il codice del convoglio che hai ricevuto';
+  String get convoyJoinByCodeHint =>
+      'Inserisci il codice del convoglio che hai ricevuto';
 
   @override
   String get convoyJoinWithCodeButton => 'Giuntura';
 
   @override
-  String get convoyJoinByCodeNotFound => 'Nessun convoglio trovato con quel codice.';
+  String get convoyJoinByCodeNotFound =>
+      'Nessun convoglio trovato con quel codice.';
 
   @override
   String convoyJoinByCodeSuccess(String name) {
@@ -359,7 +391,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get convoyTabChat => 'Chiacchierata';
 
   @override
-  String get convoyMapHint => 'Tocca la mappa per posizionare un segnaposto condiviso.';
+  String get convoyMapHint =>
+      'Tocca la mappa per posizionare un segnaposto condiviso.';
 
   @override
   String get convoyRecenterTooltip => 'Ricentra e segui la mia posizione';
@@ -398,7 +431,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get convoyPoiMeetup => 'Punto d\'incontro';
 
   @override
-  String get convoyPoiMeetupSubtitle => 'Segna un luogo libero dove il convoglio dovrebbe radunarsi';
+  String get convoyPoiMeetupSubtitle =>
+      'Segna un luogo libero dove il convoglio dovrebbe radunarsi';
 
   @override
   String get convoyPoiParking => 'Parcheggio';
@@ -449,7 +483,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get convoyListEmpty => 'Ancora nessun convoglio. Crea il primo.';
 
   @override
-  String get convoyListEmptyMine => 'Non ti sei ancora unito a nessun convoglio.';
+  String get convoyListEmptyMine =>
+      'Non ti sei ancora unito a nessun convoglio.';
 
   @override
   String get convoyFilterAll => 'Tutto';
@@ -482,7 +517,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get profileNotSignedIn => 'Non hai effettuato l\'accesso.';
 
   @override
-  String get profileSignInInConvoyHint => 'L\'accesso è disponibile nella scheda Convoglio.';
+  String get profileSignInInConvoyHint =>
+      'L\'accesso è disponibile nella scheda Convoglio.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -514,13 +550,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get profileVehicleElectric => 'Veicolo elettrico';
 
   @override
-  String get profileVehicleElectricSubtitle => 'Mostra le stazioni di ricarica sulla mappa';
+  String get profileVehicleElectricSubtitle =>
+      'Mostra le stazioni di ricarica sulla mappa';
 
   @override
   String get profileVehicleStuddedTires => 'Pneumatici chiodati';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle => 'Evita le strade in cui è vietato l\'uso dei pneumatici chiodati';
+  String get profileVehicleStuddedTiresSubtitle =>
+      'Evita le strade in cui è vietato l\'uso dei pneumatici chiodati';
 
   @override
   String get settingsTitle => 'Impostazioni';
@@ -583,7 +621,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsCountryUnitedKingdom => '🇬🇧 Regno Unito';
 
   @override
-  String get settingsCountryHint => 'I limiti di velocità e le regole stradali si adattano al paese selezionato.';
+  String get settingsCountryHint =>
+      'I limiti di velocità e le regole stradali si adattano al paese selezionato.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -612,7 +651,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsVehicleElectricScooter => 'Monopattino elettrico';
 
   @override
-  String get settingsElectricScooterLegalNotice => 'Usa solo un monopattino elettrico omologato dove le norme locali lo consentono. Segnaletica, regole comunali e zone di noleggio hanno sempre la precedenza sul percorso.';
+  String get settingsElectricScooterLegalNotice =>
+      'Usa solo un monopattino elettrico omologato dove le norme locali lo consentono. Segnaletica, regole comunali e zone di noleggio hanno sempre la precedenza sul percorso.';
 
   @override
   String get settingsVehicleTractor => 'Trattore';
@@ -638,10 +678,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsProStatusInactive => 'Non attivo';
 
   @override
-  String get settingsProDescriptionActive => 'Hai accesso a tutte le funzionalità Pro.';
+  String get settingsProDescriptionActive =>
+      'Hai accesso a tutte le funzionalità Pro.';
 
   @override
-  String get settingsProDescriptionInactive => 'Sblocca tutte le funzionalità con CruizX Pro.';
+  String get settingsProDescriptionInactive =>
+      'Sblocca tutte le funzionalità con CruizX Pro.';
 
   @override
   String get settingsProFeatureRoutes => 'Più analisi dei percorsi con IA';
@@ -656,7 +698,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsProFeatureSupport => 'Supporto prioritario';
 
   @override
-  String get settingsProSubscriptionNote => 'Abbonamento: CruizX Pro mensile (1 mese). Il pagamento viene addebitato sul tuo ID Apple e si rinnova automaticamente a meno che non venga annullato almeno 24 ore prima della fine del periodo corrente.';
+  String get settingsProSubscriptionNote =>
+      'Abbonamento: CruizX Pro mensile (1 mese). Il pagamento viene addebitato sul tuo ID Apple e si rinnova automaticamente a meno che non venga annullato almeno 24 ore prima della fine del periodo corrente.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -669,7 +712,8 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Acquisto una tantum: CruizX Pro (a vita). Il pagamento viene addebitato una volta tramite l’app store. Nessun abbonamento e nessun rinnovo automatico.';
+  String get settingsProOneTimeNote =>
+      'Acquisto una tantum: CruizX Pro (a vita). Il pagamento viene addebitato una volta tramite l’app store. Nessun abbonamento e nessun rinnovo automatico.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'politica sulla riservatezza';
@@ -687,13 +731,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get supportChatReplyTime => 'Rispondiamo entro 24 ore';
 
   @override
-  String get supportChatWelcome => 'Ciao! Come possiamo aiutarti con CruizX? Scrivi qui il tuo messaggio e ti risponderemo il prima possibile.';
+  String get supportChatWelcome =>
+      'Ciao! Come possiamo aiutarti con CruizX? Scrivi qui il tuo messaggio e ti risponderemo il prima possibile.';
 
   @override
-  String get supportChatGuestNotice => 'Stai chattando come ospite. La conversazione viene salvata in modo privato su questo dispositivo.';
+  String get supportChatGuestNotice =>
+      'Stai chattando come ospite. La conversazione viene salvata in modo privato su questo dispositivo.';
 
   @override
-  String get supportChatLoginRequired => 'Accedi per avviare una chat privata con l’assistenza e vedere i messaggi precedenti.';
+  String get supportChatLoginRequired =>
+      'Accedi per avviare una chat privata con l’assistenza e vedere i messaggi precedenti.';
 
   @override
   String get supportChatLoginAction => 'Accedi';
@@ -705,10 +752,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get supportChatSend => 'Invia messaggio';
 
   @override
-  String get supportChatSendFailed => 'Impossibile inviare il messaggio. Riprova.';
+  String get supportChatSendFailed =>
+      'Impossibile inviare il messaggio. Riprova.';
 
   @override
-  String get supportChatUnavailable => 'La chat di assistenza non è disponibile al momento. Riprova più tardi.';
+  String get supportChatUnavailable =>
+      'La chat di assistenza non è disponibile al momento. Riprova più tardi.';
 
   @override
   String get supportChatTeam => 'Assistenza CruizX';
@@ -717,10 +766,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get supportChatYou => 'Tu';
 
   @override
-  String get settingsLinkOpenFailed => 'Impossibile aprire il collegamento in questo momento.';
+  String get settingsLinkOpenFailed =>
+      'Impossibile aprire il collegamento in questo momento.';
 
   @override
-  String get settingsRestorePurchaseFailed => 'Impossibile ripristinare l\'acquisto.';
+  String get settingsRestorePurchaseFailed =>
+      'Impossibile ripristinare l\'acquisto.';
 
   @override
   String get settingsMapMarkerLabel => 'Indicatore della mappa';
@@ -831,16 +882,19 @@ class AppLocalizationsIt extends AppLocalizations {
   String get navigationTitle => 'Navigazione passo passo';
 
   @override
-  String get navigationSubtitle => 'Indicazioni stradali, svolta successiva ed ETA ottimizzati per i veicoli lenti.';
+  String get navigationSubtitle =>
+      'Indicazioni stradali, svolta successiva ed ETA ottimizzati per i veicoli lenti.';
 
   @override
   String get mapStartingGps => 'Avvio del GPS...';
 
   @override
-  String get mapTapToSelectDestination => 'Tocca la mappa per selezionare una destinazione';
+  String get mapTapToSelectDestination =>
+      'Tocca la mappa per selezionare una destinazione';
 
   @override
-  String get mapAddressFieldHint => 'Indirizzo di ricerca (ad esempio Main St 10, Stoccolma)';
+  String get mapAddressFieldHint =>
+      'Indirizzo di ricerca (ad esempio Main St 10, Stoccolma)';
 
   @override
   String get mapSearchingAddress => 'Ricerca indirizzo...';
@@ -849,13 +903,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mapAddressNotFound => 'Nessun indirizzo trovato. Riprova.';
 
   @override
-  String get mapAddressLookupFailed => 'Impossibile cercare l\'indirizzo in questo momento';
+  String get mapAddressLookupFailed =>
+      'Impossibile cercare l\'indirizzo in questo momento';
 
   @override
-  String get mapLocationServicesDisabled => 'I servizi di localizzazione sono disabilitati';
+  String get mapLocationServicesDisabled =>
+      'I servizi di localizzazione sono disabilitati';
 
   @override
-  String get mapLocationPermissionMissing => 'Manca l\'autorizzazione alla posizione';
+  String get mapLocationPermissionMissing =>
+      'Manca l\'autorizzazione alla posizione';
 
   @override
   String get mapGpsActive => 'GPS attivo';
@@ -864,7 +921,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mapGpsUnavailable => 'Il GPS non è disponibile in questo ambiente';
 
   @override
-  String get mapWaitingForGps => 'In attesa della posizione GPS prima del calcolo del percorso';
+  String get mapWaitingForGps =>
+      'In attesa della posizione GPS prima del calcolo del percorso';
 
   @override
   String get mapCalculatingRoute => 'Calcolo del percorso...';
@@ -875,43 +933,54 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get mapRouteFailed => 'Impossibile creare il percorso in questo momento';
+  String get mapRouteFailed =>
+      'Impossibile creare il percorso in questo momento';
 
   @override
   String get mapRemaining => 'Sinistra';
 
   @override
-  String get mapRouteNoRouteFound => 'Nessun percorso trovato tra i punti selezionati';
+  String get mapRouteNoRouteFound =>
+      'Nessun percorso trovato tra i punti selezionati';
 
   @override
-  String get mapRouteProviderUnavailable => 'Il servizio di routing non è al momento disponibile';
+  String get mapRouteProviderUnavailable =>
+      'Il servizio di routing non è al momento disponibile';
 
   @override
-  String get mapRouteMissingApiKey => 'Il routing non è configurato sul backend (chiave API mancante)';
+  String get mapRouteMissingApiKey =>
+      'Il routing non è configurato sul backend (chiave API mancante)';
 
   @override
-  String get mapRouteInvalidGeometry => 'I dati del percorso dal server non sono validi';
+  String get mapRouteInvalidGeometry =>
+      'I dati del percorso dal server non sono validi';
 
   @override
-  String get mapRouteUnknownProvider => 'Il provider di routing non è configurato correttamente';
+  String get mapRouteUnknownProvider =>
+      'Il provider di routing non è configurato correttamente';
 
   @override
-  String get mapRouteTooFastForVehicle => 'Itinerario rifiutato: la velocità media stimata è troppo alta per questo tipo di veicolo.';
+  String get mapRouteTooFastForVehicle =>
+      'Itinerario rifiutato: la velocità media stimata è troppo alta per questo tipo di veicolo.';
 
   @override
-  String get mapRouteNotAllowedForVehicle => 'Nessun percorso conforme alla legge trovato per questo tipo di veicolo.';
+  String get mapRouteNotAllowedForVehicle =>
+      'Nessun percorso conforme alla legge trovato per questo tipo di veicolo.';
 
   @override
-  String get routeStopSheetSubtitle => 'Fermate più vicine lungo il percorso attuale';
+  String get routeStopSheetSubtitle =>
+      'Fermate più vicine lungo il percorso attuale';
 
   @override
   String get routeStopNearbySubtitle => 'Opzioni più vicine intorno a te';
 
   @override
-  String get routeStopEmpty => 'Non ci sono fermate valide vicino al percorso in questo momento.';
+  String get routeStopEmpty =>
+      'Non ci sono fermate valide vicino al percorso in questo momento.';
 
   @override
-  String get routeStopNearbyEmpty => 'Non ci sono buone opzioni vicino a te in questo momento.';
+  String get routeStopNearbyEmpty =>
+      'Non ci sono buone opzioni vicino a te in questo momento.';
 
   @override
   String get searchSaved => 'Salvato';
@@ -961,7 +1030,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get routeFallbackUse => 'Mostra comunque';
 
   @override
-  String get routeFallbackActive => 'Percorso non verificato: seguire sempre le indicazioni';
+  String get routeFallbackActive =>
+      'Percorso non verificato: seguire sempre le indicazioni';
 
   @override
   String get routeOptionsTitle => 'Scegli percorso';
@@ -970,13 +1040,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get routeOptionRecommended => 'Raccomandato';
 
   @override
-  String get routeOptionRecommendedSubtitle => 'Verificato dalle regole CruizX per il veicolo selezionato.';
+  String get routeOptionRecommendedSubtitle =>
+      'Verificato dalle regole CruizX per il veicolo selezionato.';
 
   @override
   String get routeOptionAlternative => 'Percorso alternativo';
 
   @override
-  String get routeOptionAlternativeSubtitle => 'Percorso legale: strade diverse o leggermente più lunghe.';
+  String get routeOptionAlternativeSubtitle =>
+      'Percorso legale: strade diverse o leggermente più lunghe.';
 
   @override
   String get routeOptionUnverified => 'Percorso alternativo non verificato';
@@ -995,7 +1067,8 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX non approva mai automaticamente le strade soggette a restrizioni. Seguire sempre la segnaletica e le regole locali.';
+  String get routeOptionWarningFooter =>
+      'CruizX non approva mai automaticamente le strade soggette a restrizioni. Seguire sempre la segnaletica e le regole locali.';
 
   @override
   String get mapModeLabel2d => '2D';
@@ -1105,7 +1178,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Devi essere registrato per segnalare';
 
   @override
-  String get alertsScreenSubtitle => 'Informazioni in tempo reale dagli autisti Trafikverket e CruizX entro ~50 km. Tocca il pollice per confermare gli avvisi della community.';
+  String get alertsScreenSubtitle =>
+      'Informazioni in tempo reale dagli autisti Trafikverket e CruizX entro ~50 km. Tocca il pollice per confermare gli avvisi della community.';
 
   @override
   String get alertReportButton => 'Rapporto';
@@ -1133,19 +1207,22 @@ class AppLocalizationsIt extends AppLocalizations {
   String get alertReportQuestion => 'Cosa vedi sulla strada?';
 
   @override
-  String get alertReportDescHint2 => 'Descrizione facoltativa... (ad esempio \"ramo grande\")';
+  String get alertReportDescHint2 =>
+      'Descrizione facoltativa... (ad esempio \"ramo grande\")';
 
   @override
   String get alertReportedSuccess => 'Avviso segnalato! Grazie 🙏';
 
   @override
-  String get alertReportFailed => 'Impossibile segnalare l\'avviso in questo momento.';
+  String get alertReportFailed =>
+      'Impossibile segnalare l\'avviso in questo momento.';
 
   @override
   String get adBannerLoading => 'Caricamento annuncio...';
 
   @override
-  String get adBannerWaitingRetry => 'L\'annuncio è in attesa della rete… (tocca per riprovare)';
+  String get adBannerWaitingRetry =>
+      'L\'annuncio è in attesa della rete… (tocca per riprovare)';
 
   @override
   String get mapStartNavigation => 'Avvia la navigazione';
@@ -1194,7 +1271,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallTitle => 'Passa a CruizX Pro';
 
   @override
-  String get paywallSubtitle => 'Nessun limite. Nessuna pubblicità. Accesso completo.';
+  String get paywallSubtitle =>
+      'Nessun limite. Nessuna pubblicità. Accesso completo.';
 
   @override
   String get paywallPrice => '39 kr / mese';
@@ -1273,31 +1351,36 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Percorsi illimitati';
 
   @override
-  String get paywallRouteLimitBody => 'I percorsi di navigazione sono illimitati anche nella versione gratuita.';
+  String get paywallRouteLimitBody =>
+      'I percorsi di navigazione sono illimitati anche nella versione gratuita.';
 
   @override
   String get routeUpgradePromptTitle => 'Continuare senza pubblicità?';
 
   @override
-  String get routeUpgradePromptBody => 'Hai creato due percorsi oggi. La versione gratuita include percorsi illimitati, mentre Pro rimuove la pubblicità e sblocca altre funzioni. Vuoi passare a Pro?';
+  String get routeUpgradePromptBody =>
+      'Hai creato due percorsi oggi. La versione gratuita include percorsi illimitati, mentre Pro rimuove la pubblicità e sblocca altre funzioni. Vuoi passare a Pro?';
 
   @override
   String get paywallConvoyLimitTitle => 'Limite del convoglio raggiunto';
 
   @override
-  String get paywallConvoyLimitBody => 'Gli utenti gratuiti possono far parte di un solo convoglio alla volta.';
+  String get paywallConvoyLimitBody =>
+      'Gli utenti gratuiti possono far parte di un solo convoglio alla volta.';
 
   @override
   String get paywallMemberLimitTitle => 'Il convoglio è pieno';
 
   @override
-  String get paywallMemberLimitBody => 'Gli utenti gratuiti possono unirsi solo a convogli con meno di 2 membri. Passa a Pro per un accesso illimitato.';
+  String get paywallMemberLimitBody =>
+      'Gli utenti gratuiti possono unirsi solo a convogli con meno di 2 membri. Passa a Pro per un accesso illimitato.';
 
   @override
   String get paywallPurchaseSuccess => 'Ora sei un utente Pro!';
 
   @override
-  String get paywallPurchaseFailed => 'Impossibile completare l\'acquisto. Controlla il tuo account App Store e riprova.';
+  String get paywallPurchaseFailed =>
+      'Impossibile completare l\'acquisto. Controlla il tuo account App Store e riprova.';
 
   @override
   String get paywallRestoreSuccess => 'Acquisto ripristinato!';
@@ -1306,7 +1389,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'È richiesto l\'accesso';
 
   @override
-  String get paywallLoginRequiredBody => 'Hai bisogno di un account per acquistare CruizX Pro. Crea un account gratuito nell\'app per continuare.';
+  String get paywallLoginRequiredBody =>
+      'Hai bisogno di un account per acquistare CruizX Pro. Crea un account gratuito nell\'app per continuare.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -1344,16 +1428,19 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentModeTitle => 'Modalità genitore';
 
   @override
-  String get parentModeDescription => 'Lascia che un genitore segua la tua guida in tempo reale.';
+  String get parentModeDescription =>
+      'Lascia che un genitore segua la tua guida in tempo reale.';
 
   @override
-  String get parentModeLoginRequired => 'Devi aver effettuato l\'accesso per utilizzare la modalità genitore.';
+  String get parentModeLoginRequired =>
+      'Devi aver effettuato l\'accesso per utilizzare la modalità genitore.';
 
   @override
   String get parentModeEnable => 'Abilita la modalità genitore';
 
   @override
-  String get parentModeEnabledSubtitle => 'I genitori possono seguire la tua guida';
+  String get parentModeEnabledSubtitle =>
+      'I genitori possono seguire la tua guida';
 
   @override
   String get parentModeDisabledSubtitle => 'Nessuna condivisione attiva';
@@ -1362,7 +1449,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentModeInviteCode => 'Codice invito';
 
   @override
-  String get parentModeInviteCodeSubtitle => 'Condividi questo codice con i tuoi genitori per collegare il loro account.';
+  String get parentModeInviteCodeSubtitle =>
+      'Condividi questo codice con i tuoi genitori per collegare il loro account.';
 
   @override
   String get parentModeCopyCode => 'Copia';
@@ -1385,7 +1473,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentModeLinkedParents => 'Genitori collegati';
 
   @override
-  String get parentModeNoParentsLinked => 'Nessun genitore ancora collegato. Condividi il tuo codice!';
+  String get parentModeNoParentsLinked =>
+      'Nessun genitore ancora collegato. Condividi il tuo codice!';
 
   @override
   String get parentModeUnlinkTitle => 'Rimuovere il genitore?';
@@ -1405,7 +1494,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentModeShareLocation => 'Condividi posizione';
 
   @override
-  String get parentModeShareLocationSubtitle => 'Mostra dove ti trovi sulla mappa';
+  String get parentModeShareLocationSubtitle =>
+      'Mostra dove ti trovi sulla mappa';
 
   @override
   String get parentModeShareSpeed => 'Condividi la velocità';
@@ -1466,13 +1556,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentDashboardNoChildren => 'Nessun bambino ancora collegato';
 
   @override
-  String get parentDashboardNoChildrenHint => 'Aggiungi un bambino inserendo il codice di invito dalla modalità genitore CruizX.';
+  String get parentDashboardNoChildrenHint =>
+      'Aggiungi un bambino inserendo il codice di invito dalla modalità genitore CruizX.';
 
   @override
   String get parentDashboardEnterCode => 'Inserisci il codice di invito';
 
   @override
-  String get parentDashboardEnterCodeHint => 'Chiedi a tuo figlio di condividere il codice di invito di 6 caratteri dalle impostazioni della modalità genitore.';
+  String get parentDashboardEnterCodeHint =>
+      'Chiedi a tuo figlio di condividere il codice di invito di 6 caratteri dalle impostazioni della modalità genitore.';
 
   @override
   String get parentDashboardLink => 'Collegamento';
@@ -1481,16 +1573,22 @@ class AppLocalizationsIt extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Collegato con successo!';
 
   @override
-  String get parentDashboardLinkFailed => 'Impossibile trovare il bambino con quel codice. Controlla il codice e riprova.';
+  String get parentDashboardLinkFailed =>
+      'Impossibile trovare il bambino con quel codice. Controlla il codice e riprova.';
 
   @override
-  String get parentDashboardLinkSelf => 'Non puoi collegarti al tuo account. Chiedi a tuo figlio di condividere il codice dal suo account.';
+  String get parentDashboardLinkSelf =>
+      'Non puoi collegarti al tuo account. Chiedi a tuo figlio di condividere il codice dal suo account.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Avviso di velocità';
 
   @override
-  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
+  String parentDashboardSpeedingDetail(
+    Object name,
+    Object speed,
+    Object limit,
+  ) {
     return '$name ha guidato a $speed km/h (limite: $limit km/h)';
   }
 
@@ -1552,10 +1650,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mfaSetupTitle => 'Abilita l\'autenticazione a due fattori';
 
   @override
-  String get mfaSetupSubtitle => 'Scansiona il codice QR con un\'app di autenticazione come Google Authenticator o Authy';
+  String get mfaSetupSubtitle =>
+      'Scansiona il codice QR con un\'app di autenticazione come Google Authenticator o Authy';
 
   @override
-  String get mfaScanQr => 'Scansiona il codice qui sopra e inserisci il codice di 6 cifre qui sotto';
+  String get mfaScanQr =>
+      'Scansiona il codice qui sopra e inserisci il codice di 6 cifre qui sotto';
 
   @override
   String get mfaVerifyButton => 'Verificare';
@@ -1564,7 +1664,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mfaVerifyTitle => 'Autenticazione a due fattori';
 
   @override
-  String get mfaVerifySubtitle => 'Inserisci il codice di 6 cifre dalla tua app di autenticazione';
+  String get mfaVerifySubtitle =>
+      'Inserisci il codice di 6 cifre dalla tua app di autenticazione';
 
   @override
   String get mfaInvalidCode => 'Codice non valido, riprova';
@@ -1591,13 +1692,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mfaDisableTitle => 'Disattivare 2FA?';
 
   @override
-  String get mfaDisableBody => 'Il tuo account sarà meno sicuro senza l\'autenticazione a due fattori.';
+  String get mfaDisableBody =>
+      'Il tuo account sarà meno sicuro senza l\'autenticazione a due fattori.';
 
   @override
   String get mfaDisableConfirm => 'Spegnere';
 
   @override
-  String get mfaShowManualKey => 'Non riesci a eseguire la scansione? Mostra chiave manualmente';
+  String get mfaShowManualKey =>
+      'Non riesci a eseguire la scansione? Mostra chiave manualmente';
 
   @override
   String get mfaHideManualKey => 'Nascondi chiave manuale';
@@ -1609,7 +1712,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mfaRecommendTitle => 'Proteggi il tuo account';
 
   @override
-  String get mfaRecommendBody => 'Ti consigliamo di abilitare l\'autenticazione a due fattori per proteggere il tuo account. Puoi utilizzare un\'app di autenticazione come Google Authenticator o Authy.';
+  String get mfaRecommendBody =>
+      'Ti consigliamo di abilitare l\'autenticazione a due fattori per proteggere il tuo account. Puoi utilizzare un\'app di autenticazione come Google Authenticator o Authy.';
 
   @override
   String get mfaRecommendSetup => 'Abilita ora';
@@ -1652,7 +1756,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get favCustom => 'Altro preferito';
 
   @override
-  String get ttsVoiceHint => 'Suggerimento: scarica voci migliori in Impostazioni → Accessibilità → Contenuto parlato → Voci';
+  String get ttsVoiceHint =>
+      'Suggerimento: scarica voci migliori in Impostazioni → Accessibilità → Contenuto parlato → Voci';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';
@@ -1661,10 +1766,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsVectorMap => 'Mappa vettoriale';
 
   @override
-  String get settingsVectorMapOn => 'Rendering nitido a tutti i livelli di zoom, zoom fluido';
+  String get settingsVectorMapOn =>
+      'Rendering nitido a tutti i livelli di zoom, zoom fluido';
 
   @override
-  String get settingsVectorMapOff => 'Standard: veloce e memorizzato nella cache offline';
+  String get settingsVectorMapOff =>
+      'Standard: veloce e memorizzato nella cache offline';
 
   @override
   String get publicGatheringStartTime => 'Ora di inizio';
@@ -1673,7 +1780,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringEndTime => 'Ora di fine';
 
   @override
-  String get publicGatheringScheduleInvalid => 'L\'ora di fine deve essere successiva all\'ora di inizio.';
+  String get publicGatheringScheduleInvalid =>
+      'L\'ora di fine deve essere successiva all\'ora di inizio.';
 
   @override
   String get publicGatheringEndAction => 'Fine dell\'incontro';
@@ -1682,10 +1790,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringDeleteAction => 'Elimina incontro';
 
   @override
-  String get publicGatheringEndConfirm => 'Terminare l\'incontro adesso? I partecipanti non saranno più in grado di trovarlo.';
+  String get publicGatheringEndConfirm =>
+      'Terminare l\'incontro adesso? I partecipanti non saranno più in grado di trovarlo.';
 
   @override
-  String get publicGatheringDeleteConfirm => 'Eliminare definitivamente questo incontro? Questa operazione non può essere annullata.';
+  String get publicGatheringDeleteConfirm =>
+      'Eliminare definitivamente questo incontro? Questa operazione non può essere annullata.';
 
   @override
   String get publicGatheringReportAction => 'Segnala incontro';
@@ -1703,10 +1813,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get publicGatheringReportReason => 'Cosa vorresti segnalare?';
 
   @override
-  String get publicGatheringReportSent => 'La tua segnalazione è stata inviata.';
+  String get publicGatheringReportSent =>
+      'La tua segnalazione è stata inviata.';
 
   @override
-  String get publicGatheringBlocked => 'I contenuti bloccati non verranno più visualizzati.';
+  String get publicGatheringBlocked =>
+      'I contenuti bloccati non verranno più visualizzati.';
 
   @override
   String get reportReasonInappropriate => 'Contenuti inappropriati';
@@ -1724,10 +1836,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get reportReasonOther => 'Altro';
 
   @override
-  String get publicGatheringNearbyNotifications => 'Notifiche di incontri nelle vicinanze';
+  String get publicGatheringNearbyNotifications =>
+      'Notifiche di incontri nelle vicinanze';
 
   @override
-  String get publicGatheringNearbyNotificationsSubtitle => 'Avvisami una volta quando inizia un incontro pubblico entro 25 km entro 24 ore.';
+  String get publicGatheringNearbyNotificationsSubtitle =>
+      'Avvisami una volta quando inizia un incontro pubblico entro 25 km entro 24 ore.';
 
   @override
   String get publicGatheringUpcoming => 'Prossimamente';
@@ -1745,7 +1859,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get aiConsentTitle => 'Usare l’analisi IA del percorso?';
 
   @override
-  String get aiConsentBody => 'CruizX utilizza dati come distanza, durata, tipo di veicolo, nomi delle strade e numero di avvisi per analizzare il percorso. La tua posizione esatta, le coordinate della destinazione e la tua identità non vengono condivise. L’analisi può contenere errori e non modifica mai il percorso.';
+  String get aiConsentBody =>
+      'CruizX utilizza dati come distanza, durata, tipo di veicolo, nomi delle strade e numero di avvisi per analizzare il percorso. La tua posizione esatta, le coordinate della destinazione e la tua identità non vengono condivise. L’analisi può contenere errori e non modifica mai il percorso.';
 
   @override
   String get aiConsentAccept => 'Accetta e continua';
@@ -1760,10 +1875,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get aiLoading => 'Controllo del percorso…';
 
   @override
-  String get aiUnavailable => 'L’analisi IA non è disponibile al momento. Il percorso non è cambiato.';
+  String get aiUnavailable =>
+      'L’analisi IA non è disponibile al momento. Il percorso non è cambiato.';
 
   @override
-  String get aiDailyLimit => 'Hai raggiunto il limite giornaliero di analisi IA.';
+  String get aiDailyLimit =>
+      'Hai raggiunto il limite giornaliero di analisi IA.';
 
   @override
   String get aiHighlights => 'Aspetti positivi';
@@ -1775,7 +1892,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get aiRecommendation => 'Raccomandazione';
 
   @override
-  String get aiDisclaimer => 'Riepilogo IA basato solo sui dati disponibili. Segui la segnaletica e le condizioni stradali attuali.';
+  String get aiDisclaimer =>
+      'Riepilogo IA basato solo sui dati disponibili. Segui la segnaletica e le condizioni stradali attuali.';
 
   @override
   String get aiReport => 'Segnala risposta';

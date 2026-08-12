@@ -1126,6 +1126,13 @@ class _MarkerBrandSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMopedBrand = brand.options.any(
+      (option) =>
+          option.category == MapMarkerCategory.mopedScooter ||
+          option.category == MapMarkerCategory.mopedCross,
+    );
+    final previewSize = isMopedBrand ? 62.0 : 54.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1141,7 +1148,7 @@ class _MarkerBrandSection extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         SizedBox(
-          height: 84,
+          height: isMopedBrand ? 92 : 84,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: brand.options.length,
@@ -1159,7 +1166,7 @@ class _MarkerBrandSection extends StatelessWidget {
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 54,
+                  size: previewSize,
                   selected: selected,
                 ),
               );

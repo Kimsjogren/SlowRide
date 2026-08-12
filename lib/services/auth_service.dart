@@ -80,7 +80,9 @@ class AuthService {
         code: AuthErrorCode.allFieldsRequired,
       );
     }
-    if (password.length < 6) {
+    if (password.length < 6 ||
+        !RegExp(r'\d').hasMatch(password) ||
+        !RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
       throw const AuthException(
         'passwordTooShort',
         code: AuthErrorCode.passwordTooShort,

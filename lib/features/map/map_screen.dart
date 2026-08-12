@@ -703,10 +703,12 @@ class _MapScreenState extends State<MapScreen> {
             (previousHeading + shortestTurn * 0.32 + 360) % 360;
       }
 
-      // MapLibre already renders its native compass marker. The raster map
-      // needs the device heading only while its camera is not following the
-      // user; in follow mode the existing route/GPS heading remains active.
-      if (!_isFollowing && (_usingAppleMapKit || !_useVectorMap)) {
+      // Outside follow mode, only use the live device compass while nearly
+      // stationary. Once we're moving, route/GPS heading should drive the
+      // marker so it tracks travel direction instead of phone tilt.
+      if (!_isFollowing &&
+          (_usingAppleMapKit || !_useVectorMap) &&
+          _speedKmh <= 6.0) {
         _headingNotifier.value = _deviceCompassHeading!;
       }
     });
@@ -715,10 +717,9 @@ class _MapScreenState extends State<MapScreen> {
   void _onUseVectorMapChanged() {
     if (mounted) {
       setState(
-        () =>
-            _useVectorMap =
-                _supportsVectorMapOnCurrentPlatform &&
-                UserPreferencesService.instance.useVectorMap.value,
+        () => _useVectorMap =
+            _supportsVectorMapOnCurrentPlatform &&
+            UserPreferencesService.instance.useVectorMap.value,
       );
     }
   }
@@ -2350,37 +2351,34 @@ class _MapScreenState extends State<MapScreen> {
   // Saves hundreds of iterations per GPS tick on long routes.
   int _nearestRoutePointIndex(LatLng pos) {
     if (_routePoints.isEmpty) return 0;
-    // Allow a few points backward (GPS jitter) but scan mostly forward.
-    final start = (_lastNearestIdx - 3).clamp(0, _routePoints.length - 1);
-    final end = (_lastNearestIdx + 60).clamp(0, _routePoints.length - 1);
-    double best = double.infinity;
-    int idx = _lastNearestIdx;
-    for (int i = start; i <= end; i++) {
-      final p = _routePoints[i];
-      final dx = p.latitude - pos.latitude;
-      final dy = p.longitude - pos.longitude;
-      final d = dx * dx + dy * dy;
-      if (d < best) {
-        best = d;
-        idx = i;
+    if (_routePoints.length == 1) return 0;
+
+    final searchStart = _lastNearestIdx.clamp(0, _routePoints.length - 2);
+    final searchEnd = (searchStart + 50).clamp(0, _routePoints.length - 1);
+
+    var bestIdx = searchStart;
+    var bestDist = double.infinity;
+
+    for (int i = searchStart; i <= searchEnd; i++) {
+      final dist = _segDist(pos, _routePoints[i]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
       }
     }
 
-    // Never move backward because that makes the passed-route segment
-    // re-appear and causes visual "flicker" of the blue line behind us.
-    if (idx > _lastNearestIdx) {
-      final oldDist = _segDist(pos, _routePoints[_lastNearestIdx]);
-      if (oldDist > 6 || (idx - _lastNearestIdx) > 2) {
-        _lastNearestIdx = idx;
+    if (bestIdx > _lastNearestIdx) {
+      final distToOld = _segDist(pos, _routePoints[_lastNearestIdx]);
+      if (distToOld > 8) {
+        _lastNearestIdx = bestIdx;
       }
     }
 
-    // Smooth the visible trim point so the line removal looks stable even
-    // when nearest-point index jumps several points on sparse geometries.
     if (_displayNearestIdx < _lastNearestIdx) {
       final step = (_lastNearestIdx - _displayNearestIdx).clamp(0, 6);
       _displayNearestIdx += step;
     }
+
     return _lastNearestIdx;
   }
 
@@ -2456,8 +2454,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   double _routeHeadingAt(int nearestIdx) {
-    // Use 40m lookahead for smooth heading that doesn't flip at turns.
-    return _routeLookaheadHeading(nearestIdx, 40.0);
+    // Short lookahead so the heading follows the road you're actually on and
+    // only rotates as you reach the corner — a longer lookahead pre-rotates
+    // the map well before the turn (looks like it "turns too early").
+    return _routeLookaheadHeading(nearestIdx, 15.0);
   }
 
   String _addressTitleFromResult(
@@ -3593,6 +3593,61 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _handleMapTap(LatLng destination) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
+    final previousDestination = _destination;
+    final previousDestinationLabel = _destinationLabel;
+    final previousRouteStop = _routeStop;
+    final previousRouteStopLabel = _routeStopLabel;
+    final previousRoutePoints = List<LatLng>.from(_routePoints);
+    final previousInstructions = List<RouteInstruction>.from(_instructions);
+    final previousActiveRoute = _activeRoute;
+    final previousLastNearestIdx = _lastNearestIdx;
+    final previousDisplayNearestIdx = _displayNearestIdx;
+    final previousRoutingStatus = _routingStatus;
+    final previousNextManeuverSign = _nextManeuverSign;
+    final previousNextManeuverText = _nextManeuverText;
+    final previousNextManeuverStreetName = _nextManeuverStreetName;
+    final previousDistToNextManeuver = _distToNextManeuver;
+    final previousCurrentStreetName = _currentStreetName;
+    final previousCumulativeDist = List<double>.from(_cumulativeDist);
+    final previousTotalRouteDistM = _totalRouteDistM;
+    final previousRemainingDistM = _remainingDistM;
+    final previousIsNavigating = _isNavigating;
+    final previousIsNavigationPanelExpanded = _isNavigationPanelExpanded;
+
+    void restorePreviousRouteState() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _mapViewEpoch++;
+        _destination = previousDestination;
+        _destinationLabel = previousDestinationLabel;
+        _routeStop = previousRouteStop;
+        _routeStopLabel = previousRouteStopLabel;
+        _routePoints = previousRoutePoints;
+        _instructions = previousInstructions;
+        _activeRoute = previousActiveRoute;
+        _lastNearestIdx = previousLastNearestIdx;
+        _displayNearestIdx = previousDisplayNearestIdx;
+        _routingStatus = previousRoutingStatus;
+        _nextManeuverSign = previousNextManeuverSign;
+        _nextManeuverText = previousNextManeuverText;
+        _nextManeuverStreetName = previousNextManeuverStreetName;
+        _distToNextManeuver = previousDistToNextManeuver;
+        _currentStreetName = previousCurrentStreetName;
+        _cumulativeDist = previousCumulativeDist;
+        _totalRouteDistM = previousTotalRouteDistM;
+        _remainingDistM = previousRemainingDistM;
+        _isNavigating = previousIsNavigating;
+        _isNavigationPanelExpanded = previousIsNavigationPanelExpanded;
+        _isRouting = false;
+      });
+      unawaited(_syncCarPlayNavigationState());
+      if (previousActiveRoute == null) {
+        _cancelPendingAiRouteAnalysis();
+      }
+    }
+
     if (_analyzeNextSelectedRouteWithAi) {
       _aiDestinationSelectionStarted = true;
     }
@@ -3667,7 +3722,11 @@ class _MapScreenState extends State<MapScreen> {
               options: options,
             )
           : options.first;
-      if (!mounted || selected == null) return;
+      if (!mounted) return;
+      if (selected == null) {
+        restorePreviousRouteState();
+        return;
+      }
 
       _applyRouteResult(selected.route, l10n);
       if (selected.type == _RouteOptionType.unverified) {
@@ -3734,12 +3793,14 @@ class _MapScreenState extends State<MapScreen> {
             ],
           );
           if (!mounted) return;
-          if (selected != null) {
-            _applyRouteResult(selected.route, l10n);
-            setState(() => _routingStatus = l10n.routeFallbackActive);
-            unawaited(_saveDestinationHistory(destination));
-            SubscriptionService.instance.recordRoute();
+          if (selected == null) {
+            restorePreviousRouteState();
+            return;
           }
+          _applyRouteResult(selected.route, l10n);
+          setState(() => _routingStatus = l10n.routeFallbackActive);
+          unawaited(_saveDestinationHistory(destination));
+          SubscriptionService.instance.recordRoute();
         } else {
           showDialog<void>(
             context: context,
@@ -3958,7 +4019,8 @@ class _MapScreenState extends State<MapScreen> {
     final deviceControlsRasterArrow =
         !_isFollowing &&
         (_usingAppleMapKit || !_useVectorMap) &&
-        _deviceCompassHeading != null;
+        _deviceCompassHeading != null &&
+        newSpeed <= 6.0;
     if (newSpeed > 0.5 && !deviceControlsRasterArrow) {
       var headingForArrow = heading;
       if (_isNavigating &&

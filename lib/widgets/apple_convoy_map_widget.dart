@@ -7,23 +7,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/models/convoy_member_location.dart';
+import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 
-class AppleMapWidget extends StatefulWidget {
-  const AppleMapWidget({
+class AppleConvoyMapWidget extends StatefulWidget {
+  const AppleConvoyMapWidget({
     super.key,
     required this.locationNotifier,
     required this.headingNotifier,
     required this.markerStyle,
+    required this.members,
+    required this.pins,
+    required this.viewportCommandId,
+    this.currentUserId,
     this.destination,
     this.routePoints = const [],
     this.alerts = const [],
-    this.studdedTireBanZones = const [],
-    this.chargingStations = const [],
+    this.meetupPosition,
+    this.meetupLabel,
+    this.viewportCommandPoints = const [],
     this.onTap,
-    this.followUser = false,
     this.onUserPanned,
+    this.onMemberTap,
+    this.onPinTap,
+    this.onMeetupTap,
+    this.followUser = false,
     this.use3D = true,
     this.darkMode = false,
     this.nextManeuverDistanceMeters,
@@ -33,24 +43,33 @@ class AppleMapWidget extends StatefulWidget {
   final ValueNotifier<LatLng?> locationNotifier;
   final ValueNotifier<double> headingNotifier;
   final MapMarkerStyle markerStyle;
+  final List<ConvoyMemberLocation> members;
+  final List<ConvoyPin> pins;
+  final int viewportCommandId;
+  final String? currentUserId;
   final LatLng? destination;
   final List<LatLng> routePoints;
   final List<AlertModel> alerts;
-  final List<List<LatLng>> studdedTireBanZones;
-  final List<LatLng> chargingStations;
+  final LatLng? meetupPosition;
+  final String? meetupLabel;
+  final List<LatLng> viewportCommandPoints;
   final ValueChanged<LatLng>? onTap;
-  final bool followUser;
   final VoidCallback? onUserPanned;
+  final ValueChanged<String>? onMemberTap;
+  final ValueChanged<String>? onPinTap;
+  final VoidCallback? onMeetupTap;
+  final bool followUser;
   final bool use3D;
   final bool darkMode;
   final double? nextManeuverDistanceMeters;
   final int? nextManeuverSign;
 
   @override
-  State<AppleMapWidget> createState() => _AppleMapWidgetState();
+  State<AppleConvoyMapWidget> createState() => _AppleConvoyMapWidgetState();
 }
 
-class _AppleMapWidgetState extends State<AppleMapWidget> {
+class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
+  static const double _k3DArrowAlignmentY = 0.30;
   MethodChannel? _channel;
   Timer? _stateSyncDebounce;
   Timer? _headingSyncDebounce;
@@ -67,8 +86,9 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
   }
 
   @override
-  void didUpdateWidget(covariant AppleMapWidget oldWidget) {
+  void didUpdateWidget(covariant AppleConvoyMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final followChanged = oldWidget.followUser != widget.followUser;
     if (oldWidget.locationNotifier != widget.locationNotifier) {
       oldWidget.locationNotifier.removeListener(_scheduleStateSync);
       widget.locationNotifier.addListener(_scheduleStateSync);
@@ -77,8 +97,8 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       oldWidget.headingNotifier.removeListener(_scheduleHeadingSync);
       widget.headingNotifier.addListener(_scheduleHeadingSync);
     }
-    _scheduleStateSync();
-    _scheduleHeadingSync();
+    _scheduleStateSync(immediate: followChanged);
+    _scheduleHeadingSync(immediate: followChanged);
   }
 
   @override
@@ -113,6 +133,27 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
         break;
       case 'userPanned':
         widget.onUserPanned?.call();
+        break;
+      case 'memberTapped':
+        final args = Map<String, dynamic>.from(
+          (call.arguments as Map?) ?? const <String, dynamic>{},
+        );
+        final userId = args['userId']?.toString();
+        if (userId != null && userId.isNotEmpty) {
+          widget.onMemberTap?.call(userId);
+        }
+        break;
+      case 'pinTapped':
+        final args = Map<String, dynamic>.from(
+          (call.arguments as Map?) ?? const <String, dynamic>{},
+        );
+        final pinId = args['pinId']?.toString();
+        if (pinId != null && pinId.isNotEmpty) {
+          widget.onPinTap?.call(pinId);
+        }
+        break;
+      case 'meetupTapped':
+        widget.onMeetupTap?.call();
         break;
     }
   }
@@ -156,21 +197,35 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       'markerStyle': _encodeMarkerStyle(widget.markerStyle),
       'destination': _encodePoint(widget.destination),
       'routePoints': widget.routePoints
-          .map(
-            (point) => {
-              'latitude': point.latitude,
-              'longitude': point.longitude,
-            },
-          )
+          .map(_encodePoint)
           .toList(growable: false),
-      // Show the real map-anchored marker (native annotation) so it always
-      // sits exactly on the route line and rotates with the map.
-      'hideUserMarkerWhenFollowing': false,
+      'alerts': widget.alerts.map(_encodeAlert).toList(growable: false),
+      'meetup': widget.meetupPosition == null
+          ? null
+          : {
+              'position': _encodePoint(widget.meetupPosition),
+              'label': widget.meetupLabel ?? '',
+            },
+      'convoyMembers': widget.members
+          .map(_encodeMember)
+          .toList(growable: false),
+      'convoyPins': widget.pins.map(_encodePin).toList(growable: false),
+      'currentUserId': widget.currentUserId,
+      'hideUserMarkerWhenFollowing': true,
       'followUser': widget.followUser,
       'use3D': widget.use3D,
       'darkMode': widget.darkMode,
       'nextManeuverDistanceMeters': widget.nextManeuverDistanceMeters,
       'nextManeuverSign': widget.nextManeuverSign,
+      'viewportCommand': widget.viewportCommandPoints.isEmpty
+          ? null
+          : {
+              'id': widget.viewportCommandId,
+              'type': 'fit_points',
+              'points': widget.viewportCommandPoints
+                  .map(_encodePoint)
+                  .toList(growable: false),
+            },
     };
 
     final payloadJson = jsonEncode(payload);
@@ -180,9 +235,9 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       await channel.invokeMethod<void>('setState', payload);
       _lastPayloadJson = payloadJson;
     } on MissingPluginException {
-      // The native view only exists on iOS.
+      // Native view only exists on iOS.
     } catch (error, stackTrace) {
-      debugPrint('AppleMapWidget sync failed: $error\n$stackTrace');
+      debugPrint('AppleConvoyMapWidget sync failed: $error\n$stackTrace');
     }
   }
 
@@ -199,9 +254,11 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       });
       _lastHeading = heading;
     } on MissingPluginException {
-      // The native view only exists on iOS.
+      // Native view only exists on iOS.
     } catch (error, stackTrace) {
-      debugPrint('AppleMapWidget heading sync failed: $error\n$stackTrace');
+      debugPrint(
+        'AppleConvoyMapWidget heading sync failed: $error\n$stackTrace',
+      );
     }
   }
 
@@ -229,6 +286,44 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
         _ => null,
       },
     };
+  }
+
+  Map<String, Object?> _encodeAlert(AlertModel alert) {
+    return {
+      'id': alert.id,
+      'position': _encodePoint(alert.position),
+      'typeKey': alert.type.key,
+      'emoji': alert.type.emoji,
+      'description': alert.description,
+    };
+  }
+
+  Map<String, Object?> _encodeMember(ConvoyMemberLocation member) {
+    final style = _parseMarkerStyle(member.vehicleStyle);
+    return {
+      'userId': member.userId,
+      'userLabel': member.userLabel,
+      'position': _encodePoint(member.position),
+      'markerStyle': _encodeMarkerStyle(style),
+    };
+  }
+
+  Map<String, Object?> _encodePin(ConvoyPin pin) {
+    return {
+      'pinId': pin.id,
+      'label': pin.label,
+      'type': pin.type,
+      'position': _encodePoint(pin.position),
+    };
+  }
+
+  MapMarkerStyle _parseMarkerStyle(String rawStyle) {
+    for (final style in MapMarkerStyle.values) {
+      if (style.name == rawStyle) {
+        return style;
+      }
+    }
+    return MapMarkerStyle.navigation;
   }
 
   double? _asDouble(Object? value) {
@@ -259,9 +354,20 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
               Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
             },
             onPlatformViewCreated: _onPlatformViewCreated,
-            creationParams: const <String, Object?>{},
-            creationParamsCodec: const StandardMessageCodec(),
           ),
+          if (widget.followUser)
+            IgnorePointer(
+              child: Align(
+                alignment: widget.use3D
+                    ? const Alignment(0, _k3DArrowAlignmentY)
+                    : Alignment.center,
+                child: UserLocationMarker(
+                  headingNotifier: widget.headingNotifier,
+                  lockNorthUp: false,
+                  size: 30,
+                ),
+              ),
+            ),
         ],
       ),
     );

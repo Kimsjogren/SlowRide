@@ -90,13 +90,15 @@ class AppLocalizationsNb extends AppLocalizations {
   String get alertsTitle => 'Fellesskapsvarsler';
 
   @override
-  String get alertsSubtitle => 'Rapporter og se veifarer, kontroller og veiforhold.';
+  String get alertsSubtitle =>
+      'Rapporter og se veifarer, kontroller og veiforhold.';
 
   @override
   String get convoyRequiresSignInTitle => 'Kolonne krever innlogging';
 
   @override
-  String get convoyRequiresSignInSubtitle => 'Logg inn eller opprett en konto for å opprette kolonnegrupper og se direkteposisjoner.';
+  String get convoyRequiresSignInSubtitle =>
+      'Logg inn eller opprett en konto for å opprette kolonnegrupper og se direkteposisjoner.';
 
   @override
   String get signIn => 'Logg inn';
@@ -141,7 +143,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get signUpOtpSent => 'Kontoopprettingskode sendt til e-posten din.';
 
   @override
-  String get signInOtpInvalid => 'Kunne ikke bekrefte OTP. Sjekk koden og prøv igjen.';
+  String get signInOtpInvalid =>
+      'Kunne ikke bekrefte OTP. Sjekk koden og prøv igjen.';
 
   @override
   String get signUpNoAccountAction => 'Ingen konto? Opprett en';
@@ -174,7 +177,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authPasswordRequired => 'Skriv inn passordet ditt';
 
   @override
-  String get authPasswordMinLength => 'Minst 6 tegn';
+  String get authPasswordMinLength => 'Minst 6 tegn, et tall og et spesialtegn';
 
   @override
   String get authConfirmPasswordLabel => 'Bekreft passord';
@@ -207,19 +210,22 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authForgotPasswordTitle => 'Tilbakestill passord';
 
   @override
-  String get authForgotPasswordDescription => 'Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.';
+  String get authForgotPasswordDescription =>
+      'Skriv inn e-postadressen din, så sender vi deg en lenke for å tilbakestille passordet.';
 
   @override
   String get authForgotPasswordButton => 'Send tilbakestillingslenke';
 
   @override
-  String get authForgotPasswordSuccess => 'Hvis kontoen finnes, har vi sendt en tilbakestillingslenke til e-posten din.';
+  String get authForgotPasswordSuccess =>
+      'Hvis kontoen finnes, har vi sendt en tilbakestillingslenke til e-posten din.';
 
   @override
   String get authResetPasswordTitle => 'Nytt passord';
 
   @override
-  String get authResetPasswordDescription => 'Skriv inn ditt nye passord nedenfor.';
+  String get authResetPasswordDescription =>
+      'Skriv inn ditt nye passord nedenfor.';
 
   @override
   String get authNewPasswordLabel => 'Nytt passord';
@@ -234,49 +240,61 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Alle felt er påkrevd.';
 
   @override
-  String get authErrorPasswordTooShort => 'Passordet må være minst 6 tegn.';
+  String get authErrorPasswordTooShort =>
+      'Passordet må være minst 6 tegn og inneholde et tall og et spesialtegn.';
 
   @override
-  String get authErrorConfirmEmail => 'Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.';
+  String get authErrorConfirmEmail =>
+      'Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.';
 
   @override
   String get authEmailConfirmedTitle => 'E-post bekreftet';
 
   @override
-  String get authEmailConfirmedBody => 'E-postadressen din er bekreftet. Du er nå logget inn.';
+  String get authEmailConfirmedBody =>
+      'E-postadressen din er bekreftet. Du er nå logget inn.';
 
   @override
-  String get authErrorEmailAndPasswordRequired => 'Skriv inn e-post og passord.';
+  String get authErrorEmailAndPasswordRequired =>
+      'Skriv inn e-post og passord.';
 
   @override
   String get authErrorInvalidCredentials => 'Feil e-post eller passord.';
 
   @override
-  String get authErrorEmailAlreadyInUse => 'Det finnes allerede en konto med den e-postadressen.';
+  String get authErrorEmailAlreadyInUse =>
+      'Det finnes allerede en konto med den e-postadressen.';
 
   @override
-  String get authErrorInvalidEmail => 'E-postadressen er ugyldig. Kontroller den og prøv igjen.';
+  String get authErrorInvalidEmail =>
+      'E-postadressen er ugyldig. Kontroller den og prøv igjen.';
 
   @override
-  String get authErrorRateLimited => 'For mange forsøk på kort tid. Vent litt og prøv igjen.';
+  String get authErrorRateLimited =>
+      'For mange forsøk på kort tid. Vent litt og prøv igjen.';
 
   @override
-  String get authErrorSignUpDisabled => 'Nye kontoer kan ikke opprettes akkurat nå. Kontakt CruizX Support.';
+  String get authErrorSignUpDisabled =>
+      'Nye kontoer kan ikke opprettes akkurat nå. Kontakt CruizX Support.';
 
   @override
-  String get authErrorEmailDeliveryFailed => 'Bekreftelsesmeldingen kunne ikke sendes. Prøv igjen om litt.';
+  String get authErrorEmailDeliveryFailed =>
+      'Bekreftelsesmeldingen kunne ikke sendes. Prøv igjen om litt.';
 
   @override
-  String get authErrorNetworkUnavailable => 'Kunne ikke koble til kontotjenesten. Kontroller internettforbindelsen og prøv igjen.';
+  String get authErrorNetworkUnavailable =>
+      'Kunne ikke koble til kontotjenesten. Kontroller internettforbindelsen og prøv igjen.';
 
   @override
-  String get convoyRealtimeBackendMissing => 'Sanntidskolonne er ikke konfigurert ennå. Legg til backend-konfigurasjon for å dele direkteposisjon mellom brukere.';
+  String get convoyRealtimeBackendMissing =>
+      'Sanntidskolonne er ikke konfigurert ennå. Legg til backend-konfigurasjon for å dele direkteposisjon mellom brukere.';
 
   @override
   String get convoyModeTitle => 'Kolonnemodus';
 
   @override
-  String get convoyModeSubtitle => 'Opprett gruppekjøring med delt destinasjon og direkteposisjoner.';
+  String get convoyModeSubtitle =>
+      'Opprett gruppekjøring med delt destinasjon og direkteposisjoner.';
 
   @override
   String get convoyCreateButton => 'Opprett kolonne';
@@ -285,7 +303,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get publicGatheringsTitle => 'Offentlige treff';
 
   @override
-  String get publicGatheringsSubtitle => 'Finn et møtested, bli med offentlig og velg selv om liveposisjonen din skal vises.';
+  String get publicGatheringsSubtitle =>
+      'Finn et møtested, bli med offentlig og velg selv om liveposisjonen din skal vises.';
 
   @override
   String get publicGatheringsMineTab => 'Mine';
@@ -294,7 +313,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get publicGatheringsPublicTab => 'Offentlige';
 
   @override
-  String get publicGatheringsEmpty => 'Det finnes ingen aktive offentlige treff akkurat nå.';
+  String get publicGatheringsEmpty =>
+      'Det finnes ingen aktive offentlige treff akkurat nå.';
 
   @override
   String get publicGatheringCreateButton => 'Opprett offentlig treff';
@@ -306,10 +326,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get publicGatheringPlaceHint => 'Møtested, f.eks. torget';
 
   @override
-  String get publicGatheringLocationExplanation => 'Treffet plasseres ved din nåværende posisjon og er aktivt i 6 timer. Liveposisjon er valgfritt for alle deltakere.';
+  String get publicGatheringLocationExplanation =>
+      'Treffet plasseres ved din nåværende posisjon og er aktivt i 6 timer. Liveposisjon er valgfritt for alle deltakere.';
 
   @override
-  String get publicGatheringLocationRequired => 'Posisjonstilgang kreves for å angi møtestedet.';
+  String get publicGatheringLocationRequired =>
+      'Posisjonstilgang kreves for å angi møtestedet.';
 
   @override
   String get publicGatheringPublish => 'Publiser';
@@ -330,7 +352,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get convoyLeaveButton => 'Forlat';
 
   @override
-  String get convoyJoinFirstHint => 'Bli med i kolonnen først, trykk deretter for å åpne chat og kart.';
+  String get convoyJoinFirstHint =>
+      'Bli med i kolonnen først, trykk deretter for å åpne chat og kart.';
 
   @override
   String get convoyJoinByCodeTitle => 'Bli med i kolonne';
@@ -398,7 +421,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get convoyPoiMeetup => 'Møteplass';
 
   @override
-  String get convoyPoiMeetupSubtitle => 'Marker et tydelig sted der kolonnen skal samles';
+  String get convoyPoiMeetupSubtitle =>
+      'Marker et tydelig sted der kolonnen skal samles';
 
   @override
   String get convoyPoiParking => 'Parkering';
@@ -449,7 +473,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get convoyListEmpty => 'Ingen kolonner ennå. Opprett den første.';
 
   @override
-  String get convoyListEmptyMine => 'Du har ikke blitt med i noen kolonner ennå.';
+  String get convoyListEmptyMine =>
+      'Du har ikke blitt med i noen kolonner ennå.';
 
   @override
   String get convoyFilterAll => 'Alle';
@@ -482,7 +507,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get profileNotSignedIn => 'Du er ikke logget inn.';
 
   @override
-  String get profileSignInInConvoyHint => 'Innlogging er tilgjengelig i Kolonne-fanen.';
+  String get profileSignInInConvoyHint =>
+      'Innlogging er tilgjengelig i Kolonne-fanen.';
 
   @override
   String profileSignedInAs(Object name) {
@@ -520,7 +546,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get profileVehicleStuddedTires => 'Piggdekk';
 
   @override
-  String get profileVehicleStuddedTiresSubtitle => 'Unngå gater med piggdekkforbud';
+  String get profileVehicleStuddedTiresSubtitle =>
+      'Unngå gater med piggdekkforbud';
 
   @override
   String get settingsTitle => 'Innstillinger';
@@ -583,7 +610,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsCountryUnitedKingdom => '🇬🇧 Storbritannia';
 
   @override
-  String get settingsCountryHint => 'Fartsgrenser og veiregler tilpasses valgt land.';
+  String get settingsCountryHint =>
+      'Fartsgrenser og veiregler tilpasses valgt land.';
 
   @override
   String settingsLanguageCurrentlyUsing(Object mode) {
@@ -612,7 +640,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsVehicleElectricScooter => 'Elsparkesykkel';
 
   @override
-  String get settingsElectricScooterLegalNotice => 'Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.';
+  String get settingsElectricScooterLegalNotice =>
+      'Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.';
 
   @override
   String get settingsVehicleTractor => 'Traktor';
@@ -638,10 +667,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsProStatusInactive => 'Ikke aktiv';
 
   @override
-  String get settingsProDescriptionActive => 'Du har tilgang til alle Pro-funksjoner.';
+  String get settingsProDescriptionActive =>
+      'Du har tilgang til alle Pro-funksjoner.';
 
   @override
-  String get settingsProDescriptionInactive => 'Lås opp alle funksjoner med CruizX Pro.';
+  String get settingsProDescriptionInactive =>
+      'Lås opp alle funksjoner med CruizX Pro.';
 
   @override
   String get settingsProFeatureRoutes => 'Flere AI-ruteanalyser';
@@ -656,7 +687,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsProFeatureSupport => 'Prioritert støtte';
 
   @override
-  String get settingsProSubscriptionNote => 'Abonnement: CruizX Pro Månedlig (1 måned). Betaling belastes Apple-ID-en din og fornyes automatisk med mindre det kanselleres minst 24 timer før periodens slutt.';
+  String get settingsProSubscriptionNote =>
+      'Abonnement: CruizX Pro Månedlig (1 måned). Betaling belastes Apple-ID-en din og fornyes automatisk med mindre det kanselleres minst 24 timer før periodens slutt.';
 
   @override
   String settingsProPricePerMonth(Object price) {
@@ -669,7 +701,8 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes én gang via appbutikken. Ingen abonnement og ingen automatisk fornyelse.';
+  String get settingsProOneTimeNote =>
+      'Engangskjøp: CruizX Pro (livstid). Betalingen belastes én gang via appbutikken. Ingen abonnement og ingen automatisk fornyelse.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Personvernregler';
@@ -687,13 +720,16 @@ class AppLocalizationsNb extends AppLocalizations {
   String get supportChatReplyTime => 'Svarer innen 24 timer';
 
   @override
-  String get supportChatWelcome => 'Hei! Hvordan kan vi hjelpe deg med CruizX? Skriv meldingen din her, så svarer vi så snart vi kan.';
+  String get supportChatWelcome =>
+      'Hei! Hvordan kan vi hjelpe deg med CruizX? Skriv meldingen din her, så svarer vi så snart vi kan.';
 
   @override
-  String get supportChatGuestNotice => 'Du chatter som gjest. Samtalen lagres privat på denne enheten.';
+  String get supportChatGuestNotice =>
+      'Du chatter som gjest. Samtalen lagres privat på denne enheten.';
 
   @override
-  String get supportChatLoginRequired => 'Logg inn for å starte en privat supportchat og se tidligere meldinger.';
+  String get supportChatLoginRequired =>
+      'Logg inn for å starte en privat supportchat og se tidligere meldinger.';
 
   @override
   String get supportChatLoginAction => 'Logg inn';
@@ -705,10 +741,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get supportChatSend => 'Send melding';
 
   @override
-  String get supportChatSendFailed => 'Meldingen kunne ikke sendes. Prøv igjen.';
+  String get supportChatSendFailed =>
+      'Meldingen kunne ikke sendes. Prøv igjen.';
 
   @override
-  String get supportChatUnavailable => 'Supportchatten er ikke tilgjengelig akkurat nå. Prøv igjen senere.';
+  String get supportChatUnavailable =>
+      'Supportchatten er ikke tilgjengelig akkurat nå. Prøv igjen senere.';
 
   @override
   String get supportChatTeam => 'CruizX Support';
@@ -831,16 +869,19 @@ class AppLocalizationsNb extends AppLocalizations {
   String get navigationTitle => 'Sving-for-sving-navigasjon';
 
   @override
-  String get navigationSubtitle => 'Veibeskrivelse, neste sving og ankomsttid optimalisert for sakte kjøretøy.';
+  String get navigationSubtitle =>
+      'Veibeskrivelse, neste sving og ankomsttid optimalisert for sakte kjøretøy.';
 
   @override
   String get mapStartingGps => 'Starter GPS...';
 
   @override
-  String get mapTapToSelectDestination => 'Trykk på kartet for å velge destinasjon';
+  String get mapTapToSelectDestination =>
+      'Trykk på kartet for å velge destinasjon';
 
   @override
-  String get mapAddressFieldHint => 'Søk adresse (f.eks. Karl Johans gate 1, Oslo)';
+  String get mapAddressFieldHint =>
+      'Søk adresse (f.eks. Karl Johans gate 1, Oslo)';
 
   @override
   String get mapSearchingAddress => 'Søker adresse...';
@@ -884,22 +925,27 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mapRouteNoRouteFound => 'Ingen rute funnet mellom valgte punkter';
 
   @override
-  String get mapRouteProviderUnavailable => 'Rutetjenesten er utilgjengelig akkurat nå';
+  String get mapRouteProviderUnavailable =>
+      'Rutetjenesten er utilgjengelig akkurat nå';
 
   @override
-  String get mapRouteMissingApiKey => 'Ruting er ikke konfigurert i backend (manglende API-nøkkel)';
+  String get mapRouteMissingApiKey =>
+      'Ruting er ikke konfigurert i backend (manglende API-nøkkel)';
 
   @override
   String get mapRouteInvalidGeometry => 'Rutedata fra serveren er ugyldig';
 
   @override
-  String get mapRouteUnknownProvider => 'Ruteleverandøren er ikke riktig konfigurert';
+  String get mapRouteUnknownProvider =>
+      'Ruteleverandøren er ikke riktig konfigurert';
 
   @override
-  String get mapRouteTooFastForVehicle => 'Rute avvist: estimert gjennomsnittshastighet er for høy for denne kjøretøytypen.';
+  String get mapRouteTooFastForVehicle =>
+      'Rute avvist: estimert gjennomsnittshastighet er for høy for denne kjøretøytypen.';
 
   @override
-  String get mapRouteNotAllowedForVehicle => 'Ingen lovlig rute funnet for denne kjøretøytypen.';
+  String get mapRouteNotAllowedForVehicle =>
+      'Ingen lovlig rute funnet for denne kjøretøytypen.';
 
   @override
   String get routeStopSheetSubtitle => 'Nærmeste stopp langs pågående rute';
@@ -911,7 +957,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get routeStopEmpty => 'Fant ingen gode stopp nær ruten akkurat nå.';
 
   @override
-  String get routeStopNearbyEmpty => 'Fant ingen gode alternativer nær deg akkurat nå.';
+  String get routeStopNearbyEmpty =>
+      'Fant ingen gode alternativer nær deg akkurat nå.';
 
   @override
   String get searchSaved => 'Lagret';
@@ -970,13 +1017,15 @@ class AppLocalizationsNb extends AppLocalizations {
   String get routeOptionRecommended => 'Anbefalt';
 
   @override
-  String get routeOptionRecommendedSubtitle => 'Verifisert etter CruizX-regler for valgt kjøretøy.';
+  String get routeOptionRecommendedSubtitle =>
+      'Verifisert etter CruizX-regler for valgt kjøretøy.';
 
   @override
   String get routeOptionAlternative => 'Alternativ rute';
 
   @override
-  String get routeOptionAlternativeSubtitle => 'Lovlig rute — andre veier eller litt lengre.';
+  String get routeOptionAlternativeSubtitle =>
+      'Lovlig rute — andre veier eller litt lengre.';
 
   @override
   String get routeOptionUnverified => 'Usikker alternativ rute';
@@ -995,7 +1044,8 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX godkjenner aldri forbudte veier automatisk. Følg alltid skilting og lokale regler.';
+  String get routeOptionWarningFooter =>
+      'CruizX godkjenner aldri forbudte veier automatisk. Følg alltid skilting og lokale regler.';
 
   @override
   String get mapModeLabel2d => '2D';
@@ -1105,7 +1155,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get alertMustBeLoggedIn => 'Du må være logget inn for å rapportere';
 
   @override
-  String get alertsScreenSubtitle => 'Direkteinformasjon fra Trafikverket og CruizX-sjåfører innen ~50 km. Trykk på tommelen for å bekrefte brukervarsler.';
+  String get alertsScreenSubtitle =>
+      'Direkteinformasjon fra Trafikverket og CruizX-sjåfører innen ~50 km. Trykk på tommelen for å bekrefte brukervarsler.';
 
   @override
   String get alertReportButton => 'Rapporter';
@@ -1133,7 +1184,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get alertReportQuestion => 'Hva ser du på veien?';
 
   @override
-  String get alertReportDescHint2 => 'Valgfri beskrivelse… (f.eks. \"stor gren\")';
+  String get alertReportDescHint2 =>
+      'Valgfri beskrivelse… (f.eks. \"stor gren\")';
 
   @override
   String get alertReportedSuccess => 'Varsel rapportert! Takk 🙏';
@@ -1145,7 +1197,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get adBannerLoading => 'Laster annonse…';
 
   @override
-  String get adBannerWaitingRetry => 'Annonse venter på nettverk… (trykk for å prøve igjen)';
+  String get adBannerWaitingRetry =>
+      'Annonse venter på nettverk… (trykk for å prøve igjen)';
 
   @override
   String get mapStartNavigation => 'Start navigasjon';
@@ -1194,7 +1247,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallTitle => 'Oppgrader til CruizX Pro';
 
   @override
-  String get paywallSubtitle => 'Ingen begrensninger. Ingen annonser. Full tilgang.';
+  String get paywallSubtitle =>
+      'Ingen begrensninger. Ingen annonser. Full tilgang.';
 
   @override
   String get paywallPrice => '42 kr / måned';
@@ -1273,31 +1327,36 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallRouteLimitTitle => 'Ubegrensede ruter';
 
   @override
-  String get paywallRouteLimitBody => 'Navigasjonsruter er også ubegrensede i gratisversjonen.';
+  String get paywallRouteLimitBody =>
+      'Navigasjonsruter er også ubegrensede i gratisversjonen.';
 
   @override
   String get routeUpgradePromptTitle => 'Fortsette uten reklame?';
 
   @override
-  String get routeUpgradePromptBody => 'Du har opprettet to ruter i dag. Gratisversjonen har ubegrensede ruter, mens Pro fjerner reklame og låser opp flere funksjoner. Vil du oppgradere?';
+  String get routeUpgradePromptBody =>
+      'Du har opprettet to ruter i dag. Gratisversjonen har ubegrensede ruter, mens Pro fjerner reklame og låser opp flere funksjoner. Vil du oppgradere?';
 
   @override
   String get paywallConvoyLimitTitle => 'Kolonnegrensen nådd';
 
   @override
-  String get paywallConvoyLimitBody => 'Gratisbrukere kan bare være med i 1 kolonne om gangen.';
+  String get paywallConvoyLimitBody =>
+      'Gratisbrukere kan bare være med i 1 kolonne om gangen.';
 
   @override
   String get paywallMemberLimitTitle => 'Kolonnen er full';
 
   @override
-  String get paywallMemberLimitBody => 'Gratisbrukere kan bare bli med i kolonner med færre enn 2 medlemmer. Oppgrader til Pro for ubegrenset tilgang.';
+  String get paywallMemberLimitBody =>
+      'Gratisbrukere kan bare bli med i kolonner med færre enn 2 medlemmer. Oppgrader til Pro for ubegrenset tilgang.';
 
   @override
   String get paywallPurchaseSuccess => 'Du er nå en Pro-bruker!';
 
   @override
-  String get paywallPurchaseFailed => 'Kjøpet kunne ikke fullføres. Sjekk App Store-kontoen din og prøv igjen.';
+  String get paywallPurchaseFailed =>
+      'Kjøpet kunne ikke fullføres. Sjekk App Store-kontoen din og prøv igjen.';
 
   @override
   String get paywallRestoreSuccess => 'Kjøpet gjenopprettet!';
@@ -1306,7 +1365,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallLoginRequiredTitle => 'Innlogging kreves';
 
   @override
-  String get paywallLoginRequiredBody => 'Du trenger en konto for å kjøpe CruizX Pro. Opprett en gratis konto i appen for å fortsette.';
+  String get paywallLoginRequiredBody =>
+      'Du trenger en konto for å kjøpe CruizX Pro. Opprett en gratis konto i appen for å fortsette.';
 
   @override
   String get paywallLoginRequiredAction => 'OK';
@@ -1344,10 +1404,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get parentModeTitle => 'Foreldremodus';
 
   @override
-  String get parentModeDescription => 'La en forelder følge kjøringen din i sanntid.';
+  String get parentModeDescription =>
+      'La en forelder følge kjøringen din i sanntid.';
 
   @override
-  String get parentModeLoginRequired => 'Du må være logget inn for å bruke foreldremodus.';
+  String get parentModeLoginRequired =>
+      'Du må være logget inn for å bruke foreldremodus.';
 
   @override
   String get parentModeEnable => 'Aktiver foreldremodus';
@@ -1362,7 +1424,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get parentModeInviteCode => 'Invitasjonskode';
 
   @override
-  String get parentModeInviteCodeSubtitle => 'Del denne koden med forelderen din for å koble kontoen.';
+  String get parentModeInviteCodeSubtitle =>
+      'Del denne koden med forelderen din for å koble kontoen.';
 
   @override
   String get parentModeCopyCode => 'Kopier';
@@ -1385,7 +1448,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get parentModeLinkedParents => 'Koblede foreldre';
 
   @override
-  String get parentModeNoParentsLinked => 'Ingen foreldre koblet ennå. Del koden din!';
+  String get parentModeNoParentsLinked =>
+      'Ingen foreldre koblet ennå. Del koden din!';
 
   @override
   String get parentModeUnlinkTitle => 'Fjerne forelder?';
@@ -1466,13 +1530,15 @@ class AppLocalizationsNb extends AppLocalizations {
   String get parentDashboardNoChildren => 'Ingen barn koblet ennå';
 
   @override
-  String get parentDashboardNoChildrenHint => 'Legg til et barn ved å skrive inn invitasjonskoden fra CruizX Foreldremodus.';
+  String get parentDashboardNoChildrenHint =>
+      'Legg til et barn ved å skrive inn invitasjonskoden fra CruizX Foreldremodus.';
 
   @override
   String get parentDashboardEnterCode => 'Skriv inn invitasjonskode';
 
   @override
-  String get parentDashboardEnterCodeHint => 'Be barnet ditt dele sin 6-tegns invitasjonskode fra Foreldremodus-innstillingene.';
+  String get parentDashboardEnterCodeHint =>
+      'Be barnet ditt dele sin 6-tegns invitasjonskode fra Foreldremodus-innstillingene.';
 
   @override
   String get parentDashboardLink => 'Koble';
@@ -1481,16 +1547,22 @@ class AppLocalizationsNb extends AppLocalizations {
   String get parentDashboardLinkSuccess => 'Koblingen var vellykket!';
 
   @override
-  String get parentDashboardLinkFailed => 'Kunne ikke finne barn med den koden. Sjekk koden og prøv igjen.';
+  String get parentDashboardLinkFailed =>
+      'Kunne ikke finne barn med den koden. Sjekk koden og prøv igjen.';
 
   @override
-  String get parentDashboardLinkSelf => 'Du kan ikke koble til din egen konto. Be barnet ditt dele sin kode fra sin konto.';
+  String get parentDashboardLinkSelf =>
+      'Du kan ikke koble til din egen konto. Be barnet ditt dele sin kode fra sin konto.';
 
   @override
   String get parentDashboardSpeedingAlert => 'Fartsvarsel';
 
   @override
-  String parentDashboardSpeedingDetail(Object name, Object speed, Object limit) {
+  String parentDashboardSpeedingDetail(
+    Object name,
+    Object speed,
+    Object limit,
+  ) {
     return '$name kjørte i $speed km/t (grense: $limit km/t)';
   }
 
@@ -1552,10 +1624,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mfaSetupTitle => 'Aktiver tofaktorautentisering';
 
   @override
-  String get mfaSetupSubtitle => 'Skann QR-koden med en autentiseringsapp som Google Authenticator eller Authy';
+  String get mfaSetupSubtitle =>
+      'Skann QR-koden med en autentiseringsapp som Google Authenticator eller Authy';
 
   @override
-  String get mfaScanQr => 'Skann koden over og skriv inn den 6-sifrede koden under';
+  String get mfaScanQr =>
+      'Skann koden over og skriv inn den 6-sifrede koden under';
 
   @override
   String get mfaVerifyButton => 'Bekreft';
@@ -1564,7 +1638,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mfaVerifyTitle => 'Tofaktorautentisering';
 
   @override
-  String get mfaVerifySubtitle => 'Skriv inn den 6-sifrede koden fra autentiseringsappen din';
+  String get mfaVerifySubtitle =>
+      'Skriv inn den 6-sifrede koden fra autentiseringsappen din';
 
   @override
   String get mfaInvalidCode => 'Ugyldig kode, prøv igjen';
@@ -1591,7 +1666,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mfaDisableTitle => 'Slå av 2FA?';
 
   @override
-  String get mfaDisableBody => 'Kontoen din blir mindre sikker uten tofaktorautentisering.';
+  String get mfaDisableBody =>
+      'Kontoen din blir mindre sikker uten tofaktorautentisering.';
 
   @override
   String get mfaDisableConfirm => 'Slå av';
@@ -1609,7 +1685,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get mfaRecommendTitle => 'Beskytt kontoen din';
 
   @override
-  String get mfaRecommendBody => 'Vi anbefaler å aktivere tofaktorautentisering for å beskytte kontoen din. Du kan bruke en autentiseringsapp som Google Authenticator eller Authy.';
+  String get mfaRecommendBody =>
+      'Vi anbefaler å aktivere tofaktorautentisering for å beskytte kontoen din. Du kan bruke en autentiseringsapp som Google Authenticator eller Authy.';
 
   @override
   String get mfaRecommendSetup => 'Aktiver nå';
@@ -1652,7 +1729,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get favCustom => 'Annen favoritt';
 
   @override
-  String get ttsVoiceHint => 'Tips: Last ned bedre stemmer i Innstillinger → Tilgjengelighet → Opplest innhold → Stemmer';
+  String get ttsVoiceHint =>
+      'Tips: Last ned bedre stemmer i Innstillinger → Tilgjengelighet → Opplest innhold → Stemmer';
 
   @override
   String get ttsVoiceHintDismiss => 'OK';
@@ -1661,7 +1739,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsVectorMap => 'Vektorkart';
 
   @override
-  String get settingsVectorMapOn => 'Skarp gjengivelse på alle zoomnivåer, myk zoom';
+  String get settingsVectorMapOn =>
+      'Skarp gjengivelse på alle zoomnivåer, myk zoom';
 
   @override
   String get settingsVectorMapOff => 'Standard — rask og offline-bufret';
@@ -1673,7 +1752,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get publicGatheringEndTime => 'Sluttid';
 
   @override
-  String get publicGatheringScheduleInvalid => 'Sluttiden må være etter starttiden.';
+  String get publicGatheringScheduleInvalid =>
+      'Sluttiden må være etter starttiden.';
 
   @override
   String get publicGatheringEndAction => 'Avslutt treffet';
@@ -1682,10 +1762,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get publicGatheringDeleteAction => 'Slett treffet';
 
   @override
-  String get publicGatheringEndConfirm => 'Avslutte treffet nå? Deltakerne kan ikke lenger finne det.';
+  String get publicGatheringEndConfirm =>
+      'Avslutte treffet nå? Deltakerne kan ikke lenger finne det.';
 
   @override
-  String get publicGatheringDeleteConfirm => 'Slette treffet permanent? Dette kan ikke angres.';
+  String get publicGatheringDeleteConfirm =>
+      'Slette treffet permanent? Dette kan ikke angres.';
 
   @override
   String get publicGatheringReportAction => 'Rapporter treffet';
@@ -1724,10 +1806,12 @@ class AppLocalizationsNb extends AppLocalizations {
   String get reportReasonOther => 'Annet';
 
   @override
-  String get publicGatheringNearbyNotifications => 'Varsler om treff i nærheten';
+  String get publicGatheringNearbyNotifications =>
+      'Varsler om treff i nærheten';
 
   @override
-  String get publicGatheringNearbyNotificationsSubtitle => 'Varsle meg én gang når et offentlig treff innen 25 km starter innen 24 timer.';
+  String get publicGatheringNearbyNotificationsSubtitle =>
+      'Varsle meg én gang når et offentlig treff innen 25 km starter innen 24 timer.';
 
   @override
   String get publicGatheringUpcoming => 'Kommende';
@@ -1745,7 +1829,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get aiConsentTitle => 'Bruke AI-ruteanalyse?';
 
   @override
-  String get aiConsentBody => 'CruizX bruker rutefakta som avstand, reisetid, kjøretøytype, veinavn og antall varsler for å analysere ruten. Din nøyaktige posisjon, destinasjonskoordinater og identitet deles ikke. Analysen kan inneholde feil og endrer aldri ruten din.';
+  String get aiConsentBody =>
+      'CruizX bruker rutefakta som avstand, reisetid, kjøretøytype, veinavn og antall varsler for å analysere ruten. Din nøyaktige posisjon, destinasjonskoordinater og identitet deles ikke. Analysen kan inneholde feil og endrer aldri ruten din.';
 
   @override
   String get aiConsentAccept => 'Godta og fortsett';
@@ -1760,7 +1845,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get aiLoading => 'Sjekker ruten…';
 
   @override
-  String get aiUnavailable => 'AI-ruteanalyse er utilgjengelig akkurat nå. Ruten din er uendret.';
+  String get aiUnavailable =>
+      'AI-ruteanalyse er utilgjengelig akkurat nå. Ruten din er uendret.';
 
   @override
   String get aiDailyLimit => 'Du har nådd dagens grense for AI-ruteanalyser.';
@@ -1775,7 +1861,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get aiRecommendation => 'Anbefaling';
 
   @override
-  String get aiDisclaimer => 'AI-sammendrag basert bare på tilgjengelige rutedata. Følg skilt og gjeldende veiforhold.';
+  String get aiDisclaimer =>
+      'AI-sammendrag basert bare på tilgjengelige rutedata. Følg skilt og gjeldende veiforhold.';
 
   @override
   String get aiReport => 'Rapporter svaret';

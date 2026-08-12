@@ -869,48 +869,91 @@ class RoutingService {
     final isSlowVehicle = maxLegalSpeedKmh <= 45;
     final vehicleMaxSpeedKmh = userSpeedKmh.clamp(1.0, maxLegalSpeedKmh);
 
-    final requestPayload = _buildValhallaRequestPayload(
-      origin: origin,
-      destination: destination,
-      waypoint: waypoint,
-      vehicleType: vehicleType,
-      userSpeedKmh: userSpeedKmh,
-      countryCode: countryCode,
-      language: _valhallaLanguage(),
-      avoidLocations: avoidLocations,
-    );
+    // For slow vehicles we hard-enforce road class: motorway everywhere and
+    // trunk/motortrafikled in the Nordics are illegal. Valhalla's use_highways
+    // penalty is only a preference, so it can still route via a trunk road
+    // (e.g. väg 73/Nynäsvägen). When that happens we exclude the offending
+    // segments and re-route until the path is legal.
+    final enforceRoadClass = isSlowVehicle && !relaxedLegalChecks;
+    final studdedPolygons =
+        UserPreferencesService.instance.hasStuddedTires.value
+        ? StuddedTireZones.toValhallaExcludePolygons()
+        : const <dynamic>[];
 
-    // Avoid studded-tire ban zones when the user has studded tires equipped.
-    if (UserPreferencesService.instance.hasStuddedTires.value) {
-      final excludePolygons = StuddedTireZones.toValhallaExcludePolygons();
-      if (excludePolygons.isNotEmpty) {
-        requestPayload['exclude_polygons'] = excludePolygons;
+    var exclusions = List<LatLng>.from(avoidLocations);
+    final maxAttempts = enforceRoadClass ? 3 : 1;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      RouteResult route;
+      try {
+        final requestPayload = _buildValhallaRequestPayload(
+          origin: origin,
+          destination: destination,
+          waypoint: waypoint,
+          vehicleType: vehicleType,
+          userSpeedKmh: userSpeedKmh,
+          countryCode: countryCode,
+          language: _valhallaLanguage(),
+          avoidLocations: exclusions,
+        );
+        if (studdedPolygons.isNotEmpty) {
+          requestPayload['exclude_polygons'] = studdedPolygons;
+        }
+
+        final body = await _postValhallaRoute(requestPayload);
+        final trip = body['trip'] as Map<String, dynamic>?;
+        if (trip == null) {
+          throw const RoutingException(RoutingErrorCode.noRouteFound);
+        }
+        route = _parseValhallaTrip(
+          trip,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+          relaxedLegalChecks: relaxedLegalChecks,
+          vehicleMaxSpeedKmh: vehicleMaxSpeedKmh,
+          isSlowVehicle: isSlowVehicle,
+        );
+      } catch (_) {
+        // First attempt failures are real provider/legality errors — surface
+        // them. Later attempts only fail because our exclusions made routing
+        // impossible, which means no legal route exists.
+        if (attempt == 0) rethrow;
+        throw const RoutingException(
+          RoutingErrorCode.routeNotAllowedForVehicle,
+        );
       }
+
+      if (!enforceRoadClass) return route;
+
+      final forbidden = await _forbiddenRoadClassPoints(
+        routePoints: route.points,
+        vehicleType: vehicleType,
+        countryCode: countryCode,
+      );
+      if (forbidden.isEmpty) return route;
+
+      exclusions = [...exclusions, ...forbidden];
     }
 
-    final body = await _postValhallaRoute(requestPayload);
-    final trip = body['trip'] as Map<String, dynamic>?;
-    if (trip == null) {
-      throw const RoutingException(RoutingErrorCode.noRouteFound);
-    }
-    return _parseValhallaTrip(
-      trip,
-      vehicleType: vehicleType,
-      countryCode: countryCode,
-      relaxedLegalChecks: relaxedLegalChecks,
-      vehicleMaxSpeedKmh: vehicleMaxSpeedKmh,
-      isSlowVehicle: isSlowVehicle,
-    );
+    // Every attempt still used a forbidden motor road — no legal route exists.
+    throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
   }
 
   /// POSTs a Valhalla route request and returns the decoded JSON body.
   /// Retries once on timeout before surfacing a provider-unavailable error.
   Future<Map<String, dynamic>> _postValhallaRoute(
     Map<String, dynamic> requestPayload,
+  ) => _postValhalla('/route', requestPayload);
+
+  /// POSTs to a Valhalla endpoint (`/route`, `/trace_attributes`, …) and
+  /// returns the decoded JSON body. Retries once on timeout.
+  Future<Map<String, dynamic>> _postValhalla(
+    String path,
+    Map<String, dynamic> requestPayload,
   ) async {
     final baseUrl = BackendConfig.valhallaBaseUrl;
     final requestBody = jsonEncode(requestPayload);
-    final url = Uri.parse('$baseUrl/route');
+    final url = Uri.parse('$baseUrl$path');
     http.Response? response;
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
@@ -934,6 +977,87 @@ class RoutingService {
     }
 
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// In the Nordics, OSM `highway=trunk` marks a motortrafikled (motor road)
+  /// where low-speed vehicles are banned. Elsewhere trunk is an ordinary
+  /// A-road, so only motorway is forbidden.
+  bool _trunkForbiddenForSlowVehicle(String countryCode) {
+    switch (countryCode) {
+      case 'SE':
+      case 'NO':
+      case 'DK':
+      case 'FI':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /// Reads the road class of every edge on [routePoints] via Valhalla
+  /// `trace_attributes` and returns the midpoints of any edge that is illegal
+  /// for a slow vehicle (motorway everywhere; trunk/motortrafikled in the
+  /// Nordics). Valhalla only tags maneuvers with `highway:true` for motorway
+  /// class, so trunk motor-roads (e.g. väg 73/Nynäsvägen) are invisible to the
+  /// maneuver and keyword guards — this closes that gap. Returns an empty list
+  /// when the route is legal or the trace can't be performed.
+  Future<List<LatLng>> _forbiddenRoadClassPoints({
+    required List<LatLng> routePoints,
+    required String vehicleType,
+    required String countryCode,
+  }) async {
+    final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
+      countryCode,
+      vehicleType,
+    );
+    if (maxLegalSpeed > 45) return const [];
+    // Cycleway vehicles route on the bicycle network via access tags; the
+    // motor-road class ban does not apply to them.
+    if (vehicleType == 'Moped class II' || vehicleType == 'Electric scooter') {
+      return const [];
+    }
+    if (routePoints.length < 2) return const [];
+
+    final forbidTrunk = _trunkForbiddenForSlowVehicle(countryCode);
+    final payload = <String, dynamic>{
+      'shape': [
+        for (final p in routePoints) {'lat': p.latitude, 'lon': p.longitude},
+      ],
+      'shape_match': 'edge_walk',
+      'costing': 'motor_scooter',
+      'directions_options': {'units': 'kilometers'},
+      'filters': {
+        'attributes': [
+          'edge.road_class',
+          'edge.begin_shape_index',
+          'edge.end_shape_index',
+        ],
+        'action': 'include',
+      },
+    };
+
+    Map<String, dynamic> body;
+    try {
+      body = await _postValhalla('/trace_attributes', payload);
+    } catch (_) {
+      return const []; // Trace unavailable — don't block routing on it.
+    }
+
+    final edges = body['edges'] as List<dynamic>? ?? const [];
+    final points = <LatLng>[];
+    for (final raw in edges) {
+      final edge = raw as Map<String, dynamic>;
+      final roadClass = edge['road_class'] as String?;
+      final isForbidden =
+          roadClass == 'motorway' || (forbidTrunk && roadClass == 'trunk');
+      if (!isForbidden) continue;
+      final begin = (edge['begin_shape_index'] as num?)?.toInt();
+      final end = (edge['end_shape_index'] as num?)?.toInt();
+      if (begin == null || end == null) continue;
+      final mid = ((begin + end) ~/ 2).clamp(0, routePoints.length - 1);
+      points.add(routePoints[mid]);
+    }
+    return points;
   }
 
   /// Parses a single Valhalla `trip` object into a [RouteResult].
@@ -1142,18 +1266,26 @@ class RoutingService {
       final trip = body['trip'] as Map<String, dynamic>?;
       if (trip == null) continue;
       try {
-        results.add(
-          _parseValhallaTrip(
-            trip,
+        final alt = _parseValhallaTrip(
+          trip,
+          vehicleType: vehicleType,
+          countryCode: country,
+          // An alternative must pass the same legal checks as the primary
+          // route. Never trade legality for an extra route choice.
+          relaxedLegalChecks: false,
+          vehicleMaxSpeedKmh: userSpeed,
+          isSlowVehicle: isSlowVehicle,
+        );
+        if (isSlowVehicle) {
+          final forbidden = await _forbiddenRoadClassPoints(
+            routePoints: alt.points,
             vehicleType: vehicleType,
             countryCode: country,
-            // An alternative must pass the same legal checks as the primary
-            // route. Never trade legality for an extra route choice.
-            relaxedLegalChecks: false,
-            vehicleMaxSpeedKmh: userSpeed,
-            isSlowVehicle: isSlowVehicle,
-          ),
-        );
+          );
+          // Drop alternatives that use a forbidden motor road (trunk/motorway).
+          if (forbidden.isNotEmpty) continue;
+        }
+        results.add(alt);
       } on RoutingException {
         // Skip illegal/invalid alternate — never surface restricted roads.
       }

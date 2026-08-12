@@ -38,7 +38,7 @@ class SupportChatService {
         .from('support_messages')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
-        .order('created_at')
+        .order('created_at', ascending: true)
         .map(
           (rows) => rows
               .map((row) => SupportMessage.fromMap(row))

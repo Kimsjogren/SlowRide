@@ -543,15 +543,6 @@ class _MarkerPreview extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color.lerp(tint, Colors.white, 0.42)!, tint],
-        ),
-        border: Border.all(
-          color: borderColor ?? (selected ? Colors.white : Colors.white70),
-          width: borderWidth ?? (selected ? 1.8 : 1.0),
-        ),
         boxShadow: [
           if (showOuterGlow ?? selected)
             BoxShadow(
@@ -561,10 +552,28 @@ class _MarkerPreview extends StatelessWidget {
             ),
         ],
       ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: size * 0.50,
+      child: ClipOval(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color.lerp(tint, Colors.white, 0.42)!, tint],
+            ),
+            border: Border.all(
+              color: borderColor ?? (selected ? Colors.white : Colors.white70),
+              width: borderWidth ?? (selected ? 1.8 : 1.0),
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: size * 0.50,
+            ),
+          ),
+        ),
       ),
     );
   }

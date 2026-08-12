@@ -1,10 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:slowride/models/convoy_member_location.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/parent_service.dart';
+import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/app_background.dart';
+import 'package:slowride/widgets/apple_convoy_map_widget.dart';
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -14,9 +18,15 @@ class ParentDashboardScreen extends StatefulWidget {
 }
 
 class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
+  static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
   final MapController _mapController = MapController();
   final TextEditingController _codeController = TextEditingController();
+  final ValueNotifier<LatLng?> _appleMapLocationNotifier = ValueNotifier(null);
+  final ValueNotifier<double> _appleMapHeadingNotifier = ValueNotifier(0);
   int _selectedTab = 0; // 0 = map, 1 = alerts
+
+  bool get _usingAppleMapKit =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
@@ -28,6 +38,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   void dispose() {
     ParentService.instance.stopChildTracking();
     _codeController.dispose();
+    _appleMapLocationNotifier.dispose();
+    _appleMapHeadingNotifier.dispose();
     super.dispose();
   }
 
@@ -196,6 +208,18 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             .where((c) => c.location != null)
             .map((c) => c.location!)
             .toList();
+        final appleMembers = children
+            .where((c) => c.location != null)
+            .map(_toAppleParentMember)
+            .toList(growable: false);
+        final viewportPoints = locations.isNotEmpty
+            ? locations
+            : const [_defaultCenter];
+        final viewportCommandId = Object.hashAll(
+          viewportPoints.expand(
+            (point) => [point.latitude, point.longitude],
+          ),
+        );
 
         return Column(
           children: [
@@ -220,33 +244,66 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: locations.isNotEmpty
-                        ? locations.first
-                        : const LatLng(59.3293, 18.0686), // Stockholm default
-                    initialZoom: 13,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.kimtechtool.cruizx',
-                    ),
-                    MarkerLayer(
-                      markers: children
-                          .where((c) => c.location != null)
-                          .map((child) => _buildMarker(child))
-                          .toList(),
-                    ),
-                  ],
-                ),
+                child: _usingAppleMapKit
+                    ? ValueListenableBuilder<MapMarkerStyle>(
+                        valueListenable:
+                            UserPreferencesService.instance.mapMarkerStyle,
+                        builder: (context, markerStyle, _) {
+                          return AppleConvoyMapWidget(
+                            key: ValueKey(
+                              'apple-parent-map-${appleMembers.length}-$viewportCommandId',
+                            ),
+                            locationNotifier: _appleMapLocationNotifier,
+                            headingNotifier: _appleMapHeadingNotifier,
+                            markerStyle: markerStyle,
+                            members: appleMembers,
+                            pins: const [],
+                            viewportCommandId: viewportCommandId,
+                            viewportCommandPoints: viewportPoints,
+                            followUser: false,
+                            use3D: false,
+                            darkMode: false,
+                          );
+                        },
+                      )
+                    : FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: locations.isNotEmpty
+                              ? locations.first
+                              : _defaultCenter,
+                          initialZoom: 13,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.kimtechtool.cruizx',
+                          ),
+                          MarkerLayer(
+                            markers: children
+                                .where((c) => c.location != null)
+                                .map((child) => _buildMarker(child))
+                                .toList(),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],
         );
       },
+    );
+  }
+
+  ConvoyMemberLocation _toAppleParentMember(LinkedChild child) {
+    return ConvoyMemberLocation(
+      convoyId: 'parent-dashboard',
+      userId: child.id,
+      userLabel: child.displayName,
+      position: child.location!,
+      updatedAt: child.lastUpdate ?? child.linkedAt,
+      vehicleStyle: 'navigation',
     );
   }
 
@@ -341,8 +398,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
     return Marker(
       point: child.location!,
-      width: 50,
-      height: 50,
+      width: 44,
+      height: 44,
       child: Column(
         children: [
           Container(
@@ -366,8 +423,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           ),
           const SizedBox(height: 2),
           Container(
-            width: 24,
-            height: 24,
+            width: 22,
+            height: 22,
             decoration: BoxDecoration(
               color: isDriving ? const Color(0xFF00C8FF) : Colors.blueGrey,
               shape: BoxShape.circle,
@@ -378,7 +435,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             ),
             child: Icon(
               isDriving ? Icons.directions_car : Icons.person,
-              size: 14,
+              size: 12,
               color: Colors.white,
             ),
           ),
