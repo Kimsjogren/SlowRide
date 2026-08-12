@@ -167,11 +167,10 @@ class RoutingService {
     }
   }
 
-  /// Provider-agnostic road-class guard: rejects a slow-vehicle route that uses
-  /// a forbidden motor road (motorway anywhere, trunk/motortrafikled in the
-  /// Nordics). Complements [_assertNoMotorwayForSlowVehicle], which only sees
-  /// motorways Valhalla flags or that appear by name. Used for fallback
-  /// providers (GraphHopper/ORS) that lack Valhalla's own road-class loop.
+  /// Provider-agnostic guard for fallback providers (GraphHopper/ORS) that lack
+  /// Valhalla's own road-class loop: hard-rejects a slow-vehicle route that
+  /// uses a motorway. Trunk/motor-roads are treated softly elsewhere, so they
+  /// are not rejected here.
   Future<void> _assertNoForbiddenRoadClassForSlowVehicle({
     required RouteResult route,
     required String vehicleType,
@@ -182,7 +181,7 @@ class RoutingService {
       vehicleType: vehicleType,
       countryCode: countryCode,
     );
-    if (forbidden.isNotEmpty) {
+    if (forbidden.motorway.isNotEmpty) {
       throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
     }
   }
@@ -912,6 +911,10 @@ class RoutingService {
 
     var exclusions = List<LatLng>.from(avoidLocations);
     final maxAttempts = enforceRoadClass ? 3 : 1;
+    // A route that only touches a (soft) motor road — OSM `trunk`, which may be
+    // an ordinary legal national road — kept as a graceful fallback when no
+    // fully motor-road-free route can be found. Motorways stay a hard ban.
+    RouteResult? motorRoadOnlyFallback;
 
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       RouteResult route;
@@ -944,13 +947,11 @@ class RoutingService {
           isSlowVehicle: isSlowVehicle,
         );
       } catch (_) {
-        // First attempt failures are real provider/legality errors — surface
-        // them. Later attempts only fail because our exclusions made routing
-        // impossible, which means no legal route exists.
+        // The first attempt's failure is a real provider/legality error —
+        // surface it. Later attempts only fail because our exclusions made
+        // routing impossible; fall back to the best route found so far.
         if (attempt == 0) rethrow;
-        throw const RoutingException(
-          RoutingErrorCode.routeNotAllowedForVehicle,
-        );
+        break;
       }
 
       if (!enforceRoadClass) return route;
@@ -960,12 +961,28 @@ class RoutingService {
         vehicleType: vehicleType,
         countryCode: countryCode,
       );
-      if (forbidden.isEmpty) return route;
-
-      exclusions = [...exclusions, ...forbidden];
+      // Fully legal — no motorway and no forbidden motor road.
+      if (forbidden.motorway.isEmpty && forbidden.motorRoad.isEmpty) {
+        return route;
+      }
+      // No motorway, only a (soft) motor road: remember it in case we can't do
+      // better, then keep trying to route around the motor road.
+      if (forbidden.motorway.isEmpty) {
+        motorRoadOnlyFallback ??= route;
+      }
+      exclusions = [
+        ...exclusions,
+        ...forbidden.motorway,
+        ...forbidden.motorRoad,
+      ];
     }
 
-    // Every attempt still used a forbidden motor road — no legal route exists.
+    // Couldn't find a fully motor-road-free route. Prefer a route that at least
+    // avoids motorways (the trunk it uses may well be a legal ordinary road we
+    // can't distinguish) over failing outright.
+    if (motorRoadOnlyFallback != null) return motorRoadOnlyFallback;
+
+    // Only a motorway route remained — that is unambiguously illegal.
     throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
   }
 
@@ -1009,46 +1026,55 @@ class RoutingService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  /// In the Nordics, OSM `highway=trunk` marks a motortrafikled (motor road)
-  /// where low-speed vehicles are banned. Elsewhere trunk is an ordinary
-  /// A-road, so only motorway is forbidden.
-  bool _trunkForbiddenForSlowVehicle(String countryCode) {
-    switch (countryCode) {
-      case 'SE':
-      case 'NO':
-      case 'DK':
-      case 'FI':
-        return true;
-      default:
-        return false;
-    }
+  /// Whether the country/vehicle profile forbids the local motorway-like motor
+  /// road class (OSM `trunk`: motortrafikled/voie express/superstrada/…).
+  /// Driven by the per-country profile so the rule follows each country's law
+  /// (e.g. Spanish N-roads and UK A-roads are legal `trunk` and return false).
+  /// Treated as a soft preference by callers because OSM `trunk` also covers
+  /// ordinary legal national roads.
+  bool _trunkForbiddenForSlowVehicle(String vehicleType, String countryCode) {
+    return CountryVehicleRules.getProfile(
+      countryCode,
+      vehicleType,
+    ).forbidsMotorRoads;
   }
 
   /// Reads the road class of every edge on [routePoints] via Valhalla
-  /// `trace_attributes` and returns the midpoints of any edge that is illegal
-  /// for a slow vehicle (motorway everywhere; trunk/motortrafikled in the
-  /// Nordics). Valhalla only tags maneuvers with `highway:true` for motorway
-  /// class, so trunk motor-roads (e.g. väg 73/Nynäsvägen) are invisible to the
-  /// maneuver and keyword guards — this closes that gap. Returns an empty list
-  /// when the route is legal or the trace can't be performed.
-  Future<List<LatLng>> _forbiddenRoadClassPoints({
+  /// `trace_attributes` and splits the forbidden ones into two groups:
+  ///  - `motorway`: illegal for every slow vehicle in every country (hard ban).
+  ///  - `motorRoad`: the local motorway-like class (OSM `trunk`) where the
+  ///    country/vehicle profile forbids motor roads. This is a *soft* signal:
+  ///    OSM `trunk` covers both genuine motor roads (motortrafikled/voie
+  ///    express) AND ordinary legal national roads (e.g. Swedish väg 45, most
+  ///    Norwegian E-roads), and the accurate `motorroad` tag is frequently
+  ///    missing — so callers should only *prefer* to avoid these, not fail.
+  /// Valhalla only tags maneuvers with `highway:true` for motorway class, so
+  /// trunk motor-roads (e.g. väg 73/Nynäsvägen) are invisible to the maneuver
+  /// and keyword guards — this closes that gap. Returns empty lists when the
+  /// route is legal or the trace can't be performed.
+  Future<({List<LatLng> motorway, List<LatLng> motorRoad})>
+  _forbiddenRoadClassPoints({
     required List<LatLng> routePoints,
     required String vehicleType,
     required String countryCode,
   }) async {
+    const empty = (motorway: <LatLng>[], motorRoad: <LatLng>[]);
     final maxLegalSpeed = CountryVehicleRules.maxLegalSpeedFor(
       countryCode,
       vehicleType,
     );
-    if (maxLegalSpeed > 45) return const [];
+    if (maxLegalSpeed > 45) return empty;
     // Cycleway vehicles route on the bicycle network via access tags; the
     // motor-road class ban does not apply to them.
     if (vehicleType == 'Moped class II' || vehicleType == 'Electric scooter') {
-      return const [];
+      return empty;
     }
-    if (routePoints.length < 2) return const [];
+    if (routePoints.length < 2) return empty;
 
-    final forbidTrunk = _trunkForbiddenForSlowVehicle(countryCode);
+    final forbidMotorRoad = _trunkForbiddenForSlowVehicle(
+      vehicleType,
+      countryCode,
+    );
     final payload = <String, dynamic>{
       'shape': [
         for (final p in routePoints) {'lat': p.latitude, 'lon': p.longitude},
@@ -1070,24 +1096,25 @@ class RoutingService {
     try {
       body = await _postValhalla('/trace_attributes', payload);
     } catch (_) {
-      return const []; // Trace unavailable — don't block routing on it.
+      return empty; // Trace unavailable — don't block routing on it.
     }
 
     final edges = body['edges'] as List<dynamic>? ?? const [];
-    final points = <LatLng>[];
+    final motorway = <LatLng>[];
+    final motorRoad = <LatLng>[];
     for (final raw in edges) {
       final edge = raw as Map<String, dynamic>;
       final roadClass = edge['road_class'] as String?;
-      final isForbidden =
-          roadClass == 'motorway' || (forbidTrunk && roadClass == 'trunk');
-      if (!isForbidden) continue;
+      final isMotorway = roadClass == 'motorway';
+      final isMotorRoad = forbidMotorRoad && roadClass == 'trunk';
+      if (!isMotorway && !isMotorRoad) continue;
       final begin = (edge['begin_shape_index'] as num?)?.toInt();
       final end = (edge['end_shape_index'] as num?)?.toInt();
       if (begin == null || end == null) continue;
       final mid = ((begin + end) ~/ 2).clamp(0, routePoints.length - 1);
-      points.add(routePoints[mid]);
+      (isMotorway ? motorway : motorRoad).add(routePoints[mid]);
     }
-    return points;
+    return (motorway: motorway, motorRoad: motorRoad);
   }
 
   /// Parses a single Valhalla `trip` object into a [RouteResult].
@@ -1312,8 +1339,11 @@ class RoutingService {
             vehicleType: vehicleType,
             countryCode: country,
           );
-          // Drop alternatives that use a forbidden motor road (trunk/motorway).
-          if (forbidden.isNotEmpty) continue;
+          // Alternatives are extra choices — keep them strictly clean and drop
+          // any that use a motorway or a forbidden motor road.
+          if (forbidden.motorway.isNotEmpty || forbidden.motorRoad.isNotEmpty) {
+            continue;
+          }
         }
         results.add(alt);
       } on RoutingException {

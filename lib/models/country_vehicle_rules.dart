@@ -354,6 +354,10 @@ class CountryVehicleRules {
     ),
 
     // ── Spain (ES) ──────────────────────────────────────────────────────
+    // In Spain autopista/autovía are OSM `motorway` (always forbidden here),
+    // while `trunk` maps to ordinary N-roads (carreteras nacionales) that
+    // these vehicles ARE allowed to use — so motor roads (trunk) are NOT
+    // additionally forbidden.
     // Spain has no native A-tractor class; similar agricultural-derived
     // vehicles are limited to 45 km/h on public roads (DGT circular).
     'ES_A-tractor': VehicleRoutingProfile(
@@ -362,6 +366,7 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+      forbidsMotorRoads: false,
     ),
     // Cuadriciclo ligero (microcar / moped car): EU-harmonised 45 km/h.
     'ES_Moped car': VehicleRoutingProfile(
@@ -370,13 +375,16 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+      forbidsMotorRoads: false,
     ),
-    // Ciclomotor: max 45 km/h; no autopista/autovía. On conventional
-    // interurban roads the rider must use the passable shoulder when present.
+    // Ciclomotor: max 45 km/h; no autopista/autovía (OSM motorway). On
+    // conventional interurban N-roads (trunk) the rider must use the passable
+    // shoulder when present, but the road itself is allowed.
     'ES_Moped class I': VehicleRoutingProfile.mopedClassI(
       legalCategory: 'Ciclomotor',
       useFerry: 0.5,
       requiresRoadShoulderWhereAvailable: true,
+      forbidsMotorRoads: false,
     ),
     // Spain treats it as a ciclomotor. It must use a passable shoulder on
     // conventional interurban roads and may not use autopistas/autovías.
@@ -394,10 +402,12 @@ class CountryVehicleRules {
       useRoads: 0.8,
       urbanRoadsOnly: true,
     ),
-    // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49).
+    // Tractor agrícola: max 40 km/h on public roads (RGC Art. 49). Allowed on
+    // N-roads (trunk); only autopista/autovía (motorway) are forbidden.
     'ES_Tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 30,
       maxLegalSpeedKmh: 40,
+      forbidsMotorRoads: false,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
@@ -456,12 +466,15 @@ class CountryVehicleRules {
     // ── United Kingdom / Great Britain (GB) ─────────────────────────────
     // Light quadricycles/moped cars use the AM-style 45 km/h class.
     // Agricultural tractors are treated as slow vehicles and kept off motorways.
+    // UK law allows these on A-roads/dual carriageways (trunk); only motorways
+    // are forbidden, so forbidsMotorRoads is false here.
     'GB_A-tractor': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
       maxLegalSpeedKmh: 45,
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+      forbidsMotorRoads: false,
     ),
     'GB_Moped car': VehicleRoutingProfile(
       defaultSpeedKmh: 45,
@@ -469,6 +482,7 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+      forbidsMotorRoads: false,
     ),
     // Category AM moped: max 45 km/h. Motorways are forbidden; ordinary dual
     // carriageways remain legally possible, although the router penalises
@@ -501,6 +515,7 @@ class CountryVehicleRules {
       useHighways: 0.0,
       useTolls: 0.0,
       useFerry: 0.3,
+      forbidsMotorRoads: false,
     ),
   };
 }
