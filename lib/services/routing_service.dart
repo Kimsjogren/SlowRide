@@ -167,6 +167,26 @@ class RoutingService {
     }
   }
 
+  /// Provider-agnostic road-class guard: rejects a slow-vehicle route that uses
+  /// a forbidden motor road (motorway anywhere, trunk/motortrafikled in the
+  /// Nordics). Complements [_assertNoMotorwayForSlowVehicle], which only sees
+  /// motorways Valhalla flags or that appear by name. Used for fallback
+  /// providers (GraphHopper/ORS) that lack Valhalla's own road-class loop.
+  Future<void> _assertNoForbiddenRoadClassForSlowVehicle({
+    required RouteResult route,
+    required String vehicleType,
+    required String countryCode,
+  }) async {
+    final forbidden = await _forbiddenRoadClassPoints(
+      routePoints: route.points,
+      vehicleType: vehicleType,
+      countryCode: countryCode,
+    );
+    if (forbidden.isNotEmpty) {
+      throw const RoutingException(RoutingErrorCode.routeNotAllowedForVehicle);
+    }
+  }
+
   String _graphHopperLocale() {
     final code = _effectiveLanguageCode();
     return switch (code) {
@@ -578,6 +598,11 @@ class RoutingService {
           vehicleType: vehicleType,
           countryCode: countryCode,
         );
+        await _assertNoForbiddenRoadClassForSlowVehicle(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
       }
       return route;
     } else if (provider == _providerOpenRouteService) {
@@ -596,6 +621,11 @@ class RoutingService {
           countryCode: countryCode,
         );
         _assertNoMotorwayForSlowVehicle(
+          route: route,
+          vehicleType: vehicleType,
+          countryCode: countryCode,
+        );
+        await _assertNoForbiddenRoadClassForSlowVehicle(
           route: route,
           vehicleType: vehicleType,
           countryCode: countryCode,
