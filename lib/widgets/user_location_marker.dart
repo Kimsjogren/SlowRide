@@ -24,7 +24,7 @@ class MapMarkerOption {
     required this.assetPath,
     required this.labelBuilder,
     this.colorNameBuilder,
-    this.rotatesWithHeading = false,
+    this.rotatesWithHeading = true,
     this.tint,
   });
 

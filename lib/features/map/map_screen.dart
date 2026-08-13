@@ -168,7 +168,11 @@ class _MapScreenState extends State<MapScreen> {
   bool get _usingAppleMapKit =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-  bool get _supportsVectorMapOnCurrentPlatform => !_usingAppleMapKit;
+  bool get _usingGoogleMaps =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+  bool get _supportsVectorMapOnCurrentPlatform =>
+      !_usingAppleMapKit && !_usingGoogleMaps;
 
   @override
   void didChangeDependencies() {
@@ -196,6 +200,9 @@ class _MapScreenState extends State<MapScreen> {
     );
     NavigationRequestService.instance.stopNavigationRequests.addListener(
       _onExternalNavigationStopRequest,
+    );
+    CarPlayBridgeService.instance.companionMode.addListener(
+      _onCarPlayCompanionModeChanged,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onExternalNavigationRequest();
@@ -291,7 +298,7 @@ class _MapScreenState extends State<MapScreen> {
     return (sunrise, sunset);
   }
 
-  void _onExternalNavigationRequest() {
+  Future<void> _onExternalNavigationRequest() async {
     final request = NavigationRequestService.instance.pendingDestination.value;
     if (request != null) {
       final label = request.label?.trim() ?? '';
@@ -302,7 +309,13 @@ class _MapScreenState extends State<MapScreen> {
         _searchFocus.unfocus();
       }
       NavigationRequestService.instance.consume();
-      _handleMapTap(request.destination);
+      await _handleMapTap(
+        request.destination,
+        preferPrimaryRoute: request.startImmediately,
+      );
+      if (request.startImmediately && mounted && _activeRoute != null) {
+        _startActiveNavigation();
+      }
     }
   }
 
@@ -312,6 +325,10 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
     _clearRoute();
+  }
+
+  void _onCarPlayCompanionModeChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadAlerts() async {
@@ -662,6 +679,9 @@ class _MapScreenState extends State<MapScreen> {
     );
     NavigationRequestService.instance.stopNavigationRequests.removeListener(
       _onExternalNavigationStopRequest,
+    );
+    CarPlayBridgeService.instance.companionMode.removeListener(
+      _onCarPlayCompanionModeChanged,
     );
     _locationNotifier.dispose();
     _headingNotifier.dispose();
@@ -3590,7 +3610,10 @@ class _MapScreenState extends State<MapScreen> {
     return result ?? false;
   }
 
-  Future<void> _handleMapTap(LatLng destination) async {
+  Future<void> _handleMapTap(
+    LatLng destination, {
+    bool preferPrimaryRoute = false,
+  }) async {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
     final previousDestination = _destination;
@@ -3661,8 +3684,9 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    final routeAdShown = await AdService.instance
-        .showRouteInterstitialIfNeeded();
+    final routeAdShown =
+        !preferPrimaryRoute &&
+        await AdService.instance.showRouteInterstitialIfNeeded();
     if (!mounted) return;
 
     final subscriptions = SubscriptionService.instance;
@@ -3707,7 +3731,9 @@ class _MapScreenState extends State<MapScreen> {
         strictRoute: route,
       );
       if (!mounted) return;
-      final selected = options.length > 1
+      final selected = preferPrimaryRoute
+          ? options.first
+          : options.length > 1
           ? await _showRouteOptionsSheet(
               vehicleName: switch (preferences.vehicleType.value) {
                 'A-tractor' => l10n.settingsVehicleAtractor,
@@ -4097,6 +4123,32 @@ class _MapScreenState extends State<MapScreen> {
     final activeRoute = _activeRoute;
     final hasRoute = destination != null && activeRoute != null;
     final upcomingManeuvers = _buildCarPlayUpcomingManeuvers();
+    final preferences = UserPreferencesService.instance;
+    final speedUnit = preferences.speedUnit.value;
+    final currentSpeedDisplay = preferences.toDisplaySpeed(
+      speedKmh: _speedKmh,
+      unit: speedUnit,
+    );
+    final roadSpeedLimitDisplay = _roadSpeedLimitKmh == null
+        ? null
+        : preferences.toDisplaySpeed(
+            speedKmh: _roadSpeedLimitKmh!,
+            unit: speedUnit,
+          );
+    final configuredMaxKmh = preferences.maxSpeedKmh.value;
+    final vehicleSpeedLimitDisplay = configuredMaxKmh <= 0
+        ? null
+        : preferences.toDisplaySpeed(
+            speedKmh: configuredMaxKmh,
+            unit: speedUnit,
+          );
+
+    unawaited(
+      CarPlayBridgeService.instance.updateRouteGeometry(
+        routePoints: hasRoute ? _routePoints : const [],
+        destination: hasRoute ? destination : null,
+      ),
+    );
 
     double? remainingDurationSeconds;
     if (hasRoute) {
@@ -4114,6 +4166,12 @@ class _MapScreenState extends State<MapScreen> {
     return CarPlayBridgeService.instance.updateNavigationState(
       hasRoute: hasRoute,
       isNavigating: _isNavigating,
+      currentLocation: _currentLocation,
+      headingDegrees: _headingNotifier.value,
+      currentSpeed: currentSpeedDisplay,
+      roadSpeedLimit: roadSpeedLimitDisplay,
+      vehicleSpeedLimit: vehicleSpeedLimitDisplay,
+      speedUnitLabel: speedUnit == SpeedUnit.kmh ? 'km/h' : 'mph',
       destination: destination,
       destinationLabel: _destinationLabel,
       destinationAddress: _addressController.text.trim(),
@@ -4128,7 +4186,9 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  List<Map<String, Object?>> _buildCarPlayUpcomingManeuvers() {
+  List<Map<String, Object?>> _buildCarPlayUpcomingManeuvers({
+    int maxManeuvers = 3,
+  }) {
     if (_instructions.length < 2 || _routePoints.isEmpty) {
       return const [];
     }
@@ -4150,7 +4210,7 @@ class _MapScreenState extends State<MapScreen> {
     final maneuvers = <Map<String, Object?>>[];
     for (
       int i = instructionIndex + 1;
-      i < _instructions.length && maneuvers.length < 3;
+      i < _instructions.length && maneuvers.length < maxManeuvers;
       i++
     ) {
       final instruction = _instructions[i];
@@ -4184,6 +4244,21 @@ class _MapScreenState extends State<MapScreen> {
       distance += _segDist(_routePoints[i], _routePoints[i + 1]);
     }
     return distance;
+  }
+
+  void _startActiveNavigation() {
+    if (_activeRoute == null || _routePoints.isEmpty) return;
+    final vehicleType = UserPreferencesService.instance.vehicleType.value;
+    SlowRoadService.instance.startSession(vehicleType);
+    setState(() {
+      _isNavigating = true;
+      _isNavigationPanelExpanded = false;
+      _isFollowing = true;
+      _tripStartTime = DateTime.now();
+      _tripDistanceM = 0;
+      _lastNavPos = _currentLocation;
+    });
+    unawaited(_syncCarPlayNavigationState());
   }
 
   // ── GPS simulation ────────────────────────────────────────────────────────
@@ -4447,10 +4522,332 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildCarPlayCompanion(AppLocalizations l10n) {
+    final activeRoute = _activeRoute;
+    final routeFraction = activeRoute != null && _totalRouteDistM > 0
+        ? (_remainingDistM / _totalRouteDistM).clamp(0.0, 1.0)
+        : 0.0;
+    final remainingSeconds = activeRoute == null
+        ? 0.0
+        : activeRoute.durationSeconds * routeFraction;
+    final arrival = DateTime.now().add(
+      Duration(seconds: remainingSeconds.round()),
+    );
+    final arrivalText =
+        '${arrival.hour.toString().padLeft(2, '0')}:'
+        '${arrival.minute.toString().padLeft(2, '0')}';
+    final remainingMinutes = (remainingSeconds / 60).ceil();
+    final remainingDistance = _formatManeuverDistance(
+      math.max(_remainingDistM, 0),
+    );
+    final currentTarget = _localizedManeuverTarget(
+      l10n,
+      _nextManeuverStreetName,
+      _nextManeuverText,
+    );
+    final currentInstruction = _localizedManeuverPrimaryText(
+      l10n,
+      _nextManeuverSign,
+      _nextManeuverText,
+    );
+    final upcoming = _buildCarPlayUpcomingManeuvers(maxManeuvers: 12);
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF071B46), Color(0xFF020817)],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 10, 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00B9FF), Color(0xFF176BFF)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.navigation_rounded,
+                      color: Colors.white,
+                      size: 23,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CruizX',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'CARPLAY NAVIGATION',
+                          style: TextStyle(
+                            color: Color(0xFF65CFFF),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: l10n.mapEndNavigation,
+                    onPressed: _clearRoute,
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0x331E9BFF),
+                    ),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1054B6), Color(0xFF092C72)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0x663CC9FF)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x66001855),
+                    blurRadius: 18,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0x221AD5FF),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0x5539D2FF)),
+                    ),
+                    child: Icon(
+                      _turnIcon(_nextManeuverSign),
+                      color: Colors.white,
+                      size: 43,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _formatManeuverDistance(_distToNextManeuver),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            height: 1,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentTarget ?? currentInstruction,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF46D4FF),
+                            fontSize: 27,
+                            height: 1.05,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (currentTarget != null &&
+                            currentInstruction.isNotEmpty) ...[
+                          const SizedBox(height: 5),
+                          Text(
+                            currentInstruction,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                itemCount: upcoming.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final maneuver = upcoming[index];
+                  final sign = maneuver['sign'] as int? ?? 0;
+                  final text = maneuver['text'] as String? ?? '';
+                  final streetName = maneuver['streetName'] as String? ?? '';
+                  final distance = maneuver['distanceMeters'] as double? ?? 0;
+                  final target = _localizedManeuverTarget(
+                    l10n,
+                    streetName,
+                    text,
+                  );
+                  final primary = _localizedManeuverPrimaryText(
+                    l10n,
+                    sign,
+                    text,
+                  );
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 15,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: index.isEven
+                          ? const Color(0xCC0A204A)
+                          : const Color(0xCC0D2859),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(color: const Color(0x332BAEFF)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: const BoxDecoration(
+                            color: Color(0x2616BFFF),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _turnIcon(sign),
+                            color: Colors.white,
+                            size: 34,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _formatManeuverDistance(distance),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 21,
+                                  height: 1,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                target ?? primary,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF42CFFF),
+                                  fontSize: 21,
+                                  height: 1.05,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              padding: const EdgeInsets.fromLTRB(18, 13, 18, 15),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0E3474), Color(0xFF092352)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0x4437C7FF)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    arrivalText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 31,
+                      height: 1,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    '$remainingMinutes min  •  $remainingDistance',
+                    style: const TextStyle(
+                      color: Color(0xCCFFFFFF),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (_destinationLabel.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _destinationLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF47D3FF),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
+
+    if (CarPlayBridgeService.instance.companionMode.value && _isNavigating) {
+      return _buildCarPlayCompanion(l10n);
+    }
 
     // In navigation mode the map is fullscreen (edge-to-edge, behind
     // status bar). Outside navigation mode it sits in a padded card.
@@ -4473,27 +4870,38 @@ class _MapScreenState extends State<MapScreen> {
                 child: RepaintBoundary(
                   child: Builder(
                     builder: (context) {
-                      final useAppleMapKit =
+                      final useNativeMap =
                           !kIsWeb &&
-                          defaultTargetPlatform == TargetPlatform.iOS;
+                          (defaultTargetPlatform == TargetPlatform.iOS ||
+                              defaultTargetPlatform == TargetPlatform.android);
                       final routeForMap =
                           _isNavigating && _displayNearestIdx > 0
                           ? _routePoints.sublist(
                               _displayNearestIdx.clamp(0, _routePoints.length),
                             )
                           : _routePoints;
-                      if (useAppleMapKit) {
+                      if (useNativeMap) {
                         return ValueListenableBuilder<MapMarkerStyle>(
                           valueListenable: preferences.mapMarkerStyle,
                           builder: (context, markerStyle, _) {
                             return AppleMapWidget(
-                              key: ValueKey('apple-mapkit-$_mapViewEpoch'),
+                              key: ValueKey('native-map-$_mapViewEpoch'),
                               locationNotifier: _locationNotifier,
                               headingNotifier: _headingNotifier,
                               markerStyle: markerStyle,
                               destination: _destination,
                               routePoints: routeForMap,
                               alerts: _alerts,
+                              studdedTireBanZones:
+                                  UserPreferencesService
+                                      .instance
+                                      .hasStuddedTires
+                                      .value
+                                  ? StuddedTireZones.all
+                                        .map((zone) => zone.polygon)
+                                        .toList(growable: false)
+                                  : const [],
+                              chargingStations: _chargingStations,
                               nextManeuverDistanceMeters: _isNavigating
                                   ? _distToNextManeuver
                                   : null,
@@ -5918,29 +6326,7 @@ class _MapScreenState extends State<MapScreen> {
                                                   ),
                                                 )
                                               : GestureDetector(
-                                                  onTap: () {
-                                                    final vt =
-                                                        UserPreferencesService
-                                                            .instance
-                                                            .vehicleType
-                                                            .value;
-                                                    SlowRoadService.instance
-                                                        .startSession(vt);
-                                                    setState(() {
-                                                      _isNavigating = true;
-                                                      _isNavigationPanelExpanded =
-                                                          false;
-                                                      _isFollowing = true;
-                                                      _tripStartTime =
-                                                          DateTime.now();
-                                                      _tripDistanceM = 0;
-                                                      _lastNavPos =
-                                                          _currentLocation;
-                                                    });
-                                                    unawaited(
-                                                      _syncCarPlayNavigationState(),
-                                                    );
-                                                  },
+                                                  onTap: _startActiveNavigation,
                                                   child: Container(
                                                     padding:
                                                         const EdgeInsets.symmetric(

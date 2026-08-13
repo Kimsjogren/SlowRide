@@ -596,6 +596,11 @@ class SubscriptionService {
 
   /// Activates Pro after successful verified purchase.
   Future<void> activatePro() async {
+    if (BackendConfig.forceFree) {
+      isPro.value = false;
+      await _prefs.setBool(_isProKey, false);
+      return;
+    }
     isPro.value = true;
     await _prefs.setBool(_isProKey, true);
   }
@@ -603,6 +608,10 @@ class SubscriptionService {
   /// Restores previous store purchases and reapplies Pro entitlement.
   Future<bool> restorePurchase() async {
     if (kIsWeb) return false;
+    if (BackendConfig.forceFree) {
+      await deactivatePro();
+      return false;
+    }
     if (BackendConfig.forcePro) {
       await activatePro();
       return true;

@@ -15,6 +15,16 @@ if (hasReleaseKeystore) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val mapsApiKey =
+    localProperties.getProperty("MAPS_API_KEY")
+        ?: System.getenv("MAPS_API_KEY")
+        ?: "MISSING_MAPS_API_KEY"
+
 android {
     namespace = "com.cruizx.slowride"
     compileSdk = flutter.compileSdkVersion
@@ -39,6 +49,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     signingConfigs {
@@ -83,4 +94,7 @@ dependencies {
     // Keep the app on the latest Google Play Billing Library even when the
     // Flutter IAP plugin still declares an older compatible version.
     implementation("com.android.billingclient:billing:9.1.0")
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
+    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app-projected:1.7.0")
 }

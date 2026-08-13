@@ -552,72 +552,86 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       ValueListenableBuilder<String>(
-                        valueListenable: preferences.countryCode,
-                        builder: (context, country, _) {
-                          return ValueListenableBuilder<SpeedUnit>(
-                            valueListenable: preferences.speedUnit,
-                            builder: (context, unit, _) {
-                              return ValueListenableBuilder<double>(
-                                valueListenable: preferences.maxSpeedKmh,
-                                builder: (context, maxSpeedKmh, _) {
-                                  final maxSpeedDisplay = preferences
-                                      .toDisplaySpeed(
-                                        speedKmh: maxSpeedKmh,
-                                        unit: unit,
-                                      );
-                                  final speedUnitLabel = unit == SpeedUnit.kmh
-                                      ? l10n.settingsSpeedUnitKmh
-                                      : l10n.settingsSpeedUnitMph;
-                                  final sliderMaxKmh =
-                                      CountryVehicleRules.maxSelectableSpeedFor(
-                                        country,
-                                        preferences.vehicleType.value,
-                                      );
-                                  final minDisplay = unit == SpeedUnit.kmh
-                                      ? 15.0
-                                      : 9.0;
-                                  final maxDisplay = unit == SpeedUnit.kmh
-                                      ? sliderMaxKmh
-                                      : preferences.toDisplaySpeed(
-                                          speedKmh: sliderMaxKmh,
-                                          unit: unit,
-                                        );
+                        valueListenable: preferences.vehicleType,
+                        builder: (context, vehicleType, _) {
+                          if (!CountryVehicleRules.hasVehicleSpeedLimit(
+                            vehicleType,
+                          )) {
+                            return const SizedBox.shrink();
+                          }
+                          return ValueListenableBuilder<String>(
+                            valueListenable: preferences.countryCode,
+                            builder: (context, country, _) {
+                              return ValueListenableBuilder<SpeedUnit>(
+                                valueListenable: preferences.speedUnit,
+                                builder: (context, unit, _) {
+                                  return ValueListenableBuilder<double>(
+                                    valueListenable: preferences.maxSpeedKmh,
+                                    builder: (context, maxSpeedKmh, _) {
+                                      final maxSpeedDisplay = preferences
+                                          .toDisplaySpeed(
+                                            speedKmh: maxSpeedKmh,
+                                            unit: unit,
+                                          );
+                                      final speedUnitLabel =
+                                          unit == SpeedUnit.kmh
+                                          ? l10n.settingsSpeedUnitKmh
+                                          : l10n.settingsSpeedUnitMph;
+                                      final sliderMaxKmh =
+                                          CountryVehicleRules.maxSelectableSpeedFor(
+                                            country,
+                                            preferences.vehicleType.value,
+                                          );
+                                      final minDisplay = unit == SpeedUnit.kmh
+                                          ? 15.0
+                                          : 9.0;
+                                      final maxDisplay = unit == SpeedUnit.kmh
+                                          ? sliderMaxKmh
+                                          : preferences.toDisplaySpeed(
+                                              speedKmh: sliderMaxKmh,
+                                              unit: unit,
+                                            );
 
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        l10n.settingsMaxSpeedWithUnit(
-                                          maxSpeedDisplay.toStringAsFixed(0),
-                                          speedUnitLabel,
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Slider(
-                                        min: minDisplay,
-                                        max: maxDisplay,
-                                        divisions: (maxDisplay - minDisplay)
-                                            .round(),
-                                        value: maxSpeedDisplay.clamp(
-                                          minDisplay,
-                                          maxDisplay,
-                                        ),
-                                        label: maxSpeedDisplay.toStringAsFixed(
-                                          0,
-                                        ),
-                                        onChanged: (value) {
-                                          preferences.maxSpeedKmh.value =
-                                              preferences.fromDisplaySpeed(
-                                                value: value,
-                                                unit: unit,
-                                              );
-                                        },
-                                      ),
-                                    ],
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            l10n.settingsMaxSpeedWithUnit(
+                                              maxSpeedDisplay.toStringAsFixed(
+                                                0,
+                                              ),
+                                              speedUnitLabel,
+                                            ),
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Slider(
+                                            min: minDisplay,
+                                            max: maxDisplay,
+                                            divisions: (maxDisplay - minDisplay)
+                                                .round(),
+                                            value: maxSpeedDisplay.clamp(
+                                              minDisplay,
+                                              maxDisplay,
+                                            ),
+                                            label: maxSpeedDisplay
+                                                .toStringAsFixed(
+                                                  0,
+                                                ),
+                                            onChanged: (value) {
+                                              preferences.maxSpeedKmh.value =
+                                                  preferences.fromDisplaySpeed(
+                                                    value: value,
+                                                    unit: unit,
+                                                  );
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   );
                                 },
                               );

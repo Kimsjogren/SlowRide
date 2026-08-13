@@ -14,15 +14,20 @@ class CarPlayBridgeService {
   static final CarPlayBridgeService instance = CarPlayBridgeService._();
   static const MethodChannel _channel = MethodChannel('cruizx/carplay');
   static const Duration _navigationSyncMinInterval = Duration(
-    milliseconds: 900,
+    milliseconds: 300,
   );
+  final ValueNotifier<bool> isConnected = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> companionMode = ValueNotifier<bool>(false);
 
   Future<void>? _initializeFuture;
   bool _listenersAttached = false;
   String? _lastNavigationPayloadJson;
+  String? _lastRouteGeometryPayloadJson;
+  String? _lastConvoyPayloadJson;
   DateTime _lastNavigationSyncAt = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _navigationSyncTimer;
   Map<String, Object?>? _pendingNavigationPayload;
+  bool _navigationActive = false;
 
   Future<void> initialize() {
     return _initializeFuture ??= _initialize();
@@ -33,6 +38,13 @@ class CarPlayBridgeService {
     await DestinationHistoryService.instance.initialize();
 
     _channel.setMethodCallHandler(_handleMethodCall);
+    try {
+      isConnected.value =
+          await _channel.invokeMethod<bool>('getConnectionState') ?? false;
+    } on MissingPluginException {
+      isConnected.value = false;
+    }
+    _refreshCompanionMode();
 
     if (!_listenersAttached) {
       FavoritePlacesService.instance.places.addListener(_onStateChanged);
@@ -83,6 +95,12 @@ class CarPlayBridgeService {
   Future<void> updateNavigationState({
     required bool hasRoute,
     required bool isNavigating,
+    required LatLng? currentLocation,
+    required double headingDegrees,
+    required double currentSpeed,
+    required double? roadSpeedLimit,
+    required double? vehicleSpeedLimit,
+    required String speedUnitLabel,
     required LatLng? destination,
     required String destinationLabel,
     required String destinationAddress,
@@ -93,9 +111,22 @@ class CarPlayBridgeService {
     required String currentStreetName,
     required List<Map<String, Object?>> upcomingManeuvers,
   }) async {
+    _navigationActive = isNavigating;
+    _refreshCompanionMode();
     final payload = <String, Object?>{
       'hasRoute': hasRoute,
       'isNavigating': isNavigating,
+      'currentLocation': currentLocation == null
+          ? null
+          : <String, double>{
+              'latitude': currentLocation.latitude,
+              'longitude': currentLocation.longitude,
+            },
+      'headingDegrees': headingDegrees,
+      'currentSpeed': currentSpeed,
+      'roadSpeedLimit': roadSpeedLimit,
+      'vehicleSpeedLimit': vehicleSpeedLimit,
+      'speedUnitLabel': speedUnitLabel,
       'destination': destination == null
           ? null
           : <String, Object?>{
@@ -139,9 +170,16 @@ class CarPlayBridgeService {
   Future<void> clearNavigationState() async {
     _navigationSyncTimer?.cancel();
     _pendingNavigationPayload = null;
+    await updateRouteGeometry(routePoints: const [], destination: null);
     await updateNavigationState(
       hasRoute: false,
       isNavigating: false,
+      currentLocation: null,
+      headingDegrees: 0,
+      currentSpeed: 0,
+      roadSpeedLimit: null,
+      vehicleSpeedLimit: null,
+      speedUnitLabel: 'km/h',
       destination: null,
       destinationLabel: '',
       destinationAddress: '',
@@ -154,10 +192,90 @@ class CarPlayBridgeService {
     );
   }
 
+  Future<void> updateRouteGeometry({
+    required List<LatLng> routePoints,
+    required LatLng? destination,
+  }) async {
+    final payload = <String, Object?>{
+      'points': routePoints
+          .map(
+            (point) => <String, double>{
+              'latitude': point.latitude,
+              'longitude': point.longitude,
+            },
+          )
+          .toList(growable: false),
+      'destination': destination == null
+          ? null
+          : <String, double>{
+              'latitude': destination.latitude,
+              'longitude': destination.longitude,
+            },
+    };
+    final payloadJson = jsonEncode(payload);
+    if (_lastRouteGeometryPayloadJson == payloadJson) return;
+
+    try {
+      await _channel.invokeMethod<void>('syncRouteGeometry', payload);
+      _lastRouteGeometryPayloadJson = payloadJson;
+    } on MissingPluginException {
+      // CarPlay bridge is only available on iOS when the native side is loaded.
+    } catch (error, stackTrace) {
+      debugPrint('CarPlay route geometry sync failed: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> updateConvoyState({
+    required bool isActive,
+    required String convoyName,
+    required String? currentUserId,
+    required List<Map<String, Object?>> members,
+    LatLng? currentLocation,
+    double headingDegrees = 0,
+    double currentSpeed = 0,
+  }) async {
+    final payload = <String, Object?>{
+      'isActive': isActive,
+      'convoyName': convoyName.trim(),
+      'currentUserId': currentUserId,
+      'members': members,
+      'currentLocation': currentLocation == null
+          ? null
+          : <String, double>{
+              'latitude': currentLocation.latitude,
+              'longitude': currentLocation.longitude,
+            },
+      'headingDegrees': headingDegrees,
+      'currentSpeed': currentSpeed,
+    };
+    final payloadJson = jsonEncode(payload);
+    if (_lastConvoyPayloadJson == payloadJson) return;
+
+    try {
+      await _channel.invokeMethod<void>('syncConvoyState', payload);
+      _lastConvoyPayloadJson = payloadJson;
+    } on MissingPluginException {
+      // CarPlay bridge is only available on iOS when the native side is loaded.
+    } catch (error, stackTrace) {
+      debugPrint('CarPlay convoy sync failed: $error\n$stackTrace');
+    }
+  }
+
+  Future<void> clearConvoyState() => updateConvoyState(
+    isActive: false,
+    convoyName: '',
+    currentUserId: null,
+    members: const [],
+  );
+
   Future<Object?> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'requestSyncState':
         await syncState();
+        return true;
+      case 'carPlayConnectionChanged':
+        isConnected.value = call.arguments == true;
+        _refreshCompanionMode();
         return true;
       case 'startNavigation':
         final args = Map<String, dynamic>.from(
@@ -175,6 +293,7 @@ class CarPlayBridgeService {
           LatLng(lat, lon),
           label: label,
           address: address,
+          startImmediately: args['startImmediately'] == true,
         );
         return true;
       case 'stopNavigation':
@@ -187,6 +306,10 @@ class CarPlayBridgeService {
 
   void _onStateChanged() {
     unawaited(syncState());
+  }
+
+  void _refreshCompanionMode() {
+    companionMode.value = isConnected.value && _navigationActive;
   }
 
   Future<void> _sendNavigationPayload(

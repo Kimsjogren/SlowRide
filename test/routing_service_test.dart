@@ -389,6 +389,25 @@ void main() {
       expect(costingOptions['use_highways'], 0.0);
       expect(costingOptions['use_primary'], 0.0);
     });
+
+    test('ordinary car has no vehicle top-speed restriction', () {
+      expect(CountryVehicleRules.hasVehicleSpeedLimit('Car'), isFalse);
+
+      final payload = service.debugBuildValhallaRequestPayload(
+        origin: origin,
+        destination: destination,
+        vehicleType: 'Car',
+        userSpeedKmh: 30,
+        countryCode: 'SE',
+      );
+
+      expect(payload['costing'], 'auto');
+      final costingOptions =
+          (payload['costing_options'] as Map<String, dynamic>)['auto']
+              as Map<String, dynamic>;
+      expect(costingOptions, isNot(contains('top_speed')));
+      expect(costingOptions['use_highways'], 1.0);
+    });
   });
 
   group('RoutingService fallback slow vehicle profiles', () {

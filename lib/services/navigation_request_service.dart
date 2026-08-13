@@ -6,11 +6,13 @@ class NavigationRequest {
     required this.destination,
     this.label,
     this.address,
+    this.startImmediately = false,
   });
 
   final LatLng destination;
   final String? label;
   final String? address;
+  final bool startImmediately;
 }
 
 /// Singleton that lets any screen request navigation to a coordinate.
@@ -29,11 +31,13 @@ class NavigationRequestService {
     LatLng destination, {
     String? label,
     String? address,
+    bool startImmediately = false,
   }) {
     pendingDestination.value = NavigationRequest(
       destination: destination,
       label: label,
       address: address,
+      startImmediately: startImmediately,
     );
   }
 

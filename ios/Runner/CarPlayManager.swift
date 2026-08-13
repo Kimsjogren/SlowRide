@@ -12,6 +12,7 @@ final class CarPlayManager: NSObject {
     enum Source {
       case favorite
       case recent
+      case search
 
       var sectionTitle: String {
         switch self {
@@ -19,6 +20,8 @@ final class CarPlayManager: NSObject {
           return "Favoriter"
         case .recent:
           return "Senaste mål"
+        case .search:
+          return "Sökresultat"
         }
       }
 
@@ -28,6 +31,8 @@ final class CarPlayManager: NSObject {
           return "Favorit"
         case .recent:
           return "Senaste sökning"
+        case .search:
+          return "Sökresultat"
         }
       }
     }
@@ -41,6 +46,12 @@ final class CarPlayManager: NSObject {
   struct NavigationState {
     let hasRoute: Bool
     let isNavigating: Bool
+    let currentLocation: CLLocationCoordinate2D?
+    let headingDegrees: Double
+    let currentSpeed: Double
+    let roadSpeedLimit: Double?
+    let vehicleSpeedLimit: Double?
+    let speedUnitLabel: String
     let totalDistanceMeters: Double?
     let remainingDistanceMeters: Double?
     let remainingDurationSeconds: Double?
@@ -57,6 +68,15 @@ final class CarPlayManager: NSObject {
     let distanceMeters: Double
   }
 
+  struct ConvoyMember {
+    let userId: String
+    let label: String
+    let coordinate: CLLocationCoordinate2D
+    let assetPath: String?
+    let iconName: String?
+    let tintArgb: Int?
+  }
+
   private weak var interfaceController: CPInterfaceController?
   private weak var carWindow: CPWindow?
   private var mapTemplate: CPMapTemplate?
@@ -66,9 +86,21 @@ final class CarPlayManager: NSObject {
   private var flutterChannel: FlutterMethodChannel?
   private var favoriteDestinations: [Destination] = []
   private var recentDestinations: [Destination] = []
+  private var routeCoordinates: [CLLocationCoordinate2D] = []
+  private var routeDestinationCoordinate: CLLocationCoordinate2D?
+  private var activeSearch: MKLocalSearch?
+  private var searchDestinations: [ObjectIdentifier: Destination] = [:]
+  private var activeConvoyName = ""
+  private var convoyMembers: [ConvoyMember] = []
   private var navigationState = NavigationState(
     hasRoute: false,
     isNavigating: false,
+    currentLocation: nil,
+    headingDegrees: 0,
+    currentSpeed: 0,
+    roadSpeedLimit: nil,
+    vehicleSpeedLimit: nil,
+    speedUnitLabel: "km/h",
     totalDistanceMeters: nil,
     remainingDistanceMeters: nil,
     remainingDurationSeconds: nil,
@@ -98,15 +130,21 @@ final class CarPlayManager: NSObject {
     window.rootViewController = rootViewController
     window.isHidden = false
     updateMapOverlay()
+    updateRouteMap()
+    updateConvoyMap()
 
     let template = makeMapTemplate()
     mapTemplate = template
     interfaceController.delegate = self
     interfaceController.setRootTemplate(template, animated: false, completion: nil)
+    notifyFlutterConnectionState(true)
     requestDestinationSync()
   }
 
   func disconnect() {
+    activeSearch?.cancel()
+    activeSearch = nil
+    searchDestinations.removeAll()
     navigationSession = nil
     activeTrip = nil
     activeDestination = nil
@@ -117,6 +155,7 @@ final class CarPlayManager: NSObject {
     carWindow?.rootViewController = nil
     carWindow = nil
     locationManager.stopUpdatingLocation()
+    notifyFlutterConnectionState(false)
   }
 
   func configureFlutterBridge(with messenger: FlutterBinaryMessenger) {
@@ -125,6 +164,7 @@ final class CarPlayManager: NSObject {
     channel.setMethodCallHandler { [weak self] call, result in
       self?.handleFlutterCall(call, result: result)
     }
+    notifyFlutterConnectionState(interfaceController != nil)
     requestDestinationSync()
   }
 
@@ -135,29 +175,34 @@ final class CarPlayManager: NSObject {
     template.hidesButtonsWithNavigationBar = false
     template.guidanceBackgroundColor = UIColor(red: 0.04, green: 0.16, blue: 0.62, alpha: 1)
 
-    let destinationsButton = CPBarButton(title: "Mål") { [weak self] _ in
-      self?.showDestinationsList()
-    }
-    destinationsButton.buttonStyle = .rounded
-
     let overviewButton = CPBarButton(title: "Översikt") { [weak self] _ in
       self?.resetToOverview()
     }
 
-    template.leadingNavigationBarButtons = [destinationsButton]
+    template.leadingNavigationBarButtons = []
     template.trailingNavigationBarButtons = [overviewButton]
 
     let browseButton = CPMapButton { [weak self] _ in
-      self?.showDestinationsList()
+      self?.showSearch()
     }
     browseButton.image = UIImage(systemName: "magnifyingglass.circle.fill")
+
+    let recentsButton = CPMapButton { [weak self] _ in
+      self?.showRecentDestinationsList()
+    }
+    recentsButton.image = UIImage(systemName: "clock.arrow.circlepath")
+
+    let convoyButton = CPMapButton { [weak self] _ in
+      self?.showConvoyList()
+    }
+    convoyButton.image = UIImage(systemName: "person.3.fill")
 
     let endButton = CPMapButton { [weak self] _ in
       self?.endActiveNavigation(notifyFlutter: true)
     }
     endButton.image = UIImage(systemName: "xmark.circle.fill")
 
-    template.mapButtons = [browseButton, endButton]
+    template.mapButtons = [browseButton, recentsButton, convoyButton, endButton]
     return template
   }
 
@@ -168,6 +213,75 @@ final class CarPlayManager: NSObject {
     template.emptyViewTitleVariants = ["Inga destinationer"]
     template.emptyViewSubtitleVariants = ["Spara favoriter eller välj mål i appen så dyker de upp här."]
     interfaceController.pushTemplate(template, animated: true, completion: nil)
+  }
+
+  private func showSearch() {
+    guard let interfaceController else { return }
+    activeSearch?.cancel()
+    searchDestinations.removeAll()
+    let template = CPSearchTemplate()
+    template.delegate = self
+    interfaceController.pushTemplate(template, animated: true, completion: nil)
+  }
+
+  private func showRecentDestinationsList() {
+    guard let interfaceController else { return }
+    let sections = recentDestinations.isEmpty
+      ? []
+      : [
+          CPListSection(
+            items: recentDestinations.map(makeDestinationListItem),
+            header: Destination.Source.recent.sectionTitle,
+            sectionIndexTitle: nil
+          )
+        ]
+    let template = CPListTemplate(title: "Senaste", sections: sections)
+    template.emptyViewTitleVariants = ["Inga senaste mål"]
+    template.emptyViewSubtitleVariants = ["Sök efter en adress eller välj ett mål i appen först."]
+    interfaceController.pushTemplate(template, animated: true, completion: nil)
+  }
+
+  private func showConvoyList() {
+    guard let interfaceController else { return }
+
+    var items: [CPListItem] = []
+    if !convoyMembers.isEmpty {
+      let showAll = CPListItem(text: "Visa hela konvojen", detailText: "\(convoyMembers.count) deltagare")
+      showAll.handler = { [weak self] _, completion in
+        self?.showAllConvoyMembers()
+        completion()
+      }
+      items.append(showAll)
+
+      items.append(contentsOf: convoyMembers.map { member in
+        let item = CPListItem(text: member.label, detailText: "Visa på kartan")
+        item.handler = { [weak self] _, completion in
+          self?.focusOnConvoyMember(member)
+          completion()
+        }
+        return item
+      })
+    }
+
+    let title = activeConvoyName.isEmpty ? "Konvoj" : activeConvoyName
+    let template = CPListTemplate(
+      title: title,
+      sections: items.isEmpty ? [] : [CPListSection(items: items)]
+    )
+    template.emptyViewTitleVariants = ["Ingen aktiv konvoj"]
+    template.emptyViewSubtitleVariants = ["Öppna en konvoj på mobilen så visas deltagarna här."]
+    interfaceController.pushTemplate(template, animated: true, completion: nil)
+  }
+
+  private func showAllConvoyMembers() {
+    interfaceController?.popToRootTemplate(animated: true, completion: nil)
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.showAllConvoyMembers()
+  }
+
+  private func focusOnConvoyMember(_ member: ConvoyMember) {
+    interfaceController?.popToRootTemplate(animated: true, completion: nil)
+    (carWindow?.rootViewController as? CarPlayMapViewController)?
+      .focusOnConvoyMember(userId: member.userId)
   }
 
   private func previewTrip(to destination: Destination) {
@@ -230,6 +344,10 @@ final class CarPlayManager: NSObject {
     flutterChannel?.invokeMethod("requestSyncState", arguments: nil)
   }
 
+  private func notifyFlutterConnectionState(_ connected: Bool) {
+    flutterChannel?.invokeMethod("carPlayConnectionChanged", arguments: connected)
+  }
+
   private func handleFlutterCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     switch call.method {
     case "syncState":
@@ -238,6 +356,14 @@ final class CarPlayManager: NSObject {
     case "syncNavigationState":
       applyNavigationState(call.arguments)
       result(nil)
+    case "syncRouteGeometry":
+      applyRouteGeometry(call.arguments)
+      result(nil)
+    case "syncConvoyState":
+      applyConvoyState(call.arguments)
+      result(nil)
+    case "getConnectionState":
+      result(interfaceController != nil)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -278,6 +404,12 @@ final class CarPlayManager: NSObject {
     navigationState = NavigationState(
       hasRoute: (payload["hasRoute"] as? Bool) ?? false,
       isNavigating: (payload["isNavigating"] as? Bool) ?? false,
+      currentLocation: decodeCoordinate(payload["currentLocation"]),
+      headingDegrees: doubleValue(payload["headingDegrees"]) ?? 0,
+      currentSpeed: doubleValue(payload["currentSpeed"]) ?? 0,
+      roadSpeedLimit: doubleValue(payload["roadSpeedLimit"]),
+      vehicleSpeedLimit: doubleValue(payload["vehicleSpeedLimit"]),
+      speedUnitLabel: stringValue(payload["speedUnitLabel"]) ?? "km/h",
       totalDistanceMeters: doubleValue(payload["totalDistanceMeters"]),
       remainingDistanceMeters: doubleValue(payload["remainingDistanceMeters"]),
       remainingDurationSeconds: doubleValue(payload["remainingDurationSeconds"]),
@@ -301,6 +433,83 @@ final class CarPlayManager: NSObject {
     }
 
     syncCarPlayNavigationUI()
+  }
+
+  private func applyRouteGeometry(_ arguments: Any?) {
+    guard let payload = arguments as? [String: Any] else { return }
+    routeCoordinates = decodeCoordinates(payload["points"])
+
+    if let destination = payload["destination"] as? [String: Any],
+       let latitude = doubleValue(destination["latitude"] ?? destination["lat"]),
+       let longitude = doubleValue(destination["longitude"] ?? destination["lon"]) {
+      routeDestinationCoordinate = CLLocationCoordinate2D(
+        latitude: latitude,
+        longitude: longitude
+      )
+    } else {
+      routeDestinationCoordinate = nil
+    }
+
+    updateRouteMap()
+  }
+
+  private func applyConvoyState(_ arguments: Any?) {
+    guard let payload = arguments as? [String: Any] else { return }
+    let isActive = (payload["isActive"] as? Bool) ?? false
+    activeConvoyName = isActive ? (stringValue(payload["convoyName"]) ?? "Konvoj") : ""
+    let currentUserId = stringValue(payload["currentUserId"])?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    guard isActive, let rawMembers = payload["members"] as? [Any] else {
+      convoyMembers = []
+      updateConvoyMap()
+      refreshVisibleConvoyListIfNeeded()
+      return
+    }
+
+    convoyMembers = rawMembers.compactMap { raw in
+      guard let values = raw as? [String: Any],
+            let userId = stringValue(values["userId"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+            !userId.isEmpty,
+            userId != currentUserId,
+            let latitude = doubleValue(values["latitude"] ?? values["lat"]),
+            let longitude = doubleValue(values["longitude"] ?? values["lon"])
+      else {
+        return nil
+      }
+      return ConvoyMember(
+        userId: userId,
+        label: stringValue(values["label"]) ?? "Deltagare",
+        coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+        assetPath: stringValue(values["assetPath"]),
+        iconName: stringValue(values["iconName"]),
+        tintArgb: intValue(values["tintArgb"])
+      )
+    }
+    updateConvoyMap()
+    refreshVisibleConvoyListIfNeeded()
+  }
+
+  private func decodeCoordinates(_ raw: Any?) -> [CLLocationCoordinate2D] {
+    guard let items = raw as? [Any] else { return [] }
+    return items.compactMap { item in
+      guard let values = item as? [String: Any],
+            let latitude = doubleValue(values["latitude"] ?? values["lat"]),
+            let longitude = doubleValue(values["longitude"] ?? values["lon"])
+      else {
+        return nil
+      }
+      return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+  }
+
+  private func decodeCoordinate(_ raw: Any?) -> CLLocationCoordinate2D? {
+    guard let values = raw as? [String: Any],
+          let latitude = doubleValue(values["latitude"] ?? values["lat"]),
+          let longitude = doubleValue(values["longitude"] ?? values["lon"])
+    else {
+      return nil
+    }
+    return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
   }
 
   private func decodeManeuverPayloads(_ raw: Any?) -> [ManeuverPayload] {
@@ -429,12 +638,46 @@ final class CarPlayManager: NSObject {
   }
 
   private func refreshVisibleDestinationListIfNeeded() {
-    guard let listTemplate = interfaceController?.topTemplate as? CPListTemplate,
-          listTemplate.title == "CruizX mål"
-    else {
-      return
+    guard let listTemplate = interfaceController?.topTemplate as? CPListTemplate else { return }
+    if listTemplate.title == "CruizX mål" {
+      listTemplate.updateSections(makeDestinationSections())
+    } else if listTemplate.title == "Senaste" {
+      let sections = recentDestinations.isEmpty
+        ? []
+        : [
+            CPListSection(
+              items: recentDestinations.map(makeDestinationListItem),
+              header: Destination.Source.recent.sectionTitle,
+              sectionIndexTitle: nil
+            )
+          ]
+      listTemplate.updateSections(sections)
     }
-    listTemplate.updateSections(makeDestinationSections())
+  }
+
+  private func refreshVisibleConvoyListIfNeeded() {
+    guard let listTemplate = interfaceController?.topTemplate as? CPListTemplate else { return }
+    let expectedTitle = activeConvoyName.isEmpty ? "Konvoj" : activeConvoyName
+    guard listTemplate.title == "Konvoj" || listTemplate.title == expectedTitle else { return }
+
+    var items: [CPListItem] = []
+    if !convoyMembers.isEmpty {
+      let showAll = CPListItem(text: "Visa hela konvojen", detailText: "\(convoyMembers.count) deltagare")
+      showAll.handler = { [weak self] _, completion in
+        self?.showAllConvoyMembers()
+        completion()
+      }
+      items.append(showAll)
+      items.append(contentsOf: convoyMembers.map { member in
+        let item = CPListItem(text: member.label, detailText: "Visa på kartan")
+        item.handler = { [weak self] _, completion in
+          self?.focusOnConvoyMember(member)
+          completion()
+        }
+        return item
+      })
+    }
+    listTemplate.updateSections(items.isEmpty ? [] : [CPListSection(items: items)])
   }
 
   private func updateMapOverlay() {
@@ -442,11 +685,36 @@ final class CarPlayManager: NSObject {
       return
     }
 
-    rootViewController.updateOverlay(
-      title: "CruizX CarPlay",
-      subtitle: overlaySubtitle(),
-      status: overlayStatus()
+    rootViewController.updateNavigationPosition(
+      navigationState.currentLocation,
+      headingDegrees: navigationState.headingDegrees,
+      isNavigating: navigationState.isNavigating
     )
+    rootViewController.updateSpeedometers(
+      currentSpeed: navigationState.currentSpeed,
+      roadSpeedLimit: navigationState.roadSpeedLimit,
+      vehicleSpeedLimit: navigationState.vehicleSpeedLimit,
+      unitLabel: navigationState.speedUnitLabel,
+      isNavigating: navigationState.isNavigating
+    )
+  }
+
+  private func updateRouteMap() {
+    guard let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController else {
+      return
+    }
+    rootViewController.updateRoute(
+      coordinates: routeCoordinates,
+      destination: routeDestinationCoordinate,
+      isNavigating: navigationState.isNavigating
+    )
+  }
+
+  private func updateConvoyMap() {
+    guard let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController else {
+      return
+    }
+    rootViewController.updateConvoyMembers(convoyMembers)
   }
 
   private func startFlutterNavigation(to destination: Destination) {
@@ -455,6 +723,7 @@ final class CarPlayManager: NSObject {
       "lon": destination.coordinate.longitude,
       "label": destination.title,
       "address": destination.subtitle,
+      "startImmediately": true,
     ])
   }
 
@@ -485,6 +754,13 @@ final class CarPlayManager: NSObject {
     } else if let mapTemplate {
       mapTemplate.showTripPreviews([trip], selectedTrip: trip, textConfiguration: nil)
     }
+
+    (carWindow?.rootViewController as? CarPlayMapViewController)?
+      .updateNavigationPosition(
+        navigationState.currentLocation,
+        headingDegrees: navigationState.headingDegrees,
+        isNavigating: navigationState.isNavigating
+      )
 
     if let mapTemplate {
       mapTemplate.update(makeEstimatesFromNavigationState(for: destination), for: trip, with: .green)
@@ -602,53 +878,82 @@ final class CarPlayManager: NSObject {
     max(distanceMeters / 15.0, 1)
   }
 
-  private func overlaySubtitle() -> String {
-    if navigationState.hasRoute {
-      let remaining = formattedDistanceMeters(navigationState.remainingDistanceMeters)
-      let destinationText = activeDestination?.title ?? "Aktiv rutt"
-      if !remaining.isEmpty {
-        return "\(destinationText) • \(remaining) kvar"
-      }
-      return destinationText
-    }
-
-    let favoriteCount = favoriteDestinations.count
-    let recentCount = recentDestinations.count
-    if favoriteCount == 0 && recentCount == 0 {
-      return "Inga mål synkade ännu. Spara favoriter eller välj en destination i appen för att fylla CarPlay."
-    }
-    return "\(favoriteCount) favoriter och \(recentCount) senaste mål synkade från appen."
-  }
-
-  private func overlayStatus() -> String {
-    if navigationState.hasRoute {
-      let maneuver = navigationState.nextManeuverText.trimmingCharacters(in: .whitespacesAndNewlines)
-      let street = navigationState.currentStreetName.trimmingCharacters(in: .whitespacesAndNewlines)
-      if !maneuver.isEmpty && !street.isEmpty {
-        return "\(maneuver) • \(street)"
-      }
-      if !maneuver.isEmpty {
-        return maneuver
-      }
-      if !street.isEmpty {
-        return street
-      }
-      return navigationState.isNavigating ? "Navigation pågår" : "Rutt klar att starta"
-    }
-
-    return "Synkar sparade och senaste mål från appen."
-  }
-
-  private func formattedDistanceMeters(_ meters: Double?) -> String {
-    guard let meters else { return "" }
-    if meters >= 1000 {
-      return "\(String(format: "%.1f", meters / 1000)) km"
-    }
-    return "\(Int(meters.rounded())) m"
-  }
 }
 
 extension CarPlayManager: CPInterfaceControllerDelegate {}
+
+extension CarPlayManager: CPSearchTemplateDelegate {
+  func searchTemplate(
+    _ searchTemplate: CPSearchTemplate,
+    updatedSearchText searchText: String,
+    completionHandler: @escaping ([CPListItem]) -> Void
+  ) {
+    activeSearch?.cancel()
+    searchDestinations.removeAll()
+
+    let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard query.count >= 2 else {
+      completionHandler([])
+      return
+    }
+
+    let request = MKLocalSearch.Request()
+    request.naturalLanguageQuery = query
+    request.resultTypes = [.address, .pointOfInterest]
+    request.region = MKCoordinateRegion(
+      center: navigationState.currentLocation ?? currentOriginCoordinate(),
+      latitudinalMeters: 80_000,
+      longitudinalMeters: 80_000
+    )
+
+    let search = MKLocalSearch(request: request)
+    activeSearch = search
+    search.start { [weak self, weak search] response, _ in
+      DispatchQueue.main.async {
+        guard let self, let search, self.activeSearch === search else {
+          completionHandler([])
+          return
+        }
+
+        let items = (response?.mapItems ?? []).prefix(12).map { mapItem -> CPListItem in
+          let title = mapItem.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+          let fallbackTitle = mapItem.placemark.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+          let resolvedTitle = (title?.isEmpty == false ? title : fallbackTitle) ?? query
+          let fullAddress = mapItem.placemark.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+          let subtitle = fullAddress.caseInsensitiveCompare(resolvedTitle) == .orderedSame
+            ? ""
+            : fullAddress
+          let destination = Destination(
+            title: resolvedTitle,
+            subtitle: subtitle,
+            coordinate: mapItem.placemark.coordinate,
+            source: .search
+          )
+          let item = CPListItem(text: resolvedTitle, detailText: subtitle)
+          self.searchDestinations[ObjectIdentifier(item)] = destination
+          return item
+        }
+        completionHandler(Array(items))
+      }
+    }
+  }
+
+  func searchTemplate(
+    _ searchTemplate: CPSearchTemplate,
+    selectedResult item: CPListItem,
+    completionHandler: @escaping () -> Void
+  ) {
+    defer { completionHandler() }
+    guard let destination = searchDestinations[ObjectIdentifier(item)] else { return }
+    activeSearch?.cancel()
+    activeSearch = nil
+    previewTrip(to: destination)
+  }
+
+  func searchTemplateSearchButtonPressed(_ searchTemplate: CPSearchTemplate) {
+    // Results update continuously through MKLocalSearch while the user types.
+  }
+}
 
 extension CarPlayManager: CPMapTemplateDelegate {
   func mapTemplateShouldProvideNavigationMetadata(_ mapTemplate: CPMapTemplate) -> Bool {

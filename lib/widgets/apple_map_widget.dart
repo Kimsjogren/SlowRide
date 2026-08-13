@@ -93,7 +93,10 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
   }
 
   void _onPlatformViewCreated(int id) {
-    _channel = MethodChannel('cruizx/mapkit_view_$id');
+    final channelName = defaultTargetPlatform == TargetPlatform.android
+        ? 'cruizx/google_maps_view_$id'
+        : 'cruizx/mapkit_view_$id';
+    _channel = MethodChannel(channelName);
     _channel?.setMethodCallHandler(_handleMethodCall);
     _scheduleStateSync(immediate: true);
     _scheduleHeadingSync(immediate: true);
@@ -163,6 +166,25 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
             },
           )
           .toList(growable: false),
+      'alerts': widget.alerts
+          .map(
+            (alert) => <String, Object?>{
+              'id': alert.id,
+              'type': alert.type.key,
+              'label': alert.type.label,
+              'latitude': alert.position.latitude,
+              'longitude': alert.position.longitude,
+            },
+          )
+          .toList(growable: false),
+      'chargingStations': widget.chargingStations
+          .map(_encodePoint)
+          .toList(growable: false),
+      'studdedTireBanZones': widget.studdedTireBanZones
+          .map(
+            (zone) => zone.map(_encodePoint).toList(growable: false),
+          )
+          .toList(growable: false),
       // Show the real map-anchored marker (native annotation) so it always
       // sits exactly on the route line and rotates with the map.
       'hideUserMarkerWhenFollowing': false,
@@ -182,7 +204,7 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
     } on MissingPluginException {
       // The native view only exists on iOS.
     } catch (error, stackTrace) {
-      debugPrint('AppleMapWidget sync failed: $error\n$stackTrace');
+      debugPrint('Native map sync failed: $error\n$stackTrace');
     }
   }
 
@@ -201,7 +223,7 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
     } on MissingPluginException {
       // The native view only exists on iOS.
     } catch (error, stackTrace) {
-      debugPrint('AppleMapWidget heading sync failed: $error\n$stackTrace');
+      debugPrint('Native map heading sync failed: $error\n$stackTrace');
     }
   }
 
@@ -253,15 +275,30 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       },
       child: Stack(
         children: [
-          UiKitView(
-            viewType: 'cruizx/mapkit-view',
-            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-              Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
-            },
-            onPlatformViewCreated: _onPlatformViewCreated,
-            creationParams: const <String, Object?>{},
-            creationParamsCodec: const StandardMessageCodec(),
-          ),
+          if (defaultTargetPlatform == TargetPlatform.android)
+            AndroidView(
+              viewType: 'cruizx/google-maps-view',
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<EagerGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                ),
+              },
+              onPlatformViewCreated: _onPlatformViewCreated,
+              creationParams: const <String, Object?>{},
+              creationParamsCodec: const StandardMessageCodec(),
+            )
+          else
+            UiKitView(
+              viewType: 'cruizx/mapkit-view',
+              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+                Factory<EagerGestureRecognizer>(
+                  () => EagerGestureRecognizer(),
+                ),
+              },
+              onPlatformViewCreated: _onPlatformViewCreated,
+              creationParams: const <String, Object?>{},
+              creationParamsCodec: const StandardMessageCodec(),
+            ),
         ],
       ),
     );

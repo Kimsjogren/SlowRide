@@ -267,6 +267,9 @@ class RoutingService {
     final costing = useCyclewayRouting
         ? 'bicycle'
         : (isSlowVehicle ? 'motor_scooter' : 'auto');
+    final hasVehicleSpeedLimit = CountryVehicleRules.hasVehicleSpeedLimit(
+      vehicleType,
+    );
     final costingOptions = useCyclewayRouting
         ? <String, dynamic>{
             // Sweden and Denmark require a two-wheel low-speed moped to use
@@ -284,7 +287,8 @@ class RoutingService {
         : <String, dynamic>{
             // Clamp top_speed to the vehicle's legal maximum so Valhalla never
             // optimises for a speed the vehicle cannot legally achieve on any road.
-            'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
+            if (hasVehicleSpeedLimit)
+              'top_speed': userSpeedKmh.clamp(1.0, maxLegalSpeedKmh).round(),
             'use_highways': profile.useHighways,
             'use_tolls': profile.useTolls,
             'use_ferry': profile.useFerry,
@@ -708,9 +712,13 @@ class RoutingService {
     // Recalculate duration using 85% of the vehicle's legal max speed
     // (accounts for traffic lights, bends, junctions etc.).
     final avgSpeedMs = (vehicleMaxSpeedKmh * 0.85) / 3.6;
-    final calculatedDurationSeconds = avgSpeedMs > 0
-        ? distanceMeters / avgSpeedMs
-        : 0.0;
+    final providerDurationSeconds =
+        ((firstPath['time'] as num?)?.toDouble() ?? 0) / 1000;
+    final calculatedDurationSeconds =
+        !CountryVehicleRules.hasVehicleSpeedLimit(vehicleType) &&
+            providerDurationSeconds > 0
+        ? providerDurationSeconds
+        : (avgSpeedMs > 0 ? distanceMeters / avgSpeedMs : 0.0);
 
     // Parse turn-by-turn instructions.
     final rawInstructions =
@@ -794,9 +802,13 @@ class RoutingService {
     final vehicleMaxSpeedKmh = userSpeedKmh.clamp(1.0, maxLegalSpeedKmh);
     // Use 85% of max speed as realistic average (traffic lights, bends, etc.)
     final avgSpeedMs = (vehicleMaxSpeedKmh * 0.85) / 3.6;
-    final calculatedDurationSeconds = avgSpeedMs > 0
-        ? distanceMeters / avgSpeedMs
-        : 0.0;
+    final providerDurationSeconds =
+        (firstRoute['duration'] as num?)?.toDouble() ?? 0;
+    final calculatedDurationSeconds =
+        !CountryVehicleRules.hasVehicleSpeedLimit(vehicleType) &&
+            providerDurationSeconds > 0
+        ? providerDurationSeconds
+        : (avgSpeedMs > 0 ? distanceMeters / avgSpeedMs : 0.0);
 
     return RouteResult(
       points: points,
@@ -867,9 +879,13 @@ class RoutingService {
 
     final distanceMeters = (summary?['distance'] as num?)?.toDouble() ?? 0;
     final avgSpeedMs = (userSpeedKmh * 0.85) / 3.6;
-    final calculatedDurationSeconds = avgSpeedMs > 0
-        ? distanceMeters / avgSpeedMs
-        : 0.0;
+    final providerDurationSeconds =
+        (summary?['duration'] as num?)?.toDouble() ?? 0;
+    final calculatedDurationSeconds =
+        !CountryVehicleRules.hasVehicleSpeedLimit(vehicleType) &&
+            providerDurationSeconds > 0
+        ? providerDurationSeconds
+        : (avgSpeedMs > 0 ? distanceMeters / avgSpeedMs : 0.0);
 
     return RouteResult(
       points: points,
@@ -1199,12 +1215,15 @@ class RoutingService {
     final distanceKm = (summary?['length'] as num?)?.toDouble() ?? 0;
     final distanceMeters = distanceKm * 1000;
 
-    // Valhalla calculates time based on our costing_options.top_speed,
-    // but we recalculate for consistency at 85% of max speed.
+    // Speed-limited vehicles use a consistent estimate based on their selected
+    // maximum. Ordinary cars keep Valhalla's road-aware travel time.
     final avgSpeedMs = (vehicleMaxSpeedKmh * 0.85) / 3.6;
-    final calculatedDurationSeconds = avgSpeedMs > 0
-        ? distanceMeters / avgSpeedMs
-        : 0.0;
+    final providerDurationSeconds = (summary?['time'] as num?)?.toDouble() ?? 0;
+    final calculatedDurationSeconds =
+        !CountryVehicleRules.hasVehicleSpeedLimit(vehicleType) &&
+            providerDurationSeconds > 0
+        ? providerDurationSeconds
+        : (avgSpeedMs > 0 ? distanceMeters / avgSpeedMs : 0.0);
 
     final result = RouteResult(
       points: allPoints,
@@ -1477,6 +1496,9 @@ List<String> _graphHopperAvoidFor(String vehicleType, String countryCode) {
 }
 
 double _maxAllowedAverageSpeedKmhFor(String vehicleType, String countryCode) {
+  if (!CountryVehicleRules.hasVehicleSpeedLimit(vehicleType)) {
+    return double.infinity;
+  }
   final selected = UserPreferencesService.instance.maxSpeedKmh.value;
   if (selected <= 0) return 1;
   return selected;

@@ -57,6 +57,14 @@ class CountryVehicleRules {
     return getProfile(countryCode, vehicleType).maxLegalSpeedKmh;
   }
 
+  /// Whether the vehicle has its own configurable top-speed restriction.
+  ///
+  /// An ordinary car is instead governed by each road's posted speed limit,
+  /// so routing providers should use their native car-speed model.
+  static bool hasVehicleSpeedLimit(String vehicleType) {
+    return vehicleType != 'Car';
+  }
+
   /// Highest value exposed by the user speed control.
   ///
   /// Electric scooters can be configured up to 40 km/h for private-area and

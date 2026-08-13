@@ -467,22 +467,28 @@ class _AppShellState extends State<AppShell> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: pages[_index],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          destinations: destinations,
-          onDestinationSelected: (value) {
-            if (value == 1 && _index != 1) {
-              // Convoy tab — show interstitial for free users first
-              AdService.instance.showConvoyInterstitial(
-                onDone: () {
-                  if (mounted) setState(() => _index = 1);
-                },
-              );
-            } else {
-              setState(() => _index = value);
-            }
-          },
+        bottomNavigationBar: ValueListenableBuilder<bool>(
+          valueListenable: CarPlayBridgeService.instance.companionMode,
+          builder: (context, companionMode, _) => companionMode
+              ? const SizedBox.shrink()
+              : NavigationBar(
+                  selectedIndex: _index,
+                  labelBehavior:
+                      NavigationDestinationLabelBehavior.onlyShowSelected,
+                  destinations: destinations,
+                  onDestinationSelected: (value) {
+                    if (value == 1 && _index != 1) {
+                      // Convoy tab — show interstitial for free users first
+                      AdService.instance.showConvoyInterstitial(
+                        onDone: () {
+                          if (mounted) setState(() => _index = 1);
+                        },
+                      );
+                    } else {
+                      setState(() => _index = value);
+                    }
+                  },
+                ),
         ),
       ),
     );

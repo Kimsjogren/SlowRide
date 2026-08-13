@@ -22,6 +22,7 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/apple_map_search_service.dart';
+import 'package:slowride/services/carplay_bridge_service.dart';
 import 'package:slowride/services/mapbox_search_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
@@ -349,7 +350,49 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _blockedParticipantIds = blockedIds;
         _memberLocations = locations;
       });
+      unawaited(_syncCarPlayConvoyState(locations));
     } catch (_) {}
+  }
+
+  Future<void> _syncCarPlayConvoyState(
+    List<ConvoyMemberLocation> locations,
+  ) {
+    final currentUserId = (AuthService.instance.userId.value ?? _myUserId)
+        ?.trim();
+    final members = locations
+        .map((member) {
+          final style = MapMarkerStyle.values.firstWhere(
+            (candidate) => candidate.name == member.vehicleStyle,
+            orElse: () => MapMarkerStyle.navigation,
+          );
+          final option = UserLocationMarker.optionFor(style);
+          return <String, Object?>{
+            'userId': member.userId,
+            'label': member.userLabel,
+            'latitude': member.position.latitude,
+            'longitude': member.position.longitude,
+            'assetPath': option.assetPath,
+            'iconName': switch (option.style) {
+              MapMarkerStyle.navigation => 'navigation',
+              MapMarkerStyle.compass => 'compass',
+              MapMarkerStyle.triangle => 'triangle',
+              MapMarkerStyle.dot => 'flatArrow',
+              _ => null,
+            },
+            'tintArgb': option.tint?.toARGB32(),
+          };
+        })
+        .toList(growable: false);
+
+    return CarPlayBridgeService.instance.updateConvoyState(
+      isActive: true,
+      convoyName: widget.convoy.name,
+      currentUserId: currentUserId,
+      members: members,
+      currentLocation: _myLocation,
+      headingDegrees: _arrowHdg.value,
+      currentSpeed: _speedNotifier.value,
+    );
   }
 
   Future<String?> _chooseParticipantReportReason(AppLocalizations l10n) {
@@ -970,6 +1013,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               position: point,
             );
           }
+          unawaited(_syncCarPlayConvoyState(_memberLocations));
         });
   }
 
@@ -991,6 +1035,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   @override
   void dispose() {
+    unawaited(CarPlayBridgeService.instance.clearConvoyState());
     if (widget.convoy.isPublic && _shareLiveLocation) {
       unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
     }
