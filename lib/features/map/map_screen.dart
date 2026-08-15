@@ -2152,6 +2152,7 @@ class _MapScreenState extends State<MapScreen> {
                 query,
                 proximity: center,
                 limit: 10,
+                radiusMeters: maxDistanceFromCenterMeters,
               )
             : _fetchMapboxResults(query, limit: 10, proximity: center);
         requests.add(
@@ -2163,7 +2164,12 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final responses = await Future.wait(requests);
+    // Shortcut searches should render as soon as the first local category
+    // query finds places. Waiting for every synonym made common searches feel
+    // as slow as the least responsive request.
+    final responses = <List<Map<String, dynamic>>>[
+      await _firstNonEmpty<Map<String, dynamic>>(requests),
+    ];
     final seen = <String>{};
     final merged = <Map<String, dynamic>>[];
     for (final response in responses) {

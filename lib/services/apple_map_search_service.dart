@@ -14,6 +14,7 @@ class AppleMapSearchService {
     String query, {
     LatLng? proximity,
     int limit = 10,
+    double? radiusMeters,
   }) async {
     if (!isSupported || query.trim().isEmpty) return const [];
 
@@ -23,6 +24,7 @@ class AppleMapSearchService {
         'limit': limit,
         'latitude': proximity?.latitude,
         'longitude': proximity?.longitude,
+        'radiusMeters': radiusMeters,
       });
       if (results == null) return const [];
       return results

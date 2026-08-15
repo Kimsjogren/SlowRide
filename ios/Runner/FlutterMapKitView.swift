@@ -39,13 +39,19 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
     let limit = max(1, min((payload["limit"] as? NSNumber)?.intValue ?? 10, 10))
     let latitude = (payload["latitude"] as? NSNumber)?.doubleValue
     let longitude = (payload["longitude"] as? NSNumber)?.doubleValue
+    let radiusMeters = (payload["radiusMeters"] as? NSNumber)?.doubleValue
     let proximity = coordinate(latitude: latitude, longitude: longitude)
+    let isPointOfInterestSearch = !pointOfInterestCategories(for: query).isEmpty
 
     performSearch(
       query: query,
       proximity: proximity,
+      radiusMeters: radiusMeters,
       limit: limit,
-      allowGlobalFallback: proximity != nil
+      // Shortcut searches must remain local. Global fallback is useful for a
+      // typed address, but it makes nearby café/food/charging results slower
+      // and can rank distant places ahead of the closest ones.
+      allowGlobalFallback: proximity != nil && !isPointOfInterestSearch
     ) { items in
       result(items)
     }
@@ -54,6 +60,7 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
   private func performSearch(
     query: String,
     proximity: CLLocationCoordinate2D?,
+    radiusMeters: Double?,
     limit: Int,
     allowGlobalFallback: Bool,
     completion: @escaping ([[String: Any]]) -> Void
@@ -69,10 +76,11 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
       )
     }
     if let proximity {
+      let searchDiameter = min(max((radiusMeters ?? 35_000) * 2, 3_000), 70_000)
       request.region = MKCoordinateRegion(
         center: proximity,
-        latitudinalMeters: 70000,
-        longitudinalMeters: 70000
+        latitudinalMeters: searchDiameter,
+        longitudinalMeters: searchDiameter
       )
     }
 
@@ -93,6 +101,7 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
       self?.performSearch(
         query: query,
         proximity: nil,
+        radiusMeters: nil,
         limit: limit,
         allowGlobalFallback: false,
         completion: completion
