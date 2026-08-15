@@ -61,6 +61,8 @@ private class CruizXGoogleMapView(
     private var routePolyline: Polyline? = null
     private var markerAnimator: ValueAnimator? = null
     private var lastRoute: List<LatLng> = emptyList()
+    private var renderedHeading = 0f
+    private var targetLocation: LatLng? = null
 
     init {
         MapsInitializer.initialize(context, MapsInitializer.Renderer.LATEST) {}
@@ -116,7 +118,7 @@ private class CruizXGoogleMapView(
                 @Suppress("UNCHECKED_CAST")
                 val payload = call.arguments as? Map<String, Any?>
                 heading = number(payload?.get("heading"))?.toFloat() ?: heading
-                if (followUser) updateFollowCamera(location)
+                updateUserMarker(targetLocation ?: location)
                 result.success(null)
             }
             else -> result.notImplemented()
@@ -161,6 +163,7 @@ private class CruizXGoogleMapView(
 
     private fun updateUserMarker(target: LatLng?) {
         if (target == null) return
+        targetLocation = target
         val existing = userMarker
         if (existing == null) {
             userMarker = googleMap?.addMarker(
@@ -168,16 +171,24 @@ private class CruizXGoogleMapView(
                     .position(target)
                     .anchor(0.5f, 0.58f)
                     .flat(true)
+                    .rotation(heading)
                     .zIndex(20f)
                     .icon(BitmapDescriptorFactory.fromBitmap(navigationMarkerBitmap())),
             )
+            renderedHeading = normalizedHeading(heading)
+            if (followUser) updateFollowCamera(target, renderedHeading)
             return
         }
 
         val start = existing.position
+        val startHeading = renderedHeading
+        val headingDelta = shortestHeadingDelta(startHeading, heading)
         markerAnimator?.cancel()
         markerAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 350
+            // Location fixes arrive roughly every 250-1000 ms. Interpolating
+            // position and bearing together prevents the map and marker from
+            // taking separate visible steps between fixes.
+            duration = if (followUser) 420 else 300
             interpolator = LinearInterpolator()
             addUpdateListener { animator ->
                 val fraction = animator.animatedFraction.toDouble()
@@ -185,9 +196,14 @@ private class CruizXGoogleMapView(
                     start.latitude + (target.latitude - start.latitude) * fraction,
                     start.longitude + (target.longitude - start.longitude) * fraction,
                 )
+                renderedHeading = normalizedHeading(
+                    startHeading + headingDelta * fraction.toFloat(),
+                )
                 existing.position = rendered
-                existing.rotation = 0f
-                if (followUser) updateFollowCamera(rendered)
+                // A flat Google Maps marker must carry the same bearing as the
+                // heading-up camera to remain visually straight ahead.
+                existing.rotation = renderedHeading
+                if (followUser) updateFollowCamera(rendered, renderedHeading)
             }
             start()
         }
@@ -223,18 +239,23 @@ private class CruizXGoogleMapView(
         )
     }
 
-    private fun updateFollowCamera(position: LatLng?) {
+    private fun updateFollowCamera(position: LatLng?, cameraHeading: Float = renderedHeading) {
         val map = googleMap ?: return
         val current = position ?: return
-        val target = offset(current, if (use3D) 170.0 else 80.0, heading.toDouble())
+        val target = offset(current, if (use3D) 170.0 else 80.0, cameraHeading.toDouble())
         val camera = CameraPosition.Builder()
             .target(target)
             .zoom(if (use3D) 17.4f else 16.8f)
-            .bearing(heading)
+            .bearing(cameraHeading)
             .tilt(if (use3D) 58f else 0f)
             .build()
         map.moveCamera(CameraUpdateFactory.newCameraPosition(camera))
     }
+
+    private fun normalizedHeading(value: Float): Float = ((value % 360f) + 360f) % 360f
+
+    private fun shortestHeadingDelta(from: Float, to: Float): Float =
+        ((to - from + 540f) % 360f) - 180f
 
     private fun fitRoute(points: List<LatLng>) {
         val map = googleMap ?: return

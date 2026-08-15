@@ -856,13 +856,25 @@ class _MapScreenState extends State<MapScreen> {
       // distanceFilter:0 fires on every OS GPS sample (~1Hz).
       // bestForNavigation squeezes extra accuracy from the GPS chip.
       // automotiveNavigation tells iOS to keep GPS hot and never pause.
-      final settings = AppleSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
-        distanceFilter: 0,
-        activityType: ActivityType.automotiveNavigation,
-        pauseLocationUpdatesAutomatically: false,
-        showBackgroundLocationIndicator: true,
-      );
+      final LocationSettings settings;
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        // Android otherwise falls back to a much slower update cadence. Keep
+        // navigation fixes frequent enough for the native Google map to glide
+        // between samples instead of visibly stepping once per second.
+        settings = AndroidSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+          intervalDuration: Duration(milliseconds: 250),
+        );
+      } else {
+        settings = AppleSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 0,
+          activityType: ActivityType.automotiveNavigation,
+          pauseLocationUpdatesAutomatically: false,
+          showBackgroundLocationIndicator: true,
+        );
+      }
 
       _positionSubscription?.cancel();
       _positionSubscription =
@@ -4470,7 +4482,20 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    _locationNotifier.value = currentPos;
+    // Google Maps does not perform the route projection that the Flutter map
+    // renderer does internally. While navigating on Android, feed the native
+    // marker the projected route position so it remains attached to the blue
+    // line despite ordinary GPS drift. Keep iOS/CarPlay behavior untouched.
+    final mapDisplayPosition =
+        !kIsWeb &&
+            defaultTargetPlatform == TargetPlatform.android &&
+            _isNavigating &&
+            nearestPointDistM != null &&
+            nearestPointDistM < 45 &&
+            _displayRouteProjection != null
+        ? _displayRouteProjection!
+        : currentPos;
+    _locationNotifier.value = mapDisplayPosition;
     final deviceControlsRasterArrow =
         !_isFollowing &&
         (_usingAppleMapKit || !_useVectorMap) &&
