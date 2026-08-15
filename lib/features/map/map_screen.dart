@@ -731,6 +731,16 @@ class _MapScreenState extends State<MapScreen> {
         ? position.heading
         : _headingNotifier.value;
 
+    // On Android the platform map can be created before its first Flutter
+    // location payload is ready. Enter follow mode on that first valid fix so
+    // Google Maps always leaves the neutral world view and centers on the
+    // driver without requiring an extra tap on the GPS button.
+    if (!hadLocation &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android) {
+      _isFollowing = true;
+    }
+
     _processLocationUpdate(currentPos, newSpeed, heading);
 
     if (!_countryAutoDetected) {
@@ -823,35 +833,27 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
+      // Paint a recent cached fix immediately. Do not block the live stream on
+      // getCurrentPosition: on an emulator (and some cold phones) that call can
+      // consume its full timeout before returning, which made GPS appear dead.
       try {
-        final hadLocation = _currentLocation != null;
-        final currentPosition = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.bestForNavigation,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-        _applyGpsPosition(currentPosition, hadLocation: hadLocation);
-      } catch (_) {
-        try {
-          final lastPosition = await Geolocator.getLastKnownPosition();
-          final lastPositionAge = lastPosition == null
-              ? null
-              : DateTime.now().difference(lastPosition.timestamp);
-          final isRecentAndAccurate =
-              lastPosition != null &&
-              lastPositionAge != null &&
-              !lastPositionAge.isNegative &&
-              lastPositionAge <= const Duration(minutes: 2) &&
-              lastPosition.accuracy <= 100;
-          if (isRecentAndAccurate) {
-            _applyGpsPosition(
-              lastPosition,
-              hadLocation: _currentLocation != null,
-            );
-          }
-        } catch (_) {}
-      }
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        final lastPositionAge = lastPosition == null
+            ? null
+            : DateTime.now().difference(lastPosition.timestamp);
+        final isRecentAndAccurate =
+            lastPosition != null &&
+            lastPositionAge != null &&
+            !lastPositionAge.isNegative &&
+            lastPositionAge <= const Duration(minutes: 2) &&
+            lastPosition.accuracy <= 100;
+        if (isRecentAndAccurate) {
+          _applyGpsPosition(
+            lastPosition,
+            hadLocation: _currentLocation != null,
+          );
+        }
+      } catch (_) {}
 
       // distanceFilter:0 fires on every OS GPS sample (~1Hz).
       // bestForNavigation squeezes extra accuracy from the GPS chip.
@@ -884,6 +886,26 @@ class _MapScreenState extends State<MapScreen> {
             final hadLocation = _currentLocation != null;
             _applyGpsPosition(position, hadLocation: hadLocation);
           });
+
+      // Keep a one-shot high-accuracy request as a parallel fallback for
+      // devices whose stream needs a moment to warm up.
+      if (_currentLocation == null) {
+        unawaited(() async {
+          try {
+            final currentPosition = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.bestForNavigation,
+                timeLimit: Duration(seconds: 8),
+              ),
+            );
+            if (!mounted || _isSimulating) return;
+            _applyGpsPosition(
+              currentPosition,
+              hadLocation: _currentLocation != null,
+            );
+          } catch (_) {}
+        }());
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -5783,6 +5805,118 @@ class _MapScreenState extends State<MapScreen> {
                                   ),
                                 );
                               }),
+                              if (!kIsWeb &&
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.android) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.restaurant,
+                                    label: l10n.convoyPoiFoodStop,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.convoyPoiFoodStop,
+                                      searchKey: 'food',
+                                      queries: const [
+                                        'restaurant',
+                                        'fast food',
+                                      ],
+                                      icon: Icons.restaurant,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.ev_station,
+                                    label: l10n.convoyPoiCharging,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.convoyPoiCharging,
+                                      searchKey: 'charging',
+                                      queries: const [
+                                        'charging station',
+                                        'ev charging',
+                                        'laddstation',
+                                      ],
+                                      icon: Icons.ev_station,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.local_gas_station,
+                                    label: l10n.routeStopFuel,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.routeStopFuel,
+                                      searchKey: 'fuel',
+                                      queries: const [
+                                        'gas station',
+                                        'fuel',
+                                        'petrol station',
+                                        'bensinstation',
+                                      ],
+                                      icon: Icons.local_gas_station,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.local_cafe,
+                                    label: l10n.routeStopCafe,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.routeStopCafe,
+                                      searchKey: 'cafe',
+                                      queries: const [
+                                        'cafe',
+                                        'coffee',
+                                        'kafé',
+                                      ],
+                                      icon: Icons.local_cafe,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.local_parking,
+                                    label: l10n.convoyPoiParking,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.convoyPoiParking,
+                                      searchKey: 'parking',
+                                      queries: const [
+                                        'parking',
+                                        'car park',
+                                        'parkering',
+                                      ],
+                                      icon: Icons.local_parking,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: _favChip(
+                                    icon: Icons.local_grocery_store,
+                                    label: l10n.routeStopGrocery,
+                                    hasValue: true,
+                                    onTap: () => _showRouteStopSheet(
+                                      title: l10n.routeStopGrocery,
+                                      searchKey: 'grocery',
+                                      queries: const [
+                                        'grocery',
+                                        'supermarket',
+                                        'livsmedel',
+                                      ],
+                                      icon: Icons.local_grocery_store,
+                                    ),
+                                  ),
+                                ),
+                              ],
                               ...custom.map(
                                 (f) => Padding(
                                   padding: const EdgeInsets.only(right: 6),

@@ -63,6 +63,7 @@ private class CruizXGoogleMapView(
     private var lastRoute: List<LatLng> = emptyList()
     private var renderedHeading = 0f
     private var targetLocation: LatLng? = null
+    private var hasCenteredOnUser = false
 
     init {
         MapsInitializer.initialize(context, MapsInitializer.Renderer.LATEST) {}
@@ -151,8 +152,19 @@ private class CruizXGoogleMapView(
         if (routeChanged) updateRoute(route)
 
         when {
-            followUser && newLocation != null -> updateFollowCamera(newLocation)
+            followUser && newLocation != null -> {
+                hasCenteredOnUser = true
+                updateFollowCamera(newLocation)
+            }
             routeChanged && route.size >= 2 -> fitRoute(route)
+            !hasCenteredOnUser && newLocation != null && route.isEmpty() -> {
+                // Match iOS: the first valid GPS fix must leave the neutral
+                // world view even before the user explicitly enables follow.
+                // Use an immediate move so a closely following state payload
+                // cannot cancel the initial camera animation.
+                hasCenteredOnUser = true
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(newLocation, 16f))
+            }
             followChanged && newLocation != null -> {
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(newLocation, 16f))
             }
