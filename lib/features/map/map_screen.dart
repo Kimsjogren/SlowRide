@@ -67,6 +67,7 @@ class _MapScreenState extends State<MapScreen> {
   // the whole screen to rebuild (unlike setState).
   final ValueNotifier<LatLng?> _locationNotifier = ValueNotifier(null);
   final ValueNotifier<double> _headingNotifier = ValueNotifier(0);
+  double? _carPlayHeadingDegrees;
 
   // Tracks progress along route so nearest-point scan is O(1) not O(n).
   int _lastNearestIdx = 0;
@@ -149,8 +150,9 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _roadLimitLookupInFlight = false;
-  static const Duration _roadLimitLookupInterval = Duration(seconds: 10);
-  static const double _roadLimitLookupMinMoveMeters = 55;
+  int _roadLimitLookupGeneration = 0;
+  static const Duration _roadLimitLookupInterval = Duration(seconds: 6);
+  static const double _roadLimitLookupMinMoveMeters = 20;
 
   // ── GPS simulation (test-only, visible in debug builds) ──────────────
   bool _isSimulating = false;
@@ -386,12 +388,21 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     _roadLimitLookupInFlight = true;
+    final lookupGeneration = _roadLimitLookupGeneration;
     _lastRoadLimitLookupAt = now;
-    final fetched = await _fetchRoadSpeedLimitKmh(pos);
+    final lookup = await _fetchRoadSpeedLimitKmh(pos);
+    if (lookupGeneration != _roadLimitLookupGeneration) return;
     _roadLimitLookupInFlight = false;
     _lastRoadLimitLookupPos = pos;
 
-    if (!mounted || fetched == null) return;
+    if (!mounted || !lookup.completed) return;
+    final fetched = lookup.limit;
+    if (fetched == null) {
+      if (_roadSpeedLimitKmh == null) return;
+      setState(() => _roadSpeedLimitKmh = null);
+      unawaited(_syncCarPlayNavigationState());
+      return;
+    }
     if (_roadSpeedLimitKmh != null &&
         (fetched - _roadSpeedLimitKmh!).abs() < 1.0) {
       return;
@@ -400,14 +411,31 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _roadSpeedLimitKmh = fetched;
     });
+    _smartEtaSpeedKmh(_speedKmh);
+    unawaited(_syncCarPlayNavigationState());
   }
 
-  Future<double?> _fetchRoadSpeedLimitKmh(LatLng pos) async {
+  void _resetRoadSpeedLimitLookup() {
+    _roadLimitLookupGeneration++;
+    _roadLimitLookupInFlight = false;
+    _roadSpeedLimitKmh = null;
+    _lastRoadLimitLookupPos = null;
+    _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
+    _etaSmoothedSpeedKmh = 0;
+    _etaLastMovementAt = null;
+  }
+
+  Future<({bool completed, double? limit})> _fetchRoadSpeedLimitKmh(
+    LatLng pos,
+  ) async {
     final countryCode = UserPreferencesService.instance.countryCode.value
         .trim()
         .toUpperCase();
+    // Fetch every nearby road, not only roads with an explicit maxspeed tag.
+    // Otherwise an untagged residential road can incorrectly inherit the
+    // maxspeed from a tagged motorway running beside it.
     final query =
-        '[out:json][timeout:8];way(around:35,${pos.latitude},${pos.longitude})["highway"]["maxspeed"];out tags;';
+        '[out:json][timeout:8];way(around:35,${pos.latitude},${pos.longitude})["highway"];out tags geom;';
 
     try {
       final response = await http
@@ -421,7 +449,9 @@ class _MapScreenState extends State<MapScreen> {
           )
           .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        return (completed: false, limit: null);
+      }
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final elements =
@@ -430,31 +460,159 @@ class _MapScreenState extends State<MapScreen> {
               .toList() ??
           const <Map<String, dynamic>>[];
 
-      final counts = <int, int>{};
+      final candidates =
+          <
+            ({
+              double? limit,
+              double distance,
+              double alignment,
+              double routeDistance,
+            })
+          >[];
+      final preferences = UserPreferencesService.instance;
+      final legalVehicleMax = CountryVehicleRules.maxLegalSpeedFor(
+        preferences.countryCode.value,
+        preferences.vehicleType.value,
+      );
+      final isSlowVehicle = legalVehicleMax <= 45;
+      final routeHeading = _routePoints.length >= 2
+          ? _routeLookaheadHeading(
+              _lastNearestIdx.clamp(0, _routePoints.length - 1),
+              8,
+            )
+          : _headingNotifier.value;
+      const drivableRoadClasses = {
+        'motorway',
+        'motorway_link',
+        'trunk',
+        'trunk_link',
+        'primary',
+        'primary_link',
+        'secondary',
+        'secondary_link',
+        'tertiary',
+        'tertiary_link',
+        'unclassified',
+        'residential',
+        'living_street',
+        'service',
+        'road',
+        'track',
+      };
       for (final element in elements) {
         final tags = element['tags'] as Map<String, dynamic>?;
+        final roadClass = (tags?['highway'] ?? '').toString().toLowerCase();
+        if (!drivableRoadClasses.contains(roadClass)) continue;
+        if (isSlowVehicle &&
+            const {
+              'motorway',
+              'motorway_link',
+              'trunk',
+              'trunk_link',
+            }.contains(roadClass)) {
+          continue;
+        }
+
         final raw = tags?['maxspeed']?.toString();
-        if (raw == null || raw.trim().isEmpty) continue;
+        final parsed = raw == null || raw.trim().isEmpty
+            ? null
+            : _parseRoadSpeedLimitKmh(raw, countryCode: countryCode);
 
-        final parsed = _parseRoadSpeedLimitKmh(raw, countryCode: countryCode);
-        if (parsed == null) continue;
+        final geometry = (element['geometry'] as List?)
+            ?.whereType<Map<String, dynamic>>()
+            .map((point) {
+              final lat = (point['lat'] as num?)?.toDouble();
+              final lon = (point['lon'] as num?)?.toDouble();
+              return lat == null || lon == null ? null : LatLng(lat, lon);
+            })
+            .whereType<LatLng>()
+            .toList(growable: false);
+        if (geometry != null && geometry.length >= 2) {
+          var distance = double.infinity;
+          var alignment = 180.0;
+          var routeDistance = _routePoints.length >= 2 ? double.infinity : 0.0;
+          final routeStart = math.max(_lastNearestIdx - 4, 0);
+          final routeEnd = math.min(
+            _lastNearestIdx + 10,
+            math.max(_routePoints.length - 1, 0),
+          );
+          for (var i = 0; i < geometry.length - 1; i++) {
+            final segmentDistance = _distanceToSegmentMeters(
+              pos,
+              geometry[i],
+              geometry[i + 1],
+            );
+            if (segmentDistance < distance) {
+              distance = segmentDistance;
+              final segmentHeading = _bearingDeg(
+                geometry[i],
+                geometry[i + 1],
+              );
+              final forwardDifference =
+                  ((segmentHeading - routeHeading + 540) % 360 - 180).abs();
+              final reverseDifference =
+                  (((segmentHeading + 180) % 360 - routeHeading + 540) % 360 -
+                          180)
+                      .abs();
+              alignment = math.min(forwardDifference, reverseDifference);
+            }
 
-        final rounded = parsed.round();
-        counts[rounded] = (counts[rounded] ?? 0) + 1;
+            // Match against the active route geometry as well as raw GPS.
+            // This distinguishes parallel roads even when GPS accuracy drifts.
+            for (var r = routeStart; r < routeEnd; r++) {
+              routeDistance = math.min(
+                routeDistance,
+                math.min(
+                  _distanceToSegmentMeters(
+                    geometry[i],
+                    _routePoints[r],
+                    _routePoints[r + 1],
+                  ),
+                  math.min(
+                    _distanceToSegmentMeters(
+                      geometry[i + 1],
+                      _routePoints[r],
+                      _routePoints[r + 1],
+                    ),
+                    _distanceToSegmentMeters(
+                      _routePoints[r],
+                      geometry[i],
+                      geometry[i + 1],
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+          candidates.add((
+            limit: parsed,
+            distance: distance,
+            alignment: alignment,
+            routeDistance: routeDistance,
+          ));
+        }
       }
 
-      if (counts.isEmpty) return null;
-
-      final sorted = counts.entries.toList()
-        ..sort((a, b) {
-          final byCount = b.value.compareTo(a.value);
-          if (byCount != 0) return byCount;
-          return a.key.compareTo(b.key);
+      if (candidates.isNotEmpty) {
+        // Identify the road first, then use that road's limit. An untagged
+        // matched road intentionally returns null instead of borrowing a limit
+        // from another nearby road.
+        candidates.sort((a, b) {
+          final aScore =
+              a.routeDistance * 3 +
+              a.distance * 0.25 +
+              math.min(a.alignment, 90) * 0.55;
+          final bScore =
+              b.routeDistance * 3 +
+              b.distance * 0.25 +
+              math.min(b.alignment, 90) * 0.55;
+          return aScore.compareTo(bScore);
         });
-
-      return sorted.first.key.toDouble();
+        return (completed: true, limit: candidates.first.limit);
+      }
+      return (completed: true, limit: null);
     } catch (_) {
-      return null;
+      return (completed: false, limit: null);
     }
   }
 
@@ -974,7 +1132,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     final query =
-        '[out:json][timeout:10];(${clauses.join()});out center 300 qt;';
+        '[out:json][timeout:6];(${clauses.join()});out center 300 qt;';
 
     try {
       final response = await http
@@ -988,7 +1146,7 @@ class _MapScreenState extends State<MapScreen> {
             },
             body: 'data=${Uri.encodeQueryComponent(query)}',
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 6));
       if (response.statusCode != 200) return const [];
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -1327,14 +1485,6 @@ class _MapScreenState extends State<MapScreen> {
     _handleMapTap(entry.position);
   }
 
-  Future<void> _selectSearchSheetSuggestion(
-    BuildContext sheetContext,
-    Map<String, dynamic> suggestion,
-  ) async {
-    Navigator.of(sheetContext).pop();
-    _selectSuggestion(suggestion);
-  }
-
   Future<void> _openSearchSheetPoi(
     BuildContext sheetContext, {
     required String title,
@@ -1357,6 +1507,11 @@ class _MapScreenState extends State<MapScreen> {
     Timer? searchDebounce;
     var localSuggestions = <Map<String, dynamic>>[];
     var isSearching = false;
+    var sheetClosed = false;
+    Map<String, dynamic>? selectedSuggestion;
+    FavoritePlace? selectedFavorite;
+    DestinationHistoryEntry? selectedHistory;
+    String? submittedQuery;
 
     Future<void> runSearch(String value, StateSetter setSheetState) async {
       final query = value.trim();
@@ -1371,13 +1526,13 @@ class _MapScreenState extends State<MapScreen> {
       try {
         final raw = await _fetchPrimaryGeocodingResults(query, limit: 15);
         final ranked = _rankAndDedupeSuggestions(raw, query);
-        if (!mounted) return;
+        if (!mounted || sheetClosed) return;
         setSheetState(() {
           localSuggestions = ranked;
           isSearching = false;
         });
       } catch (_) {
-        if (!mounted) return;
+        if (!mounted || sheetClosed) return;
         setSheetState(() {
           localSuggestions = [];
           isSearching = false;
@@ -1450,9 +1605,8 @@ class _MapScreenState extends State<MapScreen> {
                         textInputAction: TextInputAction.search,
                         onChanged: onChanged,
                         onSubmitted: (query) {
+                          submittedQuery = query.trim();
                           Navigator.of(sheetContext).pop();
-                          _addressController.text = query;
-                          _searchAddress(query);
                         },
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
@@ -1596,8 +1750,8 @@ class _MapScreenState extends State<MapScreen> {
                                   title: fav.label,
                                   subtitle: fav.address,
                                   onTap: () {
+                                    selectedFavorite = fav;
                                     Navigator.of(sheetContext).pop();
-                                    _navigateToFavorite(fav);
                                   },
                                 ),
                               ),
@@ -1624,8 +1778,8 @@ class _MapScreenState extends State<MapScreen> {
                                       title: entry.label,
                                       subtitle: entry.address,
                                       onTap: () {
+                                        selectedHistory = entry;
                                         Navigator.of(sheetContext).pop();
-                                        _navigateToHistory(entry);
                                       },
                                     ),
                                   )
@@ -1643,10 +1797,10 @@ class _MapScreenState extends State<MapScreen> {
                             icon: Icons.location_on,
                             title: title,
                             subtitle: subtitle,
-                            onTap: () => _selectSearchSheetSuggestion(
-                              sheetContext,
-                              suggestion,
-                            ),
+                            onTap: () {
+                              selectedSuggestion = suggestion;
+                              Navigator.of(sheetContext).pop();
+                            },
                           );
                         }),
                     ],
@@ -1659,8 +1813,27 @@ class _MapScreenState extends State<MapScreen> {
       },
     );
 
+    sheetClosed = true;
     searchDebounce?.cancel();
+
+    // `showModalBottomSheet` completes when the route is popped, while its
+    // reverse animation can still build the TextField for a few frames. Keep
+    // the controller alive until that animation has completely detached it.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
     controller.dispose();
+
+    // Start routing only after the modal and keyboard have been torn down.
+    if (!mounted) return;
+    if (selectedSuggestion case final suggestion?) {
+      _selectSuggestion(suggestion);
+    } else if (selectedFavorite case final favorite?) {
+      _navigateToFavorite(favorite);
+    } else if (selectedHistory case final history?) {
+      _navigateToHistory(history);
+    } else if (submittedQuery case final query? when query.isNotEmpty) {
+      _addressController.text = query;
+      await _searchAddress(query);
+    }
   }
 
   Future<void> _saveDestinationHistory(LatLng destination) async {
@@ -1803,9 +1976,9 @@ class _MapScreenState extends State<MapScreen> {
       return const [];
     }
 
-    // Parallel Overpass POI calls — one per anchor, 3 km radius.
-    // This is far more reliable than text geocoding for POI categories.
-    final poiLists = await Future.wait(
+    // Search route anchors in parallel and race the device POI index against
+    // OSM. A busy Overpass server must not hold the entire results sheet open.
+    final overpassResults = Future.wait(
       anchors.map(
         (anchor) => _fetchOverpassPoiResults(
           queries: queries,
@@ -1813,45 +1986,51 @@ class _MapScreenState extends State<MapScreen> {
           radiusMeters: 3000,
         ),
       ),
-    );
+    ).then((lists) => lists.expand((items) => items).toList(growable: false));
+    final poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+      _fetchFastPlatformPoiResults(
+        queries: queries,
+        centers: anchors,
+        maxDistanceFromCenterMeters: 4000,
+      ),
+      overpassResults,
+    ]);
 
     final seen = <String>{};
     final candidates = <_RouteStopCandidate>[];
 
-    for (final poiResults in poiLists) {
-      for (final result in poiResults) {
-        final lat = double.tryParse(result['lat']?.toString() ?? '');
-        final lon = double.tryParse(result['lon']?.toString() ?? '');
-        if (lat == null || lon == null) continue;
+    for (final result in poiResults) {
+      final lat = double.tryParse(result['lat']?.toString() ?? '');
+      final lon = double.tryParse(result['lon']?.toString() ?? '');
+      if (lat == null || lon == null) continue;
 
-        final point = LatLng(lat, lon);
-        final title = _addressTitleFromResult(result, fallback: queries.first);
-        final subtitle = _addressSubtitleFromResult(result);
-        final key =
-            '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
-        if (!seen.add(key)) continue;
+      final point = LatLng(lat, lon);
+      final title = _addressTitleFromResult(result, fallback: queries.first);
+      final subtitle = _addressSubtitleFromResult(result);
+      final key =
+          '${title.toLowerCase()}|${lat.toStringAsFixed(4)},${lon.toStringAsFixed(4)}';
+      if (!seen.add(key)) continue;
 
-        final routeDistance = _distanceToRouteMeters(point, _routePoints);
-        if (routeDistance > maxDetourFromRouteMeters) continue;
-        final routeIndex = _nearestRouteIndexFull(point);
-        final isAhead = routeIndex >= (_displayNearestIdx - 5);
-        final distanceFromMe = _segDist(currentLocation, point);
-        final aheadDistance = isAhead
-            ? _remainingRouteDistanceToIndex(routeIndex)
-            : double.infinity;
-        candidates.add(
-          _RouteStopCandidate(
-            title: title,
-            subtitle: subtitle,
-            position: point,
-            routeDistanceMeters: routeDistance,
-            distanceFromMeMeters: distanceFromMe,
-            aheadDistanceMeters: aheadDistance,
-            routeIndex: routeIndex,
-            isAhead: isAhead,
-          ),
-        );
-      }
+      final routeDistance = _distanceToRouteMeters(point, _routePoints);
+      if (routeDistance > maxDetourFromRouteMeters) continue;
+      final routeIndex = _nearestRouteIndexFull(point);
+      final isAhead = routeIndex >= (_displayNearestIdx - 5);
+      final distanceFromMe = _segDist(currentLocation, point);
+      final aheadDistance = isAhead
+          ? _remainingRouteDistanceToIndex(routeIndex)
+          : double.infinity;
+      candidates.add(
+        _RouteStopCandidate(
+          title: title,
+          subtitle: subtitle,
+          position: point,
+          routeDistanceMeters: routeDistance,
+          distanceFromMeMeters: distanceFromMe,
+          aheadDistanceMeters: aheadDistance,
+          routeIndex: routeIndex,
+          isAhead: isAhead,
+        ),
+      );
     }
 
     // Sort: ahead-of-me first, then by distance along remaining route.
@@ -1875,11 +2054,94 @@ class _MapScreenState extends State<MapScreen> {
     return 6000;
   }
 
+  Future<List<T>> _firstNonEmpty<T>(Iterable<Future<List<T>>> sources) {
+    final pending = sources.toList(growable: false);
+    if (pending.isEmpty) return Future.value(const []);
+
+    final completer = Completer<List<T>>();
+    var completedSources = 0;
+    for (final source in pending) {
+      unawaited(() async {
+        List<T> values;
+        try {
+          values = await source;
+        } catch (_) {
+          values = const [];
+        }
+        completedSources++;
+        if (!completer.isCompleted && values.isNotEmpty) {
+          completer.complete(values);
+        } else if (!completer.isCompleted &&
+            completedSources == pending.length) {
+          completer.complete(const []);
+        }
+      }());
+    }
+    return completer.future;
+  }
+
+  /// Fast POI path for the shortcut sheets. Native Apple Maps (or Mapbox on
+  /// other platforms) is normally much quicker than the public Overpass API,
+  /// so race both sources and render whichever produces useful results first.
+  Future<List<Map<String, dynamic>>> _fetchFastPlatformPoiResults({
+    required List<String> queries,
+    required List<LatLng> centers,
+    required double maxDistanceFromCenterMeters,
+  }) async {
+    if (queries.isEmpty || centers.isEmpty) return const [];
+
+    final requests = <Future<List<Map<String, dynamic>>>>[];
+    final searchCenters = centers.take(5);
+    final searchQueries = centers.length == 1
+        ? queries.take(2)
+        : queries.take(1);
+    for (final center in searchCenters) {
+      for (final query in searchQueries) {
+        final request = AppleMapSearchService.isSupported
+            ? AppleMapSearchService.search(
+                query,
+                proximity: center,
+                limit: 10,
+              )
+            : _fetchMapboxResults(query, limit: 10, proximity: center);
+        requests.add(
+          request.timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => const [],
+          ),
+        );
+      }
+    }
+
+    final responses = await Future.wait(requests);
+    final seen = <String>{};
+    final merged = <Map<String, dynamic>>[];
+    for (final response in responses) {
+      for (final result in response) {
+        final lat = result['lat']?.toString() ?? '';
+        final lon = result['lon']?.toString() ?? '';
+        final latitude = double.tryParse(lat);
+        final longitude = double.tryParse(lon);
+        if (latitude == null || longitude == null) continue;
+        final point = LatLng(latitude, longitude);
+        final isCloseEnough = centers.any(
+          (center) => _segDist(center, point) <= maxDistanceFromCenterMeters,
+        );
+        if (!isCloseEnough) continue;
+        final name = (result['name'] ?? '').toString().toLowerCase();
+        if (seen.add('$name|$lat|$lon')) merged.add(result);
+      }
+    }
+    return merged;
+  }
+
   Future<List<_RouteStopCandidate>> _findNearbyStops({
     required List<String> queries,
     int limit = 20,
   }) async {
-    final currentLocation = await _ensureCurrentLocation(forceRefresh: true);
+    // The sheet already ensured that a map position exists. Reusing it avoids
+    // an unnecessary second high-accuracy GPS request (up to eight seconds).
+    final currentLocation = await _ensureCurrentLocation();
     if (currentLocation == null) return const [];
 
     final seen = <String>{};
@@ -1912,14 +2174,22 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Tiered radius: try 2.5 km first so the result cap (300) easily covers
-    // everything nearby. Only expand to 7 km when the area is sparse.
-    var poiResults = await _fetchOverpassPoiResults(
-      queries: queries,
-      center: currentLocation,
-      radiusMeters: 2500,
-    );
-    if (poiResults.length < 5) {
+    // Race the device-native POI index against OSM. This keeps the richer OSM
+    // data while avoiding a blank sheet whenever the public Overpass service
+    // is busy. Expand the radius only when both fast searches found nothing.
+    var poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+      _fetchFastPlatformPoiResults(
+        queries: queries,
+        centers: [currentLocation],
+        maxDistanceFromCenterMeters: _maxFallbackPoiDistanceMeters(queries),
+      ),
+      _fetchOverpassPoiResults(
+        queries: queries,
+        center: currentLocation,
+        radiusMeters: 2500,
+      ),
+    ]);
+    if (poiResults.isEmpty) {
       poiResults = await _fetchOverpassPoiResults(
         queries: queries,
         center: currentLocation,
@@ -2197,9 +2467,13 @@ class _MapScreenState extends State<MapScreen> {
     required String vehicleName,
     required List<_RouteOption> options,
   }) async {
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    if (!mounted || options.isEmpty) return null;
     return showModalBottomSheet<_RouteOption>(
-      context: rootNavigator.context,
+      // Keep the page context as the route owner. Passing the root
+      // NavigatorState's own context can make Flutter unmount an inherited
+      // element while the sheet still depends on it, which triggers the red
+      // `_dependents.isEmpty` assertion during the address-to-route transition.
+      context: context,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -2474,11 +2748,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   double _routeHeadingAt(int nearestIdx) {
-    // Short lookahead so the heading follows the road you're actually on and
-    // only rotates as you reach the corner — a longer lookahead pre-rotates
-    // the map well before the turn (looks like it "turns too early").
-    return _routeLookaheadHeading(nearestIdx, 15.0);
+    // Build 142 used a 40 metre lookahead to keep the mobile camera stable and
+    // prevent the marker from flipping between short route segments.
+    return _routeLookaheadHeading(nearestIdx, 40.0);
   }
+
+  double _carPlayRouteHeadingAt(int nearestIdx) =>
+      _routeLookaheadHeading(nearestIdx, 3.0);
 
   String _addressTitleFromResult(
     Map<String, dynamic> result, {
@@ -2617,11 +2893,29 @@ class _MapScreenState extends State<MapScreen> {
 
   /// Smart ETA speed: GPS-driven, smoothed, and resilient to short stops.
   double _smartEtaSpeedKmh(double liveSpeedKmh) {
-    final selectedVehicleSpeedKmh =
-        UserPreferencesService.instance.maxSpeedKmh.value;
-    if (selectedVehicleSpeedKmh <= 0) return 0;
-
-    final cappedLive = liveSpeedKmh.clamp(0.0, selectedVehicleSpeedKmh);
+    final preferences = UserPreferencesService.instance;
+    final configuredVehicleLimit = preferences.maxSpeedKmh.value;
+    final legalVehicleLimit = CountryVehicleRules.maxLegalSpeedFor(
+      preferences.countryCode.value,
+      preferences.vehicleType.value,
+    );
+    final vehicleLimit =
+        CountryVehicleRules.hasVehicleSpeedLimit(
+          preferences.vehicleType.value,
+        )
+        ? math.min(configuredVehicleLimit, legalVehicleLimit).toDouble()
+        : configuredVehicleLimit;
+    final roadLimit = _roadSpeedLimitKmh ?? 0;
+    final activeLimits = <double>[
+      if (vehicleLimit > 0) vehicleLimit,
+      if (roadLimit > 0) roadLimit,
+    ];
+    final effectiveLimit = activeLimits.isEmpty
+        ? double.infinity
+        : activeLimits.reduce(math.min);
+    final cappedLive = math
+        .min(math.max(liveSpeedKmh, 0.0), effectiveLimit)
+        .toDouble();
     if (cappedLive >= 3.0) {
       _etaLastMovementAt = DateTime.now();
       if (_etaSmoothedSpeedKmh <= 0) {
@@ -2629,16 +2923,21 @@ class _MapScreenState extends State<MapScreen> {
       } else {
         _etaSmoothedSpeedKmh = _etaSmoothedSpeedKmh * 0.75 + cappedLive * 0.25;
       }
-      return _etaSmoothedSpeedKmh.clamp(1.0, selectedVehicleSpeedKmh);
+      _etaSmoothedSpeedKmh = math
+          .min(_etaSmoothedSpeedKmh, effectiveLimit)
+          .toDouble();
+      return math.max(_etaSmoothedSpeedKmh, 1.0).toDouble();
     }
 
     if (_etaSmoothedSpeedKmh > 0 && _etaLastMovementAt != null) {
       final pause = DateTime.now().difference(_etaLastMovementAt!);
       if (pause <= _etaPauseGrace) {
-        _etaSmoothedSpeedKmh = (_etaSmoothedSpeedKmh * 0.96).clamp(
-          3.0,
-          selectedVehicleSpeedKmh,
-        );
+        _etaSmoothedSpeedKmh = math
+            .min(
+              math.max(_etaSmoothedSpeedKmh * 0.96, 3.0),
+              effectiveLimit,
+            )
+            .toDouble();
         return _etaSmoothedSpeedKmh;
       }
     }
@@ -2677,11 +2976,13 @@ class _MapScreenState extends State<MapScreen> {
     return rawDelay.clamp(0.0, cap);
   }
 
-  String _formatEta() {
-    final l10n = AppLocalizations.of(context)!;
-    if (!_isNavigating || _remainingDistM <= 50) return '';
+  /// One ETA source for the phone UI and CarPlay. While moving it follows the
+  /// smoothed real speed, capped by both the current road limit and any
+  /// configured vehicle limit. Before movement (or after a long stop), the
+  /// road-aware Valhalla duration remains the stable fallback.
+  double? _remainingEtaSeconds({required double remainingMeters}) {
+    if (remainingMeters <= 0) return 0;
 
-    double remainingSec;
     final lastMovement = _etaLastMovementAt;
     final hasFreshLiveSpeed =
         _etaSmoothedSpeedKmh > 0 &&
@@ -2689,8 +2990,9 @@ class _MapScreenState extends State<MapScreen> {
         DateTime.now().difference(lastMovement) <= _etaPauseGrace;
 
     if (hasFreshLiveSpeed) {
-      final baseSec = _remainingDistM / (_etaSmoothedSpeedKmh / 3.6);
-      final nearestIdx = _lastNearestIdx.clamp(0, _routePoints.length - 1);
+      final nearestIdx = _routePoints.isEmpty
+          ? 0
+          : _lastNearestIdx.clamp(0, _routePoints.length - 1);
       int instructionIndex = 0;
       for (int i = 0; i < _instructions.length - 1; i++) {
         if (_instructions[i + 1].pointIndex > nearestIdx) {
@@ -2700,22 +3002,54 @@ class _MapScreenState extends State<MapScreen> {
         instructionIndex = i + 1;
       }
       final maneuvers = _remainingManeuversFrom(instructionIndex);
-      remainingSec =
-          baseSec +
+      return remainingMeters / (_etaSmoothedSpeedKmh / 3.6) +
           _etaManeuverDelaySeconds(
             turns: maneuvers.$1,
             complexTurns: maneuvers.$2,
-            remainingMeters: _remainingDistM,
+            remainingMeters: remainingMeters,
           );
-    } else if (_activeRoute != null && _totalRouteDistM > 0) {
-      final routeFraction = (_remainingDistM / _totalRouteDistM).clamp(
-        0.0,
-        1.0,
-      );
-      remainingSec = _activeRoute!.durationSeconds * routeFraction;
-    } else {
-      return '';
     }
+
+    final route = _activeRoute;
+    if (route == null || _totalRouteDistM <= 0) return null;
+    final routeFraction = (remainingMeters / _totalRouteDistM).clamp(0.0, 1.0);
+    final routeBasedSeconds = route.durationSeconds * routeFraction;
+
+    final preferences = UserPreferencesService.instance;
+    if (!CountryVehicleRules.hasVehicleSpeedLimit(
+      preferences.vehicleType.value,
+    )) {
+      return routeBasedSeconds;
+    }
+
+    // Never let a generic routing-provider duration produce a car ETA for a
+    // speed-limited vehicle. Use the learned real-world speed (or 85% of the
+    // configured speed) as a conservative lower bound for remaining time.
+    final legalMax = CountryVehicleRules.maxLegalSpeedFor(
+      preferences.countryCode.value,
+      preferences.vehicleType.value,
+    );
+    final configuredMax = math
+        .max(math.min(preferences.maxSpeedKmh.value, legalMax), 1.0)
+        .toDouble();
+    final learnedSpeed = SpeedCalibrationService.instance.effectiveSpeedKmh(
+      preferences.vehicleType.value,
+    );
+    final fallbackSpeed = math
+        .min(math.max(learnedSpeed, 1.0), configuredMax)
+        .toDouble();
+    final vehicleBasedSeconds = remainingMeters / (fallbackSpeed / 3.6);
+    return math.max(routeBasedSeconds, vehicleBasedSeconds).toDouble();
+  }
+
+  String _formatEta() {
+    final l10n = AppLocalizations.of(context)!;
+    if (!_isNavigating || _remainingDistM <= 50) return '';
+
+    final remainingSec = _remainingEtaSeconds(
+      remainingMeters: _remainingDistM,
+    );
+    if (remainingSec == null) return '';
 
     final arrival = DateTime.now().add(Duration(seconds: remainingSec.round()));
     final h = arrival.hour.toString().padLeft(2, '0');
@@ -3908,6 +4242,8 @@ class _MapScreenState extends State<MapScreen> {
     } else {
       SlowRoadService.instance.cancelSession();
     }
+    _carPlayHeadingDegrees = null;
+    _resetRoadSpeedLimitLookup();
     setState(() {
       _mapViewEpoch++;
       _routePoints = const [];
@@ -3992,8 +4328,6 @@ class _MapScreenState extends State<MapScreen> {
     String? newStreetName;
     int? nearestIdxForHeading;
     double? nearestPointDistM;
-    int remainingTurns = 0;
-    int remainingComplexTurns = 0;
     if (_isNavigating && _routePoints.isNotEmpty) {
       final nearestIdx = _nearestRoutePointIndex(currentPos);
       nearestIdxForHeading = nearestIdx;
@@ -4013,9 +4347,6 @@ class _MapScreenState extends State<MapScreen> {
           }
           instrIdx = i + 1;
         }
-        final remaining = _remainingManeuversFrom(instrIdx);
-        remainingTurns = remaining.$1;
-        remainingComplexTurns = remaining.$2;
         // Track current street name from the active instruction
         final currentInstr = _instructions[instrIdx];
         if (currentInstr.streetName.isNotEmpty) {
@@ -4047,10 +4378,10 @@ class _MapScreenState extends State<MapScreen> {
     final deviceControlsRasterArrow =
         !_isFollowing &&
         (_usingAppleMapKit || !_useVectorMap) &&
-        _deviceCompassHeading != null &&
-        newSpeed <= 6.0;
+        _deviceCompassHeading != null;
     if (newSpeed > 0.5 && !deviceControlsRasterArrow) {
       var headingForArrow = heading;
+      var carPlayHeading = heading;
       if (_isNavigating &&
           nearestIdxForHeading != null &&
           nearestPointDistM != null) {
@@ -4059,10 +4390,12 @@ class _MapScreenState extends State<MapScreen> {
         if (nearestPointDistM < 45) {
           // Full route lock within 45m — handles typical phone GPS inaccuracy.
           headingForArrow = _routeHeadingAt(nearestIdxForHeading);
+          carPlayHeading = _carPlayRouteHeadingAt(nearestIdxForHeading);
         }
         // Otherwise keep GPS heading (off-route).
       }
       _headingNotifier.value = headingForArrow;
+      _carPlayHeadingDegrees = carPlayHeading;
     }
 
     setState(() {
@@ -4092,13 +4425,9 @@ class _MapScreenState extends State<MapScreen> {
             : '${newRemaining.round()} m ${l10n.mapRemaining}';
         final etaSpeedKmh = _smartEtaSpeedKmh(newSpeed);
         if (etaSpeedKmh > 0 && newRemaining > 50) {
-          final baseSec = newRemaining / (etaSpeedKmh / 3.6);
-          final maneuverDelaySec = _etaManeuverDelaySeconds(
-            turns: remainingTurns,
-            complexTurns: remainingComplexTurns,
-            remainingMeters: newRemaining,
-          );
-          final sec = baseSec + maneuverDelaySec;
+          final sec =
+              _remainingEtaSeconds(remainingMeters: newRemaining) ??
+              newRemaining / (etaSpeedKmh / 3.6);
           final arrival = DateTime.now().add(Duration(seconds: sec.round()));
           final hh = arrival.hour.toString().padLeft(2, '0');
           final mm = arrival.minute.toString().padLeft(2, '0');
@@ -4152,12 +4481,10 @@ class _MapScreenState extends State<MapScreen> {
 
     double? remainingDurationSeconds;
     if (hasRoute) {
-      if (_isNavigating && _totalRouteDistM > 0 && _remainingDistM >= 0) {
-        final routeFraction = (_remainingDistM / _totalRouteDistM).clamp(
-          0.0,
-          1.0,
+      if (_isNavigating && _remainingDistM >= 0) {
+        remainingDurationSeconds = _remainingEtaSeconds(
+          remainingMeters: _remainingDistM,
         );
-        remainingDurationSeconds = activeRoute.durationSeconds * routeFraction;
       } else {
         remainingDurationSeconds = activeRoute.durationSeconds;
       }
@@ -4167,11 +4494,12 @@ class _MapScreenState extends State<MapScreen> {
       hasRoute: hasRoute,
       isNavigating: _isNavigating,
       currentLocation: _currentLocation,
-      headingDegrees: _headingNotifier.value,
+      headingDegrees: _carPlayHeadingDegrees ?? _headingNotifier.value,
       currentSpeed: currentSpeedDisplay,
       roadSpeedLimit: roadSpeedLimitDisplay,
       vehicleSpeedLimit: vehicleSpeedLimitDisplay,
       speedUnitLabel: speedUnit == SpeedUnit.kmh ? 'km/h' : 'mph',
+      countryCode: preferences.countryCode.value,
       destination: destination,
       destinationLabel: _destinationLabel,
       destinationAddress: _addressController.text.trim(),
@@ -4248,6 +4576,8 @@ class _MapScreenState extends State<MapScreen> {
 
   void _startActiveNavigation() {
     if (_activeRoute == null || _routePoints.isEmpty) return;
+    _carPlayHeadingDegrees = _headingNotifier.value;
+    _resetRoadSpeedLimitLookup();
     final vehicleType = UserPreferencesService.instance.vehicleType.value;
     SlowRoadService.instance.startSession(vehicleType);
     setState(() {
@@ -4264,6 +4594,8 @@ class _MapScreenState extends State<MapScreen> {
   // ── GPS simulation ────────────────────────────────────────────────────────
   void _startSimulation() {
     if (_routePoints.isEmpty) return;
+    _carPlayHeadingDegrees = _headingNotifier.value;
+    _resetRoadSpeedLimitLookup();
     _positionSubscription?.cancel();
     _positionSubscription = null;
     _simPtIdx = 0;
@@ -4271,11 +4603,14 @@ class _MapScreenState extends State<MapScreen> {
     _simCurrentSpeedKmh = 0; // start from rest
     final vt = UserPreferencesService.instance.vehicleType.value;
     _simMaxSpeedKmh = switch (vt) {
-      'a-traktor' => 30.0,
-      'tractor' => 30.0,
-      'moped_car' => 45.0,
+      'A-tractor' || 'Low vehicle' => 30.0,
+      'Tractor' => 30.0,
+      'Moped car' => 45.0,
+      'Moped class I' => 45.0,
+      'Moped class II' => 25.0,
+      'Electric scooter' => 20.0,
       'Car' => 90.0,
-      _ => 50.0,
+      _ => UserPreferencesService.instance.maxSpeedKmh.value,
     };
     SlowRoadService.instance.startSession(vt);
     setState(() {
@@ -4417,6 +4752,8 @@ class _MapScreenState extends State<MapScreen> {
                     speedKmh: roadLimitKmh,
                     unit: speedUnit,
                   );
+            final usesSwedishRoadSign =
+                preferences.countryCode.value.trim().toUpperCase() == 'SE';
             final effectiveLimitDisplay = preferences.toDisplaySpeed(
               speedKmh: effectiveLimitKmh,
               unit: speedUnit,
@@ -4484,11 +4821,13 @@ class _MapScreenState extends State<MapScreen> {
                   width: 42,
                   height: 42,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: roadLimitDisplay != null && usesSwedishRoadSign
+                        ? const Color(0xFFFFCC00)
+                        : Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: roadLimitDisplay != null
-                          ? Colors.red.shade700
+                          ? const Color(0xFFE30022)
                           : Colors.grey.shade500,
                       width: 3.5,
                     ),
@@ -4523,13 +4862,12 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildCarPlayCompanion(AppLocalizations l10n) {
+    final compactLayout = MediaQuery.sizeOf(context).height < 760;
     final activeRoute = _activeRoute;
-    final routeFraction = activeRoute != null && _totalRouteDistM > 0
-        ? (_remainingDistM / _totalRouteDistM).clamp(0.0, 1.0)
-        : 0.0;
     final remainingSeconds = activeRoute == null
         ? 0.0
-        : activeRoute.durationSeconds * routeFraction;
+        : (_remainingEtaSeconds(remainingMeters: _remainingDistM) ??
+              activeRoute.durationSeconds);
     final arrival = DateTime.now().add(
       Duration(seconds: remainingSeconds.round()),
     );
@@ -4561,25 +4899,31 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
       child: SafeArea(
+        minimum: const EdgeInsets.only(bottom: 6),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 10, 8),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                compactLayout ? 5 : 10,
+                10,
+                compactLayout ? 5 : 8,
+              ),
               child: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: compactLayout ? 34 : 38,
+                    height: compactLayout ? 34 : 38,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFF00B9FF), Color(0xFF176BFF)],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.navigation_rounded,
                       color: Colors.white,
-                      size: 23,
+                      size: compactLayout ? 21 : 23,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -4625,8 +4969,18 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
             Container(
-              margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              padding: const EdgeInsets.fromLTRB(16, 16, 14, 16),
+              margin: EdgeInsets.fromLTRB(
+                12,
+                compactLayout ? 2 : 4,
+                12,
+                compactLayout ? 8 : 12,
+              ),
+              padding: EdgeInsets.fromLTRB(
+                compactLayout ? 13 : 16,
+                compactLayout ? 11 : 16,
+                14,
+                compactLayout ? 11 : 16,
+              ),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
@@ -4647,8 +5001,8 @@ class _MapScreenState extends State<MapScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: compactLayout ? 52 : 64,
+                    height: compactLayout ? 52 : 64,
                     decoration: BoxDecoration(
                       color: const Color(0x221AD5FF),
                       shape: BoxShape.circle,
@@ -4657,31 +5011,31 @@ class _MapScreenState extends State<MapScreen> {
                     child: Icon(
                       _turnIcon(_nextManeuverSign),
                       color: Colors.white,
-                      size: 43,
+                      size: compactLayout ? 36 : 43,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: compactLayout ? 12 : 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _formatManeuverDistance(_distToNextManeuver),
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 30,
+                            fontSize: compactLayout ? 25 : 30,
                             height: 1,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: compactLayout ? 5 : 8),
                         Text(
                           currentTarget ?? currentInstruction,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Color(0xFF46D4FF),
-                            fontSize: 27,
+                            fontSize: compactLayout ? 23 : 27,
                             height: 1.05,
                             fontWeight: FontWeight.w800,
                           ),
@@ -4790,8 +5144,18 @@ class _MapScreenState extends State<MapScreen> {
             ),
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              padding: const EdgeInsets.fromLTRB(18, 13, 18, 15),
+              margin: EdgeInsets.fromLTRB(
+                12,
+                0,
+                12,
+                compactLayout ? 3 : 10,
+              ),
+              padding: EdgeInsets.fromLTRB(
+                compactLayout ? 14 : 18,
+                compactLayout ? 9 : 13,
+                compactLayout ? 14 : 18,
+                compactLayout ? 10 : 15,
+              ),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF0E3474), Color(0xFF092352)],
@@ -4803,31 +5167,35 @@ class _MapScreenState extends State<MapScreen> {
                 children: [
                   Text(
                     arrivalText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 31,
+                      fontSize: compactLayout ? 27 : 31,
                       height: 1,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 7),
-                  Text(
-                    '$remainingMinutes min  •  $remainingDistance',
-                    style: const TextStyle(
-                      color: Color(0xCCFFFFFF),
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
+                  SizedBox(height: compactLayout ? 4 : 7),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$remainingMinutes min  •  $remainingDistance',
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: const Color(0xCCFFFFFF),
+                        fontSize: compactLayout ? 15 : 17,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   if (_destinationLabel.isNotEmpty) ...[
-                    const SizedBox(height: 6),
+                    SizedBox(height: compactLayout ? 3 : 6),
                     Text(
                       _destinationLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF47D3FF),
-                        fontSize: 15,
+                      style: TextStyle(
+                        color: const Color(0xFF47D3FF),
+                        fontSize: compactLayout ? 13 : 15,
                       ),
                     ),
                   ],
@@ -5041,6 +5409,9 @@ class _MapScreenState extends State<MapScreen> {
                           ? l10n.settingsSpeedUnitKmh
                           : l10n.settingsSpeedUnitMph;
                       final hasRoadLimit = roadLimitDisplay != null;
+                      final usesSwedishRoadSign =
+                          preferences.countryCode.value.trim().toUpperCase() ==
+                          'SE';
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -5117,11 +5488,13 @@ class _MapScreenState extends State<MapScreen> {
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: hasRoadLimit && usesSwedishRoadSign
+                                  ? const Color(0xFFFFCC00)
+                                  : Colors.white,
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: hasRoadLimit
-                                    ? Colors.red.shade700
+                                    ? const Color(0xFFE30022)
                                     : Colors.grey.shade500,
                                 width: 3,
                               ),
@@ -5890,6 +6263,11 @@ class _MapScreenState extends State<MapScreen> {
                                   )
                                 : 0.0;
                             final hasRoadLimit = roadLimitDisplay != null;
+                            final usesSwedishRoadSign =
+                                preferences.countryCode.value
+                                    .trim()
+                                    .toUpperCase() ==
+                                'SE';
                             return Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -6126,11 +6504,15 @@ class _MapScreenState extends State<MapScreen> {
                                             width: 42,
                                             height: 42,
                                             decoration: BoxDecoration(
-                                              color: Colors.white,
+                                              color:
+                                                  hasRoadLimit &&
+                                                      usesSwedishRoadSign
+                                                  ? const Color(0xFFFFCC00)
+                                                  : Colors.white,
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                 color: hasRoadLimit
-                                                    ? Colors.red.shade700
+                                                    ? const Color(0xFFE30022)
                                                     : Colors.grey.shade500,
                                                 width: 3.5,
                                               ),

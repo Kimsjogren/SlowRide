@@ -335,15 +335,16 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   private var targetUserCoordinate: CLLocationCoordinate2D?
   private var renderedUserCoordinate: CLLocationCoordinate2D?
   private var lastUserVelocityMps = 0.0
-  private var lastUserCourseDegrees: Double?
-  private var lastUserSampleInterval: TimeInterval = 0.9
+  private var navigationRoutePoints: [CLLocationCoordinate2D] = []
   private var userMarkerDisplayLink: CADisplayLink?
   private var lastUserDisplayTimestamp: CFTimeInterval?
   // ── Smooth follow-camera state (driven at 60fps by the display link) ──
   private var followCameraEngaged = false
   private var followCameraUse3D = true
   private var targetCameraHeading = 0.0
+  private var filteredTargetCameraHeading = 0.0
   private var renderedCameraHeading = 0.0
+  private var renderedMarkerRelativeHeading = 0.0
   private var hasRenderedCameraHeading = false
   private var targetCameraDistance: CLLocationDistance = 850
   private var renderedCameraDistance: CLLocationDistance = 850
@@ -433,6 +434,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let followModeChanged = followUser != lastFollowUser
 
     mapView.overrideUserInterfaceStyle = darkMode ? .dark : .light
+    navigationRoutePoints = routePoints
     isFollowingUser = followUser
     self.hideUserMarkerWhenFollowing = hideUserMarkerWhenFollowing
     if followModeChanged {
@@ -499,6 +501,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       lastRawUserCoordinate = coordinate
       targetUserCoordinate = coordinate
       renderedUserCoordinate = coordinate
+      filteredTargetCameraHeading = normalizedDegrees(lastHeading)
       mapView.addAnnotation(userAnnotation)
       updateUserAnnotationViewIfNeeded()
       return
@@ -508,12 +511,8 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let sampleInterval = lastUserLocationUpdateAt.map {
       updateTime.timeIntervalSince($0)
     }
-    if let sampleInterval {
-      lastUserSampleInterval = min(max(sampleInterval, 0.18), 1.35)
-    }
     lastUserLocationUpdateAt = updateTime
     lastRawUserCoordinate = coordinate
-    targetUserCoordinate = coordinate
 
     let rawDistance = CLLocation(
       latitude: previousRawCoordinate.latitude,
@@ -532,10 +531,48 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       } else {
         lastUserVelocityMps = lastUserVelocityMps * 0.42 + measuredVelocity * 0.58
       }
-      lastUserCourseDegrees = bearingDegrees(from: previousRawCoordinate, to: coordinate)
     } else if rawDistance < 0.8 {
       lastUserVelocityMps *= 0.55
     }
+
+    var nextTarget = targetUserCoordinate ?? coordinate
+    let distanceToTarget = CLLocation(
+      latitude: nextTarget.latitude,
+      longitude: nextTarget.longitude
+    ).distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+
+    // Build 142: blend fresh GPS into the predicted position at speed, but
+    // snap at low speed or after a large location jump.
+    if lastUserVelocityMps > 2.0 || distanceToTarget > 2.0 {
+      if lastUserVelocityMps > 3.0, distanceToTarget < 25.0 {
+        nextTarget = interpolatedCoordinate(from: nextTarget, to: coordinate, progress: 0.22)
+      } else {
+        nextTarget = coordinate
+      }
+    }
+
+    // Build 142 route magnet: progressively pull the position onto the road
+    // inside a 45 metre corridor so the marker does not drift beside the line.
+    if let projection = projectedOntoNavigationRoute(coordinate),
+       projection.distanceMeters < 45 {
+      let snapBlend = min(max((45.0 - projection.distanceMeters) / 45.0, 0), 1)
+      nextTarget = interpolatedCoordinate(
+        from: nextTarget,
+        to: projection.coordinate,
+        progress: snapBlend
+      )
+    }
+    targetUserCoordinate = nextTarget
+
+    // Build 142 used a separate speed-adaptive low-pass for the route heading.
+    let targetAlpha = min(max(lastUserVelocityMps / 16.0, 0.08), 0.32)
+    let targetTurn = shortestDegrees(
+      from: filteredTargetCameraHeading,
+      to: normalizedDegrees(targetCameraHeading)
+    )
+    filteredTargetCameraHeading = normalizedDegrees(
+      filteredTargetCameraHeading + targetTurn * targetAlpha
+    )
 
     if renderedUserCoordinate == nil {
       renderedUserCoordinate = coordinate
@@ -728,12 +765,14 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       followCameraUse3D = use3D
       ensureUserMarkerDisplayLink()
 
-      if !followCameraEngaged || followModeChanged || routeChanged {
+      if !followCameraEngaged || followModeChanged || (routeChanged && !routeTrimmedOnly) {
         // Establish the camera once; the display link takes over from here.
         followCameraEngaged = true
         hasRenderedCameraHeading = false
         hasRenderedCameraDistance = false
         lastAppliedCameraCenter = nil
+        filteredTargetCameraHeading = normalizedDegrees(heading)
+        renderedMarkerRelativeHeading = 0
         renderedUserCoordinate = location
         let distance = targetCameraDistance
         let focusDistance = min(
@@ -752,7 +791,9 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
           lookingAtCenter: focusCoordinate,
           fromDistance: distance,
           pitch: use3D ? 52 : 0,
-          heading: use3D ? normalizedDegrees(heading) : 0
+          // Navigation is heading-up in both modes. 2D only removes the
+          // perspective pitch; it must not switch the map back to north-up.
+          heading: normalizedDegrees(heading)
         )
         mapView.setCamera(camera, animated: followModeChanged)
       }
@@ -821,7 +862,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       return
     }
 
-    guard let targetCoordinate = targetUserCoordinate else {
+    guard var targetCoordinate = targetUserCoordinate else {
       lastUserDisplayTimestamp = displayLink.timestamp
       return
     }
@@ -831,23 +872,16 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let dt = min(max(displayLink.timestamp - previousTimestamp, 1.0 / 120.0), 0.12)
 
     let sampleAge = lastUserLocationUpdateAt.map { Date().timeIntervalSince($0) } ?? 0
-    let desiredCoordinate: CLLocationCoordinate2D
-    if let course = lastUserCourseDegrees,
-       lastUserVelocityMps > 1.2,
-       sampleAge > 0,
-       sampleAge < 1.2 {
-      let anticipationSeconds = min(
-        max(min(sampleAge, lastUserSampleInterval) * 0.92, 0.06),
-        0.55
-      )
-      let anticipationDistance = min(lastUserVelocityMps * anticipationSeconds, 10.0)
-      desiredCoordinate = projectedCoordinate(
+
+    // Build 142 dead reckoning: advance the target continuously between the
+    // roughly 1 Hz GPS samples, but stop after 2.5 seconds to prevent runaway.
+    if lastUserVelocityMps > 0.8, sampleAge >= 0, sampleAge < 2.5 {
+      targetCoordinate = projectedCoordinate(
         from: targetCoordinate,
-        distanceMeters: anticipationDistance,
-        headingDegrees: course
+        distanceMeters: lastUserVelocityMps * dt,
+        headingDegrees: filteredTargetCameraHeading
       )
-    } else {
-      desiredCoordinate = targetCoordinate
+      targetUserCoordinate = targetCoordinate
     }
 
     let currentCoordinate = renderedUserCoordinate ?? userAnnotation.coordinate
@@ -856,29 +890,25 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       longitude: currentCoordinate.longitude
     ).distance(
       from: CLLocation(
-        latitude: desiredCoordinate.latitude,
-        longitude: desiredCoordinate.longitude
+        latitude: targetCoordinate.latitude,
+        longitude: targetCoordinate.longitude
       )
     )
 
     let nextCoordinate: CLLocationCoordinate2D
     if remainingDistance < 0.35 {
-      nextCoordinate = desiredCoordinate
+      nextCoordinate = targetCoordinate
     } else {
-      let responsiveness: Double
-      switch remainingDistance {
-      case ..<1.8:
-        responsiveness = 5.4
-      case ..<5.0:
-        responsiveness = 6.6
-      default:
-        responsiveness = 7.8
-      }
-      let ageDamping = sampleAge > 1.0 ? 0.82 : 1.0
-      let blend = min(max(dt * responsiveness * ageDamping, 0.08), 0.34)
+      let speedN = min(max(lastUserVelocityMps / 16.0, 0), 1)
+      let positionAlpha = min(max(dt * (2.0 + speedN * 2.5), 0.03), 0.30)
+      let headingDifference = abs(
+        shortestDegrees(from: renderedCameraHeading, to: filteredTargetCameraHeading)
+      )
+      let turnN = min(max(headingDifference / 45.0, 0), 1)
+      let blend = min(max(positionAlpha * (1.0 + turnN * 0.35), 0.04), 0.55)
       nextCoordinate = interpolatedCoordinate(
         from: currentCoordinate,
-        to: desiredCoordinate,
+        to: targetCoordinate,
         progress: blend
       )
     }
@@ -897,25 +927,42 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   /// Heading and zoom distance are eased toward their targets so turns and
   /// zoom changes glide instead of snapping on each ~1Hz GPS/heading sample.
   private func updateFollowCamera(userCoordinate: CLLocationCoordinate2D, dt: Double) {
-    let targetHeading = normalizedDegrees(targetCameraHeading)
+    let targetHeading = normalizedDegrees(filteredTargetCameraHeading)
     if !hasRenderedCameraHeading {
       renderedCameraHeading = targetHeading
       hasRenderedCameraHeading = true
     } else {
-      let turn = shortestDegrees(from: renderedCameraHeading, to: targetHeading)
-      if abs(turn) > 120 {
-        // Only a genuine U-turn / GPS heading flip snaps instantly.
-        renderedCameraHeading = targetHeading
-      } else {
-        // Gentle easing so the map rotates smoothly through a corner instead
-        // of snapping. Lower factor = softer turn.
-        let blend = min(max(dt * 3.2, 0.03), 0.22)
-        renderedCameraHeading = normalizedDegrees(renderedCameraHeading + turn * blend)
-      }
+      // Build 142 speed-adaptive turn smoothing and turn-rate cap. It remains
+      // calm at low speed but lets the map catch up decisively in a real turn.
+      let speedN = min(max(lastUserVelocityMps / 16.0, 0), 1)
+      let rawTurn = shortestDegrees(from: renderedCameraHeading, to: targetHeading)
+      let turnN = min(max(abs(rawTurn) / 45.0, 0), 1)
+      let maxTurnPerSecond = 35.0 + speedN * 75.0
+      let boostedMaximum = maxTurnPerSecond * dt * (1.0 + turnN * 2.2)
+      let limitedTurn = min(max(rawTurn, -boostedMaximum), boostedMaximum)
+      let headingAlpha = min(
+        max(dt * (1.5 + speedN * 2.8) * (1.0 + turnN * 2.0), 0.03),
+        0.70
+      )
+      renderedCameraHeading = normalizedDegrees(
+        renderedCameraHeading + limitedTurn * headingAlpha
+      )
     }
 
-    // Keep the map-anchored marker pointing along travel every frame while the
-    // camera heading eases toward it.
+    // Build 142 marker behaviour: show the remaining offset to the route while
+    // the camera catches up, then settle straight ahead once both are aligned.
+    let desiredMarkerRelativeHeading = shortestDegrees(
+      from: renderedCameraHeading,
+      to: targetHeading
+    )
+    let markerTurn = shortestDegrees(
+      from: renderedMarkerRelativeHeading,
+      to: desiredMarkerRelativeHeading
+    )
+    let markerAlpha = min(max(dt * 8.0, 0.10), 0.55)
+    renderedMarkerRelativeHeading = normalizedDegrees(
+      renderedMarkerRelativeHeading + markerTurn * markerAlpha
+    )
     if let markerView = mapView.view(for: userAnnotation) {
       applyFollowMarkerRotation(view: markerView)
     }
@@ -969,7 +1016,9 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       lookingAtCenter: focusCoordinate,
       fromDistance: renderedCameraDistance,
       pitch: use3D ? 52 : 0,
-      heading: use3D ? renderedCameraHeading : 0
+      // Let the route turn the map in both 2D and 3D. The navigation marker
+      // is screen-locked straight ahead below, so only the map rotates.
+      heading: renderedCameraHeading
     )
     // Refresh the pan-suppression window so per-frame programmatic camera
     // moves are never misread as the user dragging the map.
@@ -1189,6 +1238,41 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     default:
       return nil
     }
+  }
+
+  private func projectedOntoNavigationRoute(
+    _ coordinate: CLLocationCoordinate2D
+  ) -> (coordinate: CLLocationCoordinate2D, distanceMeters: CLLocationDistance)? {
+    guard navigationRoutePoints.count >= 2 else { return nil }
+
+    let point = MKMapPoint(coordinate)
+    let lastSegment = min(navigationRoutePoints.count - 2, 50)
+    var bestPoint: MKMapPoint?
+    var bestDistance = CLLocationDistance.greatestFiniteMagnitude
+
+    for index in 0...lastSegment {
+      let start = MKMapPoint(navigationRoutePoints[index])
+      let end = MKMapPoint(navigationRoutePoints[index + 1])
+      let dx = end.x - start.x
+      let dy = end.y - start.y
+      let lengthSquared = dx * dx + dy * dy
+      guard lengthSquared > 0.000_001 else { continue }
+
+      let rawProgress = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
+      let progress = min(max(rawProgress, 0), 1)
+      let projected = MKMapPoint(
+        x: start.x + progress * dx,
+        y: start.y + progress * dy
+      )
+      let distance = point.distance(to: projected)
+      if distance < bestDistance {
+        bestDistance = distance
+        bestPoint = projected
+      }
+    }
+
+    guard let bestPoint else { return nil }
+    return (bestPoint.coordinate, bestDistance)
   }
 
   private func interpolatedCoordinate(
@@ -1440,16 +1524,14 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     }
   }
 
-  /// Rotates the marker by its heading relative to the (heading-up) camera so
-  /// it visually points along the route — straight up when the camera has
-  /// caught up to the travel direction.
+  /// Build 142: the marker shows the small remaining route/camera offset while
+  /// the map eases through a turn, then returns to straight ahead.
   private func applyFollowMarkerRotation(view: MKAnnotationView) {
     guard userMarkerStyle.rotatesWithHeading else {
       view.transform = .identity
       return
     }
-    let rel = shortestDegrees(from: renderedCameraHeading, to: lastHeading)
-    let angle = CGFloat(rel * .pi / 180)
+    let angle = CGFloat(renderedMarkerRelativeHeading * .pi / 180)
     UIView.performWithoutAnimation {
       view.transform = CGAffineTransform(rotationAngle: angle)
       view.layer.removeAnimation(forKey: "cruizx.userHeading")

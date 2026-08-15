@@ -52,6 +52,7 @@ final class CarPlayManager: NSObject {
     let roadSpeedLimit: Double?
     let vehicleSpeedLimit: Double?
     let speedUnitLabel: String
+    let countryCode: String
     let totalDistanceMeters: Double?
     let remainingDistanceMeters: Double?
     let remainingDurationSeconds: Double?
@@ -101,6 +102,7 @@ final class CarPlayManager: NSObject {
     roadSpeedLimit: nil,
     vehicleSpeedLimit: nil,
     speedUnitLabel: "km/h",
+    countryCode: "",
     totalDistanceMeters: nil,
     remainingDistanceMeters: nil,
     remainingDurationSeconds: nil,
@@ -109,6 +111,8 @@ final class CarPlayManager: NSObject {
     upcomingManeuvers: []
   )
   private var maneuverCache: [String: CPManeuver] = [:]
+  private var maneuverPresentationCache: [String: String] = [:]
+  private var publishedManeuverIDs: [String] = []
   private let locationManager = CLLocationManager()
 
   private override init() {
@@ -149,6 +153,8 @@ final class CarPlayManager: NSObject {
     activeTrip = nil
     activeDestination = nil
     maneuverCache.removeAll()
+    maneuverPresentationCache.removeAll()
+    publishedManeuverIDs.removeAll()
     mapTemplate = nil
     interfaceController?.delegate = nil
     interfaceController = nil
@@ -171,8 +177,11 @@ final class CarPlayManager: NSObject {
   private func makeMapTemplate() -> CPMapTemplate {
     let template = CPMapTemplate()
     template.mapDelegate = self
-    template.automaticallyHidesNavigationBar = false
-    template.hidesButtonsWithNavigationBar = false
+    // The top strip is CarPlay's own navigation bar. Let CarPlay hide it
+    // automatically so it does not remain as a large grey band over the map;
+    // touching the display still reveals Overview and the map controls.
+    template.automaticallyHidesNavigationBar = true
+    template.hidesButtonsWithNavigationBar = true
     template.guidanceBackgroundColor = UIColor(red: 0.04, green: 0.16, blue: 0.62, alpha: 1)
 
     let overviewButton = CPBarButton(title: "Översikt") { [weak self] _ in
@@ -334,6 +343,9 @@ final class CarPlayManager: NSObject {
     navigationSession = nil
     activeTrip = nil
     activeDestination = nil
+    maneuverCache.removeAll()
+    maneuverPresentationCache.removeAll()
+    publishedManeuverIDs.removeAll()
     mapTemplate?.hideTripPreviews()
     if notifyFlutter {
       stopFlutterNavigation()
@@ -410,6 +422,7 @@ final class CarPlayManager: NSObject {
       roadSpeedLimit: doubleValue(payload["roadSpeedLimit"]),
       vehicleSpeedLimit: doubleValue(payload["vehicleSpeedLimit"]),
       speedUnitLabel: stringValue(payload["speedUnitLabel"]) ?? "km/h",
+      countryCode: stringValue(payload["countryCode"])?.uppercased() ?? "",
       totalDistanceMeters: doubleValue(payload["totalDistanceMeters"]),
       remainingDistanceMeters: doubleValue(payload["remainingDistanceMeters"]),
       remainingDurationSeconds: doubleValue(payload["remainingDurationSeconds"]),
@@ -695,6 +708,7 @@ final class CarPlayManager: NSObject {
       roadSpeedLimit: navigationState.roadSpeedLimit,
       vehicleSpeedLimit: navigationState.vehicleSpeedLimit,
       unitLabel: navigationState.speedUnitLabel,
+      usesSwedishRoadSign: navigationState.countryCode == "SE",
       isNavigating: navigationState.isNavigating
     )
   }
@@ -776,22 +790,29 @@ final class CarPlayManager: NSObject {
       return
     }
 
-    let maneuvers = navigationState.upcomingManeuvers.map(makeOrUpdateManeuver)
-    let newManeuvers = maneuvers.filter { maneuver in
-      !navigationSession.upcomingManeuvers.contains { $0 === maneuver }
+    let payloads = navigationState.upcomingManeuvers
+    let maneuvers = payloads.map(makeOrUpdateManeuver)
+    let maneuverIDs = payloads.map(\.id)
+
+    // Replacing upcomingManeuvers makes CarPlay animate the blue guidance
+    // card. Keep the same array and objects while the instruction IDs are
+    // unchanged; distance is updated separately below.
+    if maneuverIDs != publishedManeuverIDs {
+      let newManeuvers = maneuvers.filter { maneuver in
+        !navigationSession.upcomingManeuvers.contains { $0 === maneuver }
+      }
+      if !newManeuvers.isEmpty {
+        navigationSession.add(newManeuvers)
+      }
+      navigationSession.upcomingManeuvers = maneuvers
+      publishedManeuverIDs = maneuverIDs
     }
-    if !newManeuvers.isEmpty {
-      navigationSession.add(newManeuvers)
-    }
-    navigationSession.upcomingManeuvers = maneuvers
 
     if let firstManeuver = maneuvers.first {
+      let firstDistance = max(payloads.first?.distanceMeters ?? 0, 0)
       navigationSession.updateEstimates(
         CPTravelEstimates(
-          distanceRemaining: Measurement(
-            value: max(navigationState.upcomingManeuvers.first?.distanceMeters ?? 0, 0),
-            unit: UnitLength.meters
-          ),
+          distanceRemaining: maneuverDistanceMeasurement(firstDistance),
           timeRemaining: firstManeuver.initialTravelEstimates?.timeRemaining ?? 0
         ),
         for: firstManeuver
@@ -813,24 +834,43 @@ final class CarPlayManager: NSObject {
       return created
     }()
 
-    maneuver.instructionVariants = [payload.text]
-    maneuver.dashboardInstructionVariants = [payload.text]
-    maneuver.notificationInstructionVariants = [payload.text]
+    let streetName = payload.streetName.trimmingCharacters(in: .whitespacesAndNewlines)
+    let presentationSignature = "\(payload.sign)|\(streetName)|\(payload.text)"
+    guard maneuverPresentationCache[payload.id] != presentationSignature else {
+      return maneuver
+    }
+    maneuverPresentationCache[payload.id] = presentationSignature
+
+    // CarPlay owns the guidance card's frame and typography. Supplying the
+    // road name as the preferred one-line variant is the public way to make
+    // the blue card as compact as possible; the full instruction remains a
+    // fallback for layouts where CarPlay needs it.
+    let compactVariants = streetName.isEmpty
+      ? [payload.text]
+      : [streetName, payload.text]
+    maneuver.instructionVariants = compactVariants
+    maneuver.dashboardInstructionVariants = compactVariants
+    maneuver.notificationInstructionVariants = compactVariants
     maneuver.initialTravelEstimates = CPTravelEstimates(
-      distanceRemaining: Measurement(
-        value: max(payload.distanceMeters, 0),
-        unit: UnitLength.meters
-      ),
+      distanceRemaining: maneuverDistanceMeasurement(payload.distanceMeters),
       timeRemaining: estimatedTimeForManeuver(distanceMeters: payload.distanceMeters)
     )
     maneuver.maneuverType = maneuverType(forSign: payload.sign)
-    if !payload.streetName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-      maneuver.roadFollowingManeuverVariants = [payload.streetName]
+    if !streetName.isEmpty {
+      maneuver.roadFollowingManeuverVariants = [streetName]
     } else {
       maneuver.roadFollowingManeuverVariants = nil
     }
     maneuver.trafficSide = .right
     return maneuver
+  }
+
+  private func maneuverDistanceMeasurement(_ distanceMeters: Double) -> Measurement<UnitLength> {
+    let meters = max(distanceMeters, 0)
+    if meters >= 1000 {
+      return Measurement(value: meters / 1000, unit: .kilometers)
+    }
+    return Measurement(value: meters, unit: .meters)
   }
 
   @available(iOS 17.4, *)
@@ -960,6 +1000,14 @@ extension CarPlayManager: CPMapTemplateDelegate {
     if #available(iOS 17.4, *) {
       return true
     }
+    return false
+  }
+
+  @available(iOS 26.4, *)
+  func mapTemplateShouldProvideRouteSharing(_ mapTemplate: CPMapTemplate) -> Bool {
+    // Route sharing is a vehicle-integration feature that CruizX does not
+    // currently use. Opt out explicitly so compatible CarPlay hosts do not
+    // request route-sharing data from the navigation session.
     return false
   }
 

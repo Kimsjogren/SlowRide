@@ -24,7 +24,7 @@ class MapMarkerOption {
     required this.assetPath,
     required this.labelBuilder,
     this.colorNameBuilder,
-    this.rotatesWithHeading = true,
+    this.rotatesWithHeading = false,
     this.tint,
   });
 
@@ -91,8 +91,7 @@ class UserLocationMarker extends StatelessWidget {
       category: MapMarkerCategory.classic,
       assetPath: null,
       labelBuilder: _dotLabel,
-      rotatesWithHeading: true,
-      tint: Color(0xFF19A7FF),
+      tint: Color(0xFF25C281),
     ),
     MapMarkerOption(
       style: MapMarkerStyle.scooterBlack,

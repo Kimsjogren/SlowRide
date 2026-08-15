@@ -10,20 +10,20 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private let speedLimitView = UIView()
   private let speedLimitLabel = UILabel()
   private var routeOverlay: MKPolyline?
+  private var navigationRouteCoordinates: [CLLocationCoordinate2D] = []
   private var destinationAnnotation: MKPointAnnotation?
   private var navigationAnnotation: CruizXNavigationAnnotation?
   private var convoyAnnotations: [String: CruizXConvoyAnnotation] = [:]
   private var manualConvoyCameraUntil: CFTimeInterval = 0
   private var displayLink: CADisplayLink?
-  private var interpolationStartCoordinate: CLLocationCoordinate2D?
   private var interpolationTargetCoordinate: CLLocationCoordinate2D?
   private var displayedCoordinate: CLLocationCoordinate2D?
-  private var interpolationStartHeading = 0.0
-  private var interpolationTargetHeading = 0.0
+  private var filteredTargetHeading = 0.0
   private var displayedHeading = 0.0
-  private var interpolationStartedAt: CFTimeInterval = 0
-  private var interpolationDuration: CFTimeInterval = 0.35
   private var lastPositionReceivedAt: CFTimeInterval?
+  private var lastRawCoordinate: CLLocationCoordinate2D?
+  private var estimatedSpeedMetersPerSecond = 0.0
+  private var lastDisplayLinkTimestamp: CFTimeInterval?
   private var isFollowingNavigation = false
   private var lastCameraCoordinate: CLLocationCoordinate2D?
   private var lastCameraHeading: Double?
@@ -85,37 +85,37 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     speedometerStack.translatesAutoresizingMaskIntoConstraints = false
     speedometerStack.axis = .vertical
     speedometerStack.alignment = .center
-    speedometerStack.spacing = 7
+    speedometerStack.spacing = 6
     speedometerStack.isHidden = true
     speedometerStack.isUserInteractionEnabled = false
 
     currentSpeedView.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedView.backgroundColor = UIColor(red: 0.025, green: 0.075, blue: 0.20, alpha: 0.96)
-    currentSpeedView.layer.cornerRadius = 25
+    currentSpeedView.layer.cornerRadius = 22
 
     currentSpeedLabel.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedLabel.textAlignment = .center
     currentSpeedLabel.textColor = .white
-    currentSpeedLabel.font = .systemFont(ofSize: 20, weight: .bold)
+    currentSpeedLabel.font = .systemFont(ofSize: 18, weight: .bold)
 
     speedUnitLabel.translatesAutoresizingMaskIntoConstraints = false
     speedUnitLabel.textAlignment = .center
     speedUnitLabel.textColor = UIColor.white.withAlphaComponent(0.7)
-    speedUnitLabel.font = .systemFont(ofSize: 7, weight: .semibold)
+    speedUnitLabel.font = .systemFont(ofSize: 6.5, weight: .semibold)
 
     currentSpeedView.addSubview(currentSpeedLabel)
     currentSpeedView.addSubview(speedUnitLabel)
 
     speedLimitView.translatesAutoresizingMaskIntoConstraints = false
     speedLimitView.backgroundColor = .white
-    speedLimitView.layer.cornerRadius = 19
-    speedLimitView.layer.borderWidth = 3.5
+    speedLimitView.layer.cornerRadius = 17
+    speedLimitView.layer.borderWidth = 3
     speedLimitView.layer.borderColor = UIColor(red: 0.78, green: 0.06, blue: 0.08, alpha: 1).cgColor
 
     speedLimitLabel.translatesAutoresizingMaskIntoConstraints = false
     speedLimitLabel.textAlignment = .center
     speedLimitLabel.textColor = .black
-    speedLimitLabel.font = .systemFont(ofSize: 13, weight: .bold)
+    speedLimitLabel.font = .systemFont(ofSize: 12, weight: .bold)
     speedLimitView.addSubview(speedLimitLabel)
 
     speedometerStack.addArrangedSubview(currentSpeedView)
@@ -123,17 +123,19 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     view.addSubview(speedometerStack)
 
     NSLayoutConstraint.activate([
-      currentSpeedView.widthAnchor.constraint(equalToConstant: 50),
-      currentSpeedView.heightAnchor.constraint(equalToConstant: 50),
+      currentSpeedView.widthAnchor.constraint(equalToConstant: 44),
+      currentSpeedView.heightAnchor.constraint(equalToConstant: 44),
       currentSpeedLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
       currentSpeedLabel.centerYAnchor.constraint(equalTo: currentSpeedView.centerYAnchor, constant: -4),
       speedUnitLabel.topAnchor.constraint(equalTo: currentSpeedLabel.bottomAnchor, constant: -1),
       speedUnitLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
-      speedLimitView.widthAnchor.constraint(equalToConstant: 38),
-      speedLimitView.heightAnchor.constraint(equalToConstant: 38),
+      speedLimitView.widthAnchor.constraint(equalToConstant: 34),
+      speedLimitView.heightAnchor.constraint(equalToConstant: 34),
       speedLimitLabel.centerXAnchor.constraint(equalTo: speedLimitView.centerXAnchor),
       speedLimitLabel.centerYAnchor.constraint(equalTo: speedLimitView.centerYAnchor),
-      speedometerStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 94),
+      // CarPlay's buttons fade away during navigation. Keep the CruizX meters
+      // lower in the space they vacate instead of crowding the guidance card.
+      speedometerStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 126),
       speedometerStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
     ])
   }
@@ -143,6 +145,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     roadSpeedLimit: Double?,
     vehicleSpeedLimit: Double?,
     unitLabel: String,
+    usesSwedishRoadSign: Bool,
     isNavigating: Bool
   ) {
     guard isViewLoaded else { return }
@@ -159,9 +162,12 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     currentSpeedView.isOverLimit = isOverLimit
     speedLimitLabel.text = limit.map { String(Int($0.rounded())) } ?? "--"
     speedLimitLabel.textColor = limit == nil ? UIColor.black.withAlphaComponent(0.4) : .black
+    speedLimitView.backgroundColor = roadSpeedLimit != nil && usesSwedishRoadSign
+      ? UIColor(red: 1.0, green: 0.80, blue: 0.0, alpha: 1)
+      : .white
     speedLimitView.layer.borderColor = (
       roadSpeedLimit != nil
-        ? UIColor(red: 0.78, green: 0.06, blue: 0.08, alpha: 1)
+        ? UIColor(red: 0.89, green: 0.0, blue: 0.13, alpha: 1)
         : UIColor(white: 0.48, alpha: 1)
     ).cgColor
     speedometerStack.isHidden = !isNavigating
@@ -183,6 +189,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     guard coordinates.count >= 2 else {
       routeOverlay = nil
+      navigationRouteCoordinates = []
       destinationAnnotation = nil
       mapView.setUserTrackingMode(.follow, animated: true)
       return
@@ -190,6 +197,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
     routeOverlay = polyline
+    navigationRouteCoordinates = coordinates
     mapView.addOverlay(polyline, level: .aboveRoads)
 
     if let destination {
@@ -215,46 +223,77 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     isNavigating: Bool
   ) {
     guard isViewLoaded else { return }
+    let wasFollowingNavigation = isFollowingNavigation
     isFollowingNavigation = isNavigating
+    if wasFollowingNavigation != isNavigating {
+      lastDisplayLinkTimestamp = nil
+      lastRawCoordinate = nil
+      estimatedSpeedMetersPerSecond = 0
+      if isNavigating {
+        displayedCoordinate = nil
+        interpolationTargetCoordinate = nil
+      }
+    }
     if !isNavigating, coordinate == nil {
       updateNavigationMarkerVisibility(isNavigating: false, coordinate: mapView.centerCoordinate)
     }
     guard let coordinate else { return }
-    updateNavigationMarkerVisibility(isNavigating: isNavigating, coordinate: coordinate)
+    let displayTarget = isNavigating ? routeSnappedCoordinate(for: coordinate) : coordinate
+    updateNavigationMarkerVisibility(isNavigating: isNavigating, coordinate: displayTarget)
     if isNavigating && mapView.userTrackingMode != .none {
       mapView.setUserTrackingMode(.none, animated: false)
     }
     let normalizedHeading = headingDegrees.normalizedHeading
     let now = CACurrentMediaTime()
 
-    guard let currentCoordinate = displayedCoordinate else {
-      displayedCoordinate = coordinate
-      interpolationStartCoordinate = coordinate
-      interpolationTargetCoordinate = coordinate
+    guard displayedCoordinate != nil else {
+      displayedCoordinate = displayTarget
+      interpolationTargetCoordinate = displayTarget
       displayedHeading = normalizedHeading
-      interpolationStartHeading = normalizedHeading
-      interpolationTargetHeading = normalizedHeading
+      filteredTargetHeading = normalizedHeading
+      lastRawCoordinate = coordinate
       if isNavigating {
-        updateNavigationMarker(at: coordinate, headingDegrees: normalizedHeading)
-        updateNavigationCamera(at: coordinate, headingDegrees: normalizedHeading)
+        updateNavigationMarker(at: displayTarget, headingDegrees: normalizedHeading)
+        updateNavigationCamera(at: displayTarget, headingDegrees: normalizedHeading)
       }
       lastPositionReceivedAt = now
       return
     }
 
-    interpolationStartCoordinate = currentCoordinate
-    interpolationTargetCoordinate = coordinate
-    interpolationStartHeading = displayedHeading
-    interpolationTargetHeading = normalizedHeading
-    interpolationStartedAt = now
-    if let previousReceivedAt = lastPositionReceivedAt {
-      interpolationDuration = min(max(now - previousReceivedAt, 0.24), 0.65)
+    if let previousCoordinate = lastRawCoordinate,
+       let previousReceivedAt = lastPositionReceivedAt {
+      let elapsed = now - previousReceivedAt
+      if elapsed > 0.02 {
+        let measuredSpeed = MKMapPoint(previousCoordinate).distance(
+          to: MKMapPoint(coordinate)
+        ) / elapsed
+        estimatedSpeedMetersPerSecond = estimatedSpeedMetersPerSecond <= 0
+          ? measuredSpeed
+          : estimatedSpeedMetersPerSecond * 0.65 + measuredSpeed * 0.35
+      }
     }
+
+    if let previousTarget = interpolationTargetCoordinate {
+      let correctionDistance = MKMapPoint(previousTarget).distance(to: MKMapPoint(displayTarget))
+      if estimatedSpeedMetersPerSecond > 3, correctionDistance < 25 {
+        interpolationTargetCoordinate = previousTarget.interpolated(to: displayTarget, fraction: 0.22)
+      } else {
+        interpolationTargetCoordinate = displayTarget
+      }
+    } else {
+      interpolationTargetCoordinate = displayTarget
+    }
+
+    let targetAlpha = min(max(estimatedSpeedMetersPerSecond / 16, 0.08), 0.32)
+    let targetHeadingStep = filteredTargetHeading.shortestHeadingDelta(to: normalizedHeading)
+    filteredTargetHeading = (filteredTargetHeading + targetHeadingStep * targetAlpha).normalizedHeading
+    lastRawCoordinate = coordinate
     lastPositionReceivedAt = now
 
     if !isNavigating {
-      displayedCoordinate = coordinate
+      displayedCoordinate = displayTarget
       displayedHeading = normalizedHeading
+      lastDisplayLinkTimestamp = nil
     }
   }
 
@@ -262,9 +301,9 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     guard displayLink == nil else { return }
     let link = CADisplayLink(target: self, selector: #selector(advanceNavigationAnimation(_:)))
     if #available(iOS 15.0, *) {
-      link.preferredFrameRateRange = CAFrameRateRange(minimum: 24, maximum: 30, preferred: 30)
+      link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
     } else {
-      link.preferredFramesPerSecond = 30
+      link.preferredFramesPerSecond = 60
     }
     link.add(to: .main, forMode: .common)
     displayLink = link
@@ -272,23 +311,86 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
   @objc private func advanceNavigationAnimation(_ link: CADisplayLink) {
     guard isFollowingNavigation,
-          let start = interpolationStartCoordinate,
+          let current = displayedCoordinate,
           let target = interpolationTargetCoordinate
     else {
       return
     }
 
-    let progress = min(max((link.timestamp - interpolationStartedAt) / interpolationDuration, 0), 1)
-    let coordinate = start.interpolated(to: target, fraction: progress)
-    let heading = interpolationStartHeading.interpolatedHeading(
-      to: interpolationTargetHeading,
-      fraction: progress
+    guard let previousTimestamp = lastDisplayLinkTimestamp else {
+      lastDisplayLinkTimestamp = link.timestamp
+      return
+    }
+    let elapsed = min(max(link.timestamp - previousTimestamp, 1.0 / 120.0), 0.1)
+    lastDisplayLinkTimestamp = link.timestamp
+
+    // Same principle as the phone map: predict movement between sparse GPS
+    // fixes so the marker never freezes and jumps once per second.
+    var predictedTarget = target
+    if estimatedSpeedMetersPerSecond > 0.8,
+       let lastPositionReceivedAt,
+       link.timestamp - lastPositionReceivedAt < 2.5 {
+      predictedTarget = predictedTarget.offset(
+        distanceMeters: estimatedSpeedMetersPerSecond * elapsed,
+        bearingDegrees: filteredTargetHeading
+      )
+      interpolationTargetCoordinate = predictedTarget
+    }
+
+    let speedFactor = min(max(estimatedSpeedMetersPerSecond / 16, 0), 1)
+    let positionAlpha = min(max(elapsed * (2.0 + speedFactor * 2.5), 0.03), 0.30)
+    let coordinate = current.interpolated(to: predictedTarget, fraction: positionAlpha)
+
+    let rawHeadingDelta = displayedHeading.shortestHeadingDelta(to: filteredTargetHeading)
+    let turnFactor = min(max(abs(rawHeadingDelta) / 45, 0), 1)
+    let maximumTurn = (35 + speedFactor * 75) * elapsed * (1 + turnFactor * 2.2)
+    let limitedHeadingDelta = min(max(rawHeadingDelta, -maximumTurn), maximumTurn)
+    let headingAlpha = min(
+      max(elapsed * (1.5 + speedFactor * 2.8) * (1 + turnFactor * 2.0), 0.03),
+      0.70
     )
+    let heading = (displayedHeading + limitedHeadingDelta * headingAlpha).normalizedHeading
 
     displayedCoordinate = coordinate
     displayedHeading = heading
     updateNavigationMarker(at: coordinate, headingDegrees: heading)
     updateNavigationCamera(at: coordinate, headingDegrees: heading)
+  }
+
+  private func routeSnappedCoordinate(
+    for coordinate: CLLocationCoordinate2D
+  ) -> CLLocationCoordinate2D {
+    guard navigationRouteCoordinates.count >= 2 else { return coordinate }
+
+    let point = MKMapPoint(coordinate)
+    var nearestPoint = point
+    var nearestDistance = Double.greatestFiniteMagnitude
+
+    for index in 0..<(navigationRouteCoordinates.count - 1) {
+      let start = MKMapPoint(navigationRouteCoordinates[index])
+      let end = MKMapPoint(navigationRouteCoordinates[index + 1])
+      let dx = end.x - start.x
+      let dy = end.y - start.y
+      let lengthSquared = dx * dx + dy * dy
+      guard lengthSquared > 0 else { continue }
+      let fraction = min(
+        max(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0),
+        1
+      )
+      let candidate = MKMapPoint(
+        x: start.x + dx * fraction,
+        y: start.y + dy * fraction
+      )
+      let distance = point.distance(to: candidate)
+      if distance < nearestDistance {
+        nearestDistance = distance
+        nearestPoint = candidate
+      }
+    }
+
+    // Match the phone's 45 m route-lock zone while still allowing genuine
+    // off-route movement to leave the polyline and trigger rerouting.
+    return nearestDistance < 45 ? nearestPoint.coordinate : coordinate
   }
 
   private func updateNavigationMarkerVisibility(
@@ -323,12 +425,18 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     guard let navigationAnnotation else { return }
     navigationAnnotation.coordinate = coordinate
     guard let view = mapView.view(for: navigationAnnotation) else { return }
-    let relativeHeading = headingDegrees.shortestHeadingDelta(to: mapView.camera.heading) * -1
-    view.transform = CGAffineTransform(rotationAngle: CGFloat(relativeHeading * .pi / 180))
+    // The vehicle stays pointing straight ahead, as in Apple Maps and Waze.
+    // Only the map rotates, so the marker never anticipates an upcoming bend.
+    view.transform = .identity
   }
 
   private func updateNavigationCamera(at coordinate: CLLocationCoordinate2D, headingDegrees: Double) {
     if CACurrentMediaTime() < manualConvoyCameraUntil { return }
+    // Position and heading have already been filtered together by the display
+    // link. Feeding that single heading directly to MapKit avoids a second,
+    // lagging smoother that made the road and marker drift apart in turns.
+    let cameraHeading = headingDegrees.normalizedHeading
+
     // Keep the vehicle in the lower third without pushing it into CarPlay's
     // bottom safe area. The previous 260 m offset and 58 degree pitch made the
     // marker disappear near the edge and exaggerated small heading changes.
@@ -336,13 +444,13 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     // the marker sit higher and left of centre, clear of the bottom estimates
     // panel and the right-side CarPlay controls.
     let center = coordinate
-      .offset(distanceMeters: 68, bearingDegrees: headingDegrees)
-      .offset(distanceMeters: 88, bearingDegrees: headingDegrees + 90)
+      .offset(distanceMeters: 68, bearingDegrees: cameraHeading)
+      .offset(distanceMeters: 88, bearingDegrees: cameraHeading + 90)
     let camera = MKMapCamera(
       lookingAtCenter: center,
       fromDistance: 610,
       pitch: 46,
-      heading: headingDegrees
+      heading: cameraHeading
     )
 
     // Position and camera advance on the same display link. Avoid feeding
@@ -351,11 +459,11 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     if let previousCoordinate = lastCameraCoordinate,
        let previousHeading = lastCameraHeading {
       let movement = MKMapPoint(previousCoordinate).distance(to: MKMapPoint(coordinate))
-      let headingDelta = abs(previousHeading.shortestHeadingDelta(to: headingDegrees))
-      if movement < 0.12 && headingDelta < 0.12 { return }
+      let cameraHeadingDelta = abs(previousHeading.shortestHeadingDelta(to: cameraHeading))
+      if movement < 0.12 && cameraHeadingDelta < 0.12 { return }
     }
     lastCameraCoordinate = coordinate
-    lastCameraHeading = headingDegrees
+    lastCameraHeading = cameraHeading
     mapView.setCamera(camera, animated: false)
     updateConvoyMarkerRotations()
   }
@@ -497,21 +605,34 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
   func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
     if annotation is MKUserLocation {
-      return nil
+      // Use MapKit's own blue location dot whenever turn-by-turn navigation
+      // is inactive. Returning MKUserLocationView keeps Apple's native
+      // accuracy halo, animation and authorization-dependent appearance.
+      let identifier = "AppleUserLocation"
+      let view = (mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+        as? MKUserLocationView) ?? MKUserLocationView(annotation: annotation, reuseIdentifier: identifier)
+      view.annotation = annotation
+      view.zPriority = .max
+      return view
     }
 
     if annotation is CruizXNavigationAnnotation {
-      let identifier = "CruizXNavigationArrow"
+      let identifier = "AppleNavigationArrow"
       let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
         ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
       view.annotation = annotation
-      let configuration = UIImage.SymbolConfiguration(pointSize: 24, weight: .bold)
-      view.image = UIImage(systemName: "location.north.fill", withConfiguration: configuration)?
-        .withTintColor(UIColor(red: 0.0, green: 0.64, blue: 1.0, alpha: 1), renderingMode: .alwaysOriginal)
+      // Apple Maps' exact turn-by-turn puck isn't part of public MapKit.
+      // Build the public equivalent from Apple's location SF Symbol: a
+      // compact white-rimmed blue puck that replaces the native dot only
+      // while a route is active.
+      view.image = appleNavigationMarkerImage()
+      view.zPriority = .max
+      view.displayPriority = .required
+      view.collisionMode = .none
       view.layer.shadowColor = UIColor.black.cgColor
-      view.layer.shadowOpacity = 0.55
-      view.layer.shadowRadius = 2
-      view.layer.shadowOffset = CGSize(width: 0, height: 1)
+      view.layer.shadowOpacity = 0.42
+      view.layer.shadowRadius = 2.5
+      view.layer.shadowOffset = CGSize(width: 0, height: 1.5)
       view.canShowCallout = false
       return view
     }
@@ -537,6 +658,29 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
 
     return nil
+  }
+
+  private func appleNavigationMarkerImage() -> UIImage? {
+    let size = CGSize(width: 28, height: 28)
+    let renderer = UIGraphicsImageRenderer(size: size)
+    return renderer.image { context in
+      let bounds = CGRect(origin: .zero, size: size)
+      UIColor.white.withAlphaComponent(0.96).setFill()
+      context.cgContext.fillEllipse(in: bounds.insetBy(dx: 0.5, dy: 0.5))
+
+      UIColor.systemBlue.setFill()
+      context.cgContext.fillEllipse(in: bounds.insetBy(dx: 2.9, dy: 2.9))
+
+      let configuration = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
+      guard let symbol = UIImage(systemName: "location.north.fill", withConfiguration: configuration)?
+        .withTintColor(.white, renderingMode: .alwaysOriginal)
+      else { return }
+      let symbolSize = symbol.size
+      symbol.draw(at: CGPoint(
+        x: (size.width - symbolSize.width) / 2,
+        y: (size.height - symbolSize.height) / 2 - 0.4
+      ))
+    }
   }
 
 }

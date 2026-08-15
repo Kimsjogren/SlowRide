@@ -101,6 +101,7 @@ class CarPlayBridgeService {
     required double? roadSpeedLimit,
     required double? vehicleSpeedLimit,
     required String speedUnitLabel,
+    required String countryCode,
     required LatLng? destination,
     required String destinationLabel,
     required String destinationAddress,
@@ -127,6 +128,7 @@ class CarPlayBridgeService {
       'roadSpeedLimit': roadSpeedLimit,
       'vehicleSpeedLimit': vehicleSpeedLimit,
       'speedUnitLabel': speedUnitLabel,
+      'countryCode': countryCode.trim().toUpperCase(),
       'destination': destination == null
           ? null
           : <String, Object?>{
@@ -180,6 +182,7 @@ class CarPlayBridgeService {
       roadSpeedLimit: null,
       vehicleSpeedLimit: null,
       speedUnitLabel: 'km/h',
+      countryCode: '',
       destination: null,
       destinationLabel: '',
       destinationAddress: '',
