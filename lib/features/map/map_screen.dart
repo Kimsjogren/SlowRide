@@ -72,6 +72,7 @@ class _MapScreenState extends State<MapScreen> {
   // Tracks progress along route so nearest-point scan is O(1) not O(n).
   int _lastNearestIdx = 0;
   int _displayNearestIdx = 0;
+  LatLng? _displayRouteProjection;
   String _routingStatus = '';
   bool _isRouting = false;
   bool _isNavigating = false;
@@ -147,6 +148,9 @@ class _MapScreenState extends State<MapScreen> {
   AlertModel? _nearbyAlert;
   AlertModel? _dismissedNearbyAlert;
   double? _roadSpeedLimitKmh;
+  List<double?> _routeSpeedLimitsKmh = const [];
+  int _routeSpeedLimitGeneration = 0;
+  bool _roadLimitFromRoute = false;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
   bool _roadLimitLookupInFlight = false;
@@ -374,6 +378,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _maybeRefreshRoadSpeedLimit(LatLng pos) async {
+    if (_speedLimitForRouteIndex(_lastNearestIdx) != null) return;
     if (_roadLimitLookupInFlight) return;
 
     final now = DateTime.now();
@@ -395,6 +400,10 @@ class _MapScreenState extends State<MapScreen> {
     _roadLimitLookupInFlight = false;
     _lastRoadLimitLookupPos = pos;
 
+    // Route attributes may have arrived while the fallback request was in
+    // flight. Never replace that stronger match with an Overpass result.
+    if (_speedLimitForRouteIndex(_lastNearestIdx) != null) return;
+
     if (!mounted || !lookup.completed) return;
     final fetched = lookup.limit;
     if (fetched == null) {
@@ -410,6 +419,7 @@ class _MapScreenState extends State<MapScreen> {
 
     setState(() {
       _roadSpeedLimitKmh = fetched;
+      _roadLimitFromRoute = false;
     });
     _smartEtaSpeedKmh(_speedKmh);
     unawaited(_syncCarPlayNavigationState());
@@ -419,10 +429,50 @@ class _MapScreenState extends State<MapScreen> {
     _roadLimitLookupGeneration++;
     _roadLimitLookupInFlight = false;
     _roadSpeedLimitKmh = null;
+    _roadLimitFromRoute = false;
     _lastRoadLimitLookupPos = null;
     _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
     _etaSmoothedSpeedKmh = 0;
     _etaLastMovementAt = null;
+  }
+
+  void _clearRouteSpeedLimits() {
+    _routeSpeedLimitGeneration++;
+    _routeSpeedLimitsKmh = const [];
+    _roadLimitFromRoute = false;
+  }
+
+  double? _speedLimitForRouteIndex(int index) {
+    if (_routeSpeedLimitsKmh.isEmpty) return null;
+    final safeIndex = index.clamp(0, _routeSpeedLimitsKmh.length - 1);
+    return _routeSpeedLimitsKmh[safeIndex];
+  }
+
+  Future<void> _loadRouteSpeedLimits(List<LatLng> routePoints) async {
+    final generation = ++_routeSpeedLimitGeneration;
+    _routeSpeedLimitsKmh = const [];
+    final preferences = UserPreferencesService.instance;
+    final limits = await _routingService.getRouteSpeedLimits(
+      routePoints: routePoints,
+      vehicleType: preferences.vehicleType.value,
+      countryCode: preferences.countryCode.value,
+    );
+    if (!mounted || generation != _routeSpeedLimitGeneration) return;
+    if (routePoints.length != _routePoints.length ||
+        limits.length != routePoints.length) {
+      return;
+    }
+    final currentLimit = limits.isEmpty
+        ? null
+        : limits[_lastNearestIdx.clamp(0, limits.length - 1)];
+    setState(() {
+      _routeSpeedLimitsKmh = limits;
+      if (currentLimit != null) {
+        _roadSpeedLimitKmh = currentLimit;
+        _roadLimitFromRoute = true;
+      }
+    });
+    unawaited(_syncCarPlayNavigationState());
   }
 
   Future<({bool completed, double? limit})> _fetchRoadSpeedLimitKmh(
@@ -2641,39 +2691,81 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  // Scans a small window forward from last known index — O(window) not O(n).
-  // Saves hundreds of iterations per GPS tick on long routes.
+  // Projects the GPS position onto the current route segment. Keeping the
+  // projected point lets the blue line start at the marker instead of at a
+  // stale route vertex behind the vehicle.
   int _nearestRoutePointIndex(LatLng pos) {
     if (_routePoints.isEmpty) return 0;
-    if (_routePoints.length == 1) return 0;
+    if (_routePoints.length == 1) {
+      _displayRouteProjection = _routePoints.first;
+      return 0;
+    }
 
     final searchStart = _lastNearestIdx.clamp(0, _routePoints.length - 2);
-    final searchEnd = (searchStart + 50).clamp(0, _routePoints.length - 1);
+    final searchEnd = (searchStart + 80).clamp(0, _routePoints.length - 2);
 
-    var bestIdx = searchStart;
+    var bestSegment = searchStart;
     var bestDist = double.infinity;
+    var bestProjection = _routePoints[searchStart];
 
     for (int i = searchStart; i <= searchEnd; i++) {
-      final dist = _segDist(pos, _routePoints[i]);
+      final projection = _projectOntoSegment(
+        pos,
+        _routePoints[i],
+        _routePoints[i + 1],
+      );
+      final dist = _segDist(pos, projection);
       if (dist < bestDist) {
         bestDist = dist;
-        bestIdx = i;
+        bestSegment = i;
+        bestProjection = projection;
       }
     }
 
-    if (bestIdx > _lastNearestIdx) {
-      final distToOld = _segDist(pos, _routePoints[_lastNearestIdx]);
-      if (distToOld > 8) {
-        _lastNearestIdx = bestIdx;
-      }
+    if (bestDist <= 60) {
+      _lastNearestIdx = math.max(_lastNearestIdx, bestSegment);
+      _displayNearestIdx = _lastNearestIdx;
+      _displayRouteProjection = bestProjection;
+    } else {
+      _displayRouteProjection = null;
     }
-
-    if (_displayNearestIdx < _lastNearestIdx) {
-      final step = (_lastNearestIdx - _displayNearestIdx).clamp(0, 6);
-      _displayNearestIdx += step;
-    }
-
     return _lastNearestIdx;
+  }
+
+  LatLng _projectOntoSegment(LatLng p, LatLng a, LatLng b) {
+    final latitudeRadians = p.latitude * math.pi / 180.0;
+    const lat2m = 111320.0;
+    final lng2m = lat2m * math.cos(latitudeRadians);
+    final ax = a.longitude * lng2m;
+    final ay = a.latitude * lat2m;
+    final bx = b.longitude * lng2m;
+    final by = b.latitude * lat2m;
+    final px = p.longitude * lng2m;
+    final py = p.latitude * lat2m;
+    final dx = bx - ax;
+    final dy = by - ay;
+    final lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared == 0) return a;
+    final t = (((px - ax) * dx + (py - ay) * dy) / lengthSquared).clamp(
+      0.0,
+      1.0,
+    );
+    return LatLng(
+      a.latitude + (b.latitude - a.latitude) * t,
+      a.longitude + (b.longitude - a.longitude) * t,
+    );
+  }
+
+  List<LatLng> _routePointsVisibleFromVehicle() {
+    if (!_isNavigating || _routePoints.isEmpty) return _routePoints;
+    final projection = _displayRouteProjection;
+    if (projection == null) {
+      return _routePoints.sublist(
+        _displayNearestIdx.clamp(0, _routePoints.length),
+      );
+    }
+    final nextIndex = (_displayNearestIdx + 1).clamp(0, _routePoints.length);
+    return <LatLng>[projection, ..._routePoints.sublist(nextIndex)];
   }
 
   double _segDist(LatLng a, LatLng b) {
@@ -2745,12 +2837,6 @@ class _MapScreenState extends State<MapScreen> {
     if (endIdx == i && i < _routePoints.length - 1) endIdx = i + 1;
 
     return _bearingDeg(_routePoints[i], _routePoints[endIdx]);
-  }
-
-  double _routeHeadingAt(int nearestIdx) {
-    // Build 142 used a 40 metre lookahead to keep the mobile camera stable and
-    // prevent the marker from flipping between short route segments.
-    return _routeLookaheadHeading(nearestIdx, 40.0);
   }
 
   double _carPlayRouteHeadingAt(int nearestIdx) =>
@@ -3538,6 +3624,7 @@ class _MapScreenState extends State<MapScreen> {
     final cumDist = _buildCumulativeDist(route.points);
     final totalDist = cumDist.isNotEmpty ? cumDist.last : 0.0;
 
+    _resetRoadSpeedLimitLookup();
     setState(() {
       _routePoints = route.points;
       _activeRoute = route;
@@ -3547,6 +3634,7 @@ class _MapScreenState extends State<MapScreen> {
       _instructions = route.instructions;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
+      _displayRouteProjection = null;
       _nextManeuverText = '';
       _nextManeuverStreetName = '';
       _nextManeuverSign = 0;
@@ -3556,6 +3644,7 @@ class _MapScreenState extends State<MapScreen> {
         minutes.toStringAsFixed(0),
       );
     });
+    unawaited(_loadRouteSpeedLimits(route.points));
     _analyzeSelectedRouteIfRequested();
     unawaited(_syncCarPlayNavigationState());
   }
@@ -3959,6 +4048,7 @@ class _MapScreenState extends State<MapScreen> {
     final previousActiveRoute = _activeRoute;
     final previousLastNearestIdx = _lastNearestIdx;
     final previousDisplayNearestIdx = _displayNearestIdx;
+    final previousDisplayRouteProjection = _displayRouteProjection;
     final previousRoutingStatus = _routingStatus;
     final previousNextManeuverSign = _nextManeuverSign;
     final previousNextManeuverText = _nextManeuverText;
@@ -3968,6 +4058,11 @@ class _MapScreenState extends State<MapScreen> {
     final previousCumulativeDist = List<double>.from(_cumulativeDist);
     final previousTotalRouteDistM = _totalRouteDistM;
     final previousRemainingDistM = _remainingDistM;
+    final previousRouteSpeedLimits = List<double?>.from(
+      _routeSpeedLimitsKmh,
+    );
+    final previousRoadSpeedLimit = _roadSpeedLimitKmh;
+    final previousRoadLimitFromRoute = _roadLimitFromRoute;
     final previousIsNavigating = _isNavigating;
     final previousIsNavigationPanelExpanded = _isNavigationPanelExpanded;
 
@@ -3986,6 +4081,7 @@ class _MapScreenState extends State<MapScreen> {
         _activeRoute = previousActiveRoute;
         _lastNearestIdx = previousLastNearestIdx;
         _displayNearestIdx = previousDisplayNearestIdx;
+        _displayRouteProjection = previousDisplayRouteProjection;
         _routingStatus = previousRoutingStatus;
         _nextManeuverSign = previousNextManeuverSign;
         _nextManeuverText = previousNextManeuverText;
@@ -3995,6 +4091,9 @@ class _MapScreenState extends State<MapScreen> {
         _cumulativeDist = previousCumulativeDist;
         _totalRouteDistM = previousTotalRouteDistM;
         _remainingDistM = previousRemainingDistM;
+        _routeSpeedLimitsKmh = previousRouteSpeedLimits;
+        _roadSpeedLimitKmh = previousRoadSpeedLimit;
+        _roadLimitFromRoute = previousRoadLimitFromRoute;
         _isNavigating = previousIsNavigating;
         _isNavigationPanelExpanded = previousIsNavigationPanelExpanded;
         _isRouting = false;
@@ -4105,11 +4204,13 @@ class _MapScreenState extends State<MapScreen> {
           error.code == RoutingErrorCode.routeTooFastForVehicle ||
           error.code == RoutingErrorCode.routeNotAllowedForVehicle;
 
+      _clearRouteSpeedLimits();
       setState(() {
         _routePoints = const [];
         _activeRoute = null;
         _lastNearestIdx = 0;
         _displayNearestIdx = 0;
+        _displayRouteProjection = null;
         _routingStatus = switch (error.code) {
           RoutingErrorCode.noRouteFound => l10n.mapRouteNoRouteFound,
           RoutingErrorCode.providerUnavailable =>
@@ -4205,9 +4306,13 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
+      _clearRouteSpeedLimits();
       setState(() {
         _routePoints = const [];
         _activeRoute = null;
+        _lastNearestIdx = 0;
+        _displayNearestIdx = 0;
+        _displayRouteProjection = null;
         _routingStatus = l10n.mapRouteFailed;
       });
       unawaited(_syncCarPlayNavigationState());
@@ -4244,12 +4349,14 @@ class _MapScreenState extends State<MapScreen> {
     }
     _carPlayHeadingDegrees = null;
     _resetRoadSpeedLimitLookup();
+    _clearRouteSpeedLimits();
     setState(() {
       _mapViewEpoch++;
       _routePoints = const [];
       _activeRoute = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
+      _displayRouteProjection = null;
       _destination = null;
       _destinationLabel = '';
       _routeStop = null;
@@ -4328,10 +4435,15 @@ class _MapScreenState extends State<MapScreen> {
     String? newStreetName;
     int? nearestIdxForHeading;
     double? nearestPointDistM;
+    double? routeSpeedLimit;
     if (_isNavigating && _routePoints.isNotEmpty) {
       final nearestIdx = _nearestRoutePointIndex(currentPos);
       nearestIdxForHeading = nearestIdx;
-      nearestPointDistM = _segDist(currentPos, _routePoints[nearestIdx]);
+      nearestPointDistM = _segDist(
+        currentPos,
+        _displayRouteProjection ?? _routePoints[nearestIdx],
+      );
+      routeSpeedLimit = _speedLimitForRouteIndex(nearestIdx);
       if (_cumulativeDist.length == _routePoints.length) {
         newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx]).clamp(
           0.0,
@@ -4389,8 +4501,8 @@ class _MapScreenState extends State<MapScreen> {
         // This is how Google Maps/Waze work — no GPS/compass blending.
         if (nearestPointDistM < 45) {
           // Full route lock within 45m — handles typical phone GPS inaccuracy.
-          headingForArrow = _routeHeadingAt(nearestIdxForHeading);
-          carPlayHeading = _carPlayRouteHeadingAt(nearestIdxForHeading);
+          headingForArrow = _carPlayRouteHeadingAt(nearestIdxForHeading);
+          carPlayHeading = headingForArrow;
         }
         // Otherwise keep GPS heading (off-route).
       }
@@ -4401,6 +4513,13 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
+      if (routeSpeedLimit != null) {
+        _roadSpeedLimitKmh = routeSpeedLimit;
+        _roadLimitFromRoute = true;
+      } else if (_roadLimitFromRoute) {
+        _roadSpeedLimitKmh = null;
+        _roadLimitFromRoute = false;
+      }
       if (_isNavigating) {
         _tripDistanceM = newTripDist;
         _lastNavPos = currentPos;
@@ -4444,7 +4563,9 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     unawaited(_syncCarPlayNavigationState());
-    unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
+    if (routeSpeedLimit == null) {
+      unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
+    }
   }
 
   Future<void> _syncCarPlayNavigationState() {
@@ -5242,12 +5363,7 @@ class _MapScreenState extends State<MapScreen> {
                           !kIsWeb &&
                           (defaultTargetPlatform == TargetPlatform.iOS ||
                               defaultTargetPlatform == TargetPlatform.android);
-                      final routeForMap =
-                          _isNavigating && _displayNearestIdx > 0
-                          ? _routePoints.sublist(
-                              _displayNearestIdx.clamp(0, _routePoints.length),
-                            )
-                          : _routePoints;
+                      final routeForMap = _routePointsVisibleFromVehicle();
                       if (useNativeMap) {
                         return ValueListenableBuilder<MapMarkerStyle>(
                           valueListenable: preferences.mapMarkerStyle,

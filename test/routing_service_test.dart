@@ -471,4 +471,40 @@ void main() {
       );
     });
   });
+
+  group('RoutingService route speed limits', () {
+    test('maps Valhalla edge limits onto every covered route point', () {
+      final limits = service.debugParseRouteSpeedLimits([
+        {
+          'speed_limit': 50,
+          'begin_shape_index': 0,
+          'end_shape_index': 2,
+        },
+        {
+          'speed_limit': 70,
+          'begin_shape_index': 3,
+          'end_shape_index': 4,
+        },
+      ], 5);
+
+      expect(limits, [50, 50, 50, 70, 70]);
+    });
+
+    test('ignores absent and sentinel speed limits', () {
+      final limits = service.debugParseRouteSpeedLimits([
+        {
+          'speed_limit': 0,
+          'begin_shape_index': 0,
+          'end_shape_index': 1,
+        },
+        {
+          'speed_limit': 255,
+          'begin_shape_index': 2,
+          'end_shape_index': 3,
+        },
+      ], 4);
+
+      expect(limits, [null, null, null, null]);
+    });
+  });
 }

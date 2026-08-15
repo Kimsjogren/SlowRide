@@ -1042,6 +1042,80 @@ class RoutingService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Returns the posted speed limit for every point in an already calculated
+  /// route. Valhalla supplies the value per matched road edge, avoiding a
+  /// separate public map lookup every few seconds while driving.
+  Future<List<double?>> getRouteSpeedLimits({
+    required List<LatLng> routePoints,
+    required String vehicleType,
+    required String countryCode,
+  }) async {
+    if (routePoints.length < 2) return const [];
+    final profile = CountryVehicleRules.getProfile(countryCode, vehicleType);
+    final costing = profile.prefersCycleways
+        ? 'bicycle'
+        : CountryVehicleRules.maxLegalSpeedFor(countryCode, vehicleType) <= 45
+        ? 'motor_scooter'
+        : 'auto';
+    final payload = <String, dynamic>{
+      'shape': [
+        for (final point in routePoints)
+          {'lat': point.latitude, 'lon': point.longitude},
+      ],
+      'shape_match': 'edge_walk',
+      'costing': costing,
+      'directions_options': {'units': 'kilometers'},
+      'filters': {
+        'attributes': [
+          'edge.speed_limit',
+          'edge.begin_shape_index',
+          'edge.end_shape_index',
+        ],
+        'action': 'include',
+      },
+    };
+
+    try {
+      final body = await _postValhalla('/trace_attributes', payload);
+      return _parseRouteSpeedLimits(
+        body['edges'] as List<dynamic>? ?? const [],
+        routePoints.length,
+      );
+    } catch (_) {
+      // Live OSM lookup remains available to the map as a fallback.
+      return List<double?>.filled(routePoints.length, null);
+    }
+  }
+
+  List<double?> _parseRouteSpeedLimits(List<dynamic> edges, int pointCount) {
+    final limits = List<double?>.filled(pointCount, null);
+    if (pointCount == 0) return limits;
+    for (final raw in edges.whereType<Map<String, dynamic>>()) {
+      final rawLimit = raw['speed_limit'];
+      final limit = rawLimit is num
+          ? rawLimit.toDouble()
+          : double.tryParse(rawLimit?.toString() ?? '');
+      // Valhalla uses 0/255 for absent or unlimited data. Neither is a road
+      // sign that should be shown to the driver.
+      if (limit == null || limit < 5 || limit > 200) continue;
+      final begin = (raw['begin_shape_index'] as num?)?.toInt();
+      final end = (raw['end_shape_index'] as num?)?.toInt();
+      if (begin == null || end == null) continue;
+      final safeBegin = begin.clamp(0, pointCount - 1);
+      final safeEnd = end.clamp(safeBegin, pointCount - 1);
+      for (var index = safeBegin; index <= safeEnd; index++) {
+        limits[index] = limit;
+      }
+    }
+    return limits;
+  }
+
+  @visibleForTesting
+  List<double?> debugParseRouteSpeedLimits(
+    List<Map<String, dynamic>> edges,
+    int pointCount,
+  ) => _parseRouteSpeedLimits(edges, pointCount);
+
   /// Whether the country/vehicle profile forbids the local motorway-like motor
   /// road class (OSM `trunk`: motortrafikled/voie express/superstrada/…).
   /// Driven by the per-country profile so the rule follows each country's law

@@ -731,17 +731,24 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   private func updateRouteOverlay(with points: [CLLocationCoordinate2D], routeChanged: Bool) {
     guard routeChanged else { return }
 
-    if let routeOverlay {
-      mapView.removeOverlay(routeOverlay)
-      self.routeOverlay = nil
+    guard points.count >= 2 else {
+      if let routeOverlay {
+        mapView.removeOverlay(routeOverlay)
+        self.routeOverlay = nil
+      }
+      return
     }
-
-    guard points.count >= 2 else { return }
 
     var mutablePoints = points
     let polyline = MKPolyline(coordinates: &mutablePoints, count: mutablePoints.count)
+    let previousOverlay = routeOverlay
     routeOverlay = polyline
+    // Add the replacement before removing the previous line. This prevents a
+    // one-frame blue-route flash while the route is trimmed during navigation.
     mapView.addOverlay(polyline)
+    if let previousOverlay {
+      mapView.removeOverlay(previousOverlay)
+    }
   }
 
   private func updateCamera(
@@ -949,20 +956,9 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       )
     }
 
-    // Build 142 marker behaviour: show the remaining offset to the route while
-    // the camera catches up, then settle straight ahead once both are aligned.
-    let desiredMarkerRelativeHeading = shortestDegrees(
-      from: renderedCameraHeading,
-      to: targetHeading
-    )
-    let markerTurn = shortestDegrees(
-      from: renderedMarkerRelativeHeading,
-      to: desiredMarkerRelativeHeading
-    )
-    let markerAlpha = min(max(dt * 8.0, 0.10), 0.55)
-    renderedMarkerRelativeHeading = normalizedDegrees(
-      renderedMarkerRelativeHeading + markerTurn * markerAlpha
-    )
+    // Match CarPlay: the vehicle marker is screen-locked straight ahead and
+    // the map itself turns underneath it.
+    renderedMarkerRelativeHeading = 0
     if let markerView = mapView.view(for: userAnnotation) {
       applyFollowMarkerRotation(view: markerView)
     }
@@ -1219,14 +1215,31 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     _ newPoints: [CLLocationCoordinate2D],
     of oldPoints: [CLLocationCoordinate2D]
   ) -> Bool {
-    guard !newPoints.isEmpty,
-          newPoints.count < oldPoints.count
-    else {
-      return false
-    }
+    guard newPoints.count >= 2, oldPoints.count >= 2 else { return false }
 
-    let expectedSuffix = oldPoints.suffix(newPoints.count)
-    return sameCoordinates(newPoints, Array(expectedSuffix))
+    // The first point moves continuously because Flutter projects it onto the
+    // active road segment. Everything after it must remain an exact suffix of
+    // the original route for this to count as progress rather than a reroute.
+    let newSuffix = Array(newPoints.dropFirst())
+    guard let firstSuffixPoint = newSuffix.first else { return false }
+    for oldIndex in 1..<oldPoints.count where coordinatesEqual(
+      firstSuffixPoint,
+      oldPoints[oldIndex]
+    ) {
+      let oldSuffix = Array(oldPoints[oldIndex...])
+      if sameCoordinates(newSuffix, oldSuffix) {
+        return true
+      }
+    }
+    return false
+  }
+
+  private func coordinatesEqual(
+    _ lhs: CLLocationCoordinate2D,
+    _ rhs: CLLocationCoordinate2D
+  ) -> Bool {
+    abs(lhs.latitude - rhs.latitude) <= 0.000001 &&
+      abs(lhs.longitude - rhs.longitude) <= 0.000001
   }
 
   private func doubleValue(_ value: Any?) -> Double? {
@@ -1524,16 +1537,11 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     }
   }
 
-  /// Build 142: the marker shows the small remaining route/camera offset while
-  /// the map eases through a turn, then returns to straight ahead.
+  /// During navigation the marker stays straight ahead, matching CarPlay.
+  /// The map camera carries all heading changes underneath it.
   private func applyFollowMarkerRotation(view: MKAnnotationView) {
-    guard userMarkerStyle.rotatesWithHeading else {
-      view.transform = .identity
-      return
-    }
-    let angle = CGFloat(renderedMarkerRelativeHeading * .pi / 180)
     UIView.performWithoutAnimation {
-      view.transform = CGAffineTransform(rotationAngle: angle)
+      view.transform = .identity
       view.layer.removeAnimation(forKey: "cruizx.userHeading")
     }
   }
