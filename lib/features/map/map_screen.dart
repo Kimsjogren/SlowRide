@@ -2224,10 +2224,21 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Race the device-native POI index against OSM. This keeps the richer OSM
-    // data while avoiding a blank sheet whenever the public Overpass service
-    // is busy. Expand the radius only when both fast searches found nothing.
-    var poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+    // Run all independent sources together. Each source has a hard timeout,
+    // so a busy public service can never leave the result sheet spinning.
+    final geocodingFallback = Future.wait(
+      queries
+          .take(2)
+          .map(
+            (query) => _fetchPrimaryGeocodingResults(
+              query,
+              limit: 12,
+              proximity: currentLocation,
+              includeGlobalResults: false,
+            ).timeout(const Duration(seconds: 5), onTimeout: () => const []),
+          ),
+    ).then((lists) => lists.expand((items) => items).toList(growable: false));
+    final poiResults = await _firstNonEmpty<Map<String, dynamic>>([
       _fetchFastPlatformPoiResults(
         queries: queries,
         centers: [currentLocation],
@@ -2238,14 +2249,13 @@ class _MapScreenState extends State<MapScreen> {
         center: currentLocation,
         radiusMeters: 2500,
       ),
-    ]);
-    if (poiResults.isEmpty) {
-      poiResults = await _fetchOverpassPoiResults(
+      _fetchOverpassPoiResults(
         queries: queries,
         center: currentLocation,
         radiusMeters: 7000,
-      );
-    }
+      ),
+      geocodingFallback,
+    ]);
     for (final result in poiResults) {
       addCandidate(result, queries.first);
     }
@@ -2256,39 +2266,7 @@ class _MapScreenState extends State<MapScreen> {
       return candidates.take(limit).toList(growable: false);
     }
 
-    final requests = <String>[...queries];
-    final responses = await Future.wait(
-      requests.map(
-        (query) => _fetchPrimaryGeocodingResults(
-          query,
-          limit: 12,
-          proximity: currentLocation,
-          includeGlobalResults: false,
-        ),
-      ),
-    );
-
-    for (
-      var responseIndex = 0;
-      responseIndex < responses.length;
-      responseIndex++
-    ) {
-      final query = requests[responseIndex];
-      for (final result in responses[responseIndex]) {
-        addCandidate(result, query);
-      }
-    }
-
-    candidates.sort(
-      (a, b) => a.distanceFromMeMeters.compareTo(b.distanceFromMeMeters),
-    );
-    final maxFallbackDistance = _maxFallbackPoiDistanceMeters(queries);
-    return candidates
-        .where(
-          (candidate) => candidate.distanceFromMeMeters <= maxFallbackDistance,
-        )
-        .take(limit)
-        .toList(growable: false);
+    return const [];
   }
 
   String _formatStopDistance(double meters) {
@@ -6248,7 +6226,13 @@ class _MapScreenState extends State<MapScreen> {
                     children: [
                       Align(
                         alignment: Alignment.bottomLeft,
-                        child: _buildCompactNavigationSpeed(l10n, preferences),
+                        child: Transform.translate(
+                          offset: const Offset(0, -24),
+                          child: _buildCompactNavigationSpeed(
+                            l10n,
+                            preferences,
+                          ),
+                        ),
                       ),
                       Semantics(
                         button: true,

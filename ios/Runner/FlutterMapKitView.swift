@@ -4,6 +4,7 @@ import UIKit
 
 final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
   private static let channelName = "cruizx/mapkit_search"
+  private var activeSearches: [UUID: MKLocalSearch] = [:]
 
   static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(
@@ -60,6 +61,13 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
     let request = MKLocalSearch.Request()
     request.naturalLanguageQuery = query
     request.resultTypes = [.address, .pointOfInterest]
+    let categories = pointOfInterestCategories(for: query)
+    if !categories.isEmpty {
+      request.resultTypes = [.pointOfInterest]
+      request.pointOfInterestFilter = MKPointOfInterestFilter(
+        including: categories
+      )
+    }
     if let proximity {
       request.region = MKCoordinateRegion(
         center: proximity,
@@ -68,7 +76,14 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
       )
     }
 
-    MKLocalSearch(request: request).start { [weak self] response, _ in
+    // Retain every search until its completion callback. A temporary
+    // MKLocalSearch can otherwise be released before Flutter receives a
+    // result, leaving the POI sheet spinning indefinitely.
+    let searchId = UUID()
+    let search = MKLocalSearch(request: request)
+    activeSearches[searchId] = search
+    search.start { [weak self] response, _ in
+      self?.activeSearches.removeValue(forKey: searchId)
       let mapped = self?.mapItems(response?.mapItems ?? [], query: query, limit: limit) ?? []
       if !mapped.isEmpty || !allowGlobalFallback || proximity == nil {
         completion(mapped)
@@ -83,6 +98,34 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
         completion: completion
       ) ?? completion([])
     }
+  }
+
+  private func pointOfInterestCategories(
+    for query: String
+  ) -> [MKPointOfInterestCategory] {
+    let value = query.folding(
+      options: [.diacriticInsensitive, .caseInsensitive],
+      locale: .current
+    )
+    if value.contains("restaurant") || value.contains("food") || value.contains("mat") {
+      return [.restaurant, .foodMarket, .bakery, .cafe]
+    }
+    if value.contains("cafe") || value.contains("coffee") || value.contains("kafe") {
+      return [.cafe, .bakery]
+    }
+    if value.contains("grocery") || value.contains("supermarket") || value.contains("livsmedel") {
+      return [.foodMarket]
+    }
+    if value.contains("charging") || value.contains("ladd") {
+      return [.evCharger]
+    }
+    if value.contains("fuel") || value.contains("gas station") || value.contains("bensin") {
+      return [.gasStation]
+    }
+    if value.contains("parking") || value.contains("parkering") {
+      return [.parking]
+    }
+    return []
   }
 
   private func mapItems(
@@ -1788,7 +1831,9 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
       case "dot":
         symbolName = "circle.fill"
       default:
-        symbolName = "paperplane.fill"
+        // `paperplane.fill` has an intrinsic 45-degree tilt. The navigation
+        // heading is defined as straight up, so use a north-facing symbol.
+        symbolName = "location.north.fill"
       }
 
       let symbol = UIImage(systemName: symbolName, withConfiguration: configuration)?
