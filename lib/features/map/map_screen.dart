@@ -3036,9 +3036,13 @@ class _MapScreenState extends State<MapScreen> {
     if (_etaSmoothedSpeedKmh > 0 && _etaLastMovementAt != null) {
       final pause = DateTime.now().difference(_etaLastMovementAt!);
       if (pause <= _etaPauseGrace) {
+        // A red light must not decay the learned speed once per GPS sample.
+        // At Android's 250 ms update interval, multiplying by 0.96 here made
+        // the ETA assume roughly 3 km/h after a short stop. Hold the last
+        // moving average during the grace period instead.
         _etaSmoothedSpeedKmh = math
             .min(
-              math.max(_etaSmoothedSpeedKmh * 0.96, 3.0),
+              math.max(_etaSmoothedSpeedKmh, 3.0),
               effectiveLimit,
             )
             .toDouble();
@@ -3087,6 +3091,27 @@ class _MapScreenState extends State<MapScreen> {
   double? _remainingEtaSeconds({required double remainingMeters}) {
     if (remainingMeters <= 0) return 0;
 
+    final route = _activeRoute;
+    final hasRouteDuration =
+        route != null && _totalRouteDistM > 0 && route.durationSeconds > 0;
+    final routeBasedSeconds = hasRouteDuration
+        ? route.durationSeconds *
+              (remainingMeters / _totalRouteDistM).clamp(0.0, 1.0)
+        : null;
+    final preferences = UserPreferencesService.instance;
+    final hasVehicleSpeedLimit = CountryVehicleRules.hasVehicleSpeedLimit(
+      preferences.vehicleType.value,
+    );
+
+    // An ordinary car already has a road-aware provider duration. Replacing
+    // that with remainingDistance/currentSpeed makes every traffic light look
+    // as if the whole remaining route will be driven at near-zero speed.
+    // Keep provider time as the stable source and reduce it only with route
+    // progress; the arrival clock naturally moves forward while stopped.
+    if (!hasVehicleSpeedLimit && routeBasedSeconds != null) {
+      return routeBasedSeconds;
+    }
+
     final lastMovement = _etaLastMovementAt;
     final hasFreshLiveSpeed =
         _etaSmoothedSpeedKmh > 0 &&
@@ -3114,17 +3139,7 @@ class _MapScreenState extends State<MapScreen> {
           );
     }
 
-    final route = _activeRoute;
-    if (route == null || _totalRouteDistM <= 0) return null;
-    final routeFraction = (remainingMeters / _totalRouteDistM).clamp(0.0, 1.0);
-    final routeBasedSeconds = route.durationSeconds * routeFraction;
-
-    final preferences = UserPreferencesService.instance;
-    if (!CountryVehicleRules.hasVehicleSpeedLimit(
-      preferences.vehicleType.value,
-    )) {
-      return routeBasedSeconds;
-    }
+    if (routeBasedSeconds == null) return null;
 
     // Never let a generic routing-provider duration produce a car ETA for a
     // speed-limited vehicle. Use the learned real-world speed (or 85% of the
