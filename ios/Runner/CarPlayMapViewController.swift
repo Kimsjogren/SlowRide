@@ -1,3 +1,4 @@
+import CarPlay
 import MapKit
 import UIKit
 
@@ -28,6 +29,9 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private var isFollowingNavigation = false
   private var lastCameraCoordinate: CLLocationCoordinate2D?
   private var lastCameraHeading: Double?
+  private var manualPanStartCenter: MKMapPoint?
+  private var manualPanStartVisibleRect: MKMapRect?
+  private var manualZoomStartDistance: CLLocationDistance?
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -57,6 +61,10 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     mapView.translatesAutoresizingMaskIntoConstraints = false
     mapView.showsCompass = false
     mapView.showsScale = false
+    mapView.isScrollEnabled = true
+    mapView.isZoomEnabled = true
+    mapView.isPitchEnabled = true
+    mapView.isRotateEnabled = true
     // Let MapKit own the position marker and its internal GPS smoothing. The
     // camera remains CruizX-controlled so the marker can sit left and above
     // CarPlay's bottom estimates panel instead of being forced to the centre.
@@ -497,6 +505,86 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     updateConvoyMarkerRotations()
   }
 
+  func beginManualMapPan() {
+    guard isViewLoaded else { return }
+    // Keep automatic navigation updates running, but leave the camera where
+    // the driver moved it until Follow me is selected.
+    manualConvoyCameraUntil = .greatestFiniteMagnitude
+    manualPanStartCenter = MKMapPoint(mapView.centerCoordinate)
+    manualPanStartVisibleRect = mapView.visibleMapRect
+  }
+
+  func updateManualMapPan(translation: CGPoint) {
+    guard let startCenter = manualPanStartCenter,
+          let startRect = manualPanStartVisibleRect,
+          mapView.bounds.width > 0,
+          mapView.bounds.height > 0
+    else { return }
+
+    let pointsPerPixelX = startRect.width / Double(mapView.bounds.width)
+    let pointsPerPixelY = startRect.height / Double(mapView.bounds.height)
+    let center = MKMapPoint(
+      x: startCenter.x - Double(translation.x) * pointsPerPixelX,
+      y: startCenter.y - Double(translation.y) * pointsPerPixelY
+    )
+    var camera = mapView.camera
+    camera.centerCoordinate = center.coordinate
+    mapView.setCamera(camera, animated: false)
+  }
+
+  func endManualMapPan() {
+    manualPanStartCenter = nil
+    manualPanStartVisibleRect = nil
+  }
+
+  func panMap(direction: CPMapTemplate.PanDirection) {
+    guard isViewLoaded else { return }
+    manualConvoyCameraUntil = .greatestFiniteMagnitude
+    var offsetX = 0.0
+    var offsetY = 0.0
+    if direction.contains(.left) { offsetX = -mapView.bounds.width * 0.24 }
+    if direction.contains(.right) { offsetX = mapView.bounds.width * 0.24 }
+    if direction.contains(.up) { offsetY = -mapView.bounds.height * 0.24 }
+    if direction.contains(.down) { offsetY = mapView.bounds.height * 0.24 }
+
+    let targetPoint = CGPoint(
+      x: mapView.bounds.midX + offsetX,
+      y: mapView.bounds.midY + offsetY
+    )
+    let coordinate = mapView.convert(targetPoint, toCoordinateFrom: mapView)
+    mapView.setCenter(coordinate, animated: true)
+  }
+
+  @available(iOS 26.0, *)
+  func beginManualMapZoom() {
+    guard isViewLoaded else { return }
+    manualConvoyCameraUntil = .greatestFiniteMagnitude
+    manualZoomStartDistance = mapView.camera.centerCoordinateDistance
+  }
+
+  @available(iOS 26.0, *)
+  func updateManualMapZoom(scale: CGFloat) {
+    guard let startDistance = manualZoomStartDistance, scale > 0 else { return }
+    var camera = mapView.camera
+    camera.centerCoordinateDistance = min(max(startDistance / Double(scale), 140), 12_000)
+    mapView.setCamera(camera, animated: false)
+  }
+
+  @available(iOS 26.0, *)
+  func endManualMapZoom() {
+    manualZoomStartDistance = nil
+  }
+
+  func resumeNavigationFollowing() {
+    guard isViewLoaded else { return }
+    manualConvoyCameraUntil = 0
+    manualPanStartCenter = nil
+    manualPanStartVisibleRect = nil
+    manualZoomStartDistance = nil
+    guard isFollowingNavigation, let coordinate = displayedCoordinate else { return }
+    updateNavigationCamera(at: coordinate, headingDegrees: displayedHeading)
+  }
+
   func updateConvoyMembers(_ members: [CarPlayManager.ConvoyMember]) {
     guard isViewLoaded else { return }
     let incomingIds = Set(members.map(\.userId))
@@ -690,7 +778,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   }
 
   private func appleNavigationMarkerImage() -> UIImage? {
-    let size = CGSize(width: 28, height: 28)
+    let size = CGSize(width: 24, height: 24)
     let renderer = UIGraphicsImageRenderer(size: size)
     return renderer.image { context in
       let bounds = CGRect(origin: .zero, size: size)
@@ -698,9 +786,9 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       context.cgContext.fillEllipse(in: bounds.insetBy(dx: 0.5, dy: 0.5))
 
       UIColor.systemBlue.setFill()
-      context.cgContext.fillEllipse(in: bounds.insetBy(dx: 2.9, dy: 2.9))
+      context.cgContext.fillEllipse(in: bounds.insetBy(dx: 2.5, dy: 2.5))
 
-      let configuration = UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)
+      let configuration = UIImage.SymbolConfiguration(pointSize: 13.5, weight: .bold)
       guard let symbol = UIImage(systemName: "location.north.fill", withConfiguration: configuration)?
         .withTintColor(.white, renderingMode: .alwaysOriginal)
       else { return }

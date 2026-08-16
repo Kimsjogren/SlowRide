@@ -189,19 +189,31 @@ final class CarPlayManager: NSObject {
     let overviewButton = CPBarButton(title: "Översikt") { [weak self] _ in
       self?.resetToOverview()
     }
+    let recentsButton = CPBarButton(
+      image: UIImage(systemName: "clock.arrow.circlepath") ?? UIImage()
+    ) { [weak self] _ in
+      self?.showRecentDestinationsList()
+    }
 
-    template.leadingNavigationBarButtons = []
+    // Keep history available in the auto-hiding navigation bar; CarPlay only
+    // permits four persistent map buttons on the right.
+    template.leadingNavigationBarButtons = [recentsButton]
     template.trailingNavigationBarButtons = [overviewButton]
+
+    let followButton = CPMapButton { [weak self, weak template] _ in
+      guard let self else { return }
+      (self.carWindow?.rootViewController as? CarPlayMapViewController)?
+        .resumeNavigationFollowing()
+      if template?.isPanningInterfaceVisible == true {
+        template?.dismissPanningInterface(animated: true)
+      }
+    }
+    followButton.image = UIImage(systemName: "location.north.fill")
 
     let browseButton = CPMapButton { [weak self] _ in
       self?.showSearch()
     }
     browseButton.image = UIImage(systemName: "magnifyingglass.circle.fill")
-
-    let recentsButton = CPMapButton { [weak self] _ in
-      self?.showRecentDestinationsList()
-    }
-    recentsButton.image = UIImage(systemName: "clock.arrow.circlepath")
 
     let convoyButton = CPMapButton { [weak self] _ in
       self?.showConvoyList()
@@ -213,7 +225,8 @@ final class CarPlayManager: NSObject {
     }
     endButton.image = UIImage(systemName: "xmark.circle.fill")
 
-    template.mapButtons = [browseButton, recentsButton, convoyButton, endButton]
+    // CarPlay renders at most four map buttons in array order, top to bottom.
+    template.mapButtons = [followButton, browseButton, convoyButton, endButton]
     return template
   }
 
@@ -1030,5 +1043,62 @@ extension CarPlayManager: CPMapTemplateDelegate {
 
   func mapTemplateDidCancelNavigation(_ mapTemplate: CPMapTemplate) {
     endActiveNavigation(notifyFlutter: true)
+  }
+
+  func mapTemplateDidShowPanningInterface(_ mapTemplate: CPMapTemplate) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.beginManualMapPan()
+  }
+
+  func mapTemplateWillDismissPanningInterface(_ mapTemplate: CPMapTemplate) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.endManualMapPan()
+  }
+
+  func mapTemplateDidBeginPanGesture(_ mapTemplate: CPMapTemplate) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.beginManualMapPan()
+  }
+
+  func mapTemplate(
+    _ mapTemplate: CPMapTemplate,
+    didUpdatePanGestureWithTranslation translation: CGPoint,
+    velocity: CGPoint
+  ) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?
+      .updateManualMapPan(translation: translation)
+  }
+
+  func mapTemplate(_ mapTemplate: CPMapTemplate, didEndPanGestureWithVelocity velocity: CGPoint) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.endManualMapPan()
+  }
+
+  func mapTemplate(
+    _ mapTemplate: CPMapTemplate,
+    panBeganWith direction: CPMapTemplate.PanDirection
+  ) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.panMap(direction: direction)
+  }
+
+  func mapTemplate(_ mapTemplate: CPMapTemplate, panWith direction: CPMapTemplate.PanDirection) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.panMap(direction: direction)
+  }
+
+  @available(iOS 26.0, *)
+  func mapTemplateDidBeginZoomGesture(_ mapTemplate: CPMapTemplate) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.beginManualMapZoom()
+  }
+
+  @available(iOS 26.0, *)
+  func mapTemplate(
+    _ mapTemplate: CPMapTemplate,
+    didUpdateZoomGestureWithCenter center: CGPoint,
+    scale: CGFloat,
+    velocity: CGFloat
+  ) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?
+      .updateManualMapZoom(scale: scale)
+  }
+
+  @available(iOS 26.0, *)
+  func mapTemplate(_ mapTemplate: CPMapTemplate, didEndZoomGestureWithVelocity velocity: CGFloat) {
+    (carWindow?.rootViewController as? CarPlayMapViewController)?.endManualMapZoom()
   }
 }
