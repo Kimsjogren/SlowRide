@@ -182,7 +182,9 @@ final class CarPlayManager: NSObject {
     // touching the display still reveals Overview and the map controls.
     template.automaticallyHidesNavigationBar = true
     template.hidesButtonsWithNavigationBar = true
-    template.guidanceBackgroundColor = UIColor(red: 0.04, green: 0.16, blue: 0.62, alpha: 1)
+    // CarPlay owns the guidance card's dimensions. A deeper CruizX navy makes
+    // the system card less visually dominant without reducing legibility.
+    template.guidanceBackgroundColor = UIColor(red: 0.025, green: 0.10, blue: 0.38, alpha: 0.96)
 
     let overviewButton = CPBarButton(title: "Översikt") { [weak self] _ in
       self?.resetToOverview()
@@ -790,7 +792,10 @@ final class CarPlayManager: NSObject {
       return
     }
 
-    let payloads = navigationState.upcomingManeuvers
+    // CarPlay expands its guidance card when a second upcoming instruction is
+    // present. Publish only the immediate maneuver; Flutter keeps sending the
+    // full queue and this item advances automatically with route progress.
+    let payloads = Array(navigationState.upcomingManeuvers.prefix(1))
     let maneuvers = payloads.map(makeOrUpdateManeuver)
     let maneuverIDs = payloads.map(\.id)
 
@@ -841,13 +846,11 @@ final class CarPlayManager: NSObject {
     }
     maneuverPresentationCache[payload.id] = presentationSignature
 
-    // CarPlay owns the guidance card's frame and typography. Supplying the
-    // road name as the preferred one-line variant is the public way to make
-    // the blue card as compact as possible; the full instruction remains a
-    // fallback for layouts where CarPlay needs it.
+    // CarPlay owns the guidance card's frame and typography. Supplying only
+    // the road name when available keeps the instruction to one compact line.
     let compactVariants = streetName.isEmpty
       ? [payload.text]
-      : [streetName, payload.text]
+      : [streetName]
     maneuver.instructionVariants = compactVariants
     maneuver.dashboardInstructionVariants = compactVariants
     maneuver.notificationInstructionVariants = compactVariants

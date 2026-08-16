@@ -3,6 +3,7 @@ import UIKit
 
 final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private let mapView = MKMapView()
+  private let speedometerCluster = UIView()
   private let speedometerStack = UIStackView()
   private let currentSpeedView = CruizXSegmentedSpeedometerView()
   private let currentSpeedLabel = UILabel()
@@ -82,16 +83,33 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   }
 
   private func configureSpeedometers() {
+    speedometerCluster.translatesAutoresizingMaskIntoConstraints = false
+    speedometerCluster.backgroundColor = UIColor(
+      red: 0.025,
+      green: 0.075,
+      blue: 0.20,
+      alpha: 0.88
+    )
+    speedometerCluster.layer.cornerRadius = 27
+    speedometerCluster.layer.borderWidth = 1
+    speedometerCluster.layer.borderColor = UIColor.white.withAlphaComponent(0.16).cgColor
+    speedometerCluster.layer.shadowColor = UIColor.black.cgColor
+    speedometerCluster.layer.shadowOpacity = 0.35
+    speedometerCluster.layer.shadowRadius = 5
+    speedometerCluster.layer.shadowOffset = CGSize(width: 0, height: 2)
+    speedometerCluster.isHidden = true
+    speedometerCluster.isUserInteractionEnabled = false
+
     speedometerStack.translatesAutoresizingMaskIntoConstraints = false
     speedometerStack.axis = .vertical
     speedometerStack.alignment = .center
-    speedometerStack.spacing = 6
-    speedometerStack.isHidden = true
+    // Slightly overlap the two circles so they read as one Waze-like unit.
+    speedometerStack.spacing = -5
     speedometerStack.isUserInteractionEnabled = false
 
     currentSpeedView.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedView.backgroundColor = UIColor(red: 0.025, green: 0.075, blue: 0.20, alpha: 0.96)
-    currentSpeedView.layer.cornerRadius = 22
+    currentSpeedView.layer.cornerRadius = 23
 
     currentSpeedLabel.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedLabel.textAlignment = .center
@@ -108,7 +126,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     speedLimitView.translatesAutoresizingMaskIntoConstraints = false
     speedLimitView.backgroundColor = .white
-    speedLimitView.layer.cornerRadius = 17
+    speedLimitView.layer.cornerRadius = 18
     speedLimitView.layer.borderWidth = 3
     speedLimitView.layer.borderColor = UIColor(red: 0.78, green: 0.06, blue: 0.08, alpha: 1).cgColor
 
@@ -120,23 +138,34 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     speedometerStack.addArrangedSubview(currentSpeedView)
     speedometerStack.addArrangedSubview(speedLimitView)
-    view.addSubview(speedometerStack)
+    speedometerCluster.addSubview(speedometerStack)
+    view.addSubview(speedometerCluster)
 
     NSLayoutConstraint.activate([
-      currentSpeedView.widthAnchor.constraint(equalToConstant: 44),
-      currentSpeedView.heightAnchor.constraint(equalToConstant: 44),
+      currentSpeedView.widthAnchor.constraint(equalToConstant: 46),
+      currentSpeedView.heightAnchor.constraint(equalToConstant: 46),
       currentSpeedLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
       currentSpeedLabel.centerYAnchor.constraint(equalTo: currentSpeedView.centerYAnchor, constant: -4),
       speedUnitLabel.topAnchor.constraint(equalTo: currentSpeedLabel.bottomAnchor, constant: -1),
       speedUnitLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
-      speedLimitView.widthAnchor.constraint(equalToConstant: 34),
-      speedLimitView.heightAnchor.constraint(equalToConstant: 34),
+      speedLimitView.widthAnchor.constraint(equalToConstant: 36),
+      speedLimitView.heightAnchor.constraint(equalToConstant: 36),
       speedLimitLabel.centerXAnchor.constraint(equalTo: speedLimitView.centerXAnchor),
       speedLimitLabel.centerYAnchor.constraint(equalTo: speedLimitView.centerYAnchor),
-      // CarPlay's buttons fade away during navigation. Keep the CruizX meters
-      // lower in the space they vacate instead of crowding the guidance card.
-      speedometerStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 126),
-      speedometerStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
+      speedometerStack.topAnchor.constraint(equalTo: speedometerCluster.topAnchor, constant: 4),
+      speedometerStack.bottomAnchor.constraint(equalTo: speedometerCluster.bottomAnchor, constant: -4),
+      speedometerStack.centerXAnchor.constraint(equalTo: speedometerCluster.centerXAnchor),
+      speedometerCluster.widthAnchor.constraint(equalToConstant: 54),
+      // Keep the combined speed unit in the lower-right navigation area,
+      // clear of the bottom trip estimates and the guidance card.
+      speedometerCluster.trailingAnchor.constraint(
+        equalTo: view.safeAreaLayoutGuide.trailingAnchor,
+        constant: -16
+      ),
+      speedometerCluster.bottomAnchor.constraint(
+        equalTo: view.safeAreaLayoutGuide.bottomAnchor,
+        constant: -18
+      ),
     ])
   }
 
@@ -170,7 +199,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
         ? UIColor(red: 0.89, green: 0.0, blue: 0.13, alpha: 1)
         : UIColor(white: 0.48, alpha: 1)
     ).cgColor
-    speedometerStack.isHidden = !isNavigating
+    speedometerCluster.isHidden = !isNavigating
   }
 
   func updateRoute(
