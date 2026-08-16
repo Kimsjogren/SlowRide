@@ -965,12 +965,10 @@ class _MapScreenState extends State<MapScreen> {
             (previousHeading + shortestTurn * 0.32 + 360) % 360;
       }
 
-      // Outside follow mode, only use the live device compass while nearly
-      // stationary. Once we're moving, route/GPS heading should drive the
-      // marker so it tracks travel direction instead of phone tilt.
-      if (!_isFollowing &&
-          (_usingAppleMapKit || !_useVectorMap) &&
-          _speedKmh <= 6.0) {
+      // With follow disabled the marker represents the direction in which the
+      // phone is pointing. Keep the compass in control at every speed and for
+      // every map renderer; GPS/route heading is used again in follow mode.
+      if (!_isFollowing) {
         _headingNotifier.value = _deviceCompassHeading!;
       }
     });
@@ -4533,11 +4531,8 @@ class _MapScreenState extends State<MapScreen> {
         ? _displayRouteProjection!
         : currentPos;
     _locationNotifier.value = mapDisplayPosition;
-    final deviceControlsRasterArrow =
-        !_isFollowing &&
-        (_usingAppleMapKit || !_useVectorMap) &&
-        _deviceCompassHeading != null;
-    if (newSpeed > 0.5 && !deviceControlsRasterArrow) {
+    final deviceControlsMarker = !_isFollowing && _deviceCompassHeading != null;
+    if (newSpeed > 0.5 && !deviceControlsMarker) {
       var headingForArrow = heading;
       var carPlayHeading = heading;
       if (_isNavigating &&
