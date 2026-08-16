@@ -2188,10 +2188,18 @@ class _MapScreenState extends State<MapScreen> {
               )
             : _fetchMapboxResults(query, limit: 10, proximity: center);
         requests.add(
-          request.timeout(
-            const Duration(seconds: 4),
-            onTimeout: () => const [],
-          ),
+          request
+              .timeout(
+                const Duration(seconds: 4),
+                onTimeout: () => const [],
+              )
+              .then(
+                (results) => _filterPoiResultsByDistance(
+                  results,
+                  centers: [center],
+                  maxDistanceMeters: maxDistanceFromCenterMeters,
+                ),
+              ),
         );
       }
     }
@@ -2221,6 +2229,26 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
     return merged;
+  }
+
+  List<Map<String, dynamic>> _filterPoiResultsByDistance(
+    Iterable<Map<String, dynamic>> results, {
+    required List<LatLng> centers,
+    required double maxDistanceMeters,
+  }) {
+    if (centers.isEmpty) return const [];
+
+    return results
+        .where((result) {
+          final latitude = double.tryParse(result['lat']?.toString() ?? '');
+          final longitude = double.tryParse(result['lon']?.toString() ?? '');
+          if (latitude == null || longitude == null) return false;
+          final point = LatLng(latitude, longitude);
+          return centers.any(
+            (center) => _segDist(center, point) <= maxDistanceMeters,
+          );
+        })
+        .toList(growable: false);
   }
 
   Future<List<_RouteStopCandidate>> _findNearbyStops({
@@ -2262,38 +2290,62 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Run all independent sources together. Each source has a hard timeout,
-    // so a busy public service can never leave the result sheet spinning.
-    final geocodingFallback = Future.wait(
-      queries
-          .take(2)
-          .map(
-            (query) => _fetchPrimaryGeocodingResults(
-              query,
-              limit: 12,
-              proximity: currentLocation,
-              includeGlobalResults: false,
-            ).timeout(const Duration(seconds: 5), onTimeout: () => const []),
-          ),
-    ).then((lists) => lists.expand((items) => items).toList(growable: false));
-    final poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+    const nearbyRadiusMeters = 2500.0;
+    final nearbyResults = await _firstNonEmpty<Map<String, dynamic>>([
       _fetchFastPlatformPoiResults(
         queries: queries,
         centers: [currentLocation],
-        maxDistanceFromCenterMeters: _maxFallbackPoiDistanceMeters(queries),
+        maxDistanceFromCenterMeters: nearbyRadiusMeters,
       ),
       _fetchOverpassPoiResults(
         queries: queries,
         center: currentLocation,
-        radiusMeters: 2500,
+        radiusMeters: nearbyRadiusMeters.round(),
       ),
-      _fetchOverpassPoiResults(
-        queries: queries,
-        center: currentLocation,
-        radiusMeters: 7000,
-      ),
-      geocodingFallback,
     ]);
+
+    // Do not let a broad address lookup beat a genuinely nearby POI search.
+    // Only widen the search after every local source has returned empty.
+    var poiResults = nearbyResults;
+    if (poiResults.isEmpty) {
+      final fallbackRadiusMeters = _maxFallbackPoiDistanceMeters(queries);
+      final geocodingFallback =
+          Future.wait(
+            queries
+                .take(2)
+                .map(
+                  (query) =>
+                      _fetchPrimaryGeocodingResults(
+                        query,
+                        limit: 12,
+                        proximity: currentLocation,
+                        includeGlobalResults: false,
+                      ).timeout(
+                        const Duration(seconds: 5),
+                        onTimeout: () => const [],
+                      ),
+                ),
+          ).then(
+            (lists) => _filterPoiResultsByDistance(
+              lists.expand((items) => items),
+              centers: [currentLocation],
+              maxDistanceMeters: fallbackRadiusMeters,
+            ),
+          );
+      poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+        _fetchFastPlatformPoiResults(
+          queries: queries,
+          centers: [currentLocation],
+          maxDistanceFromCenterMeters: fallbackRadiusMeters,
+        ),
+        _fetchOverpassPoiResults(
+          queries: queries,
+          center: currentLocation,
+          radiusMeters: math.min(fallbackRadiusMeters, 7000).round(),
+        ),
+        geocodingFallback,
+      ]);
+    }
     for (final result in poiResults) {
       addCandidate(result, queries.first);
     }
