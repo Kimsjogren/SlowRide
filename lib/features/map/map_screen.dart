@@ -2162,9 +2162,25 @@ class _MapScreenState extends State<MapScreen> {
     return completer.future;
   }
 
+  Future<List<T>> _collectSearchSources<T>(
+    Iterable<Future<List<T>>> sources, {
+    required Duration timeout,
+  }) async {
+    Future<List<T>> guarded(Future<List<T>> source) async {
+      try {
+        return await source.timeout(timeout);
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    final responses = await Future.wait(sources.map(guarded));
+    return responses.expand((items) => items).toList(growable: false);
+  }
+
   /// Fast POI path for the shortcut sheets. Native Apple Maps (or Mapbox on
-  /// other platforms) is normally much quicker than the public Overpass API,
-  /// so race both sources and render whichever produces useful results first.
+  /// other platforms) supplies a local result set which is later merged with
+  /// OpenStreetMap before the final distance sort.
   Future<List<Map<String, dynamic>>> _fetchFastPlatformPoiResults({
     required List<String> queries,
     required List<LatLng> centers,
@@ -2174,7 +2190,9 @@ class _MapScreenState extends State<MapScreen> {
 
     final requests = <Future<List<Map<String, dynamic>>>>[];
     final searchCenters = centers.take(5);
-    final searchQueries = centers.length == 1
+    final searchQueries = AppleMapSearchService.isSupported
+        ? queries.take(1)
+        : centers.length == 1
         ? queries.take(2)
         : queries.take(1);
     for (final center in searchCenters) {
@@ -2183,10 +2201,10 @@ class _MapScreenState extends State<MapScreen> {
             ? AppleMapSearchService.search(
                 query,
                 proximity: center,
-                limit: 10,
+                limit: 25,
                 radiusMeters: maxDistanceFromCenterMeters,
               )
-            : _fetchMapboxResults(query, limit: 10, proximity: center);
+            : _fetchMapboxResults(query, limit: 25, proximity: center);
         requests.add(
           request
               .timeout(
@@ -2291,7 +2309,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     const nearbyRadiusMeters = 2500.0;
-    final nearbyResults = await _firstNonEmpty<Map<String, dynamic>>([
+    final nearbyResults = await _collectSearchSources<Map<String, dynamic>>([
       _fetchFastPlatformPoiResults(
         queries: queries,
         centers: [currentLocation],
@@ -2302,7 +2320,7 @@ class _MapScreenState extends State<MapScreen> {
         center: currentLocation,
         radiusMeters: nearbyRadiusMeters.round(),
       ),
-    ]);
+    ], timeout: const Duration(seconds: 3));
 
     // Do not let a broad address lookup beat a genuinely nearby POI search.
     // Only widen the search after every local source has returned empty.
@@ -2332,7 +2350,7 @@ class _MapScreenState extends State<MapScreen> {
               maxDistanceMeters: fallbackRadiusMeters,
             ),
           );
-      poiResults = await _firstNonEmpty<Map<String, dynamic>>([
+      poiResults = await _collectSearchSources<Map<String, dynamic>>([
         _fetchFastPlatformPoiResults(
           queries: queries,
           centers: [currentLocation],
@@ -2344,7 +2362,7 @@ class _MapScreenState extends State<MapScreen> {
           radiusMeters: math.min(fallbackRadiusMeters, 7000).round(),
         ),
         geocodingFallback,
-      ]);
+      ], timeout: const Duration(seconds: 4));
     }
     for (final result in poiResults) {
       addCandidate(result, queries.first);

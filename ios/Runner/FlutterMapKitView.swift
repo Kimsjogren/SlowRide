@@ -36,7 +36,7 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
       return
     }
 
-    let limit = max(1, min((payload["limit"] as? NSNumber)?.intValue ?? 10, 10))
+    let limit = max(1, min((payload["limit"] as? NSNumber)?.intValue ?? 10, 25))
     let latitude = (payload["latitude"] as? NSNumber)?.doubleValue
     let longitude = (payload["longitude"] as? NSNumber)?.doubleValue
     let radiusMeters = (payload["radiusMeters"] as? NSNumber)?.doubleValue
@@ -65,34 +65,56 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
     allowGlobalFallback: Bool,
     completion: @escaping ([[String: Any]]) -> Void
   ) {
-    let request = MKLocalSearch.Request()
-    request.naturalLanguageQuery = query
-    request.resultTypes = [.address, .pointOfInterest]
     let categories = pointOfInterestCategories(for: query)
-    if !categories.isEmpty {
-      request.resultTypes = [.pointOfInterest]
+    let search: MKLocalSearch
+
+    if let proximity, !categories.isEmpty {
+      // Shortcut buttons need actual nearby POIs, not MapKit's text-search
+      // relevance order. The dedicated POI request searches a true radius.
+      let searchRadius = min(max(radiusMeters ?? 35_000, 500), 35_000)
+      let request = MKLocalPointsOfInterestRequest(
+        center: proximity,
+        radius: searchRadius
+      )
       request.pointOfInterestFilter = MKPointOfInterestFilter(
         including: categories
       )
-    }
-    if let proximity {
-      let searchDiameter = min(max((radiusMeters ?? 35_000) * 2, 3_000), 70_000)
-      request.region = MKCoordinateRegion(
-        center: proximity,
-        latitudinalMeters: searchDiameter,
-        longitudinalMeters: searchDiameter
-      )
+      search = MKLocalSearch(request: request)
+    } else {
+      let request = MKLocalSearch.Request()
+      request.naturalLanguageQuery = query
+      request.resultTypes = [.address, .pointOfInterest]
+      if !categories.isEmpty {
+        request.resultTypes = [.pointOfInterest]
+        request.pointOfInterestFilter = MKPointOfInterestFilter(
+          including: categories
+        )
+      }
+      if let proximity {
+        let searchDiameter = min(max((radiusMeters ?? 35_000) * 2, 3_000), 70_000)
+        request.region = MKCoordinateRegion(
+          center: proximity,
+          latitudinalMeters: searchDiameter,
+          longitudinalMeters: searchDiameter
+        )
+      }
+      search = MKLocalSearch(request: request)
     }
 
     // Retain every search until its completion callback. A temporary
     // MKLocalSearch can otherwise be released before Flutter receives a
     // result, leaving the POI sheet spinning indefinitely.
     let searchId = UUID()
-    let search = MKLocalSearch(request: request)
     activeSearches[searchId] = search
     search.start { [weak self] response, _ in
       self?.activeSearches.removeValue(forKey: searchId)
-      let mapped = self?.mapItems(response?.mapItems ?? [], query: query, limit: limit) ?? []
+      let mapped = self?.mapItems(
+        response?.mapItems ?? [],
+        query: query,
+        proximity: proximity,
+        radiusMeters: radiusMeters,
+        limit: limit
+      ) ?? []
       if !mapped.isEmpty || !allowGlobalFallback || proximity == nil {
         completion(mapped)
         return
@@ -117,7 +139,7 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
       locale: .current
     )
     if value.contains("restaurant") || value.contains("food") || value.contains("mat") {
-      return [.restaurant, .foodMarket, .bakery, .cafe]
+      return [.restaurant]
     }
     if value.contains("cafe") || value.contains("coffee") || value.contains("kafe") {
       return [.cafe, .bakery]
@@ -140,12 +162,35 @@ final class AppleMapSearchPlugin: NSObject, FlutterPlugin {
   private func mapItems(
     _ items: [MKMapItem],
     query: String,
+    proximity: CLLocationCoordinate2D?,
+    radiusMeters: Double?,
     limit: Int
   ) -> [[String: Any]] {
     var mapped: [[String: Any]] = []
     var seen = Set<String>()
+    let origin = proximity.map {
+      CLLocation(latitude: $0.latitude, longitude: $0.longitude)
+    }
+    let orderedItems = origin.map { origin in
+      items.sorted {
+        origin.distance(from: CLLocation(
+          latitude: $0.placemark.coordinate.latitude,
+          longitude: $0.placemark.coordinate.longitude
+        )) < origin.distance(from: CLLocation(
+          latitude: $1.placemark.coordinate.latitude,
+          longitude: $1.placemark.coordinate.longitude
+        ))
+      }
+    } ?? items
 
-    for item in items {
+    for item in orderedItems {
+      if let origin, let radiusMeters {
+        let itemLocation = CLLocation(
+          latitude: item.placemark.coordinate.latitude,
+          longitude: item.placemark.coordinate.longitude
+        )
+        guard origin.distance(from: itemLocation) <= radiusMeters else { continue }
+      }
       let serialized = serialize(item: item, fallbackQuery: query)
       let dedupeKey = [
         serialized["name"] as? String ?? "",
