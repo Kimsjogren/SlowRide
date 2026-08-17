@@ -150,6 +150,8 @@ const AI_VEHICLE_CONTEXT = {
     "A road-legal stand-up electric scooter for one person. Apply the supplied country's exact speed, access, and public-road rules. Never describe it as a moped, motorcycle, or heavy vehicle.",
   Tractor:
     "An agricultural tractor, not a truck. No vehicle weight has been supplied.",
+  Car:
+    "A standard passenger car. Assess the supplied route facts without applying slow-vehicle restrictions or inventing missing road conditions.",
 };
 const AI_MOPED_COUNTRY_CONTEXT = {
   SE: "Sweden: moped class I may not use motorways, motor-traffic roads, or ordinary cycleways.",

@@ -42,6 +42,74 @@ test("support webhook requires its shared secret", { concurrency: false }, async
   assert.equal(response.status, 401);
 });
 
+test("AI route analysis accepts the Car vehicle type", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  let aiInput;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.endsWith("/auth/v1/user")) {
+      return Response.json({ id: userId });
+    }
+    if (url.includes("/rest/v1/flyer_events?") && (!init.method || init.method === "GET")) {
+      return Response.json([]);
+    }
+    if (url.endsWith("/rest/v1/flyer_events") && init.method === "POST") {
+      return new Response(null, { status: 201 });
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request("https://cruizx.com/api/ai/route-analysis", {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer test-token",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          language: "sv",
+          vehicle_type: "Car",
+          country_code: "SE",
+          max_speed_kmh: 90,
+          route: {
+            distance_km: 3.2,
+            duration_minutes: 8,
+            street_names: ["Tyresövägen"],
+          },
+          alert_counts: {},
+        }),
+      }),
+      {
+        ...baseEnv,
+        DEVICE_SALT: "device-salt",
+        AI: {
+          run: async (_model, input) => {
+            aiInput = input;
+            return {
+              response: JSON.stringify({
+                headline: "Rutten ser bra ut",
+                summary: "En kort rutt för bil.",
+                suitability: "good",
+                highlights: ["Kort restid"],
+                cautions: [],
+                recommendation: "Följ skyltningen längs vägen.",
+              }),
+            };
+          },
+        },
+      }
+    );
+
+    assert.equal(response.status, 200);
+    const facts = JSON.parse(aiInput.messages[1].content);
+    assert.equal(facts.vehicle_type, "Car");
+    assert.match(facts.vehicle_context, /standard passenger car/i);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("new user support messages are mirrored to ntfy with a reply action", { concurrency: false }, async () => {
   const originalFetch = globalThis.fetch;
   let ntfyRequest;
