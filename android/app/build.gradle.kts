@@ -27,7 +27,9 @@ val mapsApiKey =
 
 android {
     namespace = "com.cruizx.slowride"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android requires API 37. Compile against it while
+    // retaining the existing target SDK and minimum compatibility.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

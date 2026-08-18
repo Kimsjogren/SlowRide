@@ -1682,9 +1682,10 @@ const APK_REDIRECT_PATHS = new Set([
   "/api/download/apk",
   "/api/download/apk/1.1.4-127",
   "/api/download/apk/1.2.0-136",
+  "/api/download/apk/1.2.0-167",
 ]);
 const APK_REDIRECT_URL =
-  "https://github.com/Kimsjogren/SlowRide/releases/download/v1.2.0/CruizX-1.2.0-136-free.apk";
+  "https://github.com/Kimsjogren/SlowRide/releases/download/v1.2.0-167/CruizX-1.2.0-167-free.apk";
 
 function handleApkDownload(request, env) {
   // Log download event (fire-and-forget)
