@@ -235,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
                             if (v.length < 6 ||
                                 !RegExp(r'\d').hasMatch(v) ||
-                                !RegExp(r'[^A-Za-z0-9]').hasMatch(v)) {
+                                !RegExp('[^A-Za-z0-9]').hasMatch(v)) {
                               return l10n.authPasswordMinLength;
                             }
                             return null;

@@ -5,6 +5,7 @@ import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/support_message.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/support_chat_service.dart';
+import 'package:slowride/services/support_faq_service.dart';
 import 'package:slowride/widgets/app_background.dart';
 
 const _chatPanelBlue = Color(0xF20A1F63);
@@ -21,6 +22,26 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _sending = false;
+  bool _forwarding = false;
+  SupportFaqCatalog? _faqCatalog;
+  SupportFaqEntry? _faqAnswer;
+  String? _faqQuestion;
+  String? _pendingHumanQuestion;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadFaq());
+  }
+
+  Future<void> _loadFaq() async {
+    final local = await SupportFaqService.instance.load();
+    if (mounted) setState(() => _faqCatalog = local);
+    final refreshed = await SupportFaqService.instance.refreshFromServer();
+    if (mounted && refreshed.version >= local.version) {
+      setState(() => _faqCatalog = refreshed);
+    }
+  }
 
   @override
   void dispose() {
@@ -35,12 +56,22 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _sending = true);
     try {
-      await SupportChatService.instance.sendMessage(
-        body: message,
-        languageCode: Localizations.localeOf(context).languageCode,
+      final languageCode = Localizations.localeOf(context).languageCode;
+      final catalog = _faqCatalog ?? await SupportFaqService.instance.load();
+      final answer = SupportFaqService.instance.match(
+        message,
+        languageCode,
+        catalog,
       );
       _messageController.clear();
-      _scrollToBottom();
+      if (!mounted) return;
+      FocusScope.of(context).unfocus();
+      setState(() {
+        _faqCatalog = catalog;
+        _faqQuestion = message;
+        _faqAnswer = answer;
+        _pendingHumanQuestion = message;
+      });
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -49,6 +80,48 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
       }
     } finally {
       if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _showFaqEntry(SupportFaqEntry entry) {
+    final languageCode = Localizations.localeOf(context).languageCode;
+    setState(() {
+      _faqQuestion = entry.question(languageCode);
+      _faqAnswer = entry;
+      _pendingHumanQuestion = _faqQuestion;
+    });
+  }
+
+  Future<void> _forwardToSupport() async {
+    final question = _pendingHumanQuestion;
+    if (question == null || question.isEmpty || _forwarding) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!SupportChatService.instance.isAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.supportAssistantHumanUnavailable)),
+      );
+      return;
+    }
+    setState(() => _forwarding = true);
+    try {
+      await SupportChatService.instance.sendMessage(
+        body: question,
+        languageCode: Localizations.localeOf(context).languageCode,
+      );
+      if (!mounted) return;
+      setState(() => _pendingHumanQuestion = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.supportAssistantForwarded)),
+      );
+      _scrollToBottom();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.supportChatSendFailed)));
+      }
+    } finally {
+      if (mounted) setState(() => _forwarding = false);
     }
   }
 
@@ -88,13 +161,12 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
           valueListenable: AuthService.instance.isLoggedIn,
           builder: (context, loggedIn, _) {
             final chat = SupportChatService.instance;
-            if (!chat.isAvailable) {
-              return _SupportUnavailable(l10n: l10n);
-            }
             return Column(
               children: [
-                if (!keyboardVisible) _ResponseTimeBanner(l10n: l10n),
-                if (!keyboardVisible && chat.isGuest) _GuestBanner(l10n: l10n),
+                if (!keyboardVisible && chat.isAvailable)
+                  _ResponseTimeBanner(l10n: l10n),
+                if (!keyboardVisible && chat.isAvailable && chat.isGuest)
+                  _GuestBanner(l10n: l10n),
                 Expanded(
                   child: Container(
                     margin: EdgeInsets.fromLTRB(
@@ -111,7 +183,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     clipBehavior: Clip.antiAlias,
                     child: StreamBuilder<List<SupportMessage>>(
                       key: ValueKey<bool>(loggedIn),
-                      stream: chat.watchMessages(),
+                      stream: chat.isAvailable
+                          ? chat.watchMessages()
+                          : Stream.value(const <SupportMessage>[]),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
                           return Center(
@@ -138,6 +212,9 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                           SupportChatService.instance.markSupportMessagesRead(),
                         );
                         _scrollToBottom();
+                        if (!chat.isAvailable) {
+                          return _SupportUnavailable(l10n: l10n);
+                        }
                         if (messages.isEmpty) {
                           return Center(
                             child: Padding(
@@ -179,6 +256,21 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
                     ),
                   ),
                 ),
+                if (!keyboardVisible)
+                  SupportFaqAssistantPanel(
+                    catalog: _faqCatalog,
+                    languageCode: Localizations.localeOf(
+                      context,
+                    ).languageCode,
+                    question: _faqQuestion,
+                    answer: _faqAnswer,
+                    showContact: _pendingHumanQuestion != null,
+                    forwarding: _forwarding,
+                    humanSupportAvailable: chat.isAvailable,
+                    onQuestionSelected: _showFaqEntry,
+                    onContactSupport: _forwardToSupport,
+                    l10n: l10n,
+                  ),
                 _MessageComposer(
                   controller: _messageController,
                   sending: _sending,
@@ -189,6 +281,138 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class SupportFaqAssistantPanel extends StatelessWidget {
+  const SupportFaqAssistantPanel({
+    super.key,
+    required this.catalog,
+    required this.languageCode,
+    required this.question,
+    required this.answer,
+    required this.showContact,
+    required this.forwarding,
+    required this.humanSupportAvailable,
+    required this.onQuestionSelected,
+    required this.onContactSupport,
+    required this.l10n,
+  });
+
+  final SupportFaqCatalog? catalog;
+  final String languageCode;
+  final String? question;
+  final SupportFaqEntry? answer;
+  final bool showContact;
+  final bool forwarding;
+  final bool humanSupportAvailable;
+  final ValueChanged<SupportFaqEntry> onQuestionSelected;
+  final VoidCallback onContactSupport;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = catalog?.entries ?? const <SupportFaqEntry>[];
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xF212275A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x993AA8FF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (entries.isNotEmpty) ...[
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: entries.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final entry = entries[index];
+                  return ActionChip(
+                    avatar: const Icon(
+                      Icons.question_answer_outlined,
+                      color: Color(0xFF66D9FF),
+                      size: 16,
+                    ),
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 190),
+                      child: Text(
+                        entry.question(languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    onPressed: () => onQuestionSelected(entry),
+                    backgroundColor: const Color(0xFF0A1F63),
+                    side: const BorderSide(color: Color(0x663AA8FF)),
+                    labelStyle: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          if (question != null) ...[
+            const Divider(height: 14, color: Color(0x443AA8FF)),
+            Text(
+              question!,
+              style: const TextStyle(
+                color: Color(0xFF9EE8FF),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 76),
+              child: SingleChildScrollView(
+                child: Text(
+                  answer?.answer(languageCode) ?? l10n.supportAssistantNoMatch,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ),
+            if (showContact) ...[
+              const SizedBox(height: 2),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  onPressed: forwarding ? null : onContactSupport,
+                  icon: forwarding
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          humanSupportAvailable
+                              ? Icons.support_agent
+                              : Icons.cloud_off,
+                        ),
+                  label: Text(l10n.supportAssistantContact),
+                ),
+              ),
+            ],
+          ],
+        ],
       ),
     );
   }

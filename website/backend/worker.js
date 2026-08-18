@@ -1,3 +1,5 @@
+import SUPPORT_FAQ from "../../assets/support_faq.json" with { type: "json" };
+
 /*
  * CruizX claim API — Cloudflare Worker
  * ---------------------------------------------------------------
@@ -15,6 +17,8 @@
  *   POST /api/support/guest        → skicka ett privat gästmeddelande
  *   GET  /api/support/conversation → hämta en signerad supportkonversation
  *   POST /api/support/reply        → svara i en signerad supportkonversation
+ *   GET  /api/support/faq          → leverera provider-fria standardsvar
+ *   POST /api/support/faq          → matcha en fråga mot standardsvaren
  *   POST /api/web/checkout-session → skapa Stripe Checkout Session (subscription)
  *   POST /api/web/stripe-webhook   → uppdatera web_subscriptions i Supabase
  *
@@ -133,7 +137,10 @@ async function logEvent(env, kind, campaign, deviceHashHex, ip, meta) {
 // --- CruizX AI route analysis --------------------------------------
 
 const AI_DAILY_LIMIT = 15;
-const AI_MODEL = "@cf/zai-org/glm-4.7-flash";
+// This model is explicitly supported by Workers AI JSON Mode. The former
+// GLM model can return text, but is not one of the models supported for the
+// JSON schema response required by the app.
+const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 const AI_LANGUAGES = new Set(["en", "sv", "nb", "da", "fi", "fr", "es", "it"]);
 const AI_VEHICLE_CONTEXT = {
   "A-tractor":
@@ -895,6 +902,82 @@ async function handleGuestSupport(request, env, origin) {
   );
 }
 
+function normalizeSupportFaqText(value) {
+  const replacements = {
+    å: "a", ä: "a", ö: "o", æ: "a", ø: "o", é: "e", è: "e",
+    ê: "e", à: "a", á: "a", í: "i", ì: "i", ó: "o", ò: "o",
+    ú: "u", ù: "u",
+  };
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[åäöæøéèêàáíìóòúù]/g, (letter) => replacements[letter] || letter)
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchSupportFaq(question, languageCode) {
+  const normalizedQuestion = normalizeSupportFaqText(question);
+  if (!normalizedQuestion) return null;
+  let best = null;
+  let bestScore = 0;
+  for (const entry of SUPPORT_FAQ.entries || []) {
+    const localizedQuestion = entry.question?.[languageCode] || entry.question?.en || "";
+    let score = normalizedQuestion === normalizeSupportFaqText(localizedQuestion) ? 100 : 0;
+    const triggers = new Set([
+      ...(entry.triggers?.[languageCode] || []),
+      ...(entry.triggers?.en || []),
+    ]);
+    for (const trigger of triggers) {
+      const normalizedTrigger = normalizeSupportFaqText(trigger);
+      if (normalizedTrigger && normalizedQuestion.includes(normalizedTrigger)) {
+        score = Math.max(score, 20 + normalizedTrigger.split(" ").length);
+      }
+    }
+    if (score > bestScore) {
+      best = entry;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 20 ? best : null;
+}
+
+async function handleSupportFaq(request, origin) {
+  if (request.method === "GET") {
+    return json(SUPPORT_FAQ, {
+      headers: { "Cache-Control": "public, max-age=3600" },
+    }, origin);
+  }
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > 4_000) {
+    return json({ error: "request_too_large" }, { status: 413 }, origin);
+  }
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, { status: 400 }, origin);
+  }
+  const question = typeof payload?.question === "string" ? payload.question.trim() : "";
+  if (!question || question.length > 2000) {
+    return json({ error: "invalid_question" }, { status: 400 }, origin);
+  }
+  const supportedLanguages = new Set(["sv", "en", "da", "nb", "fi", "fr", "es", "it"]);
+  const requestedLanguage = String(payload?.language_code || "en").toLowerCase();
+  const languageCode = supportedLanguages.has(requestedLanguage) ? requestedLanguage : "en";
+  const entry = matchSupportFaq(question, languageCode);
+  return json({
+    matched: Boolean(entry),
+    entry: entry
+      ? {
+          id: entry.id,
+          question: entry.question?.[languageCode] || entry.question?.en || "",
+          answer: entry.answer?.[languageCode] || entry.answer?.en || "",
+        }
+      : null,
+  }, { headers: { "Cache-Control": "no-store" } }, origin);
+}
+
 async function handleSupportConversation(request, env, origin) {
   const url = new URL(request.url);
   const access = await validateSupportReplyAccess(url, env);
@@ -1632,6 +1715,8 @@ function routeRequest(request, env, origin, pathname) {
     "POST /api/support/guest": () => handleGuestSupport(request, env, origin),
     "GET /api/support/conversation": () => handleSupportConversation(request, env, origin),
     "POST /api/support/reply": () => handleSupportReply(request, env, origin),
+    "GET /api/support/faq": () => handleSupportFaq(request, origin),
+    "POST /api/support/faq": () => handleSupportFaq(request, origin),
     "GET /api/web/pricing": () => handleWebPricing(env, origin),
     "POST /api/web/checkout-session": () => handleWebCheckoutSession(request, env, origin),
     "POST /api/web/stripe-webhook": () => handleStripeWebhook(request, env),

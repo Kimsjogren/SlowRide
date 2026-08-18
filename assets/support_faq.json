@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "vehicle_type",
+      "question": {
+        "sv": "Hur byter jag fordonstyp?",
+        "en": "How do I change vehicle type?",
+        "da": "Hvordan skifter jeg køretøjstype?",
+        "nb": "Hvordan bytter jeg kjøretøytype?",
+        "fi": "Miten vaihdan ajoneuvotyypin?",
+        "fr": "Comment changer de type de véhicule ?",
+        "es": "¿Cómo cambio el tipo de vehículo?",
+        "it": "Come cambio il tipo di veicolo?"
+      },
+      "answer": {
+        "sv": "Öppna Inställningar och välj Fordonstyp. Välj sedan Bil, A-traktor, låg bil, mopedbil, moped klass I eller II, elsparkcykel eller traktor. CruizX anpassar rutt och hastighetsval efter fordonet och landet.",
+        "en": "Open Settings and choose Vehicle type. Then select Car, A-tractor, low vehicle, moped car, moped class I or II, electric scooter, or tractor. CruizX adapts routing and speed choices to the vehicle and country.",
+        "da": "Åbn Indstillinger, og vælg Køretøjstype. Vælg derefter dit køretøj. CruizX tilpasser rute og hastighed til køretøjet og landet.",
+        "nb": "Åpne Innstillinger og velg Kjøretøytype. Velg deretter kjøretøyet ditt. CruizX tilpasser rute og hastighet til kjøretøyet og landet.",
+        "fi": "Avaa Asetukset ja valitse Ajoneuvotyyppi. Valitse sitten ajoneuvosi. CruizX mukauttaa reitin ja nopeuden ajoneuvon ja maan mukaan.",
+        "fr": "Ouvrez Réglages, puis Type de véhicule et choisissez votre véhicule. CruizX adapte l’itinéraire et la vitesse au véhicule et au pays.",
+        "es": "Abre Ajustes, selecciona Tipo de vehículo y elige tu vehículo. CruizX adapta la ruta y la velocidad al vehículo y al país.",
+        "it": "Apri Impostazioni, seleziona Tipo di veicolo e scegli il veicolo. CruizX adatta percorso e velocità al veicolo e al Paese."
+      },
+      "triggers": {
+        "sv": ["fordonstyp", "byta fordon", "välja bil", "ändra fordon"],
+        "en": ["vehicle type", "change vehicle", "choose car"],
+        "da": ["køretøjstype", "skifte køretøj"],
+        "nb": ["kjøretøytype", "bytte kjøretøy"],
+        "fi": ["ajoneuvotyyppi", "vaihda ajoneuvo"],
+        "fr": ["type de véhicule", "changer de véhicule"],
+        "es": ["tipo de vehículo", "cambiar vehículo"],
+        "it": ["tipo di veicolo", "cambiare veicolo"]
+      }
+    },
+    {
+      "id": "route_unavailable",
+      "question": {
+        "sv": "Varför hittar appen ingen rutt?",
+        "en": "Why can't the app find a route?",
+        "da": "Hvorfor kan appen ikke finde en rute?",
+        "nb": "Hvorfor finner ikke appen en rute?",
+        "fi": "Miksi sovellus ei löydä reittiä?",
+        "fr": "Pourquoi l’app ne trouve-t-elle pas d’itinéraire ?",
+        "es": "¿Por qué la app no encuentra una ruta?",
+        "it": "Perché l’app non trova un percorso?"
+      },
+      "answer": {
+        "sv": "Kontrollera att GPS och internet fungerar och att destinationen är rätt. CruizX undviker vägar som inte är tillåtna för vald fordonstyp, så vissa mål kan sakna en laglig rutt. Prova en närliggande adress eller kontrollera land och fordonstyp i Inställningar.",
+        "en": "Check that GPS and internet are working and that the destination is correct. CruizX avoids roads not allowed for the selected vehicle, so some destinations may have no legal route. Try a nearby address or check country and vehicle type in Settings.",
+        "da": "Kontrollér GPS, internet og destinationen. CruizX undgår veje, der ikke er tilladt for det valgte køretøj. Prøv en adresse i nærheden, eller kontrollér land og køretøjstype i Indstillinger.",
+        "nb": "Kontroller GPS, internett og destinasjonen. CruizX unngår veier som ikke er tillatt for valgt kjøretøy. Prøv en adresse i nærheten, eller kontroller land og kjøretøytype i Innstillinger.",
+        "fi": "Tarkista GPS, internetyhteys ja määränpää. CruizX välttää valitulle ajoneuvolle kiellettyjä teitä. Kokeile lähellä olevaa osoitetta tai tarkista maa ja ajoneuvotyyppi Asetuksissa.",
+        "fr": "Vérifiez le GPS, la connexion internet et la destination. CruizX évite les routes interdites au véhicule choisi. Essayez une adresse proche ou vérifiez le pays et le véhicule dans Réglages.",
+        "es": "Comprueba el GPS, internet y el destino. CruizX evita vías no permitidas para el vehículo elegido. Prueba una dirección cercana o revisa el país y el vehículo en Ajustes.",
+        "it": "Controlla GPS, internet e destinazione. CruizX evita le strade non consentite al veicolo scelto. Prova un indirizzo vicino o controlla Paese e veicolo nelle Impostazioni."
+      },
+      "triggers": {
+        "sv": ["ingen rutt", "hittar inte rutt", "rutten fungerar inte", "kan inte beräkna rutt", "rutttjänsten"],
+        "en": ["no route", "can't find route", "route not working", "routing unavailable"],
+        "da": ["ingen rute", "kan ikke finde rute"],
+        "nb": ["ingen rute", "finner ikke rute"],
+        "fi": ["ei löydä reittiä", "reitti ei toimi"],
+        "fr": ["aucun itinéraire", "ne trouve pas d’itinéraire"],
+        "es": ["no encuentra ruta", "ninguna ruta"],
+        "it": ["nessun percorso", "non trova il percorso"]
+      }
+    },
+    {
+      "id": "gps",
+      "question": {
+        "sv": "Varför fungerar inte GPS-positionen?",
+        "en": "Why isn't my GPS location working?",
+        "da": "Hvorfor virker min GPS-position ikke?",
+        "nb": "Hvorfor virker ikke GPS-posisjonen?",
+        "fi": "Miksi GPS-sijainti ei toimi?",
+        "fr": "Pourquoi ma position GPS ne fonctionne-t-elle pas ?",
+        "es": "¿Por qué no funciona mi ubicación GPS?",
+        "it": "Perché la posizione GPS non funziona?"
+      },
+      "answer": {
+        "sv": "Kontrollera att Platstjänster är aktiverade och att CruizX har behörighet till exakt position. På iPhone eller Android öppnar du systemets Inställningar, väljer CruizX och tillåter plats medan appen används. Gå sedan tillbaka till kartan och tryck på positionsknappen.",
+        "en": "Make sure Location Services are on and CruizX has precise-location permission. In iPhone or Android settings, select CruizX and allow location while using the app. Return to the map and tap the location button.",
+        "da": "Kontrollér, at lokalitetstjenester er slået til, og at CruizX har adgang til præcis position. Tillad placering under brug i telefonens indstillinger, og tryk derefter på positionsknappen på kortet.",
+        "nb": "Kontroller at stedstjenester er på, og at CruizX har tilgang til nøyaktig posisjon. Tillat posisjon under bruk i telefonens innstillinger, og trykk deretter på posisjonsknappen på kartet.",
+        "fi": "Varmista, että sijaintipalvelut ovat käytössä ja CruizXilla on tarkan sijainnin lupa. Salli sijainti käytön aikana puhelimen asetuksissa ja napauta sitten kartan sijaintipainiketta.",
+        "fr": "Vérifiez que la localisation est activée et que CruizX a accès à la position précise pendant l’utilisation. Revenez ensuite à la carte et touchez le bouton de position.",
+        "es": "Comprueba que la ubicación esté activada y que CruizX tenga permiso de ubicación precisa mientras usas la app. Vuelve al mapa y pulsa el botón de ubicación.",
+        "it": "Verifica che la localizzazione sia attiva e che CruizX possa usare la posizione precisa durante l’uso. Torna alla mappa e tocca il pulsante della posizione."
+      },
+      "triggers": {
+        "sv": ["gps", "position fungerar inte", "ingen position", "platstjänster"],
+        "en": ["gps", "location not working", "no location", "location services"],
+        "da": ["gps", "position virker ikke"],
+        "nb": ["gps", "posisjon virker ikke"],
+        "fi": ["gps", "sijainti ei toimi"],
+        "fr": ["gps", "position ne fonctionne pas"],
+        "es": ["gps", "ubicación no funciona"],
+        "it": ["gps", "posizione non funziona"]
+      }
+    },
+    {
+      "id": "ai_route",
+      "question": {
+        "sv": "Hur fungerar AI-ruttanalysen?",
+        "en": "How does AI route analysis work?",
+        "da": "Hvordan fungerer AI-ruteanalysen?",
+        "nb": "Hvordan fungerer AI-ruteanalysen?",
+        "fi": "Miten AI-reittianalyysi toimii?",
+        "fr": "Comment fonctionne l’analyse d’itinéraire par IA ?",
+        "es": "¿Cómo funciona el análisis de ruta con IA?",
+        "it": "Come funziona l’analisi IA del percorso?"
+      },
+      "answer": {
+        "sv": "Välj först en destination och skapa en rutt. Tryck sedan på AI-kolla rutten. Du behöver vara inloggad och ha internet. Analysen använder ruttfakta men ändrar aldrig rutten. Free har 4 analyser per dag och Pro har 15.",
+        "en": "Choose a destination and create a route, then tap AI route check. You must be signed in and online. The analysis uses route facts but never changes the route. Free includes 4 analyses per day and Pro includes 15.",
+        "da": "Vælg en destination og opret en rute, og tryk derefter på AI-rutetjek. Du skal være logget ind og online. Analysen ændrer aldrig ruten. Free har 4 analyser dagligt og Pro 15.",
+        "nb": "Velg en destinasjon og lag en rute, og trykk deretter AI-sjekk ruten. Du må være logget inn og på nett. Analysen endrer aldri ruten. Free har 4 analyser daglig og Pro 15.",
+        "fi": "Valitse määränpää ja luo reitti, sitten napauta AI-reittitarkistusta. Sinun on oltava kirjautunut ja verkossa. Analyysi ei muuta reittiä. Free sisältää 4 analyysia päivässä ja Pro 15.",
+        "fr": "Choisissez une destination et créez un itinéraire, puis touchez l’analyse IA. Vous devez être connecté à votre compte et à internet. L’analyse ne modifie jamais l’itinéraire. Free offre 4 analyses par jour et Pro 15.",
+        "es": "Elige un destino y crea una ruta, después pulsa el análisis con IA. Debes iniciar sesión y tener internet. El análisis nunca cambia la ruta. Free incluye 4 análisis al día y Pro 15.",
+        "it": "Scegli una destinazione e crea un percorso, poi tocca il controllo IA. Devi aver effettuato l’accesso ed essere online. L’analisi non modifica mai il percorso. Free include 4 analisi al giorno e Pro 15."
+      },
+      "triggers": {
+        "sv": ["ai kolla rutten fungerar inte", "ai-rutt", "ai rutt", "ai-kolla", "ai fungerar inte", "ruttanalys"],
+        "en": ["ai route", "route analysis", "ai not working"],
+        "da": ["ai-rute", "ruteanalyse"],
+        "nb": ["ai-rute", "ruteanalyse"],
+        "fi": ["ai-reitti", "reittianalyysi"],
+        "fr": ["itinéraire ia", "analyse d’itinéraire"],
+        "es": ["ruta con ia", "análisis de ruta"],
+        "it": ["percorso ia", "analisi ia"]
+      }
+    },
+    {
+      "id": "restore_purchase",
+      "question": {
+        "sv": "Hur återställer jag mitt Pro-köp?",
+        "en": "How do I restore my Pro purchase?",
+        "da": "Hvordan gendanner jeg mit Pro-køb?",
+        "nb": "Hvordan gjenoppretter jeg Pro-kjøpet?",
+        "fi": "Miten palautan Pro-ostokseni?",
+        "fr": "Comment restaurer mon achat Pro ?",
+        "es": "¿Cómo restauro mi compra Pro?",
+        "it": "Come ripristino l’acquisto Pro?"
+      },
+      "answer": {
+        "sv": "Öppna Inställningar, gå till CruizX Pro och välj Återställ köp. Kontrollera att telefonen använder samma Apple-ID eller Google-konto som vid köpet. Ett aktivt köp ska återställas utan ny betalning.",
+        "en": "Open Settings, go to CruizX Pro, and choose Restore purchases. Make sure the phone uses the same Apple ID or Google account used for the purchase. An active purchase is restored without another charge.",
+        "da": "Åbn Indstillinger, gå til CruizX Pro, og vælg Gendan køb. Brug samme Apple-ID eller Google-konto som ved købet. Et aktivt køb gendannes uden ny betaling.",
+        "nb": "Åpne Innstillinger, gå til CruizX Pro, og velg Gjenopprett kjøp. Bruk samme Apple-ID eller Google-konto som ved kjøpet. Et aktivt kjøp gjenopprettes uten ny betaling.",
+        "fi": "Avaa Asetukset, siirry CruizX Prohon ja valitse Palauta ostokset. Käytä samaa Apple ID:tä tai Google-tiliä kuin ostaessa. Aktiivinen osto palautetaan ilman uutta maksua.",
+        "fr": "Ouvrez Réglages, allez dans CruizX Pro et choisissez Restaurer les achats. Utilisez le même compte Apple ou Google que lors de l’achat. Aucun nouveau paiement ne sera effectué.",
+        "es": "Abre Ajustes, entra en CruizX Pro y selecciona Restaurar compras. Usa la misma cuenta de Apple o Google con la que compraste. No se realizará otro cobro.",
+        "it": "Apri Impostazioni, vai a CruizX Pro e seleziona Ripristina acquisti. Usa lo stesso account Apple o Google dell’acquisto. Non verrà effettuato un nuovo addebito."
+      },
+      "triggers": {
+        "sv": ["återställ köp", "pro köp", "pro försvann", "köpt pro"],
+        "en": ["restore purchase", "pro purchase", "pro disappeared"],
+        "da": ["gendan køb", "pro-køb"],
+        "nb": ["gjenopprett kjøp", "pro-kjøp"],
+        "fi": ["palauta ostos", "pro-ostos"],
+        "fr": ["restaurer l’achat", "achat pro"],
+        "es": ["restaurar compra", "compra pro"],
+        "it": ["ripristina acquisto", "acquisto pro"]
+      }
+    },
+    {
+      "id": "report_alert",
+      "question": {
+        "sv": "Hur rapporterar jag ett hinder?",
+        "en": "How do I report a road hazard?",
+        "da": "Hvordan rapporterer jeg en forhindring?",
+        "nb": "Hvordan rapporterer jeg en hindring?",
+        "fi": "Miten ilmoitan tiellä olevasta esteestä?",
+        "fr": "Comment signaler un danger sur la route ?",
+        "es": "¿Cómo informo de un peligro en la vía?",
+        "it": "Come segnalo un pericolo sulla strada?"
+      },
+      "answer": {
+        "sv": "På kartan trycker du på rapportknappen med flaggan och väljer typ av varning. GPS måste vara tillgänglig och du behöver vara inloggad. Rapportera bara när fordonet står stilla eller låt en passagerare göra det.",
+        "en": "On the map, tap the flag report button and choose the warning type. GPS must be available and you need to be signed in. Only report while parked, or let a passenger do it.",
+        "da": "Tryk på rapportknappen med flaget på kortet, og vælg advarselstype. GPS skal være tilgængelig, og du skal være logget ind. Rapportér kun, når køretøjet holder stille.",
+        "nb": "Trykk på rapportknappen med flagget på kartet, og velg varseltype. GPS må være tilgjengelig, og du må være logget inn. Rapporter bare når kjøretøyet står stille.",
+        "fi": "Napauta kartan lippukuvakkeella merkittyä ilmoituspainiketta ja valitse varoitustyyppi. GPS:n on toimittava ja sinun on oltava kirjautunut. Tee ilmoitus vain pysäköitynä.",
+        "fr": "Sur la carte, touchez le bouton de signalement avec le drapeau et choisissez le type d’alerte. Le GPS doit être disponible et vous devez être connecté. Signalez uniquement à l’arrêt.",
+        "es": "En el mapa, pulsa el botón de informe con la bandera y elige el tipo de aviso. El GPS debe estar disponible y debes iniciar sesión. Informa solo con el vehículo detenido.",
+        "it": "Sulla mappa, tocca il pulsante di segnalazione con la bandiera e scegli il tipo di avviso. Il GPS deve essere disponibile e devi aver effettuato l’accesso. Segnala solo a veicolo fermo."
+      },
+      "triggers": {
+        "sv": ["rapportera hinder", "rapportera varning", "väghinder", "rapportknappen"],
+        "en": ["report hazard", "report warning", "road hazard"],
+        "da": ["rapportere forhindring", "rapportere advarsel"],
+        "nb": ["rapportere hindring", "rapportere varsel"],
+        "fi": ["ilmoita este", "ilmoita varoitus"],
+        "fr": ["signaler un danger", "signaler une alerte"],
+        "es": ["informar peligro", "informar aviso"],
+        "it": ["segnalare pericolo", "segnalare avviso"]
+      }
+    },
+    {
+      "id": "start_navigation",
+      "question": {
+        "sv": "Hur startar jag navigationen?",
+        "en": "How do I start navigation?",
+        "da": "Hvordan starter jeg navigationen?",
+        "nb": "Hvordan starter jeg navigasjonen?",
+        "fi": "Miten aloitan navigoinnin?",
+        "fr": "Comment démarrer la navigation ?",
+        "es": "¿Cómo inicio la navegación?",
+        "it": "Come avvio la navigazione?"
+      },
+      "answer": {
+        "sv": "Sök efter ett resmål eller tryck på en plats på kartan. Välj resmålet, vänta tills rutten visas och tryck sedan på Starta navigation. Kontrollera fordonstyp, land och maxhastighet i Inställningar innan du kör.",
+        "en": "Search for a destination or tap a place on the map. Select it, wait for the route to appear, then tap Start navigation. Check vehicle type, country, and maximum speed in Settings before driving.",
+        "da": "Søg efter en destination, eller tryk på et sted på kortet. Vælg stedet, vent på ruten, og tryk på Start navigation. Kontrollér køretøj, land og maksimal hastighed før kørsel.",
+        "nb": "Søk etter en destinasjon, eller trykk på et sted på kartet. Velg stedet, vent på ruten, og trykk Start navigasjon. Kontroller kjøretøy, land og maksimal hastighet før kjøring.",
+        "fi": "Hae määränpäätä tai napauta paikkaa kartalla. Valitse paikka, odota reittiä ja napauta Aloita navigointi. Tarkista ajoneuvo, maa ja enimmäisnopeus ennen ajoa.",
+        "fr": "Recherchez une destination ou touchez un lieu sur la carte. Sélectionnez-le, attendez l’itinéraire puis touchez Démarrer la navigation. Vérifiez le véhicule, le pays et la vitesse maximale avant de conduire.",
+        "es": "Busca un destino o toca un lugar en el mapa. Selecciónalo, espera a que aparezca la ruta y pulsa Iniciar navegación. Revisa el vehículo, el país y la velocidad máxima antes de conducir.",
+        "it": "Cerca una destinazione o tocca un luogo sulla mappa. Selezionalo, attendi il percorso e tocca Avvia navigazione. Controlla veicolo, Paese e velocità massima prima di guidare."
+      },
+      "triggers": {
+        "sv": ["starta navigation", "börja navigera", "hur navigerar"],
+        "en": ["start navigation", "begin navigation", "how to navigate"],
+        "da": ["start navigation", "begynde navigation"],
+        "nb": ["start navigasjon", "begynne navigasjon"],
+        "fi": ["aloita navigointi", "navigoinnin aloitus"],
+        "fr": ["démarrer la navigation", "commencer la navigation"],
+        "es": ["iniciar navegación", "empezar navegación"],
+        "it": ["avvia navigazione", "iniziare navigazione"]
+      }
+    }
+  ]
+}

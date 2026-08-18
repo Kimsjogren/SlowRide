@@ -762,6 +762,31 @@ class AppLocalizationsNb extends AppLocalizations {
   String get supportChatYou => 'Du';
 
   @override
+  String get supportAssistantTitle => 'CruizX Hjelpeassistent';
+
+  @override
+  String get supportAssistantIntro =>
+      'Få et øyeblikkelig svar fra CruizX sin klargjorte hjelpeguide – også uten internett.';
+
+  @override
+  String get supportAssistantSuggestions => 'Vanlige spørsmål';
+
+  @override
+  String get supportAssistantNoMatch =>
+      'Jeg fant ikke et sikkert standardsvar. Du kan sende spørsmålet videre til CruizX Support.';
+
+  @override
+  String get supportAssistantContact => 'Send til support';
+
+  @override
+  String get supportAssistantForwarded =>
+      'Spørsmålet er sendt til CruizX Support.';
+
+  @override
+  String get supportAssistantHumanUnavailable =>
+      'Standardsvar virker offline, men menneskelig support krever internett.';
+
+  @override
   String get settingsLinkOpenFailed => 'Kunne ikke åpne lenken akkurat nå.';
 
   @override

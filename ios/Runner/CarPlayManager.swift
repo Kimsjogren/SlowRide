@@ -208,26 +208,48 @@ final class CarPlayManager: NSObject {
         template?.dismissPanningInterface(animated: true)
       }
     }
-    followButton.image = UIImage(systemName: "location.north.fill")
+    // "scope" is the familiar follow/re-centre target used by navigation
+    // apps. Keep the glyph padded so CarPlay's fixed circular button appears
+    // lighter and less dominant without reducing its required tap target.
+    followButton.image = makeMapButtonImage(systemName: "scope")
 
     let browseButton = CPMapButton { [weak self] _ in
       self?.showSearch()
     }
-    browseButton.image = UIImage(systemName: "magnifyingglass.circle.fill")
+    browseButton.image = makeMapButtonImage(systemName: "magnifyingglass")
 
     let convoyButton = CPMapButton { [weak self] _ in
       self?.showConvoyList()
     }
-    convoyButton.image = UIImage(systemName: "person.3.fill")
+    convoyButton.image = makeMapButtonImage(systemName: "person.3.fill")
 
     let endButton = CPMapButton { [weak self] _ in
       self?.endActiveNavigation(notifyFlutter: true)
     }
-    endButton.image = UIImage(systemName: "xmark.circle.fill")
+    endButton.image = makeMapButtonImage(systemName: "xmark")
 
     // CarPlay renders at most four map buttons in array order, top to bottom.
     template.mapButtons = [followButton, browseButton, convoyButton, endButton]
     return template
+  }
+
+  private func makeMapButtonImage(systemName: String) -> UIImage {
+    let canvasSize = CGSize(width: 30, height: 30)
+    let symbolConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
+    guard let symbol = UIImage(systemName: systemName, withConfiguration: symbolConfiguration) else {
+      return UIImage()
+    }
+    let renderer = UIGraphicsImageRenderer(size: canvasSize)
+    let image = renderer.image { _ in
+      let symbolSize = symbol.size
+      symbol.withTintColor(.black, renderingMode: .alwaysOriginal).draw(
+        at: CGPoint(
+          x: (canvasSize.width - symbolSize.width) / 2,
+          y: (canvasSize.height - symbolSize.height) / 2
+        )
+      )
+    }
+    return image.withRenderingMode(.alwaysTemplate)
   }
 
   private func showDestinationsList() {
@@ -805,10 +827,10 @@ final class CarPlayManager: NSObject {
       return
     }
 
-    // CarPlay expands its guidance card when a second upcoming instruction is
-    // present. Publish only the immediate maneuver; Flutter keeps sending the
-    // full queue and this item advances automatically with route progress.
-    let payloads = Array(navigationState.upcomingManeuvers.prefix(1))
+    // Publish the immediate turn plus the following maneuver. CarPlay uses the
+    // second item to render the smaller next-road row below the main blue
+    // guidance card, matching the information density of native navigation.
+    let payloads = Array(navigationState.upcomingManeuvers.prefix(2))
     let maneuvers = payloads.map(makeOrUpdateManeuver)
     let maneuverIDs = payloads.map(\.id)
 
@@ -859,11 +881,11 @@ final class CarPlayManager: NSObject {
     }
     maneuverPresentationCache[payload.id] = presentationSignature
 
-    // CarPlay owns the guidance card's frame and typography. Supplying only
-    // the road name when available keeps the instruction to one compact line.
+    // Prefer the concise road name but retain the complete instruction as a
+    // fallback for wider CarPlay displays and dashboard presentations.
     let compactVariants = streetName.isEmpty
       ? [payload.text]
-      : [streetName]
+      : [streetName, payload.text]
     maneuver.instructionVariants = compactVariants
     maneuver.dashboardInstructionVariants = compactVariants
     maneuver.notificationInstructionVariants = compactVariants

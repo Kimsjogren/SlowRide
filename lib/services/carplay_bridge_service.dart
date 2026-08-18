@@ -277,7 +277,16 @@ class CarPlayBridgeService {
         await syncState();
         return true;
       case 'carPlayConnectionChanged':
-        isConnected.value = call.arguments == true;
+        final connected = call.arguments == true;
+        // A newly connected CarPlay screen starts with an empty native map.
+        // Route geometry is otherwise deduplicated, so clear the transport
+        // cache before notifying listeners and let the active map resend it.
+        if (connected) {
+          _lastNavigationPayloadJson = null;
+          _lastRouteGeometryPayloadJson = null;
+          _lastNavigationSyncAt = DateTime.fromMillisecondsSinceEpoch(0);
+        }
+        isConnected.value = connected;
         _refreshCompanionMode();
         return true;
       case 'startNavigation':

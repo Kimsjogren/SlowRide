@@ -770,6 +770,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get supportChatYou => 'Vous';
 
   @override
+  String get supportAssistantTitle => 'Assistant d’aide CruizX';
+
+  @override
+  String get supportAssistantIntro =>
+      'Obtenez une réponse immédiate grâce au guide préparé de CruizX, même sans internet.';
+
+  @override
+  String get supportAssistantSuggestions => 'Questions fréquentes';
+
+  @override
+  String get supportAssistantNoMatch =>
+      'Je n’ai pas trouvé de réponse préparée fiable. Vous pouvez transmettre la question à l’assistance CruizX.';
+
+  @override
+  String get supportAssistantContact => 'Envoyer à l’assistance';
+
+  @override
+  String get supportAssistantForwarded =>
+      'La question a été envoyée à l’assistance CruizX.';
+
+  @override
+  String get supportAssistantHumanUnavailable =>
+      'Les réponses préparées fonctionnent hors ligne, mais l’assistance humaine nécessite internet.';
+
+  @override
   String get settingsLinkOpenFailed =>
       'Impossible d\'ouvrir le lien pour le moment.';
 

@@ -763,6 +763,30 @@ class AppLocalizationsFi extends AppLocalizations {
   String get supportChatYou => 'Sinä';
 
   @override
+  String get supportAssistantTitle => 'CruizX-ohjeavustaja';
+
+  @override
+  String get supportAssistantIntro =>
+      'Saat heti vastauksen CruizXin valmiista ohjeesta myös ilman internetyhteyttä.';
+
+  @override
+  String get supportAssistantSuggestions => 'Yleisiä kysymyksiä';
+
+  @override
+  String get supportAssistantNoMatch =>
+      'En löytänyt luotettavaa valmista vastausta. Voit lähettää kysymyksen CruizX-tuelle.';
+
+  @override
+  String get supportAssistantContact => 'Lähetä tukeen';
+
+  @override
+  String get supportAssistantForwarded => 'Kysymys lähetettiin CruizX-tuelle.';
+
+  @override
+  String get supportAssistantHumanUnavailable =>
+      'Valmiit vastaukset toimivat offline-tilassa, mutta ihmistuki vaatii internetyhteyden.';
+
+  @override
   String get settingsLinkOpenFailed => 'Linkkiä ei voitu avata juuri nyt.';
 
   @override

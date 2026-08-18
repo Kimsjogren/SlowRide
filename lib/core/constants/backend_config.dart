@@ -151,6 +151,13 @@ class BackendConfig {
     defaultValue: 'https://cruizx.com/api/support/guest',
   );
 
+  /// Provider-free support FAQ catalog. The app includes the same catalog as
+  /// an offline fallback and refreshes it from this endpoint when available.
+  static const String supportFaqUrl = String.fromEnvironment(
+    'SUPPORT_FAQ_URL',
+    defaultValue: 'https://cruizx.com/api/support/faq',
+  );
+
   /// Enable the route simulation button in release builds.
   /// Build with: --dart-define=ENABLE_SIMULATION=true
   static const bool enableSimulation = bool.fromEnvironment(

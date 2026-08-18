@@ -59,6 +59,8 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `GET /api/traffic/incidents`: Returnerar cachelagrade, normaliserade livehändelser från Trafikverket utan att exponera API-nyckeln i appen.
 - `POST /api/ai/route-analysis`: Analyserar begränsade ruttfakta med Workers AI för en inloggad användare. GPS-koordinater skickas inte. Appen tillåter 4 anrop per dag för Free och 15 för Pro; Worker-skyddet stoppar vid 15 anrop per användare och dag samt Cloudflares kostnadsfria dagstilldelning.
 - `POST /api/ai/report`: Rapporterar ett AI-svar för uppföljning.
+- `GET /api/support/faq`: Levererar den versionsstyrda FAQ-katalog som appen även har som offline-reserv.
+- `POST /api/support/faq`: Matchar en fråga mot kvalitetssäkrade standardsvar utan en extern AI-leverantör.
 - `POST /api/support/notify`: Tar emot signerade databasnotiser och skickar nya användarmeddelanden till ntfy.
 - `GET /api/support/conversation`: Visar konversationen för en tidsbegränsad signerad svarslänk.
 - `POST /api/support/reply`: Skickar ett supportsvar till användarens CruizX-chatt.

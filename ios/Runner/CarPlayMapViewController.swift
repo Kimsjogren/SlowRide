@@ -92,27 +92,17 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
   private func configureSpeedometers() {
     speedometerCluster.translatesAutoresizingMaskIntoConstraints = false
-    speedometerCluster.backgroundColor = UIColor(
-      red: 0.025,
-      green: 0.075,
-      blue: 0.20,
-      alpha: 0.88
-    )
-    speedometerCluster.layer.cornerRadius = 27
-    speedometerCluster.layer.borderWidth = 1
-    speedometerCluster.layer.borderColor = UIColor.white.withAlphaComponent(0.16).cgColor
-    speedometerCluster.layer.shadowColor = UIColor.black.cgColor
-    speedometerCluster.layer.shadowOpacity = 0.35
-    speedometerCluster.layer.shadowRadius = 5
-    speedometerCluster.layer.shadowOffset = CGSize(width: 0, height: 2)
+    // Keep the two gauges visually separate from the map without wrapping
+    // them in an additional dark panel.
+    speedometerCluster.backgroundColor = .clear
     speedometerCluster.isHidden = true
     speedometerCluster.isUserInteractionEnabled = false
 
     speedometerStack.translatesAutoresizingMaskIntoConstraints = false
     speedometerStack.axis = .vertical
     speedometerStack.alignment = .center
-    // Slightly overlap the two circles so they read as one Waze-like unit.
-    speedometerStack.spacing = -5
+    // Slightly overlap the two circles so they still read as one compact unit.
+    speedometerStack.spacing = -3
     speedometerStack.isUserInteractionEnabled = false
 
     currentSpeedView.translatesAutoresizingMaskIntoConstraints = false
@@ -134,14 +124,14 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     speedLimitView.translatesAutoresizingMaskIntoConstraints = false
     speedLimitView.backgroundColor = .white
-    speedLimitView.layer.cornerRadius = 18
-    speedLimitView.layer.borderWidth = 3
+    speedLimitView.layer.cornerRadius = 15
+    speedLimitView.layer.borderWidth = 2.5
     speedLimitView.layer.borderColor = UIColor(red: 0.78, green: 0.06, blue: 0.08, alpha: 1).cgColor
 
     speedLimitLabel.translatesAutoresizingMaskIntoConstraints = false
     speedLimitLabel.textAlignment = .center
     speedLimitLabel.textColor = .black
-    speedLimitLabel.font = .systemFont(ofSize: 12, weight: .bold)
+    speedLimitLabel.font = .systemFont(ofSize: 10.5, weight: .bold)
     speedLimitView.addSubview(speedLimitLabel)
 
     speedometerStack.addArrangedSubview(currentSpeedView)
@@ -156,14 +146,14 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       currentSpeedLabel.centerYAnchor.constraint(equalTo: currentSpeedView.centerYAnchor, constant: -4),
       speedUnitLabel.topAnchor.constraint(equalTo: currentSpeedLabel.bottomAnchor, constant: -1),
       speedUnitLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
-      speedLimitView.widthAnchor.constraint(equalToConstant: 36),
-      speedLimitView.heightAnchor.constraint(equalToConstant: 36),
+      speedLimitView.widthAnchor.constraint(equalToConstant: 30),
+      speedLimitView.heightAnchor.constraint(equalToConstant: 30),
       speedLimitLabel.centerXAnchor.constraint(equalTo: speedLimitView.centerXAnchor),
       speedLimitLabel.centerYAnchor.constraint(equalTo: speedLimitView.centerYAnchor),
       speedometerStack.topAnchor.constraint(equalTo: speedometerCluster.topAnchor, constant: 4),
       speedometerStack.bottomAnchor.constraint(equalTo: speedometerCluster.bottomAnchor, constant: -4),
       speedometerStack.centerXAnchor.constraint(equalTo: speedometerCluster.centerXAnchor),
-      speedometerCluster.widthAnchor.constraint(equalToConstant: 54),
+      speedometerCluster.widthAnchor.constraint(equalToConstant: 46),
       // Keep the combined speed unit in the lower-right navigation area,
       // clear of the bottom trip estimates and the guidance card.
       speedometerCluster.trailingAnchor.constraint(

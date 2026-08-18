@@ -1502,6 +1502,20 @@ abstract class AppLocalizations {
   /// **'You'**
   String get supportChatYou;
 
+  String get supportAssistantTitle;
+
+  String get supportAssistantIntro;
+
+  String get supportAssistantSuggestions;
+
+  String get supportAssistantNoMatch;
+
+  String get supportAssistantContact;
+
+  String get supportAssistantForwarded;
+
+  String get supportAssistantHumanUnavailable;
+
   /// No description provided for @settingsLinkOpenFailed.
   ///
   /// In en, this message translates to:

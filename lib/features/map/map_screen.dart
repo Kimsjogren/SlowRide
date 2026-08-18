@@ -210,6 +210,9 @@ class _MapScreenState extends State<MapScreen> {
     CarPlayBridgeService.instance.companionMode.addListener(
       _onCarPlayCompanionModeChanged,
     );
+    CarPlayBridgeService.instance.isConnected.addListener(
+      _onCarPlayConnectionChanged,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onExternalNavigationRequest();
     });
@@ -335,6 +338,14 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onCarPlayCompanionModeChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _onCarPlayConnectionChanged() {
+    if (CarPlayBridgeService.instance.isConnected.value) {
+      // A CarPlay display may connect after a route has already been chosen.
+      // Send the full geometry again so its native map can draw the route.
+      unawaited(_syncCarPlayNavigationState());
+    }
   }
 
   Future<void> _loadAlerts() async {
@@ -925,6 +936,9 @@ class _MapScreenState extends State<MapScreen> {
     CarPlayBridgeService.instance.companionMode.removeListener(
       _onCarPlayCompanionModeChanged,
     );
+    CarPlayBridgeService.instance.isConnected.removeListener(
+      _onCarPlayConnectionChanged,
+    );
     _locationNotifier.dispose();
     _headingNotifier.dispose();
     _addressController.dispose();
@@ -1214,7 +1228,7 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     final query =
-        '[out:json][timeout:6];(${clauses.join()});out center 300 qt;';
+        '[out:json][timeout:12];(${clauses.join()});out center 300 qt;';
 
     try {
       final response = await http
@@ -1228,7 +1242,7 @@ class _MapScreenState extends State<MapScreen> {
             },
             body: 'data=${Uri.encodeQueryComponent(query)}',
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 13));
       if (response.statusCode != 200) return const [];
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
@@ -2049,8 +2063,19 @@ class _MapScreenState extends State<MapScreen> {
     required List<String> queries,
     int limit = 20,
   }) async {
-    // Max 2 km off-route — tighter than before to keep results relevant.
-    const maxDetourFromRouteMeters = 2000.0;
+    final normalizedQueries = queries.map(_normalizeSearchText).join(' ');
+    final isChargingOrFuel =
+        normalizedQueries.contains('charging') ||
+        normalizedQueries.contains('laddstation') ||
+        normalizedQueries.contains('ev charging') ||
+        normalizedQueries.contains('fuel') ||
+        normalizedQueries.contains('gas station') ||
+        normalizedQueries.contains('petrol') ||
+        normalizedQueries.contains('bensinstation');
+    // Ordinary route stops stay close to the route. Charging and fuel must
+    // also offer the genuinely nearest alternatives when the route corridor
+    // is sparse, so their wider search is allowed to survive this filter.
+    final maxDetourFromRouteMeters = isChargingOrFuel ? 15000.0 : 2000.0;
     // Use up to 5 evenly-spaced anchors along the remaining route.
     final anchors = _routeSearchAnchors().take(5).toList();
     final currentLocation = _currentLocation;
@@ -2058,25 +2083,38 @@ class _MapScreenState extends State<MapScreen> {
       return const [];
     }
 
-    // Search route anchors in parallel and race the device POI index against
-    // OSM. A busy Overpass server must not hold the entire results sheet open.
-    final overpassResults = Future.wait(
-      anchors.map(
+    // Search route anchors in parallel and merge the device POI index with
+    // OSM. Taking only the first source to answer could leave the sheet with a
+    // single Apple Maps result even when OSM knew about several nearby stops.
+    final overpassSearches = <Future<List<Map<String, dynamic>>>>[
+      ...anchors.map(
         (anchor) => _fetchOverpassPoiResults(
           queries: queries,
           center: anchor,
           radiusMeters: 3000,
         ),
       ),
-    ).then((lists) => lists.expand((items) => items).toList(growable: false));
-    final poiResults = await _firstNonEmpty<Map<String, dynamic>>([
-      _fetchFastPlatformPoiResults(
-        queries: queries,
-        centers: anchors,
-        maxDistanceFromCenterMeters: 4000,
-      ),
-      overpassResults,
-    ]);
+      if (isChargingOrFuel)
+        _fetchOverpassPoiResults(
+          queries: queries,
+          center: currentLocation,
+          radiusMeters: 15000,
+        ),
+    ];
+    final overpassResults = Future.wait(overpassSearches).then(
+      (lists) => lists.expand((items) => items).toList(growable: false),
+    );
+    final poiResults = await _collectSearchSources<Map<String, dynamic>>(
+      [
+        _fetchFastPlatformPoiResults(
+          queries: queries,
+          centers: isChargingOrFuel ? [currentLocation] : anchors,
+          maxDistanceFromCenterMeters: isChargingOrFuel ? 15000 : 4000,
+        ),
+        overpassResults,
+      ],
+      timeout: const Duration(seconds: 14),
+    );
 
     final seen = <String>{};
     final candidates = <_RouteStopCandidate>[];
@@ -2115,10 +2153,14 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    // Sort: ahead-of-me first, then by distance along remaining route.
+    // The quick buttons promise nearby alternatives. Always put the actual
+    // closest result first; route distance remains visible as secondary info.
     candidates.sort((a, b) {
-      if (a.isAhead != b.isAhead) return a.isAhead ? -1 : 1;
-      return a.aheadDistanceMeters.compareTo(b.aheadDistanceMeters);
+      final distanceOrder = a.distanceFromMeMeters.compareTo(
+        b.distanceFromMeMeters,
+      );
+      if (distanceOrder != 0) return distanceOrder;
+      return a.routeDistanceMeters.compareTo(b.routeDistanceMeters);
     });
     return candidates.take(limit).toList(growable: false);
   }
@@ -2129,6 +2171,12 @@ class _MapScreenState extends State<MapScreen> {
         normalized.contains('laddstation') ||
         normalized.contains('ev charging')) {
       return 25000;
+    }
+    if (normalized.contains('fuel') ||
+        normalized.contains('gas station') ||
+        normalized.contains('petrol') ||
+        normalized.contains('bensinstation')) {
+      return 15000;
     }
     if (normalized.contains('parking') || normalized.contains('parkering')) {
       return 12000;
@@ -2320,12 +2368,15 @@ class _MapScreenState extends State<MapScreen> {
         center: currentLocation,
         radiusMeters: nearbyRadiusMeters.round(),
       ),
-    ], timeout: const Duration(seconds: 3));
+    ], timeout: const Duration(seconds: 14));
 
     // Do not let a broad address lookup beat a genuinely nearby POI search.
-    // Only widen the search after every local source has returned empty.
+    // Widen the search when the local radius is sparse, not only when it is
+    // completely empty. Otherwise one local result incorrectly became the
+    // entire list for charging and fuel shortcuts.
     var poiResults = nearbyResults;
-    if (poiResults.isEmpty) {
+    final desiredLocalResultCount = math.min(limit, 5);
+    if (poiResults.length < desiredLocalResultCount) {
       final fallbackRadiusMeters = _maxFallbackPoiDistanceMeters(queries);
       final geocodingFallback =
           Future.wait(
@@ -2350,19 +2401,23 @@ class _MapScreenState extends State<MapScreen> {
               maxDistanceMeters: fallbackRadiusMeters,
             ),
           );
-      poiResults = await _collectSearchSources<Map<String, dynamic>>([
-        _fetchFastPlatformPoiResults(
-          queries: queries,
-          centers: [currentLocation],
-          maxDistanceFromCenterMeters: fallbackRadiusMeters,
-        ),
-        _fetchOverpassPoiResults(
-          queries: queries,
-          center: currentLocation,
-          radiusMeters: math.min(fallbackRadiusMeters, 7000).round(),
-        ),
-        geocodingFallback,
-      ], timeout: const Duration(seconds: 4));
+      final expandedResults = await _collectSearchSources<Map<String, dynamic>>(
+        [
+          _fetchFastPlatformPoiResults(
+            queries: queries,
+            centers: [currentLocation],
+            maxDistanceFromCenterMeters: fallbackRadiusMeters,
+          ),
+          _fetchOverpassPoiResults(
+            queries: queries,
+            center: currentLocation,
+            radiusMeters: math.min(fallbackRadiusMeters, 15000).round(),
+          ),
+          geocodingFallback,
+        ],
+        timeout: const Duration(seconds: 14),
+      );
+      poiResults = [...nearbyResults, ...expandedResults];
     }
     for (final result in poiResults) {
       addCandidate(result, queries.first);
@@ -4679,7 +4734,7 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<void> _syncCarPlayNavigationState() {
+  Future<void> _syncCarPlayNavigationState() async {
     final destination = _destination;
     final activeRoute = _activeRoute;
     final hasRoute = destination != null && activeRoute != null;
@@ -4704,11 +4759,11 @@ class _MapScreenState extends State<MapScreen> {
             unit: speedUnit,
           );
 
-    unawaited(
-      CarPlayBridgeService.instance.updateRouteGeometry(
-        routePoints: hasRoute ? _routePoints : const [],
-        destination: hasRoute ? destination : null,
-      ),
+    // Send the polyline first. CarPlay can otherwise start the guidance view
+    // before its map has received the route, leaving the blue route line out.
+    await CarPlayBridgeService.instance.updateRouteGeometry(
+      routePoints: hasRoute ? _routePoints : const [],
+      destination: hasRoute ? destination : null,
     );
 
     double? remainingDurationSeconds;

@@ -84,8 +84,9 @@ test("AI route analysis accepts the Car vehicle type", { concurrency: false }, a
         ...baseEnv,
         DEVICE_SALT: "device-salt",
         AI: {
-          run: async (_model, input) => {
+          run: async (model, input) => {
             aiInput = input;
+            assert.equal(model, "@cf/meta/llama-3.1-8b-instruct-fast");
             return {
               response: JSON.stringify({
                 headline: "Rutten ser bra ut",
@@ -108,6 +109,34 @@ test("AI route analysis accepts the Car vehicle type", { concurrency: false }, a
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("support FAQ serves its offline catalog and matches prepared answers", { concurrency: false }, async () => {
+  const catalogResponse = await worker.fetch(
+    new Request("https://cruizx.com/api/support/faq"),
+    baseEnv
+  );
+  assert.equal(catalogResponse.status, 200);
+  const catalog = await catalogResponse.json();
+  assert.equal(catalog.version, 1);
+  assert.equal(catalog.entries.length, 7);
+
+  const matchResponse = await worker.fetch(
+    new Request("https://cruizx.com/api/support/faq", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: "AI kolla rutten fungerar inte",
+        language_code: "sv",
+      }),
+    }),
+    baseEnv
+  );
+  assert.equal(matchResponse.status, 200);
+  const match = await matchResponse.json();
+  assert.equal(match.matched, true);
+  assert.equal(match.entry.id, "ai_route");
+  assert.match(match.entry.answer, /4 analyser per dag/);
 });
 
 test("new user support messages are mirrored to ntfy with a reply action", { concurrency: false }, async () => {
