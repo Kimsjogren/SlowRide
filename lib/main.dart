@@ -477,16 +477,7 @@ class _AppShellState extends State<AppShell> {
                       NavigationDestinationLabelBehavior.onlyShowSelected,
                   destinations: destinations,
                   onDestinationSelected: (value) {
-                    if (value == 1 && _index != 1) {
-                      // Convoy tab — show interstitial for free users first
-                      AdService.instance.showConvoyInterstitial(
-                        onDone: () {
-                          if (mounted) setState(() => _index = 1);
-                        },
-                      );
-                    } else {
-                      setState(() => _index = value);
-                    }
+                    setState(() => _index = value);
                   },
                 ),
         ),

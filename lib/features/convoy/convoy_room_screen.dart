@@ -20,6 +20,7 @@ import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/ai_route_analysis_service.dart';
+import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/routing_service.dart';
 import 'package:slowride/services/apple_map_search_service.dart';
 import 'package:slowride/services/carplay_bridge_service.dart';
@@ -39,6 +40,7 @@ import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 import 'package:slowride/widgets/accessible_tap_target.dart';
+import 'package:slowride/widgets/ad_banner_widget.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/widgets/apple_convoy_map_widget.dart';
 import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
@@ -4476,6 +4478,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       length: 2,
       child: Scaffold(
         backgroundColor: const Color(0xFF0A1628),
+        bottomNavigationBar: AdBannerWidget(
+          adUnitId: AdService.instance.bannerConvoyUnitId,
+        ),
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D1B2E),
           foregroundColor: Colors.white,

@@ -431,9 +431,9 @@ class SubscriptionService {
     _prefs.setInt(_routeCountKey, count + 1);
   }
 
-  /// Free users see an interstitial before every route after the first route
-  /// of the day. Route tracking is only used for ad timing; navigation itself
-  /// remains unlimited.
+  /// Free users see an interstitial before every third route of the day.
+  /// Route tracking is only used for ad timing; navigation itself remains
+  /// unlimited.
   bool get shouldShowRouteInterstitial {
     return routeInterstitialEligible(
       isPro: isPro.value,
@@ -445,7 +445,7 @@ class SubscriptionService {
   static bool routeInterstitialEligible({
     required bool isPro,
     required int routesToday,
-  }) => !isPro && routesToday >= 1;
+  }) => !isPro && routesToday >= 2 && (routesToday + 1) % 3 == 0;
 
   /// Shown after an ad once two routes have already been created that day.
   /// The prompt is reset automatically on the next local calendar day.

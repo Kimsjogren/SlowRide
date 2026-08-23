@@ -324,6 +324,49 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
   }
 
+  /// Applies a native GPS fix immediately when the phone is locked. A
+  /// CADisplayLink is allowed to pause while the handset is in the background,
+  /// even though the CarPlay scene and CLLocationManager are still active.
+  /// In that state the normal interpolator would retain its old target and the
+  /// marker/camera would look frozen. CarPlay gets the newest safe, route-
+  /// snapped position directly instead.
+  func updateBackgroundNavigationPosition(
+    _ coordinate: CLLocationCoordinate2D,
+    headingDegrees: Double,
+    isNavigating: Bool
+  ) {
+    guard isViewLoaded else { return }
+
+    let wasFollowingNavigation = isFollowingNavigation
+    isFollowingNavigation = isNavigating
+    if wasFollowingNavigation != isNavigating {
+      lastRawCoordinate = nil
+      estimatedSpeedMetersPerSecond = 0
+    }
+
+    let displayTarget = isNavigating ? routeSnappedCoordinate(for: coordinate) : coordinate
+    let normalizedHeading = headingDegrees.normalizedHeading
+    updateNavigationMarkerVisibility(isNavigating: isNavigating, coordinate: displayTarget)
+
+    if isNavigating && mapView.userTrackingMode != .none {
+      mapView.setUserTrackingMode(.none, animated: false)
+    }
+
+    // Keep the normal interpolator in sync for when the phone is unlocked,
+    // but do not depend on its display link to move the visible map now.
+    displayedCoordinate = displayTarget
+    interpolationTargetCoordinate = displayTarget
+    displayedHeading = normalizedHeading
+    filteredTargetHeading = normalizedHeading
+    lastRawCoordinate = coordinate
+    lastPositionReceivedAt = CACurrentMediaTime()
+    lastDisplayLinkTimestamp = nil
+
+    guard isNavigating else { return }
+    updateNavigationMarker(at: displayTarget, headingDegrees: normalizedHeading)
+    updateNavigationCamera(at: displayTarget, headingDegrees: normalizedHeading)
+  }
+
   private func startDisplayLink() {
     guard displayLink == nil else { return }
     let link = CADisplayLink(target: self, selector: #selector(advanceNavigationAnimation(_:)))

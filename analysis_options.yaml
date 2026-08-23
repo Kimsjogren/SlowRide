@@ -16,6 +16,12 @@ analyzer:
     - tmp/**
     - output/**
     - website/backend/node_modules/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   errors:
     duplicate_ignore: ignore
     inference_failure_on_collection_literal: ignore

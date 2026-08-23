@@ -3,7 +3,7 @@ import 'package:slowride/services/subscription_service.dart';
 
 void main() {
   group('Free route advertising', () {
-    test('shows ads between every route after the first', () {
+    test('shows an ad before every third route', () {
       expect(
         SubscriptionService.routeInterstitialEligible(
           isPro: false,
@@ -16,21 +16,35 @@ void main() {
           isPro: false,
           routesToday: 1,
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         SubscriptionService.routeInterstitialEligible(
           isPro: false,
-          routesToday: 20,
+          routesToday: 2,
         ),
         isTrue,
       );
       expect(
         SubscriptionService.routeInterstitialEligible(
           isPro: true,
-          routesToday: 20,
+          routesToday: 2,
         ),
         isFalse,
+      );
+      expect(
+        SubscriptionService.routeInterstitialEligible(
+          isPro: false,
+          routesToday: 3,
+        ),
+        isFalse,
+      );
+      expect(
+        SubscriptionService.routeInterstitialEligible(
+          isPro: false,
+          routesToday: 5,
+        ),
+        isTrue,
       );
     });
 

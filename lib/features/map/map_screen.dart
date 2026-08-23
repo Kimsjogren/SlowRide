@@ -75,6 +75,12 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _displayRouteProjection;
   String _routingStatus = '';
   bool _isRouting = false;
+  bool _rerouteInFlight = false;
+  int _consecutiveOffRouteFixes = 0;
+  DateTime? _lastAutomaticRerouteAt;
+  static const double _automaticRerouteDistanceMeters = 65;
+  static const int _automaticRerouteFixesRequired = 2;
+  static const Duration _automaticRerouteCooldown = Duration(seconds: 15);
   bool _isNavigating = false;
   bool _isNavigationPanelExpanded = false;
   // true = camera locked on user (like Waze follow mode)
@@ -389,7 +395,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _maybeRefreshRoadSpeedLimit(LatLng pos) async {
-    if (_speedLimitForRouteIndex(_lastNearestIdx) != null) return;
     if (_roadLimitLookupInFlight) return;
 
     final now = DateTime.now();
@@ -411,15 +416,18 @@ class _MapScreenState extends State<MapScreen> {
     _roadLimitLookupInFlight = false;
     _lastRoadLimitLookupPos = pos;
 
-    // Route attributes may have arrived while the fallback request was in
-    // flight. Never replace that stronger match with an Overpass result.
-    if (_speedLimitForRouteIndex(_lastNearestIdx) != null) return;
-
     if (!mounted || !lookup.completed) return;
     final fetched = lookup.limit;
     if (fetched == null) {
-      if (_roadSpeedLimitKmh == null) return;
-      setState(() => _roadSpeedLimitKmh = null);
+      // An untagged OSM way should not erase a valid limit supplied with the
+      // active route. It only means that this live verification did not have
+      // a better value for the road currently being driven.
+      final routeLimit = _speedLimitForRouteIndex(_lastNearestIdx);
+      if (_roadSpeedLimitKmh == routeLimit && _roadLimitFromRoute) return;
+      setState(() {
+        _roadSpeedLimitKmh = routeLimit;
+        _roadLimitFromRoute = routeLimit != null;
+      });
       unawaited(_syncCarPlayNavigationState());
       return;
     }
@@ -496,7 +504,7 @@ class _MapScreenState extends State<MapScreen> {
     // Otherwise an untagged residential road can incorrectly inherit the
     // maxspeed from a tagged motorway running beside it.
     final query =
-        '[out:json][timeout:8];way(around:35,${pos.latitude},${pos.longitude})["highway"];out tags geom;';
+        '[out:json][timeout:8];way(around:50,${pos.latitude},${pos.longitude})["highway"];out tags geom;';
 
     try {
       final response = await http
@@ -737,7 +745,14 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted || _isSimulating) return;
 
     final currentPos = LatLng(position.latitude, position.longitude);
-    final newSpeed = (position.speed < 0 ? 0 : position.speed) * 3.6;
+    final rawSpeedKmh = (position.speed < 0 ? 0 : position.speed) * 3.6;
+    // Core Location can occasionally publish a wildly inaccurate speed while
+    // it is reacquiring GPS. Never let an outlier such as 375 km/h affect the
+    // CarPlay speedometer, speeding warning or ETA; keep the latest valid
+    // reading until the next GPS fix arrives instead.
+    final newSpeed = rawSpeedKmh.isFinite && rawSpeedKmh <= 250
+        ? rawSpeedKmh
+        : _speedKmh;
     final heading = (position.speed > 0.5 && position.heading >= 0)
         ? position.heading
         : _headingNotifier.value;
@@ -884,6 +899,9 @@ class _MapScreenState extends State<MapScreen> {
           accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: 0,
           activityType: ActivityType.automotiveNavigation,
+          // Keep the navigation GPS stream running when the iPhone display is
+          // locked and CarPlay is the active navigation surface.
+          allowBackgroundLocationUpdates: true,
           pauseLocationUpdatesAutomatically: false,
           showBackgroundLocationIndicator: true,
         );
@@ -3235,13 +3253,16 @@ class _MapScreenState extends State<MapScreen> {
       return routeBasedSeconds;
     }
 
-    final lastMovement = _etaLastMovementAt;
-    final hasFreshLiveSpeed =
-        _etaSmoothedSpeedKmh > 0 &&
-        lastMovement != null &&
-        DateTime.now().difference(lastMovement) <= _etaPauseGrace;
+    final hasMeasuredDrivingSpeed =
+        _etaSmoothedSpeedKmh > 0 && _etaLastMovementAt != null;
 
-    if (hasFreshLiveSpeed) {
+    if (hasMeasuredDrivingSpeed) {
+      // Once a trip has a measured moving speed, keep using that same
+      // estimate while stopped. Returning the same remaining travel time
+      // naturally moves the arrival clock forward one-for-one with a red
+      // light, without suddenly replacing it with a much slower fallback
+      // model after a few seconds. This applies to every speed-limited
+      // vehicle profile (A-traktor, mopedbil, mopeder and elsparkcykel).
       final nearestIdx = _routePoints.isEmpty
           ? 0
           : _lastNearestIdx.clamp(0, _routePoints.length - 1);
@@ -3803,6 +3824,72 @@ class _MapScreenState extends State<MapScreen> {
     unawaited(_loadRouteSpeedLimits(route.points));
     _analyzeSelectedRouteIfRequested();
     unawaited(_syncCarPlayNavigationState());
+  }
+
+  /// Recalculate silently after a genuine departure from the active route.
+  /// Two consecutive GPS fixes and a cooldown prevent a reroute from normal
+  /// GPS drift while still getting the driver back on a suitable route fast.
+  Future<void> _maybeRerouteAfterLeavingRoute(
+    LatLng currentPos,
+    double distanceFromRouteMeters,
+  ) async {
+    if (!_isNavigating ||
+        _destination == null ||
+        _routePoints.isEmpty ||
+        _isRouting ||
+        _rerouteInFlight) {
+      return;
+    }
+
+    if (distanceFromRouteMeters < _automaticRerouteDistanceMeters) {
+      _consecutiveOffRouteFixes = 0;
+      return;
+    }
+
+    _consecutiveOffRouteFixes++;
+    if (_consecutiveOffRouteFixes < _automaticRerouteFixesRequired) return;
+
+    final now = DateTime.now();
+    final lastReroute = _lastAutomaticRerouteAt;
+    if (lastReroute != null &&
+        now.difference(lastReroute) < _automaticRerouteCooldown) {
+      return;
+    }
+
+    final destination = _destination!;
+    final l10n = AppLocalizations.of(context)!;
+    final preferences = UserPreferencesService.instance;
+    _rerouteInFlight = true;
+    _consecutiveOffRouteFixes = 0;
+    _lastAutomaticRerouteAt = now;
+    if (mounted) {
+      setState(() {
+        _isRouting = true;
+        _routingStatus = l10n.mapCalculatingRoute;
+      });
+    }
+
+    try {
+      final route = await _routingService.getRoute(
+        origin: currentPos,
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+        avoidLocations: await _lowVehicleBumpAvoidLocations(
+          origin: currentPos,
+          destination: destination,
+        ),
+      );
+      if (!mounted || !_isNavigating || _destination != destination) return;
+      _applyRouteResult(route, l10n);
+    } catch (_) {
+      // Keep showing the existing route if the routing provider is temporarily
+      // unavailable. The next eligible GPS update will try again.
+    } finally {
+      _rerouteInFlight = false;
+      if (mounted) {
+        setState(() => _isRouting = false);
+      }
+    }
   }
 
   void _cancelPendingAiRouteAnalysis() {
@@ -4518,6 +4605,9 @@ class _MapScreenState extends State<MapScreen> {
       _routeStop = null;
       _routeStopLabel = '';
       _isRouting = false;
+      _rerouteInFlight = false;
+      _consecutiveOffRouteFixes = 0;
+      _lastAutomaticRerouteAt = null;
       _isNavigating = false;
       _isNavigationPanelExpanded = false;
       _isFollowing = false;
@@ -4599,6 +4689,16 @@ class _MapScreenState extends State<MapScreen> {
         currentPos,
         _displayRouteProjection ?? _routePoints[nearestIdx],
       );
+      if (_displayRouteProjection == null) {
+        unawaited(
+          _maybeRerouteAfterLeavingRoute(
+            currentPos,
+            _distanceToRouteMeters(currentPos, _routePoints),
+          ),
+        );
+      } else {
+        _consecutiveOffRouteFixes = 0;
+      }
       routeSpeedLimit = _speedLimitForRouteIndex(nearestIdx);
       if (_cumulativeDist.length == _routePoints.length) {
         newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx]).clamp(
@@ -4679,7 +4779,11 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
-      if (routeSpeedLimit != null) {
+      // A live OSM match is tied to the actual GPS/route geometry at the car
+      // and can correct missing or stale edge attributes from the route
+      // provider. Keep it until the next live lookup verifies the next road.
+      if (routeSpeedLimit != null &&
+          (_roadLimitFromRoute || _roadSpeedLimitKmh == null)) {
         _roadSpeedLimitKmh = routeSpeedLimit;
         _roadLimitFromRoute = true;
       } else if (_roadLimitFromRoute) {
@@ -4729,9 +4833,10 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     unawaited(_syncCarPlayNavigationState());
-    if (routeSpeedLimit == null) {
-      unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
-    }
+    // Route edge data is fast but can be absent or stale on some roads. Run a
+    // geometry-aware live verification as well so the sign follows the road
+    // actually being driven, not only the route's initial metadata.
+    unawaited(_maybeRefreshRoadSpeedLimit(currentPos));
   }
 
   Future<void> _syncCarPlayNavigationState() async {
@@ -4822,6 +4927,7 @@ class _MapScreenState extends State<MapScreen> {
       instructionIndex = i + 1;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final maneuvers = <Map<String, Object?>>[];
     for (
       int i = instructionIndex + 1;
@@ -4837,6 +4943,11 @@ class _MapScreenState extends State<MapScreen> {
         'id':
             '${instruction.pointIndex}_${instruction.sign}_${instruction.text}',
         'text': instruction.text,
+        'shortInstruction': _localizedManeuverPrimaryText(
+          l10n,
+          instruction.sign,
+          instruction.text,
+        ),
         'streetName': instruction.streetName,
         'sign': instruction.sign,
         'distanceMeters': distanceMeters,
@@ -5175,6 +5286,9 @@ class _MapScreenState extends State<MapScreen> {
       _nextManeuverSign,
       _nextManeuverText,
     );
+    // This is the phone companion, not the in-car guidance card. Keep the
+    // current turn prominent, but retain the route's upcoming street changes
+    // below it so the driver can scroll through the full route overview.
     final upcoming = _buildCarPlayUpcomingManeuvers(maxManeuvers: 12);
 
     return DecoratedBox(
@@ -5202,15 +5316,18 @@ class _MapScreenState extends State<MapScreen> {
                     width: compactLayout ? 34 : 38,
                     height: compactLayout ? 34 : 38,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF00B9FF), Color(0xFF176BFF)],
-                      ),
+                      color: const Color(0xFF0C347B),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF4CBFFF)),
                     ),
-                    child: Icon(
-                      Icons.navigation_rounded,
-                      color: Colors.white,
-                      size: compactLayout ? 21 : 23,
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Image.asset(
+                        'assets/LogoIcon.png',
+                        fit: BoxFit.contain,
+                        semanticLabel: 'CruizX',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -5225,16 +5342,6 @@ class _MapScreenState extends State<MapScreen> {
                             fontSize: 22,
                             height: 1,
                             fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          'CARPLAY NAVIGATION',
-                          style: TextStyle(
-                            color: Color(0xFF65CFFF),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.4,
                           ),
                         ),
                       ],
@@ -5318,7 +5425,7 @@ class _MapScreenState extends State<MapScreen> {
                         SizedBox(height: compactLayout ? 5 : 8),
                         Text(
                           currentTarget ?? currentInstruction,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Color(0xFF46D4FF),
@@ -5329,14 +5436,15 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                         if (currentTarget != null &&
                             currentInstruction.isNotEmpty) ...[
-                          const SizedBox(height: 5),
+                          SizedBox(height: compactLayout ? 3 : 5),
                           Text(
                             currentInstruction,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 16,
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: compactLayout ? 15 : 17,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -5369,8 +5477,8 @@ class _MapScreenState extends State<MapScreen> {
                   );
                   return Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 15,
-                      vertical: 14,
+                      horizontal: 13,
+                      vertical: 10,
                     ),
                     decoration: BoxDecoration(
                       color: index.isEven
@@ -5382,8 +5490,8 @@ class _MapScreenState extends State<MapScreen> {
                     child: Row(
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 42,
+                          height: 42,
                           decoration: const BoxDecoration(
                             color: Color(0x2616BFFF),
                             shape: BoxShape.circle,
@@ -5391,7 +5499,7 @@ class _MapScreenState extends State<MapScreen> {
                           child: Icon(
                             _turnIcon(sign),
                             color: Colors.white,
-                            size: 34,
+                            size: 28,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -5403,19 +5511,19 @@ class _MapScreenState extends State<MapScreen> {
                                 _formatManeuverDistance(distance),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 21,
+                                  fontSize: 18,
                                   height: 1,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(height: 7),
+                              const SizedBox(height: 4),
                               Text(
                                 target ?? primary,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFF42CFFF),
-                                  fontSize: 21,
+                                  fontSize: 18,
                                   height: 1.05,
                                   fontWeight: FontWeight.w700,
                                 ),
