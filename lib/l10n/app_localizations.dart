@@ -68,8 +68,7 @@ import 'app_localizations_sv.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -77,8 +76,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -90,13 +88,12 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
@@ -107,7 +104,7 @@ abstract class AppLocalizations {
     Locale('fr'),
     Locale('it'),
     Locale('nb'),
-    Locale('sv'),
+    Locale('sv')
   ];
 
   /// No description provided for @appTitle.
@@ -185,7 +182,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.2.0 | CruizX by KimTechTool'**
+  /// **'v1.1.8 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @a11yCenterOnLocation.
@@ -443,7 +440,7 @@ abstract class AppLocalizations {
   /// No description provided for @authPasswordMinLength.
   ///
   /// In en, this message translates to:
-  /// **'At least 6 characters'**
+  /// **'At least 6 characters, a number and a special character'**
   String get authPasswordMinLength;
 
   /// No description provided for @authConfirmPasswordLabel.
@@ -563,7 +560,7 @@ abstract class AppLocalizations {
   /// No description provided for @authErrorPasswordTooShort.
   ///
   /// In en, this message translates to:
-  /// **'Password must be at least 6 characters.'**
+  /// **'Password must be at least 6 characters and include a number and a special character.'**
   String get authErrorPasswordTooShort;
 
   /// No description provided for @authErrorConfirmEmail.
@@ -1502,18 +1499,46 @@ abstract class AppLocalizations {
   /// **'You'**
   String get supportChatYou;
 
+  /// No description provided for @supportAssistantTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Help Assistant'**
   String get supportAssistantTitle;
 
+  /// No description provided for @supportAssistantIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Get an instant answer from CruizX\'s prepared help guide, even without internet.'**
   String get supportAssistantIntro;
 
+  /// No description provided for @supportAssistantSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Common questions'**
   String get supportAssistantSuggestions;
 
+  /// No description provided for @supportAssistantNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'I could not find a reliable prepared answer. You can forward the question to CruizX Support.'**
   String get supportAssistantNoMatch;
 
+  /// No description provided for @supportAssistantContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to support'**
   String get supportAssistantContact;
 
+  /// No description provided for @supportAssistantForwarded.
+  ///
+  /// In en, this message translates to:
+  /// **'The question was sent to CruizX Support.'**
   String get supportAssistantForwarded;
 
+  /// No description provided for @supportAssistantHumanUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepared answers work offline, but human support requires internet.'**
   String get supportAssistantHumanUnavailable;
 
   /// No description provided for @settingsLinkOpenFailed.
@@ -3545,8 +3570,7 @@ abstract class AppLocalizations {
   String get aiReportSent;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -3555,46 +3579,31 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) => <String>[
-    'da',
-    'en',
-    'es',
-    'fi',
-    'fr',
-    'it',
-    'nb',
-    'sv',
-  ].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'it', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'da':
-      return AppLocalizationsDa();
-    case 'en':
-      return AppLocalizationsEn();
-    case 'es':
-      return AppLocalizationsEs();
-    case 'fi':
-      return AppLocalizationsFi();
-    case 'fr':
-      return AppLocalizationsFr();
-    case 'it':
-      return AppLocalizationsIt();
-    case 'nb':
-      return AppLocalizationsNb();
-    case 'sv':
-      return AppLocalizationsSv();
+    case 'da': return AppLocalizationsDa();
+    case 'en': return AppLocalizationsEn();
+    case 'es': return AppLocalizationsEs();
+    case 'fi': return AppLocalizationsFi();
+    case 'fr': return AppLocalizationsFr();
+    case 'it': return AppLocalizationsIt();
+    case 'nb': return AppLocalizationsNb();
+    case 'sv': return AppLocalizationsSv();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

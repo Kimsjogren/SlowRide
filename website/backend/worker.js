@@ -9,6 +9,7 @@ import SUPPORT_FAQ from "../../assets/support_faq.json" with { type: "json" };
  *   GET  /api/stats   → enkel översikt (skyddad med STATS_TOKEN)
  *   GET  /api/web/pricing          → läs aktivt Stripe-pris för webb/APK
  *   GET  /api/map/speed-bumps      → cachelagrade farthinder från OpenStreetMap
+ *   GET  /api/map/speed-limit      → verifierad skyltad hastighetsgräns per vägsegment
  *   GET  /api/traffic/incidents    → cachelagrad trafikinformation från Trafikverket
  *   POST /api/ai/route-analysis    → AI-sammanfattning av verifierade ruttfakta
  *   POST /api/ai/report            → rapportera ett olämpligt AI-svar
@@ -1462,6 +1463,556 @@ async function handleSpeedBumps(request, origin) {
   return json(result, { headers: { "Cache-Control": "public, max-age=3600", "X-CruizX-Cache": "MISS" } }, origin);
 }
 
+// --- Verified road speed limits ------------------------------------
+
+const SPEED_LIMIT_COUNTRIES = new Set(["SE", "NO", "DK", "FI", "FR", "ES"]);
+const TRAFIKVERKET_SPEED_LIMIT_URL =
+  "https://vektor.trafikverket.se/gis/rest/services/TVTF/Trafikverkets_hastighetsgr%C3%A4nser/MapServer/0/query";
+const DGT_SPEED_LIMIT_URL = "https://infocar.dgt.es/tnits/limitesVelocidad.xml";
+const DGT_INDEX_CACHE_KEY = new Request("https://cruizx-speed-limit-cache.invalid/dgt-es-index-v2");
+const FINTRAFFIC_SPEED_LIMIT_URL =
+  "https://avoinapi.vaylapilvi.fi/vaylatiedot/digiroad/ogc/features/v1/collections/dr_nopeusrajoitus/items";
+const NORWAY_NVDB_SPEED_LIMIT_URL =
+  "https://nvdbapiles.atlas.vegvesen.no/vegobjekter/api/v4/vegobjekter/105";
+
+function degreesToRadians(value) {
+  return (value * Math.PI) / 180;
+}
+
+function roadDistanceMeters(point, start, end) {
+  const earthRadius = 6371000;
+  const latitude = degreesToRadians(point.lat);
+  const toXY = (coordinate) => ({
+    x: earthRadius * degreesToRadians(coordinate.lng - point.lng) * Math.cos(latitude),
+    y: earthRadius * degreesToRadians(coordinate.lat - point.lat),
+  });
+  const a = toXY(start);
+  const b = toXY(end);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return Math.hypot(a.x, a.y);
+  const t = Math.max(0, Math.min(1, -(a.x * dx + a.y * dy) / lengthSquared));
+  return Math.hypot(a.x + t * dx, a.y + t * dy);
+}
+
+function roadBearingDegrees(start, end) {
+  const deltaLng = degreesToRadians(end.lng - start.lng);
+  const startLat = degreesToRadians(start.lat);
+  const endLat = degreesToRadians(end.lat);
+  const y = Math.sin(deltaLng) * Math.cos(endLat);
+  const x =
+    Math.cos(startLat) * Math.sin(endLat) -
+    Math.sin(startLat) * Math.cos(endLat) * Math.cos(deltaLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+function angularDifferenceDegrees(a, b) {
+  return Math.abs(((a - b + 540) % 360) - 180);
+}
+
+// Norwegian NVDB uses ETRS89 / UTM zone 33N (EPSG:5973) for geometry and
+// map windows. The formulas keep the Worker dependency-free and let us fetch
+// only a small area around the current location.
+function wgs84ToUtm33(lat, lng) {
+  const a = 6378137;
+  const eccentricitySquared = 0.00669437999014;
+  const eccentricityPrimeSquared = eccentricitySquared / (1 - eccentricitySquared);
+  const k0 = 0.9996;
+  const latitude = degreesToRadians(lat);
+  const longitudeDelta = degreesToRadians(lng - 15);
+  const sinLatitude = Math.sin(latitude);
+  const cosLatitude = Math.cos(latitude);
+  const tangentSquared = Math.tan(latitude) ** 2;
+  const n = a / Math.sqrt(1 - eccentricitySquared * sinLatitude * sinLatitude);
+  const c = eccentricityPrimeSquared * cosLatitude * cosLatitude;
+  const arc = cosLatitude * longitudeDelta;
+  const meridionalArc =
+    a *
+    ((1 - eccentricitySquared / 4 - (3 * eccentricitySquared ** 2) / 64 - (5 * eccentricitySquared ** 3) / 256) *
+      latitude -
+      ((3 * eccentricitySquared) / 8 + (3 * eccentricitySquared ** 2) / 32 +
+        (45 * eccentricitySquared ** 3) / 1024) *
+        Math.sin(2 * latitude) +
+      ((15 * eccentricitySquared ** 2) / 256 + (45 * eccentricitySquared ** 3) / 1024) *
+        Math.sin(4 * latitude) -
+      ((35 * eccentricitySquared ** 3) / 3072) * Math.sin(6 * latitude));
+  return {
+    easting:
+      k0 *
+        n *
+        (arc +
+          ((1 - tangentSquared + c) * arc ** 3) / 6 +
+          ((5 - 18 * tangentSquared + tangentSquared ** 2 + 72 * c - 58 * eccentricityPrimeSquared) *
+            arc ** 5) /
+            120) +
+      500000,
+    northing:
+      k0 *
+      (meridionalArc +
+        n *
+          Math.tan(latitude) *
+          (arc ** 2 / 2 +
+            ((5 - tangentSquared + 9 * c + 4 * c ** 2) * arc ** 4) / 24 +
+            ((61 - 58 * tangentSquared + tangentSquared ** 2 + 600 * c - 330 * eccentricityPrimeSquared) *
+              arc ** 6) /
+              720)),
+  };
+}
+
+function utm33ToWgs84(easting, northing) {
+  // Reuse the thoroughly bounded inverse used for the DGT feed, with the
+  // Norwegian UTM zone's central meridian (15°E).
+  const a = 6378137;
+  const eccentricitySquared = 0.00669437999014;
+  const eccentricityPrimeSquared = eccentricitySquared / (1 - eccentricitySquared);
+  const k0 = 0.9996;
+  const x = easting - 500000;
+  const meridionalArc = northing / k0;
+  const mu =
+    meridionalArc /
+    (a *
+      (1 -
+        eccentricitySquared / 4 -
+        (3 * eccentricitySquared * eccentricitySquared) / 64 -
+        (5 * eccentricitySquared * eccentricitySquared * eccentricitySquared) / 256));
+  const e1 = (1 - Math.sqrt(1 - eccentricitySquared)) / (1 + Math.sqrt(1 - eccentricitySquared));
+  const phi1 =
+    mu +
+    ((3 * e1) / 2 - (27 * e1 ** 3) / 32) * Math.sin(2 * mu) +
+    ((21 * e1 * e1) / 16 - (55 * e1 ** 4) / 32) * Math.sin(4 * mu) +
+    ((151 * e1 ** 3) / 96) * Math.sin(6 * mu);
+  const sinPhi1 = Math.sin(phi1);
+  const cosPhi1 = Math.cos(phi1);
+  const tanPhi1 = Math.tan(phi1);
+  const n1 = a / Math.sqrt(1 - eccentricitySquared * sinPhi1 * sinPhi1);
+  const t1 = tanPhi1 * tanPhi1;
+  const c1 = eccentricityPrimeSquared * cosPhi1 * cosPhi1;
+  const r1 =
+    (a * (1 - eccentricitySquared)) /
+    (1 - eccentricitySquared * sinPhi1 * sinPhi1) ** 1.5;
+  const d = x / (n1 * k0);
+  const latitude =
+    phi1 -
+    ((n1 * tanPhi1) / r1) *
+      (d * d / 2 -
+        ((5 + 3 * t1 + 10 * c1 - 4 * c1 * c1 - 9 * eccentricityPrimeSquared) * d ** 4) / 24 +
+        ((61 + 90 * t1 + 298 * c1 + 45 * t1 * t1 - 252 * eccentricityPrimeSquared - 3 * c1 * c1) *
+          d ** 6) /
+          720);
+  const longitude =
+    ((d - ((1 + 2 * t1 + c1) * d ** 3) / 6 +
+      ((5 - 2 * t1 + 28 * t1 - 3 * c1 * c1 + 8 * eccentricityPrimeSquared + 24 * t1 * t1) *
+        d ** 5) /
+        120) /
+      cosPhi1) +
+    degreesToRadians(15);
+  return { lat: (latitude * 180) / Math.PI, lng: (longitude * 180) / Math.PI };
+}
+
+function parseNvdbWktLineString(wkt) {
+  if (typeof wkt !== "string") return [];
+  const match = /LINESTRING(?:\s+Z)?\s*\(([^)]+)\)/i.exec(wkt);
+  if (!match) return [];
+  return match[1]
+    .split(",")
+    .map((raw) => raw.trim().split(/\s+/).map(Number))
+    .filter((coordinate) => Number.isFinite(coordinate[0]) && Number.isFinite(coordinate[1]))
+    .map(([easting, northing]) => utm33ToWgs84(easting, northing));
+}
+
+// Every official line source goes through this matcher. A legal speed is
+// returned only when GPS, the route's snapped position, and travel heading all
+// agree on the same road segment. This prevents a parallel motorway or ramp
+// from leaking its limit into the current road.
+function matchOfficialSpeedSegments(query, segments, { country, source }) {
+  const candidates = [];
+  for (const segment of segments) {
+    const { limit, start, end } = segment;
+    if (!Number.isFinite(limit) || limit < 5 || limit > 200) continue;
+    if (![start?.lng, start?.lat, end?.lng, end?.lat].every(Number.isFinite)) continue;
+    const segmentBearing = roadBearingDegrees(start, end);
+    const alignment = Math.min(
+      angularDifferenceDegrees(segmentBearing, query.heading),
+      angularDifferenceDegrees((segmentBearing + 180) % 360, query.heading)
+    );
+    const distance = roadDistanceMeters(query.position, start, end);
+    const routeDistance = roadDistanceMeters(query.routePosition, start, end);
+    // Do not trade correctness for coverage. A sign is shown only when both
+    // the GPS fix and the active route agree on a very close, same-direction
+    // official road segment. Returning unknown is safer than a parallel 110.
+    if (distance > 14 || routeDistance > 18 || alignment > 52) continue;
+    candidates.push({ limit, distance, routeDistance, alignment });
+  }
+  if (!candidates.length) return speedLimitResponse({ country, source, status: "unknown" });
+  const score = (candidate) =>
+    candidate.routeDistance * 3 + candidate.distance * 1.5 + candidate.alignment * 0.45;
+  candidates.sort((a, b) => score(a) - score(b));
+  const best = candidates[0];
+  const runnerUp = candidates[1];
+  if (runnerUp && best.limit !== runnerUp.limit && score(runnerUp) - score(best) < 16) {
+    return speedLimitResponse({ country, source, status: "ambiguous" });
+  }
+  return speedLimitResponse({
+    country,
+    limitKmh: best.limit,
+    source,
+    status: "verified",
+    confidence: "high",
+  });
+}
+
+function parseSpeedLimitQuery(request) {
+  const url = new URL(request.url);
+  const lat = finiteNumber(url.searchParams.get("lat"), -90, 90);
+  const lng = finiteNumber(url.searchParams.get("lng"), -180, 180);
+  const heading = finiteNumber(url.searchParams.get("heading"), 0, 359.999);
+  const country = String(url.searchParams.get("country") || "").trim().toUpperCase();
+  const rawRouteLat = url.searchParams.get("route_lat");
+  const rawRouteLng = url.searchParams.get("route_lng");
+  const routeLat = rawRouteLat === null ? null : finiteNumber(rawRouteLat, -90, 90);
+  const routeLng = rawRouteLng === null ? null : finiteNumber(rawRouteLng, -180, 180);
+  if (lat === null || lng === null || heading === null || !SPEED_LIMIT_COUNTRIES.has(country)) {
+    return null;
+  }
+  if ((routeLat === null) !== (routeLng === null)) return null;
+  return {
+    position: { lat, lng },
+    heading,
+    country,
+    routePosition: routeLat === null ? { lat, lng } : { lat: routeLat, lng: routeLng },
+  };
+}
+
+function speedLimitResponse({ country, limitKmh = null, source, status, confidence = "none" }) {
+  return {
+    country,
+    limit_kmh: limitKmh,
+    source,
+    status,
+    confidence,
+    checked_at: new Date().toISOString(),
+  };
+}
+
+function speedLimitCacheRequest(query) {
+  // A 30 road can run only a few metres from a motorway. Keep cache cells
+  // smaller than a road carriageway and do not reuse a result for a broadly
+  // different direction.
+  const headingBucket = Math.round(query.heading / 10) * 10;
+  return new Request(
+    "https://cruizx-speed-limit-cache.invalid/limit?" +
+      new URLSearchParams({
+        country: query.country,
+        lat: query.position.lat.toFixed(5),
+        lng: query.position.lng.toFixed(5),
+        route_lat: query.routePosition.lat.toFixed(5),
+        route_lng: query.routePosition.lng.toFixed(5),
+        heading: String(headingBucket),
+      })
+  );
+}
+
+// DGT publishes its national-road R-301 signs in ETRS89 / UTM zone 30N,
+// represented as northing,easting in the ROSATTE XML posList field.
+function dgtUtm30ToWgs84(northing, easting) {
+  const a = 6378137;
+  const eccentricitySquared = 0.00669437999014;
+  const eccentricityPrimeSquared = eccentricitySquared / (1 - eccentricitySquared);
+  const k0 = 0.9996;
+  const x = easting - 500000;
+  const y = northing;
+  const meridionalArc = y / k0;
+  const mu =
+    meridionalArc /
+    (a *
+      (1 -
+        eccentricitySquared / 4 -
+        (3 * eccentricitySquared * eccentricitySquared) / 64 -
+        (5 * eccentricitySquared * eccentricitySquared * eccentricitySquared) / 256));
+  const e1 = (1 - Math.sqrt(1 - eccentricitySquared)) / (1 + Math.sqrt(1 - eccentricitySquared));
+  const phi1 =
+    mu +
+    ((3 * e1) / 2 - (27 * e1 ** 3) / 32) * Math.sin(2 * mu) +
+    ((21 * e1 * e1) / 16 - (55 * e1 ** 4) / 32) * Math.sin(4 * mu) +
+    ((151 * e1 ** 3) / 96) * Math.sin(6 * mu);
+  const sinPhi1 = Math.sin(phi1);
+  const cosPhi1 = Math.cos(phi1);
+  const tanPhi1 = Math.tan(phi1);
+  const n1 = a / Math.sqrt(1 - eccentricitySquared * sinPhi1 * sinPhi1);
+  const t1 = tanPhi1 * tanPhi1;
+  const c1 = eccentricityPrimeSquared * cosPhi1 * cosPhi1;
+  const r1 =
+    (a * (1 - eccentricitySquared)) /
+    (1 - eccentricitySquared * sinPhi1 * sinPhi1) ** 1.5;
+  const d = x / (n1 * k0);
+  const latitude =
+    phi1 -
+    ((n1 * tanPhi1) / r1) *
+      (d * d / 2 -
+        ((5 + 3 * t1 + 10 * c1 - 4 * c1 * c1 - 9 * eccentricityPrimeSquared) * d ** 4) / 24 +
+        ((61 + 90 * t1 + 298 * c1 + 45 * t1 * t1 - 252 * eccentricityPrimeSquared - 3 * c1 * c1) *
+          d ** 6) /
+          720);
+  const longitude =
+    ((d - ((1 + 2 * t1 + c1) * d ** 3) / 6 +
+      ((5 - 2 * c1 + 28 * t1 - 3 * c1 * c1 + 8 * eccentricityPrimeSquared + 24 * t1 * t1) *
+        d ** 5) /
+        120) /
+      cosPhi1) +
+    degreesToRadians(-3);
+  return { lat: (latitude * 180) / Math.PI, lng: (longitude * 180) / Math.PI };
+}
+
+function xmlValue(feature, tagName) {
+  const match = new RegExp(`<${tagName}(?:\\s[^>]*)?>([\\s\\S]*?)</${tagName}>`).exec(feature);
+  return match ? match[1].trim() : null;
+}
+
+function parseDgtSpeedLimitIndex(xml) {
+  const signs = [];
+  const features = xml.match(/<rst:GenericSafetyFeature\b[\s\S]*?<\/rst:GenericSafetyFeature>/g) || [];
+  for (const feature of features) {
+    if (!/<rst:type>\s*SpeedLimit\s*<\/rst:type>/.test(feature)) continue;
+    const posList = xmlValue(feature, "gml:posList");
+    const limitMatch = /<gml:measure[^>]*>([0-9.]+)<\/gml:measure>/.exec(feature);
+    if (!posList || !limitMatch) continue;
+    const coordinates = posList.match(/[+-]?\d+(?:\.\d+)?/g)?.map(Number) || [];
+    const limit = Number(limitMatch[1]);
+    if (coordinates.length < 2 || !Number.isFinite(limit) || limit < 5 || limit > 200) continue;
+    const point = dgtUtm30ToWgs84(coordinates[0], coordinates[1]);
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) continue;
+    signs.push({
+      ...point,
+      limit,
+      road: xmlValue(feature, "net:road"),
+      direction: xmlValue(feature, "net:applicableDirection"),
+    });
+  }
+  return signs;
+}
+
+async function fetchDgtSpeedLimitIndex() {
+  const cache = globalThis.caches?.default;
+  const cached = cache ? await cache.match(DGT_INDEX_CACHE_KEY) : null;
+  if (cached) return cached.json();
+  const response = await fetch(DGT_SPEED_LIMIT_URL, {
+    headers: { "User-Agent": "CruizX/1.2 speed-limit service (https://cruizx.com)" },
+  });
+  if (!response.ok) throw new Error(`DGT ${response.status}`);
+  const signs = parseDgtSpeedLimitIndex(await response.text());
+  if (cache) {
+    await cache.put(
+      DGT_INDEX_CACHE_KEY,
+      new Response(JSON.stringify(signs), {
+        headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=604800" },
+      })
+    );
+  }
+  return signs;
+}
+
+async function fetchSpanishDgtSpeedLimit(query) {
+  const signs = await fetchDgtSpeedLimitIndex();
+  const nearby = signs
+    .map((sign) => ({ ...sign, distance: roadDistanceMeters(query.position, sign, sign) }))
+    .filter((sign) => sign.distance <= 28)
+    .sort((a, b) => a.distance - b.distance);
+  if (!nearby.length) {
+    return speedLimitResponse({ country: "ES", source: "dgt_tnits", status: "unknown" });
+  }
+  const best = nearby[0];
+  const conflictingSign = nearby.find((sign) => sign.limit !== best.limit && sign.distance - best.distance < 8);
+  if (conflictingSign) {
+    return speedLimitResponse({ country: "ES", source: "dgt_tnits", status: "ambiguous" });
+  }
+  return speedLimitResponse({
+    country: "ES",
+    limitKmh: best.limit,
+    source: "dgt_tnits",
+    status: "verified",
+    confidence: "high",
+  });
+}
+
+async function fetchFinnishSpeedLimit(query) {
+  // The collection is WGS84 GeoJSON. This small geographic window is about
+  // 100 x 100 m in Finland and is deliberately tighter than the matcher.
+  const latitudeDelta = 0.00045;
+  const longitudeDelta = 0.0009;
+  const bbox = [
+    query.position.lng - longitudeDelta,
+    query.position.lat - latitudeDelta,
+    query.position.lng + longitudeDelta,
+    query.position.lat + latitudeDelta,
+  ].join(",");
+  const response = await fetch(
+    `${FINTRAFFIC_SPEED_LIMIT_URL}?${new URLSearchParams({ bbox, limit: "200" })}`,
+    { headers: { Accept: "application/geo+json", "User-Agent": "CruizX/1.2 speed-limit service" } }
+  );
+  if (!response.ok) {
+    return speedLimitResponse({ country: "FI", source: "fintraffic_digiroad", status: "unavailable" });
+  }
+  const body = await response.json();
+  const segments = [];
+  for (const feature of body.features || []) {
+    const limit = Number(feature.properties?.arvo);
+    const coordinates = feature.geometry?.type === "LineString" ? feature.geometry.coordinates : [];
+    for (let index = 0; index < coordinates.length - 1; index += 1) {
+      const startRaw = coordinates[index];
+      const endRaw = coordinates[index + 1];
+      if (!Array.isArray(startRaw) || !Array.isArray(endRaw)) continue;
+      segments.push({
+        limit,
+        start: { lng: Number(startRaw[0]), lat: Number(startRaw[1]) },
+        end: { lng: Number(endRaw[0]), lat: Number(endRaw[1]) },
+      });
+    }
+  }
+  return matchOfficialSpeedSegments(query, segments, {
+    country: "FI",
+    source: "fintraffic_digiroad",
+  });
+}
+
+async function fetchNorwegianSpeedLimit(query) {
+  const projected = wgs84ToUtm33(query.position.lat, query.position.lng);
+  // A 70 m square comfortably includes road geometry around a GPS fix, while
+  // the common matcher below still requires a much tighter road match.
+  const windowMeters = 70;
+  const kartutsnitt = [
+    projected.easting - windowMeters,
+    projected.northing - windowMeters,
+    projected.easting + windowMeters,
+    projected.northing + windowMeters,
+  ].join(",");
+  const response = await fetch(
+    `${NORWAY_NVDB_SPEED_LIMIT_URL}?${new URLSearchParams({
+      antall: "200",
+      kartutsnitt,
+      inkluder: "geometri,egenskaper",
+    })}`,
+    { headers: { "X-Client": "CruizX speed-limit service (https://cruizx.com)" } }
+  );
+  if (!response.ok) {
+    return speedLimitResponse({ country: "NO", source: "norway_nvdb", status: "unavailable" });
+  }
+  const body = await response.json();
+  const segments = [];
+  for (const object of body.objekter || []) {
+    const speed = object.egenskaper?.find((property) => property?.navn === "Fartsgrense");
+    const limit = Number(speed?.verdi);
+    const points = parseNvdbWktLineString(object.geometri?.wkt);
+    for (let index = 0; index < points.length - 1; index += 1) {
+      segments.push({ limit, start: points[index], end: points[index + 1] });
+    }
+  }
+  return matchOfficialSpeedSegments(query, segments, { country: "NO", source: "norway_nvdb" });
+}
+
+async function fetchSwedishSpeedLimit(query) {
+  const response = await fetch(
+    `${TRAFIKVERKET_SPEED_LIMIT_URL}?${new URLSearchParams({
+      f: "json",
+      geometry: JSON.stringify({ x: query.position.lng, y: query.position.lat }),
+      geometryType: "esriGeometryPoint",
+      inSR: "4326",
+      spatialRel: "esriSpatialRelIntersects",
+      distance: "30",
+      units: "esriSRUnit_Meter",
+      outFields: "Hastighet",
+      returnGeometry: "true",
+      outSR: "4326",
+    })}`
+  );
+  if (!response.ok) {
+    return speedLimitResponse({ country: "SE", source: "trafikverket_nvdb", status: "unavailable" });
+  }
+
+  const body = await response.json();
+  const segments = [];
+  for (const feature of body.features || []) {
+    const limit = Number(feature.attributes?.Hastighet);
+    if (!Number.isFinite(limit) || limit < 5 || limit > 200) continue;
+    for (const rawPath of feature.geometry?.paths || []) {
+      for (let index = 0; index < rawPath.length - 1; index += 1) {
+        const startRaw = rawPath[index];
+        const endRaw = rawPath[index + 1];
+        if (!Array.isArray(startRaw) || !Array.isArray(endRaw)) continue;
+        const start = { lng: Number(startRaw[0]), lat: Number(startRaw[1]) };
+        const end = { lng: Number(endRaw[0]), lat: Number(endRaw[1]) };
+        if (![start.lng, start.lat, end.lng, end.lat].every(Number.isFinite)) continue;
+        segments.push({ limit, start, end });
+      }
+    }
+  }
+  return matchOfficialSpeedSegments(query, segments, {
+    country: "SE",
+    source: "trafikverket_nvdb",
+  });
+}
+
+async function handleSpeedLimit(request, origin) {
+  const query = parseSpeedLimitQuery(request);
+  if (!query) {
+    return json(
+      { error: "invalid_request", message: "lat, lng, heading och country måste vara giltiga." },
+      { status: 400 },
+      origin
+    );
+  }
+
+  const cache = globalThis.caches?.default;
+  const cacheKey = speedLimitCacheRequest(query);
+  const cached = cache ? await cache.match(cacheKey) : null;
+  if (cached) {
+    return json(await cached.json(), { headers: { "Cache-Control": "public, max-age=15", "X-CruizX-Cache": "HIT" } }, origin);
+  }
+
+  let result;
+  try {
+    result =
+      query.country === "SE"
+        ? await fetchSwedishSpeedLimit(query)
+        : query.country === "ES"
+          ? await fetchSpanishDgtSpeedLimit(query)
+          : query.country === "FI"
+            ? await fetchFinnishSpeedLimit(query)
+            : query.country === "NO"
+              ? await fetchNorwegianSpeedLimit(query)
+              : speedLimitResponse({
+                  country: query.country,
+                  source: "pending_official_adapter",
+                  status: "unknown",
+                });
+  } catch {
+    result = speedLimitResponse({
+      country: query.country,
+      source:
+        query.country === "SE"
+          ? "trafikverket_nvdb"
+          : query.country === "ES"
+            ? "dgt_tnits"
+            : query.country === "FI"
+              ? "fintraffic_digiroad"
+              : query.country === "NO"
+                ? "norway_nvdb"
+              : "pending_official_adapter",
+      status: "unavailable",
+    });
+  }
+
+  if (cache) {
+    await cache.put(
+      cacheKey,
+      new Response(JSON.stringify(result), {
+        headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=30" },
+      })
+    );
+  }
+  return json(result, { headers: { "Cache-Control": "public, max-age=15", "X-CruizX-Cache": "MISS" } }, origin);
+}
+
 // --- Trafikverket live traffic -------------------------------------
 
 const TRAFIKVERKET_URL = "https://api.trafikinfo.trafikverket.se/v2/data.json";
@@ -1708,6 +2259,7 @@ function routeRequest(request, env, origin, pathname) {
     "POST /api/scan": () => handleScan(request, env, origin),
     "GET /api/stats": () => handleStats(request, env, origin),
     "GET /api/map/speed-bumps": () => handleSpeedBumps(request, origin),
+    "GET /api/map/speed-limit": () => handleSpeedLimit(request, origin),
     "GET /api/traffic/incidents": () => handleTrafficIncidents(request, env, origin),
     "POST /api/ai/route-analysis": () => handleAiRouteAnalysis(request, env, origin),
     "POST /api/ai/report": () => handleAiReport(request, env, origin),

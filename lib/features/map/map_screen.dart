@@ -159,10 +159,17 @@ class _MapScreenState extends State<MapScreen> {
   bool _roadLimitFromRoute = false;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
+  // Keep the last confirmed sign briefly while the next road lookup is in
+  // flight. Network-backed sources can legitimately return an empty response
+  // for one sample even when the vehicle is still on the same signed road.
+  LatLng? _lastVerifiedRoadLimitPos;
+  DateTime? _lastVerifiedRoadLimitAt;
   bool _roadLimitLookupInFlight = false;
   int _roadLimitLookupGeneration = 0;
-  static const Duration _roadLimitLookupInterval = Duration(seconds: 6);
-  static const double _roadLimitLookupMinMoveMeters = 20;
+  static const Duration _roadLimitLookupInterval = Duration(seconds: 4);
+  static const double _roadLimitLookupMinMoveMeters = 15;
+  static const double _roadLimitStaleDistanceMeters = 60;
+  static const Duration _roadLimitStaleAfter = Duration(seconds: 16);
 
   // ── GPS simulation (test-only, visible in debug builds) ──────────────
   bool _isSimulating = false;
@@ -395,6 +402,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _maybeRefreshRoadSpeedLimit(LatLng pos) async {
+    final lastPos = _lastRoadLimitLookupPos;
     if (_roadLimitLookupInFlight) return;
 
     final now = DateTime.now();
@@ -402,7 +410,6 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
-    final lastPos = _lastRoadLimitLookupPos;
     if (lastPos != null &&
         _segDist(lastPos, pos) < _roadLimitLookupMinMoveMeters) {
       return;
@@ -419,18 +426,26 @@ class _MapScreenState extends State<MapScreen> {
     if (!mounted || !lookup.completed) return;
     final fetched = lookup.limit;
     if (fetched == null) {
-      // An untagged OSM way should not erase a valid limit supplied with the
-      // active route. It only means that this live verification did not have
-      // a better value for the road currently being driven.
-      final routeLimit = _speedLimitForRouteIndex(_lastNearestIdx);
-      if (_roadSpeedLimitKmh == routeLimit && _roadLimitFromRoute) return;
-      setState(() {
-        _roadSpeedLimitKmh = routeLimit;
-        _roadLimitFromRoute = routeLimit != null;
-      });
-      unawaited(_syncCarPlayNavigationState());
+      // Do not make a confirmed sign flash away between two lookups. Only
+      // retire it once it is genuinely stale, so a temporary timeout or an
+      // empty Mapbox/authority response cannot alternate 30 -> nothing -> 30.
+      final verifiedPos = _lastVerifiedRoadLimitPos;
+      final verifiedAt = _lastVerifiedRoadLimitAt;
+      final isStale = verifiedPos == null ||
+          verifiedAt == null ||
+          _segDist(verifiedPos, pos) >= _roadLimitStaleDistanceMeters ||
+          now.difference(verifiedAt) >= _roadLimitStaleAfter;
+      if (isStale && _roadSpeedLimitKmh != null) {
+        setState(() {
+          _roadSpeedLimitKmh = null;
+          _roadLimitFromRoute = false;
+        });
+        unawaited(_syncCarPlayNavigationState());
+      }
       return;
     }
+    _lastVerifiedRoadLimitPos = pos;
+    _lastVerifiedRoadLimitAt = now;
     if (_roadSpeedLimitKmh != null &&
         (fetched - _roadSpeedLimitKmh!).abs() < 1.0) {
       return;
@@ -451,6 +466,8 @@ class _MapScreenState extends State<MapScreen> {
     _roadLimitFromRoute = false;
     _lastRoadLimitLookupPos = null;
     _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
+    _lastVerifiedRoadLimitPos = null;
+    _lastVerifiedRoadLimitAt = null;
     _etaSmoothedSpeedKmh = 0;
     _etaLastMovementAt = null;
   }
@@ -459,12 +476,6 @@ class _MapScreenState extends State<MapScreen> {
     _routeSpeedLimitGeneration++;
     _routeSpeedLimitsKmh = const [];
     _roadLimitFromRoute = false;
-  }
-
-  double? _speedLimitForRouteIndex(int index) {
-    if (_routeSpeedLimitsKmh.isEmpty) return null;
-    final safeIndex = index.clamp(0, _routeSpeedLimitsKmh.length - 1);
-    return _routeSpeedLimitsKmh[safeIndex];
   }
 
   Future<void> _loadRouteSpeedLimits(List<LatLng> routePoints) async {
@@ -481,15 +492,11 @@ class _MapScreenState extends State<MapScreen> {
         limits.length != routePoints.length) {
       return;
     }
-    final currentLimit = limits.isEmpty
-        ? null
-        : limits[_lastNearestIdx.clamp(0, limits.length - 1)];
+    // Routing-edge values remain available for route calculations but are
+    // never displayed as a live, signed speed limit. The route can run close
+    // to a different road (for example a 110 motorway), especially in Spain.
     setState(() {
       _routeSpeedLimitsKmh = limits;
-      if (currentLimit != null) {
-        _roadSpeedLimitKmh = currentLimit;
-        _roadLimitFromRoute = true;
-      }
     });
     unawaited(_syncCarPlayNavigationState());
   }
@@ -500,11 +507,30 @@ class _MapScreenState extends State<MapScreen> {
     final countryCode = UserPreferencesService.instance.countryCode.value
         .trim()
         .toUpperCase();
+    final backendResult = await _fetchBackendRoadSpeedLimitKmh(
+      pos,
+      countryCode: countryCode,
+    );
+    if (backendResult.handled) {
+      return (completed: backendResult.completed, limit: backendResult.limit);
+    }
+    // The public authority feeds have the highest priority, but coverage and
+    // response times vary greatly between countries. Query the route-matched
+    // Mapbox speed annotation before Overpass: otherwise a slow/failed OSM
+    // request could prevent Spain (or any other country) from ever reaching
+    // the global fallback while the driver is already on the next street.
+    final mapboxResult = await _fetchMapboxSpeedLimitKmh(position: pos);
+    if (mapboxResult.limit != null) return mapboxResult;
+    if (countryCode == 'SE') {
+      // Do not fall back to a nearby OSM/route edge in Sweden: an adjacent
+      // motorway is a common source of a dangerously incorrect 110 sign.
+      return _fetchSwedishNvdbSpeedLimitKmh(pos);
+    }
     // Fetch every nearby road, not only roads with an explicit maxspeed tag.
     // Otherwise an untagged residential road can incorrectly inherit the
     // maxspeed from a tagged motorway running beside it.
     final query =
-        '[out:json][timeout:8];way(around:50,${pos.latitude},${pos.longitude})["highway"];out tags geom;';
+        '[out:json][timeout:8];way(around:35,${pos.latitude},${pos.longitude})["highway"];out tags geom;';
 
     try {
       final response = await http
@@ -518,9 +544,7 @@ class _MapScreenState extends State<MapScreen> {
           )
           .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) {
-        return (completed: false, limit: null);
-      }
+      if (response.statusCode != 200) return (completed: true, limit: null);
 
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
       final elements =
@@ -550,6 +574,10 @@ class _MapScreenState extends State<MapScreen> {
               8,
             )
           : _headingNotifier.value;
+      final routeAnchor = _routePoints.isNotEmpty
+          ? (_displayRouteProjection ??
+                _routePoints[_lastNearestIdx.clamp(0, _routePoints.length - 1)])
+          : pos;
       const drivableRoadClasses = {
         'motorway',
         'motorway_link',
@@ -599,12 +627,7 @@ class _MapScreenState extends State<MapScreen> {
         if (geometry != null && geometry.length >= 2) {
           var distance = double.infinity;
           var alignment = 180.0;
-          var routeDistance = _routePoints.length >= 2 ? double.infinity : 0.0;
-          final routeStart = math.max(_lastNearestIdx - 4, 0);
-          final routeEnd = math.min(
-            _lastNearestIdx + 10,
-            math.max(_routePoints.length - 1, 0),
-          );
+          var routeDistance = double.infinity;
           for (var i = 0; i < geometry.length - 1; i++) {
             final segmentDistance = _distanceToSegmentMeters(
               pos,
@@ -626,32 +649,17 @@ class _MapScreenState extends State<MapScreen> {
               alignment = math.min(forwardDifference, reverseDifference);
             }
 
-            // Match against the active route geometry as well as raw GPS.
-            // This distinguishes parallel roads even when GPS accuracy drifts.
-            for (var r = routeStart; r < routeEnd; r++) {
-              routeDistance = math.min(
-                routeDistance,
-                math.min(
-                  _distanceToSegmentMeters(
-                    geometry[i],
-                    _routePoints[r],
-                    _routePoints[r + 1],
-                  ),
-                  math.min(
-                    _distanceToSegmentMeters(
-                      geometry[i + 1],
-                      _routePoints[r],
-                      _routePoints[r + 1],
-                    ),
-                    _distanceToSegmentMeters(
-                      _routePoints[r],
-                      geometry[i],
-                      geometry[i + 1],
-                    ),
-                  ),
-                ),
-              );
-            }
+            // Match only against the position on the active route. Looking
+            // ahead along the full route could select a motorway or slip road
+            // that crosses the route further ahead.
+            routeDistance = math.min(
+              routeDistance,
+              _distanceToSegmentMeters(
+                routeAnchor,
+                geometry[i],
+                geometry[i + 1],
+              ),
+            );
           }
           candidates.add((
             limit: parsed,
@@ -662,26 +670,361 @@ class _MapScreenState extends State<MapScreen> {
         }
       }
 
-      if (candidates.isNotEmpty) {
+      final confidentCandidates = candidates
+          .where(
+            (candidate) =>
+                candidate.distance <= 26 &&
+                candidate.routeDistance <= 34 &&
+                candidate.alignment <= 78,
+          )
+          .toList(growable: false);
+      if (confidentCandidates.isNotEmpty) {
         // Identify the road first, then use that road's limit. An untagged
         // matched road intentionally returns null instead of borrowing a limit
         // from another nearby road.
-        candidates.sort((a, b) {
-          final aScore =
-              a.routeDistance * 3 +
-              a.distance * 0.25 +
-              math.min(a.alignment, 90) * 0.55;
-          final bScore =
-              b.routeDistance * 3 +
-              b.distance * 0.25 +
-              math.min(b.alignment, 90) * 0.55;
-          return aScore.compareTo(bScore);
+        double score(
+          ({
+            double? limit,
+            double distance,
+            double alignment,
+            double routeDistance,
+          })
+          candidate,
+        ) =>
+            candidate.routeDistance * 3 +
+            candidate.distance * 1.5 +
+            math.min(candidate.alignment, 90) * 0.45;
+        confidentCandidates.sort((a, b) {
+          return score(a).compareTo(score(b));
         });
-        return (completed: true, limit: candidates.first.limit);
+        final best = confidentCandidates.first;
+        if (confidentCandidates.length > 1) {
+          final runnerUp = confidentCandidates[1];
+          if (best.limit != runnerUp.limit &&
+              score(runnerUp) - score(best) < 12) {
+            // Two similarly likely roads, but different limits: do not guess.
+            return (completed: true, limit: null);
+          }
+        }
+        // A precise OSM road match without a maxspeed tag is common on local
+        // roads. It is still safe to identify the road from OSM, but do not
+        // stop there: ask Mapbox for the signed maxspeed annotation for this
+        // same active-route segment. This is a shared fallback for every
+        // supported country, not a Spain-only workaround.
+        if (best.limit == null) {
+          return await _fetchMapboxSpeedLimitKmh(position: pos);
+        }
+        return (completed: true, limit: best.limit);
       }
-      return (completed: true, limit: null);
+      return await _fetchMapboxSpeedLimitKmh(position: pos);
     } catch (_) {
-      return (completed: false, limit: null);
+      // Do not leave an old limit visible when the verification service is
+      // unavailable; it may now belong to the road just left.
+      return _fetchMapboxSpeedLimitKmh(position: pos);
+    }
+  }
+
+  /// Final fallback for every country after an official source and the exact
+  /// OSM road match have no signed limit. Mapbox is constrained to the active
+  /// route and current heading, so a nearby parallel road cannot donate its
+  /// speed to the road being driven.
+  Future<({bool completed, double? limit})> _fetchMapboxSpeedLimitKmh({
+    required LatLng position,
+  }) async {
+    final token = BackendConfig.mapboxAccessToken.trim();
+    if (token.isEmpty) {
+      return (completed: true, limit: null);
+    }
+
+    final hasActiveRoute = _routePoints.length >= 2;
+    final nearestIndex = hasActiveRoute
+        ? _lastNearestIdx.clamp(0, _routePoints.length - 1)
+        : 0;
+    final start = hasActiveRoute
+        ? (_displayRouteProjection ?? _routePoints[nearestIndex])
+        : position;
+    final heading = hasActiveRoute
+        ? _routeLookaheadHeading(nearestIndex, 8)
+        : _headingNotifier.value;
+    LatLng? end;
+    if (hasActiveRoute) {
+      for (
+        var index = nearestIndex + 1;
+        index < _routePoints.length && index <= nearestIndex + 28;
+        index++
+      ) {
+        final candidate = _routePoints[index];
+        final distance = _segDist(start, candidate);
+        if (distance >= 28 && distance <= 160) {
+          end = candidate;
+          break;
+        }
+      }
+    }
+    // Also show the road limit when the driver has not started a route yet.
+    // A short forward point lets Mapbox match the current GPS road and
+    // bearing, while still keeping the request constrained to one segment.
+    end ??= _pointAheadOnHeading(start, heading, distanceMeters: 80);
+    try {
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://api.mapbox.com/directions/v5/mapbox/driving/'
+              '${start.longitude.toStringAsFixed(6)},${start.latitude.toStringAsFixed(6)};'
+              '${end.longitude.toStringAsFixed(6)},${end.latitude.toStringAsFixed(6)}',
+            ).replace(
+              queryParameters: {
+                'alternatives': 'false',
+                'overview': 'full',
+                'geometries': 'geojson',
+                'annotations': 'maxspeed',
+                // Keep Mapbox on the same carriageway rather than a parallel
+                // motorway or service road.
+                // Constrain the current position only. Constraining the end
+                // point to the same bearing rejects valid streets that turn
+                // within the next 80 m, which was a common cause of no
+                // speed-limit result on Spanish urban roads.
+                'bearings': '${heading.round()},45;',
+                'radiuses': '18;90',
+                'access_token': token,
+              },
+            ),
+          )
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) return (completed: true, limit: null);
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      final routes = decoded['routes'] as List?;
+      final route = routes?.whereType<Map<String, dynamic>>().firstOrNull;
+      final legs = route?['legs'] as List?;
+      final leg = legs?.whereType<Map<String, dynamic>>().firstOrNull;
+      final annotation = leg?['annotation'] as Map<String, dynamic>?;
+      final values = annotation?['maxspeed'] as List?;
+      for (final raw in values ?? const <dynamic>[]) {
+        if (raw is! Map<String, dynamic>) continue;
+        final speed = (raw['speed'] as num?)?.toDouble();
+        if (speed == null || speed < 5 || speed > 200) continue;
+        final unit = (raw['unit'] ?? 'km/h').toString().toLowerCase();
+        final kmh = unit == 'mph' ? speed * 1.60934 : speed;
+        return (completed: true, limit: kmh);
+      }
+    } catch (_) {
+      // Unknown remains safer than a guessed limit.
+    }
+    return (completed: true, limit: null);
+  }
+
+  LatLng _pointAheadOnHeading(
+    LatLng start,
+    double headingDegrees, {
+    required double distanceMeters,
+  }) {
+    const earthRadiusMeters = 6371000.0;
+    final angularDistance = distanceMeters / earthRadiusMeters;
+    final headingRadians = headingDegrees * math.pi / 180;
+    final latitudeRadians = start.latitude * math.pi / 180;
+    final longitudeRadians = start.longitude * math.pi / 180;
+    final destinationLatitude = math.asin(
+      math.sin(latitudeRadians) * math.cos(angularDistance) +
+          math.cos(latitudeRadians) * math.sin(angularDistance) * math.cos(headingRadians),
+    );
+    final destinationLongitude =
+        longitudeRadians +
+        math.atan2(
+          math.sin(headingRadians) * math.sin(angularDistance) * math.cos(latitudeRadians),
+          math.cos(angularDistance) -
+              math.sin(latitudeRadians) * math.sin(destinationLatitude),
+        );
+    return LatLng(
+      destinationLatitude * 180 / math.pi,
+      destinationLongitude * 180 / math.pi,
+    );
+  }
+
+  /// Queries the shared CruizX road-limit service. Country adapters are
+  /// activated independently on the server; while an adapter is pending, the
+  /// app keeps its conservative local matcher as a temporary fallback.
+  Future<({bool handled, bool completed, double? limit})>
+  _fetchBackendRoadSpeedLimitKmh(
+    LatLng pos, {
+    required String countryCode,
+  }) async {
+    if (countryCode.isEmpty) {
+      return (handled: false, completed: false, limit: null);
+    }
+    final routeAnchor = _routePoints.isNotEmpty
+        ? (_displayRouteProjection ??
+              _routePoints[_lastNearestIdx.clamp(0, _routePoints.length - 1)])
+        : pos;
+    final routeHeading = _routePoints.length >= 2
+        ? _routeLookaheadHeading(
+            _lastNearestIdx.clamp(0, _routePoints.length - 1),
+            8,
+          )
+        : _headingNotifier.value;
+    try {
+      final uri =
+          Uri.parse(
+            '${BackendConfig.mapDataBaseUrl}/api/map/speed-limit',
+          ).replace(
+            queryParameters: {
+              'lat': pos.latitude.toStringAsFixed(6),
+              'lng': pos.longitude.toStringAsFixed(6),
+              'heading': routeHeading.toStringAsFixed(1),
+              'country': countryCode,
+              'route_lat': routeAnchor.latitude.toStringAsFixed(6),
+              'route_lng': routeAnchor.longitude.toStringAsFixed(6),
+            },
+          );
+      final response = await http.get(uri).timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) {
+        return (handled: false, completed: false, limit: null);
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final source = (data['source'] ?? '').toString();
+      final status = (data['status'] ?? '').toString();
+      if (source == 'pending_official_adapter') {
+        return (handled: false, completed: false, limit: null);
+      }
+      // Coverage can have gaps in every official dataset. A verified result
+      // always wins, while an explicit ambiguous result deliberately
+      // suppresses fallback. An `unknown` result must continue to Mapbox
+      // rather than leaving the driver without a current road limit.
+      if (status == 'unknown') {
+        return (handled: false, completed: false, limit: null);
+      }
+      final rawLimit = data['limit_kmh'];
+      final limit = rawLimit is num ? rawLimit.toDouble() : null;
+      return (handled: true, completed: true, limit: limit);
+    } catch (_) {
+      return (handled: false, completed: false, limit: null);
+    }
+  }
+
+  /// Reads the signed limit from Trafikverket's public NVDB map service.
+  /// The feature geometry is matched against both the GPS fix and the active
+  /// route direction, so a parallel road or crossing does not donate its
+  /// speed limit to the road being driven.
+  Future<({bool completed, double? limit})> _fetchSwedishNvdbSpeedLimitKmh(
+    LatLng pos,
+  ) async {
+    const endpoint =
+        '/gis/rest/services/TVTF/Trafikverkets_hastighetsgränser/MapServer/0/query';
+    try {
+      final response = await http
+          .get(
+            Uri.https('vektor.trafikverket.se', endpoint, {
+              'f': 'json',
+              'geometry': jsonEncode({'x': pos.longitude, 'y': pos.latitude}),
+              'geometryType': 'esriGeometryPoint',
+              'inSR': '4326',
+              'spatialRel': 'esriSpatialRelIntersects',
+              'distance': '30',
+              'units': 'esriSRUnit_Meter',
+              'outFields': 'Hastighet',
+              'returnGeometry': 'true',
+              'outSR': '4326',
+            }),
+          )
+          .timeout(const Duration(seconds: 7));
+      if (response.statusCode != 200) return (completed: true, limit: null);
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final features = body['features'] as List? ?? const [];
+      final routeAnchor = _routePoints.isNotEmpty
+          ? (_displayRouteProjection ??
+                _routePoints[_lastNearestIdx.clamp(0, _routePoints.length - 1)])
+          : pos;
+      final routeHeading = _routePoints.length >= 2
+          ? _routeLookaheadHeading(
+              _lastNearestIdx.clamp(0, _routePoints.length - 1),
+              8,
+            )
+          : _headingNotifier.value;
+      final candidates =
+          <
+            ({
+              double limit,
+              double distance,
+              double alignment,
+              double routeDistance,
+            })
+          >[];
+
+      for (final rawFeature in features.whereType<Map<String, dynamic>>()) {
+        final attributes = rawFeature['attributes'] as Map<String, dynamic>?;
+        final limit = (attributes?['Hastighet'] as num?)?.toDouble();
+        if (limit == null || limit < 5 || limit > 200) continue;
+        final geometry = rawFeature['geometry'] as Map<String, dynamic>?;
+        final paths = geometry?['paths'] as List? ?? const [];
+        for (final rawPath in paths.whereType<List>()) {
+          final path = rawPath
+              .whereType<List>()
+              .map((point) {
+                if (point.length < 2 || point[0] is! num || point[1] is! num) {
+                  return null;
+                }
+                return LatLng(
+                  (point[1] as num).toDouble(),
+                  (point[0] as num).toDouble(),
+                );
+              })
+              .whereType<LatLng>()
+              .toList(growable: false);
+          for (var index = 0; index < path.length - 1; index++) {
+            final start = path[index];
+            final end = path[index + 1];
+            final distance = _distanceToSegmentMeters(pos, start, end);
+            final routeDistance = _distanceToSegmentMeters(
+              routeAnchor,
+              start,
+              end,
+            );
+            final segmentHeading = _bearingDeg(start, end);
+            final alignment = math.min(
+              ((segmentHeading - routeHeading + 540) % 360 - 180).abs(),
+              ((segmentHeading + 180 - routeHeading + 540) % 360 - 180).abs(),
+            );
+            // Be deliberately conservative. If the exact segment cannot be
+            // identified within these tolerances, do not show a legal limit.
+            if (distance <= 24 && routeDistance <= 32 && alignment <= 72) {
+              candidates.add((
+                limit: limit,
+                distance: distance,
+                alignment: alignment,
+                routeDistance: routeDistance,
+              ));
+            }
+          }
+        }
+      }
+
+      if (candidates.isEmpty) return (completed: true, limit: null);
+      double score(
+        ({
+          double limit,
+          double distance,
+          double alignment,
+          double routeDistance,
+        })
+        candidate,
+      ) =>
+          candidate.routeDistance * 3 +
+          candidate.distance * 1.5 +
+          candidate.alignment * 0.25;
+      candidates.sort((a, b) => score(a).compareTo(score(b)));
+      final best = candidates.first;
+      final conflicting = candidates
+          .skip(1)
+          .any(
+            (candidate) =>
+                candidate.limit != best.limit &&
+                score(candidate) - score(best) < 10,
+          );
+      return (completed: true, limit: conflicting ? null : best.limit);
+    } catch (_) {
+      // A failed authoritative lookup must never revive a stale routing value.
+      return (completed: true, limit: null);
     }
   }
 
@@ -4681,7 +5024,6 @@ class _MapScreenState extends State<MapScreen> {
     String? newStreetName;
     int? nearestIdxForHeading;
     double? nearestPointDistM;
-    double? routeSpeedLimit;
     if (_isNavigating && _routePoints.isNotEmpty) {
       final nearestIdx = _nearestRoutePointIndex(currentPos);
       nearestIdxForHeading = nearestIdx;
@@ -4699,7 +5041,6 @@ class _MapScreenState extends State<MapScreen> {
       } else {
         _consecutiveOffRouteFixes = 0;
       }
-      routeSpeedLimit = _speedLimitForRouteIndex(nearestIdx);
       if (_cumulativeDist.length == _routePoints.length) {
         newRemaining = (_totalRouteDistM - _cumulativeDist[nearestIdx]).clamp(
           0.0,
@@ -4779,14 +5120,9 @@ class _MapScreenState extends State<MapScreen> {
     setState(() {
       _speedKmh = newSpeed;
       _currentLocation = currentPos;
-      // A live OSM match is tied to the actual GPS/route geometry at the car
-      // and can correct missing or stale edge attributes from the route
-      // provider. Keep it until the next live lookup verifies the next road.
-      if (routeSpeedLimit != null &&
-          (_roadLimitFromRoute || _roadSpeedLimitKmh == null)) {
-        _roadSpeedLimitKmh = routeSpeedLimit;
-        _roadLimitFromRoute = true;
-      } else if (_roadLimitFromRoute) {
+      // Never present a route-edge value as a live road sign. A live lookup
+      // must verify the precise road segment before we show a speed limit.
+      if (_roadLimitFromRoute) {
         _roadSpeedLimitKmh = null;
         _roadLimitFromRoute = false;
       }
@@ -4856,13 +5192,10 @@ class _MapScreenState extends State<MapScreen> {
             speedKmh: _roadSpeedLimitKmh!,
             unit: speedUnit,
           );
-    final configuredMaxKmh = preferences.maxSpeedKmh.value;
-    final vehicleSpeedLimitDisplay = configuredMaxKmh <= 0
-        ? null
-        : preferences.toDisplaySpeed(
-            speedKmh: configuredMaxKmh,
-            unit: speedUnit,
-          );
+    // A configured vehicle maximum (for example 110 for a car) is not a
+    // posted road limit. Never send it to the CarPlay speed-sign slot as a
+    // fallback: it made an unknown 30 road look like a verified 110 road.
+    const double? vehicleSpeedLimitDisplay = null;
 
     // Send the polyline first. CarPlay can otherwise start the guidance view
     // before its map has received the route, leaving the blue route line out.
@@ -5260,7 +5593,13 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildCarPlayCompanion(AppLocalizations l10n) {
-    final compactLayout = MediaQuery.sizeOf(context).height < 760;
+    final companionSize = MediaQuery.sizeOf(context);
+    final compactLayout = companionSize.height < 760;
+    // The arrival panel must not become a second large guidance card on a
+    // phone. Use its own, more generous compact breakpoint so it stays inside
+    // the bottom safe area on standard iPhone heights as well.
+    final compactArrivalPanel =
+        companionSize.height < 900 || companionSize.width < 430;
     final activeRoute = _activeRoute;
     final remainingSeconds = activeRoute == null
         ? 0.0
@@ -5543,13 +5882,13 @@ class _MapScreenState extends State<MapScreen> {
                 12,
                 0,
                 12,
-                compactLayout ? 3 : 10,
+                compactArrivalPanel ? 3 : 10,
               ),
               padding: EdgeInsets.fromLTRB(
-                compactLayout ? 14 : 18,
-                compactLayout ? 9 : 13,
-                compactLayout ? 14 : 18,
-                compactLayout ? 10 : 15,
+                compactArrivalPanel ? 14 : 18,
+                compactArrivalPanel ? 9 : 13,
+                compactArrivalPanel ? 14 : 18,
+                compactArrivalPanel ? 10 : 15,
               ),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
@@ -5564,12 +5903,12 @@ class _MapScreenState extends State<MapScreen> {
                     arrivalText,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: compactLayout ? 27 : 31,
+                      fontSize: compactArrivalPanel ? 27 : 31,
                       height: 1,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  SizedBox(height: compactLayout ? 4 : 7),
+                  SizedBox(height: compactArrivalPanel ? 4 : 7),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
@@ -5577,20 +5916,20 @@ class _MapScreenState extends State<MapScreen> {
                       maxLines: 1,
                       style: TextStyle(
                         color: const Color(0xCCFFFFFF),
-                        fontSize: compactLayout ? 15 : 17,
+                        fontSize: compactArrivalPanel ? 15 : 17,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                   if (_destinationLabel.isNotEmpty) ...[
-                    SizedBox(height: compactLayout ? 3 : 6),
+                    SizedBox(height: compactArrivalPanel ? 3 : 6),
                     Text(
                       _destinationLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: const Color(0xFF47D3FF),
-                        fontSize: compactLayout ? 13 : 15,
+                        fontSize: compactArrivalPanel ? 13 : 15,
                       ),
                     ),
                   ],

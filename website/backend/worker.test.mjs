@@ -42,6 +42,134 @@ test("support webhook requires its shared secret", { concurrency: false }, async
   assert.equal(response.status, 401);
 });
 
+test("speed-limit endpoint verifies a matching Swedish NVDB segment", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.match(url, /vektor\.trafikverket\.se/);
+    return Response.json({
+      features: [
+        {
+          attributes: { Hastighet: 50 },
+          geometry: {
+            paths: [[[18.0, 58.9997], [18.0, 59.0003]]],
+          },
+        },
+      ],
+    });
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request(
+        "https://cruizx.com/api/map/speed-limit?lat=59&lng=18&heading=0&country=SE"
+      ),
+      baseEnv
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.country, "SE");
+    assert.equal(body.limit_kmh, 50);
+    assert.equal(body.source, "trafikverket_nvdb");
+    assert.equal(body.status, "verified");
+    assert.equal(body.confidence, "high");
+    assert.match(body.checked_at, /^\d{4}-\d{2}-\d{2}T/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("speed-limit endpoint returns unknown instead of guessing when a DGT sign is not nearby", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    new Response(
+      '<?xml version="1.0"?><rst:ROSATTESafetyFeatureDataset><rst:GenericSafetyFeature><rst:type>SpeedLimit</rst:type><rst:encodedGeometry><gml:LineString><gml:posList>4573173.06589931 ,586682.47564207</gml:posList></gml:LineString></rst:encodedGeometry><rst:properties><gml:measure uom="kmph">40</gml:measure></rst:properties></rst:GenericSafetyFeature></rst:ROSATTESafetyFeatureDataset>'
+    );
+  try {
+    const response = await worker.fetch(
+      new Request(
+        "https://cruizx.com/api/map/speed-limit?lat=40.4168&lng=-3.7038&heading=90&country=ES"
+      ),
+      baseEnv
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.country, "ES");
+    assert.equal(body.limit_kmh, null);
+    assert.equal(body.source, "dgt_tnits");
+    assert.equal(body.status, "unknown");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("speed-limit endpoint verifies a matching Finnish DigiRoad segment", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.match(url, /vaylapilvi\.fi\/vaylatiedot\/digiroad/);
+    assert.match(url, /bbox=/);
+    return Response.json({
+      features: [
+        {
+          properties: { arvo: 80 },
+          geometry: {
+            type: "LineString",
+            coordinates: [[22.82575, 61.1175], [22.82575, 61.1182]],
+          },
+        },
+      ],
+    });
+  };
+  try {
+    const response = await worker.fetch(
+      new Request(
+        "https://cruizx.com/api/map/speed-limit?lat=61.1178&lng=22.82575&heading=0&country=FI"
+      ),
+      baseEnv
+    );
+    const body = await response.json();
+    assert.equal(body.limit_kmh, 80);
+    assert.equal(body.source, "fintraffic_digiroad");
+    assert.equal(body.status, "verified");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("speed-limit endpoint verifies a matching Norwegian NVDB segment", { concurrency: false }, async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = input instanceof Request ? input.url : String(input);
+    assert.match(url, /nvdbapiles\.atlas\.vegvesen\.no/);
+    assert.match(url, /kartutsnitt=/);
+    return Response.json({
+      objekter: [
+        {
+          egenskaper: [{ navn: "Fartsgrense", verdi: 50 }],
+          geometri: {
+            wkt: "LINESTRING Z (25397.223 6855337.889 230.33,25407.855 6855341.153 230.59)",
+          },
+        },
+      ],
+    });
+  };
+  try {
+    const response = await worker.fetch(
+      new Request(
+        "https://cruizx.com/api/map/speed-limit?lat=61.53758&lng=6.0539&heading=90&country=NO"
+      ),
+      baseEnv
+    );
+    const body = await response.json();
+    assert.equal(body.limit_kmh, 50);
+    assert.equal(body.source, "norway_nvdb");
+    assert.equal(body.status, "verified");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("AI route analysis accepts the Car vehicle type", { concurrency: false }, async () => {
   const originalFetch = globalThis.fetch;
   let aiInput;

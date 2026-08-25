@@ -121,6 +121,7 @@ final class CarPlayManager: NSObject {
     super.init()
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+    locationManager.distanceFilter = kCLDistanceFilterNone
     locationManager.activityType = .automotiveNavigation
     locationManager.pausesLocationUpdatesAutomatically = false
     // Keep a native stream for the CarPlay surface. iOS can pause Flutter UI
@@ -198,19 +199,14 @@ final class CarPlayManager: NSObject {
   private func makeMapTemplate() -> CPMapTemplate {
     let template = CPMapTemplate()
     template.mapDelegate = self
-    // The top strip is CarPlay's own navigation bar. Let CarPlay hide it
-    // automatically so it does not remain as a large grey band over the map;
-    // touching the display still reveals Overview and the map controls.
+    // Restore CarPlay's normal uncluttered navigation behavior: the map
+    // controls fade away after interaction and appear only when needed.
     template.automaticallyHidesNavigationBar = true
     template.hidesButtonsWithNavigationBar = true
     // CarPlay owns the guidance card's dimensions. A deeper CruizX navy makes
     // the system card less visually dominant without reducing legibility.
     template.guidanceBackgroundColor = UIColor(red: 0.025, green: 0.10, blue: 0.38, alpha: 0.96)
 
-    let logoButton = CPBarButton(image: makeCruizXNavigationBarLogo()) { _ in
-      // Branding only. The route is re-centred with the Follow button, which
-      // remains the first map control on the right side of the map.
-    }
     let recentsButton = CPBarButton(
       image: UIImage(systemName: "clock.arrow.circlepath") ?? UIImage()
     ) { [weak self] _ in
@@ -220,7 +216,7 @@ final class CarPlayManager: NSObject {
     // Keep history available in the auto-hiding navigation bar; CarPlay only
     // permits four persistent map buttons on the right.
     template.leadingNavigationBarButtons = [recentsButton]
-    template.trailingNavigationBarButtons = [logoButton]
+    template.trailingNavigationBarButtons = []
 
     let followButton = CPMapButton { [weak self, weak template] _ in
       guard let self else { return }
@@ -272,34 +268,6 @@ final class CarPlayManager: NSObject {
       )
     }
     return image.withRenderingMode(.alwaysTemplate)
-  }
-
-  private func makeCruizXNavigationBarLogo() -> UIImage {
-    let assetPath = "assets/LogoIcon.png"
-    let candidates = [
-      Bundle.main.bundlePath + "/Frameworks/App.framework/flutter_assets/" + assetPath,
-      Bundle.main.bundlePath + "/" + assetPath,
-    ]
-    guard let source = candidates.lazy.compactMap({ UIImage(contentsOfFile: $0) }).first else {
-      return UIImage(systemName: "location.north.fill") ?? UIImage()
-    }
-
-    // CarPlay keeps navigation-bar buttons compact. Preserve the logo's
-    // proportions inside a small original-colour canvas rather than letting
-    // the system crop the triangle and car artwork.
-    let canvas = CGSize(width: 42, height: 26)
-    let renderer = UIGraphicsImageRenderer(size: canvas)
-    let image = renderer.image { _ in
-      let scale = min(canvas.width / source.size.width, canvas.height / source.size.height)
-      let size = CGSize(width: source.size.width * scale, height: source.size.height * scale)
-      source.draw(in: CGRect(
-        x: (canvas.width - size.width) / 2,
-        y: (canvas.height - size.height) / 2,
-        width: size.width,
-        height: size.height
-      ))
-    }
-    return image.withRenderingMode(.alwaysOriginal)
   }
 
   private func showDestinationsList() {
@@ -404,11 +372,13 @@ final class CarPlayManager: NSObject {
 
     let estimates = makeEstimates(for: destination)
     let minutes = max(1, Int((estimates.timeRemaining / 60).rounded()))
-    let distanceKilometers = estimates.distanceRemaining.converted(to: .kilometers).value
 
     let routeChoice = CPRouteChoice(
       summaryVariants: [destination.source.routeSummary],
-      additionalInformationVariants: ["\(minutes) min", "\(distanceKilometers.formatted(.number.precision(.fractionLength(1)))) km"],
+      additionalInformationVariants: [
+        "\(minutes) min",
+        guidanceDistanceText(estimates.distanceRemaining)
+      ],
       selectionSummaryVariants: ["Starta till \(destination.title)"]
     )
 
@@ -710,7 +680,7 @@ final class CarPlayManager: NSObject {
     let timeSeconds = max(routeDistanceMeters / averageSpeedMetersPerSecond, 60)
 
     return CPTravelEstimates(
-      distanceRemaining: Measurement(value: routeDistanceMeters / 1000, unit: UnitLength.kilometers),
+      distanceRemaining: guidanceDistanceMeasurement(routeDistanceMeters),
       timeRemaining: timeSeconds
     )
   }
@@ -734,7 +704,7 @@ final class CarPlayManager: NSObject {
       : 0
 
     return CPTravelEstimates(
-      distanceRemaining: Measurement(value: distanceMeters / 1000, unit: UnitLength.kilometers),
+      distanceRemaining: guidanceDistanceMeasurement(distanceMeters),
       timeRemaining: timeSeconds
     )
   }
@@ -916,7 +886,7 @@ final class CarPlayManager: NSObject {
       let firstDistance = max(payloads.first?.distanceMeters ?? 0, 0)
       navigationSession.updateEstimates(
         CPTravelEstimates(
-          distanceRemaining: maneuverDistanceMeasurement(firstDistance),
+          distanceRemaining: guidanceDistanceMeasurement(firstDistance),
           timeRemaining: estimatedTimeToNextManeuver(distanceMeters: firstDistance)
         ),
         for: firstManeuver
@@ -961,7 +931,7 @@ final class CarPlayManager: NSObject {
     maneuver.dashboardInstructionVariants = compactVariants
     maneuver.notificationInstructionVariants = compactVariants
     maneuver.initialTravelEstimates = CPTravelEstimates(
-      distanceRemaining: maneuverDistanceMeasurement(payload.distanceMeters),
+      distanceRemaining: guidanceDistanceMeasurement(payload.distanceMeters),
       timeRemaining: estimatedTimeToNextManeuver(distanceMeters: payload.distanceMeters)
     )
     maneuver.maneuverType = maneuverType(forSign: payload.sign)
@@ -974,12 +944,26 @@ final class CarPlayManager: NSObject {
     return maneuver
   }
 
-  private func maneuverDistanceMeasurement(_ distanceMeters: Double) -> Measurement<UnitLength> {
+  /// CarPlay otherwise renders the raw floating point value it receives, for
+  /// example `67.3 m`. Navigation distances should be readable at a glance:
+  /// 10-metre steps below 1 km, then 0.5-km steps (2, 2.5, 3 … km).
+  private func guidanceDistanceMeasurement(_ distanceMeters: Double) -> Measurement<UnitLength> {
     let meters = max(distanceMeters, 0)
     if meters >= 1000 {
-      return Measurement(value: meters / 1000, unit: .kilometers)
+      let roundedKilometers = (meters / 500).rounded() * 0.5
+      return Measurement(value: max(roundedKilometers, 1), unit: .kilometers)
     }
-    return Measurement(value: meters, unit: .meters)
+    let roundedMeters = (meters / 10).rounded() * 10
+    return Measurement(value: roundedMeters, unit: .meters)
+  }
+
+  private func guidanceDistanceText(_ distance: Measurement<UnitLength>) -> String {
+    let formatter = MeasurementFormatter()
+    formatter.unitOptions = .providedUnit
+    formatter.unitStyle = .short
+    formatter.numberFormatter.maximumFractionDigits = 1
+    formatter.numberFormatter.minimumFractionDigits = 0
+    return formatter.string(from: distance)
   }
 
   @available(iOS 17.4, *)
@@ -1068,16 +1052,16 @@ extension CarPlayManager: CLLocationManagerDelegate {
     // Update the native CarPlay map directly. This remains live even if iOS
     // temporarily suspends Flutter rendering while the phone is locked.
     let heading = location.course >= 0 ? location.course : navigationState.headingDegrees
-    if UIApplication.shared.applicationState == .active {
-      rootViewController.updateNavigationPosition(
+    if rootViewController.requiresImmediateNativePositionUpdate() {
+      // A connected iPhone can keep UIApplication marked active even after
+      // its display turns black. Detect the paused display link directly.
+      rootViewController.updateBackgroundNavigationPosition(
         location.coordinate,
         headingDegrees: heading,
         isNavigating: navigationState.isNavigating
       )
     } else {
-      // The GPS is still active while locked, but iOS can pause the Flutter
-      // render loop and CADisplayLink. Update the CarPlay map synchronously.
-      rootViewController.updateBackgroundNavigationPosition(
+      rootViewController.updateNavigationPosition(
         location.coordinate,
         headingDegrees: heading,
         isNavigating: navigationState.isNavigating

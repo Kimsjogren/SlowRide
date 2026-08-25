@@ -5,6 +5,8 @@ import UIKit
 final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private let mapView = MKMapView()
   private let speedometerCluster = UIView()
+  private let logoBadge = UIView()
+  private let logoImageView = UIImageView()
   private let speedometerStack = UIStackView()
   private let currentSpeedView = CruizXSegmentedSpeedometerView()
   private let currentSpeedLabel = UILabel()
@@ -38,6 +40,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     view.backgroundColor = .black
     configureMapView()
+    configureBranding()
     configureSpeedometers()
     startDisplayLink()
   }
@@ -62,7 +65,9 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     mapView.showsCompass = false
     mapView.showsScale = false
     mapView.isScrollEnabled = true
-    mapView.isZoomEnabled = true
+    // Handle pinch zoom ourselves so it works on CarPlay units that do not
+    // forward MapKit's built-in zoom gesture to an app-owned map view.
+    mapView.isZoomEnabled = false
     mapView.isPitchEnabled = true
     mapView.isRotateEnabled = true
     // Let MapKit own the position marker and its internal GPS smoothing. The
@@ -70,9 +75,17 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     // CarPlay's bottom estimates panel instead of being forced to the centre.
     mapView.showsUserLocation = true
     mapView.tintColor = UIColor(red: 0.0, green: 0.64, blue: 1.0, alpha: 1)
-    mapView.pointOfInterestFilter = .excludingAll
+    // Show businesses and other useful places directly on the in-car map,
+    // matching the richer map view on the phone.
+    mapView.pointOfInterestFilter = .includingAll
     mapView.overrideUserInterfaceStyle = .dark
     mapView.delegate = self
+
+    let pinchZoom = UIPinchGestureRecognizer(
+      target: self,
+      action: #selector(handleMapPinch(_:))
+    )
+    mapView.addGestureRecognizer(pinchZoom)
 
     let region = MKCoordinateRegion(
       center: CLLocationCoordinate2D(latitude: 59.3293, longitude: 18.0686),
@@ -88,6 +101,44 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       mapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
       mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
     ])
+  }
+
+  private func configureBranding() {
+    logoBadge.translatesAutoresizingMaskIntoConstraints = false
+    // This logo has a transparent background, so show it directly on the
+    // map rather than putting it inside the previous dark rounded badge.
+    logoBadge.backgroundColor = .clear
+    logoBadge.layer.cornerRadius = 0
+    logoBadge.layer.borderWidth = 0
+    logoBadge.isUserInteractionEnabled = false
+
+    logoImageView.translatesAutoresizingMaskIntoConstraints = false
+    logoImageView.contentMode = .scaleAspectFit
+    logoImageView.clipsToBounds = true
+    logoImageView.image = cruizXLogoImage()
+    logoBadge.isHidden = logoImageView.image == nil
+
+    logoBadge.addSubview(logoImageView)
+    view.addSubview(logoBadge)
+    NSLayoutConstraint.activate([
+      logoBadge.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+      logoBadge.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -14),
+      logoBadge.widthAnchor.constraint(equalToConstant: 82),
+      logoBadge.heightAnchor.constraint(equalToConstant: 69),
+      logoImageView.topAnchor.constraint(equalTo: logoBadge.topAnchor),
+      logoImageView.leadingAnchor.constraint(equalTo: logoBadge.leadingAnchor),
+      logoImageView.trailingAnchor.constraint(equalTo: logoBadge.trailingAnchor),
+      logoImageView.bottomAnchor.constraint(equalTo: logoBadge.bottomAnchor),
+    ])
+  }
+
+  private func cruizXLogoImage() -> UIImage? {
+    let assetPath = "assets/logga_nobg.png"
+    let candidates = [
+      Bundle.main.bundlePath + "/Frameworks/App.framework/flutter_assets/" + assetPath,
+      Bundle.main.bundlePath + "/" + assetPath,
+    ]
+    return candidates.lazy.compactMap { UIImage(contentsOfFile: $0) }.first
   }
 
   private func configureSpeedometers() {
@@ -363,8 +414,17 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     lastDisplayLinkTimestamp = nil
 
     guard isNavigating else { return }
-    updateNavigationMarker(at: displayTarget, headingDegrees: normalizedHeading)
-    updateNavigationCamera(at: displayTarget, headingDegrees: normalizedHeading)
+    updateNavigationMarker(at: displayTarget, headingDegrees: normalizedHeading, animated: true)
+    updateNavigationCamera(at: displayTarget, headingDegrees: normalizedHeading, animated: true)
+  }
+
+  /// UIApplication can remain `.active` while an attached handset turns its
+  /// display off. Detect the *actual* paused rendering loop instead of relying
+  /// on application state, so native GPS keeps the CarPlay map alive.
+  func requiresImmediateNativePositionUpdate() -> Bool {
+    guard isFollowingNavigation else { return false }
+    guard let lastDisplayLinkTimestamp else { return true }
+    return CACurrentMediaTime() - lastDisplayLinkTimestamp > 0.75
   }
 
   private func startDisplayLink() {
@@ -490,17 +550,35 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
   private func updateNavigationMarker(
     at coordinate: CLLocationCoordinate2D,
-    headingDegrees: Double
+    headingDegrees: Double,
+    animated: Bool = false
   ) {
     guard let navigationAnnotation else { return }
-    navigationAnnotation.coordinate = coordinate
+    if animated {
+      // CADisplayLink is paused when the phone screen is off. Core Location
+      // still provides native fixes for CarPlay, so interpolate the annotation
+      // between those fixes instead of stepping once per GPS sample.
+      UIView.animate(
+        withDuration: 0.82,
+        delay: 0,
+        options: [.beginFromCurrentState, .curveLinear, .allowUserInteraction]
+      ) {
+        navigationAnnotation.coordinate = coordinate
+      }
+    } else {
+      navigationAnnotation.coordinate = coordinate
+    }
     guard let view = mapView.view(for: navigationAnnotation) else { return }
     // The vehicle stays pointing straight ahead, as in Apple Maps and Waze.
     // Only the map rotates, so the marker never anticipates an upcoming bend.
     view.transform = .identity
   }
 
-  private func updateNavigationCamera(at coordinate: CLLocationCoordinate2D, headingDegrees: Double) {
+  private func updateNavigationCamera(
+    at coordinate: CLLocationCoordinate2D,
+    headingDegrees: Double,
+    animated: Bool = false
+  ) {
     if CACurrentMediaTime() < manualConvoyCameraUntil { return }
     // Position and heading have already been filtered together by the display
     // link. Feeding that single heading directly to MapKit avoids a second,
@@ -530,11 +608,16 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
        let previousHeading = lastCameraHeading {
       let movement = MKMapPoint(previousCoordinate).distance(to: MKMapPoint(coordinate))
       let cameraHeadingDelta = abs(previousHeading.shortestHeadingDelta(to: cameraHeading))
-      if movement < 0.12 && cameraHeadingDelta < 0.12 { return }
+      // MapKit camera updates are substantially more expensive than moving
+      // the annotation. Updating it for every sub-pixel GPS interpolation
+      // step can make the CarPlay renderer miss frames and look jerky. Keep
+      // the marker on the 60 fps display link, while refreshing the camera
+      // only when its movement is actually visible.
+      if movement < 0.4 && cameraHeadingDelta < 0.6 { return }
     }
     lastCameraCoordinate = coordinate
     lastCameraHeading = cameraHeading
-    mapView.setCamera(camera, animated: false)
+    mapView.setCamera(camera, animated: animated)
     updateConvoyMarkerRotations()
   }
 
@@ -588,14 +671,12 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     mapView.setCenter(coordinate, animated: true)
   }
 
-  @available(iOS 26.0, *)
   func beginManualMapZoom() {
     guard isViewLoaded else { return }
     manualConvoyCameraUntil = .greatestFiniteMagnitude
     manualZoomStartDistance = mapView.camera.centerCoordinateDistance
   }
 
-  @available(iOS 26.0, *)
   func updateManualMapZoom(scale: CGFloat) {
     guard let startDistance = manualZoomStartDistance, scale > 0 else { return }
     var camera = mapView.camera
@@ -603,9 +684,21 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     mapView.setCamera(camera, animated: false)
   }
 
-  @available(iOS 26.0, *)
   func endManualMapZoom() {
     manualZoomStartDistance = nil
+  }
+
+  @objc private func handleMapPinch(_ recognizer: UIPinchGestureRecognizer) {
+    switch recognizer.state {
+    case .began:
+      beginManualMapZoom()
+    case .changed:
+      updateManualMapZoom(scale: recognizer.scale)
+    case .ended, .cancelled, .failed:
+      endManualMapZoom()
+    default:
+      break
+    }
   }
 
   func resumeNavigationFollowing() {

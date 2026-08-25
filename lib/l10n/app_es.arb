@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Cargando preferencias...",
   "splashFinalizingStartup": "Finalizando inicio...",
   "splashReady": "Listo",
-  "splashVersionLine": "v1.2.0 | CruizX by KimTechTool",
+  "splashVersionLine": "v1.1.8 | CruizX by KimTechTool",
   "a11yCenterOnLocation": "Centrar el mapa en mi ubicación",
   "a11yStopFollowingLocation": "Dejar de seguir mi ubicación",
   "a11ySwitchTo2d": "Cambiar al mapa 2D",

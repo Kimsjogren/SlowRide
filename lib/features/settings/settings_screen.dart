@@ -207,78 +207,69 @@ class SettingsScreen extends StatelessWidget {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              DropdownMenu<String>(
-                                initialSelection: vehicleType,
-                                expandedInsets: EdgeInsets.zero,
-                                menuHeight: 360,
-                                selectOnly: true,
-                                enableSearch: false,
-                                requestFocusOnTap: false,
-                                textStyle: valueStyle,
-                                label: Text(l10n.settingsVehicleTypeLabel),
-                                trailingIcon: const Icon(
-                                  Icons.arrow_drop_down,
-                                  color: Colors.white70,
-                                ),
-                                selectedTrailingIcon: const Icon(
-                                  Icons.arrow_drop_up,
-                                  color: Colors.white70,
-                                ),
-                                inputDecorationTheme:
-                                    const InputDecorationTheme(
-                                      labelStyle: labelStyle,
-                                      enabledBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: Colors.white24,
-                                        ),
-                                      ),
-                                      focusedBorder: UnderlineInputBorder(
-                                        borderSide: BorderSide(
-                                          color: Colors.white54,
-                                        ),
-                                      ),
+                              // Use the same field widget as country and language.
+                              // DropdownMenu has different internal end padding on
+                              // iOS, which made this arrow sit out of line.
+                              DropdownButtonFormField<String>(
+                                initialValue: vehicleType,
+                                dropdownColor: const Color(0xFF0A1F63),
+                                style: valueStyle,
+                                iconEnabledColor: Colors.white70,
+                                decoration: InputDecoration(
+                                  labelText: l10n.settingsVehicleTypeLabel,
+                                  labelStyle: labelStyle,
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.white24,
                                     ),
-                                menuStyle: const MenuStyle(
-                                  alignment: AlignmentDirectional.bottomStart,
-                                  backgroundColor: WidgetStatePropertyAll(
-                                    Color(0xFF0A1F63),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.white54,
+                                    ),
                                   ),
                                 ),
-                                dropdownMenuEntries: [
-                                  DropdownMenuEntry(
+                                items: [
+                                  DropdownMenuItem(
                                     value: 'A-tractor',
-                                    label: l10n.settingsVehicleAtractor,
+                                    child: Text(l10n.settingsVehicleAtractor),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Low vehicle',
-                                    label: l10n.settingsVehicleLowVehicle,
+                                    child: Text(l10n.settingsVehicleLowVehicle),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Moped car',
-                                    label: l10n.settingsVehicleMopedCar,
+                                    child: Text(l10n.settingsVehicleMopedCar),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Moped class I',
-                                    label: l10n.settingsVehicleMopedClassI,
+                                    child: Text(
+                                      l10n.settingsVehicleMopedClassI,
+                                    ),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Moped class II',
-                                    label: l10n.settingsVehicleMopedClassII,
+                                    child: Text(
+                                      l10n.settingsVehicleMopedClassII,
+                                    ),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Electric scooter',
-                                    label: l10n.settingsVehicleElectricScooter,
+                                    child: Text(
+                                      l10n.settingsVehicleElectricScooter,
+                                    ),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Tractor',
-                                    label: l10n.settingsVehicleTractor,
+                                    child: Text(l10n.settingsVehicleTractor),
                                   ),
-                                  DropdownMenuEntry(
+                                  DropdownMenuItem(
                                     value: 'Car',
-                                    label: l10n.settingsVehicleCar,
+                                    child: Text(l10n.settingsVehicleCar),
                                   ),
                                 ],
-                                onSelected: (value) {
+                                onChanged: (value) {
                                   if (value != null) {
                                     preferences.vehicleType.value = value;
                                   }
