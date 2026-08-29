@@ -237,7 +237,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get authErrorPasswordTooShort => 'Lösenordet måste vara minst 6 tecken och innehålla en siffra och ett specialtecken.';
 
   @override
-  String get authErrorConfirmEmail => 'Kolla din e-post och bekräfta kontot, logga sedan in.';
+  String get authErrorConfirmEmail => 'Kolla din e-post och bekräfta kontot. Om kontot redan finns skickas inget nytt bekräftelsemejl – logga in eller återställ lösenordet.';
 
   @override
   String get authEmailConfirmedTitle => 'E-post bekräftad';

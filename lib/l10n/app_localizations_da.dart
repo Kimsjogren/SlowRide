@@ -237,7 +237,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get authErrorPasswordTooShort => 'Adgangskoden skal være mindst 6 tegn og indeholde et tal og et specialtegn.';
 
   @override
-  String get authErrorConfirmEmail => 'Tjek din e-mail for at bekræfte din konto, og log derefter ind.';
+  String get authErrorConfirmEmail => 'Tjek din e-mail for at bekræfte din konto. Hvis kontoen allerede findes, sendes der ingen ny bekræftelsesmail – log ind eller nulstil adgangskoden.';
 
   @override
   String get authEmailConfirmedTitle => 'E-mail bekræftet';

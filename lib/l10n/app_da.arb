@@ -78,7 +78,7 @@
   "authResetPasswordSuccess": "Din adgangskode er blevet ændret.",
   "authErrorAllFieldsRequired": "Alle felter er påkrævet.",
   "authErrorPasswordTooShort": "Adgangskoden skal være mindst 6 tegn og indeholde et tal og et specialtegn.",
-  "authErrorConfirmEmail": "Tjek din e-mail for at bekræfte din konto, og log derefter ind.",
+  "authErrorConfirmEmail": "Tjek din e-mail for at bekræfte din konto. Hvis kontoen allerede findes, sendes der ingen ny bekræftelsesmail – log ind eller nulstil adgangskoden.",
   "authEmailConfirmedTitle": "E-mail bekræftet",
   "authEmailConfirmedBody": "Din e-mailadresse er blevet bekræftet. Du er nu logget ind.",
   "authErrorEmailAndPasswordRequired": "Indtast e-mail og adgangskode.",

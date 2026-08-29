@@ -78,7 +78,7 @@
   "authResetPasswordSuccess": "Ditt lösenord har ändrats.",
   "authErrorAllFieldsRequired": "Fyll i alla fält.",
   "authErrorPasswordTooShort": "Lösenordet måste vara minst 6 tecken och innehålla en siffra och ett specialtecken.",
-  "authErrorConfirmEmail": "Kolla din e-post och bekräfta kontot, logga sedan in.",
+  "authErrorConfirmEmail": "Kolla din e-post och bekräfta kontot. Om kontot redan finns skickas inget nytt bekräftelsemejl – logga in eller återställ lösenordet.",
   "authEmailConfirmedTitle": "E-post bekräftad",
   "authEmailConfirmedBody": "Din e-postadress har bekräftats. Du är nu inloggad.",
   "authErrorEmailAndPasswordRequired": "Fyll i e-post och lösenord.",

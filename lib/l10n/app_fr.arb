@@ -78,7 +78,7 @@
   "authResetPasswordSuccess": "Votre mot de passe a été modifié.",
   "authErrorAllFieldsRequired": "Tous les champs sont obligatoires.",
   "authErrorPasswordTooShort": "Le mot de passe doit contenir au moins 6 caractères, dont un chiffre et un caractère spécial.",
-  "authErrorConfirmEmail": "Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.",
+  "authErrorConfirmEmail": "Vérifiez votre e-mail pour confirmer votre compte. Si le compte existe déjà, aucun nouvel e-mail de confirmation n’est envoyé – connectez-vous ou réinitialisez le mot de passe.",
   "authEmailConfirmedTitle": "Adresse e-mail confirmée",
   "authEmailConfirmedBody": "Votre adresse e-mail a été confirmée. Vous êtes maintenant connecté.",
   "authErrorEmailAndPasswordRequired": "Entrez votre e-mail et votre mot de passe.",

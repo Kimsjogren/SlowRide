@@ -38,12 +38,7 @@ class CarPlayBridgeService {
     await DestinationHistoryService.instance.initialize();
 
     _channel.setMethodCallHandler(_handleMethodCall);
-    try {
-      isConnected.value =
-          await _channel.invokeMethod<bool>('getConnectionState') ?? false;
-    } on MissingPluginException {
-      isConnected.value = false;
-    }
+    await refreshConnectionState();
     _refreshCompanionMode();
 
     if (!_listenersAttached) {
@@ -111,7 +106,15 @@ class CarPlayBridgeService {
     required String nextManeuverText,
     required String currentStreetName,
     required List<Map<String, Object?>> upcomingManeuvers,
+    required Map<String, Object?> markerStyle,
+    required List<Map<String, Object?>> mapMarkers,
   }) async {
+    // Re-check the native CarPlay scene when a route starts. iOS can tear down
+    // that scene while Flutter is suspended, so the disconnect callback alone
+    // is not sufficient to prevent a stale phone companion mode.
+    if (isNavigating && !_navigationActive) {
+      await refreshConnectionState();
+    }
     _navigationActive = isNavigating;
     _refreshCompanionMode();
     final payload = <String, Object?>{
@@ -143,6 +146,8 @@ class CarPlayBridgeService {
       'nextManeuverText': nextManeuverText.trim(),
       'currentStreetName': currentStreetName.trim(),
       'upcomingManeuvers': upcomingManeuvers,
+      'markerStyle': markerStyle,
+      'mapMarkers': mapMarkers,
     };
 
     final payloadJson = jsonEncode(payload);
@@ -192,7 +197,23 @@ class CarPlayBridgeService {
       nextManeuverText: '',
       currentStreetName: '',
       upcomingManeuvers: const [],
+      markerStyle: const {},
+      mapMarkers: const [],
     );
+  }
+
+  Future<void> refreshConnectionState() async {
+    var connected = false;
+    try {
+      connected =
+          await _channel.invokeMethod<bool>('getConnectionState') ?? false;
+    } on MissingPluginException {
+      connected = false;
+    } catch (error, stackTrace) {
+      debugPrint('CarPlay connection check failed: $error\n$stackTrace');
+    }
+    isConnected.value = connected;
+    _refreshCompanionMode();
   }
 
   Future<void> updateRouteGeometry({

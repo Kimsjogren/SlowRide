@@ -237,7 +237,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrorPasswordTooShort => 'Password must be at least 6 characters and include a number and a special character.';
 
   @override
-  String get authErrorConfirmEmail => 'Check your email to confirm your account, then sign in.';
+  String get authErrorConfirmEmail => 'Check your email to confirm your account. If the account already exists, no new confirmation email is sent – sign in or reset the password.';
 
   @override
   String get authEmailConfirmedTitle => 'Email confirmed';

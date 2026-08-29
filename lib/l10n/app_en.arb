@@ -78,7 +78,7 @@
   "authResetPasswordSuccess": "Your password has been changed.",
   "authErrorAllFieldsRequired": "All fields are required.",
   "authErrorPasswordTooShort": "Password must be at least 6 characters and include a number and a special character.",
-  "authErrorConfirmEmail": "Check your email to confirm your account, then sign in.",
+  "authErrorConfirmEmail": "Check your email to confirm your account. If the account already exists, no new confirmation email is sent – sign in or reset the password.",
   "authEmailConfirmedTitle": "Email confirmed",
   "authEmailConfirmedBody": "Your email address has been confirmed. You are now signed in.",
   "authErrorEmailAndPasswordRequired": "Enter your email and password.",

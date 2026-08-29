@@ -3,6 +3,7 @@ import MapKit
 import UIKit
 
 final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
+  private let isDashboardSurface: Bool
   private let mapView = MKMapView()
   private let speedometerCluster = UIView()
   private let logoBadge = UIView()
@@ -18,6 +19,10 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private var destinationAnnotation: MKPointAnnotation?
   private var navigationAnnotation: CruizXNavigationAnnotation?
   private var convoyAnnotations: [String: CruizXConvoyAnnotation] = [:]
+  private var mapMarkerAnnotations: [String: CruizXMapMarkerAnnotation] = [:]
+  private var navigationMarkerAssetPath: String?
+  private var navigationMarkerIconName: String?
+  private var navigationMarkerTintArgb: Int?
   private var manualConvoyCameraUntil: CFTimeInterval = 0
   private var displayLink: CADisplayLink?
   private var interpolationTargetCoordinate: CLLocationCoordinate2D?
@@ -35,12 +40,27 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private var manualPanStartVisibleRect: MKMapRect?
   private var manualZoomStartDistance: CLLocationDistance?
 
+  init(isDashboardSurface: Bool = false) {
+    self.isDashboardSurface = isDashboardSurface
+    super.init(nibName: nil, bundle: nil)
+  }
+
+  required init?(coder: NSCoder) {
+    isDashboardSurface = false
+    super.init(coder: coder)
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
 
     view.backgroundColor = .black
     configureMapView()
-    configureBranding()
+    // Dashboard owns the surrounding cards and controls. Keep CruizX branding
+    // on the full-screen surface, but expose the compact driving gauges on
+    // both surfaces.
+    if !isDashboardSurface {
+      configureBranding()
+    }
     configureSpeedometers()
     startDisplayLink()
   }
@@ -142,6 +162,16 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   }
 
   private func configureSpeedometers() {
+    let currentGaugeSize: CGFloat = isDashboardSurface ? 40 : 46
+    let speedLimitSize: CGFloat = isDashboardSurface ? 27 : 30
+    let trailingInset: CGFloat = isDashboardSurface ? 8 : 16
+    let clusterWidth: CGFloat = isDashboardSurface
+      ? currentGaugeSize + speedLimitSize - 2
+      : currentGaugeSize
+    // Lower the compact gauges in the small dashboard map while retaining
+    // enough clearance for CarPlay's native ETA field below them.
+    let bottomInset: CGFloat = isDashboardSurface ? 30 : 14
+
     speedometerCluster.translatesAutoresizingMaskIntoConstraints = false
     // Keep the two gauges visually separate from the map without wrapping
     // them in an additional dark panel.
@@ -150,20 +180,24 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     speedometerCluster.isUserInteractionEnabled = false
 
     speedometerStack.translatesAutoresizingMaskIntoConstraints = false
-    speedometerStack.axis = .vertical
+    speedometerStack.axis = isDashboardSurface ? .horizontal : .vertical
     speedometerStack.alignment = .center
-    // Slightly overlap the two circles so they still read as one compact unit.
-    speedometerStack.spacing = -3
+    // Let the speed-limit sign tuck slightly into the speedometer so the two
+    // circles read as one unit in both dashboard and full-screen layouts.
+    speedometerStack.spacing = -2
     speedometerStack.isUserInteractionEnabled = false
 
     currentSpeedView.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedView.backgroundColor = UIColor(red: 0.025, green: 0.075, blue: 0.20, alpha: 0.96)
-    currentSpeedView.layer.cornerRadius = 23
+    currentSpeedView.layer.cornerRadius = currentGaugeSize / 2
 
     currentSpeedLabel.translatesAutoresizingMaskIntoConstraints = false
     currentSpeedLabel.textAlignment = .center
     currentSpeedLabel.textColor = .white
-    currentSpeedLabel.font = .systemFont(ofSize: 18, weight: .bold)
+    currentSpeedLabel.font = .systemFont(
+      ofSize: isDashboardSurface ? 16 : 18,
+      weight: .bold
+    )
 
     speedUnitLabel.translatesAutoresizingMaskIntoConstraints = false
     speedUnitLabel.textAlignment = .center
@@ -175,14 +209,17 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     speedLimitView.translatesAutoresizingMaskIntoConstraints = false
     speedLimitView.backgroundColor = .white
-    speedLimitView.layer.cornerRadius = 15
-    speedLimitView.layer.borderWidth = 2.5
+    speedLimitView.layer.cornerRadius = speedLimitSize / 2
+    speedLimitView.layer.borderWidth = isDashboardSurface ? 2.2 : 2.5
     speedLimitView.layer.borderColor = UIColor(red: 0.78, green: 0.06, blue: 0.08, alpha: 1).cgColor
 
     speedLimitLabel.translatesAutoresizingMaskIntoConstraints = false
     speedLimitLabel.textAlignment = .center
     speedLimitLabel.textColor = .black
-    speedLimitLabel.font = .systemFont(ofSize: 10.5, weight: .bold)
+    speedLimitLabel.font = .systemFont(
+      ofSize: isDashboardSurface ? 9.5 : 10.5,
+      weight: .bold
+    )
     speedLimitView.addSubview(speedLimitLabel)
 
     speedometerStack.addArrangedSubview(currentSpeedView)
@@ -191,29 +228,29 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     view.addSubview(speedometerCluster)
 
     NSLayoutConstraint.activate([
-      currentSpeedView.widthAnchor.constraint(equalToConstant: 46),
-      currentSpeedView.heightAnchor.constraint(equalToConstant: 46),
+      currentSpeedView.widthAnchor.constraint(equalToConstant: currentGaugeSize),
+      currentSpeedView.heightAnchor.constraint(equalToConstant: currentGaugeSize),
       currentSpeedLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
       currentSpeedLabel.centerYAnchor.constraint(equalTo: currentSpeedView.centerYAnchor, constant: -4),
       speedUnitLabel.topAnchor.constraint(equalTo: currentSpeedLabel.bottomAnchor, constant: -1),
       speedUnitLabel.centerXAnchor.constraint(equalTo: currentSpeedView.centerXAnchor),
-      speedLimitView.widthAnchor.constraint(equalToConstant: 30),
-      speedLimitView.heightAnchor.constraint(equalToConstant: 30),
+      speedLimitView.widthAnchor.constraint(equalToConstant: speedLimitSize),
+      speedLimitView.heightAnchor.constraint(equalToConstant: speedLimitSize),
       speedLimitLabel.centerXAnchor.constraint(equalTo: speedLimitView.centerXAnchor),
       speedLimitLabel.centerYAnchor.constraint(equalTo: speedLimitView.centerYAnchor),
       speedometerStack.topAnchor.constraint(equalTo: speedometerCluster.topAnchor, constant: 4),
       speedometerStack.bottomAnchor.constraint(equalTo: speedometerCluster.bottomAnchor, constant: -4),
       speedometerStack.centerXAnchor.constraint(equalTo: speedometerCluster.centerXAnchor),
-      speedometerCluster.widthAnchor.constraint(equalToConstant: 46),
+      speedometerCluster.widthAnchor.constraint(equalToConstant: clusterWidth),
       // Keep the combined speed unit in the lower-right navigation area,
       // clear of the bottom trip estimates and the guidance card.
       speedometerCluster.trailingAnchor.constraint(
         equalTo: view.safeAreaLayoutGuide.trailingAnchor,
-        constant: -16
+        constant: -trailingInset
       ),
       speedometerCluster.bottomAnchor.constraint(
         equalTo: view.safeAreaLayoutGuide.bottomAnchor,
-        constant: -18
+        constant: -bottomInset
       ),
     ])
   }
@@ -321,7 +358,13 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     if isNavigating && mapView.userTrackingMode != .none {
       mapView.setUserTrackingMode(.none, animated: false)
     }
-    let normalizedHeading = headingDegrees.normalizedHeading
+    // Once the position is locked to the route, use that route segment's
+    // bearing for the map. GPS heading can be a few degrees off (especially
+    // at low speed), which made the fixed upright marker look angled relative
+    // to the road beneath it.
+    let normalizedHeading = (
+      isNavigating ? routeHeading(for: coordinate) : nil
+    ) ?? headingDegrees.normalizedHeading
     let now = CACurrentMediaTime()
 
     guard displayedCoordinate != nil else {
@@ -353,8 +396,11 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
 
     if let previousTarget = interpolationTargetCoordinate {
       let correctionDistance = MKMapPoint(previousTarget).distance(to: MKMapPoint(displayTarget))
-      if estimatedSpeedMetersPerSecond > 3, correctionDistance < 25 {
-        interpolationTargetCoordinate = previousTarget.interpolated(to: displayTarget, fraction: 0.22)
+      // GPS fixes and route snapping can move the target a few metres between
+      // samples. Blend those corrections over several display frames rather
+      // than letting the marker visibly catch up in one hop.
+      if estimatedSpeedMetersPerSecond > 2.0, correctionDistance < 40 {
+        interpolationTargetCoordinate = previousTarget.interpolated(to: displayTarget, fraction: 0.16)
       } else {
         interpolationTargetCoordinate = displayTarget
       }
@@ -372,6 +418,26 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       displayedCoordinate = displayTarget
       displayedHeading = normalizedHeading
       lastDisplayLinkTimestamp = nil
+    }
+  }
+
+  func updateNavigationMarkerStyle(
+    assetPath: String?,
+    iconName: String?,
+    tintArgb: Int?
+  ) {
+    guard navigationMarkerAssetPath != assetPath
+      || navigationMarkerIconName != iconName
+      || navigationMarkerTintArgb != tintArgb
+    else {
+      return
+    }
+    navigationMarkerAssetPath = assetPath
+    navigationMarkerIconName = iconName
+    navigationMarkerTintArgb = tintArgb
+    if let navigationAnnotation,
+       let view = mapView.view(for: navigationAnnotation) {
+      configureNavigationAnnotationView(view, annotation: navigationAnnotation)
     }
   }
 
@@ -396,7 +462,9 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
 
     let displayTarget = isNavigating ? routeSnappedCoordinate(for: coordinate) : coordinate
-    let normalizedHeading = headingDegrees.normalizedHeading
+    let normalizedHeading = (
+      isNavigating ? routeHeading(for: coordinate) : nil
+    ) ?? headingDegrees.normalizedHeading
     updateNavigationMarkerVisibility(isNavigating: isNavigating, coordinate: displayTarget)
 
     if isNavigating && mapView.userTrackingMode != .none {
@@ -523,6 +591,51 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     return nearestDistance < 45 ? nearestPoint.coordinate : coordinate
   }
 
+  /// Returns the direction of the same nearby route segment used for
+  /// map-matching. The marker itself remains upright; rotating the map to this
+  /// bearing makes the blue route and the marker agree visually.
+  private func routeHeading(for coordinate: CLLocationCoordinate2D) -> Double? {
+    guard navigationRouteCoordinates.count >= 2 else { return nil }
+
+    let point = MKMapPoint(coordinate)
+    var nearestDistance = Double.greatestFiniteMagnitude
+    var nearestStart: CLLocationCoordinate2D?
+    var nearestEnd: CLLocationCoordinate2D?
+
+    for index in 0..<(navigationRouteCoordinates.count - 1) {
+      let startCoordinate = navigationRouteCoordinates[index]
+      let endCoordinate = navigationRouteCoordinates[index + 1]
+      let start = MKMapPoint(startCoordinate)
+      let end = MKMapPoint(endCoordinate)
+      let dx = end.x - start.x
+      let dy = end.y - start.y
+      let lengthSquared = dx * dx + dy * dy
+      guard lengthSquared > 0 else { continue }
+      let fraction = min(
+        max(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0),
+        1
+      )
+      let candidate = MKMapPoint(
+        x: start.x + dx * fraction,
+        y: start.y + dy * fraction
+      )
+      let distance = point.distance(to: candidate)
+      if distance < nearestDistance {
+        nearestDistance = distance
+        nearestStart = startCoordinate
+        nearestEnd = endCoordinate
+      }
+    }
+
+    guard nearestDistance < 45,
+          let nearestStart,
+          let nearestEnd
+    else {
+      return nil
+    }
+    return nearestStart.bearing(to: nearestEnd)
+  }
+
   private func updateNavigationMarkerVisibility(
     isNavigating: Bool,
     coordinate: CLLocationCoordinate2D
@@ -585,15 +698,14 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     // lagging smoother that made the road and marker drift apart in turns.
     let cameraHeading = headingDegrees.normalizedHeading
 
-    // Keep the vehicle in the lower third without pushing it into CarPlay's
-    // bottom safe area. The previous 260 m offset and 58 degree pitch made the
-    // marker disappear near the edge and exaggerated small heading changes.
-    // Shift the camera target forward and to the vehicle's right. This makes
-    // the marker sit higher and left of centre, clear of the bottom estimates
-    // panel and the right-side CarPlay controls.
+    // The dashboard map is much narrower than the full-screen map. Centre the
+    // vehicle laterally there; the full-screen surface still leaves room for
+    // CarPlay's controls and guidance card on the right.
+    let forwardOffset = isDashboardSurface ? 42.0 : 68.0
+    let lateralOffset = isDashboardSurface ? 0.0 : 88.0
     let center = coordinate
-      .offset(distanceMeters: 68, bearingDegrees: cameraHeading)
-      .offset(distanceMeters: 88, bearingDegrees: cameraHeading + 90)
+      .offset(distanceMeters: forwardOffset, bearingDegrees: cameraHeading)
+      .offset(distanceMeters: lateralOffset, bearingDegrees: cameraHeading + 90)
     let camera = MKMapCamera(
       lookingAtCenter: center,
       fromDistance: 610,
@@ -613,7 +725,11 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       // step can make the CarPlay renderer miss frames and look jerky. Keep
       // the marker on the 60 fps display link, while refreshing the camera
       // only when its movement is actually visible.
-      if movement < 0.4 && cameraHeadingDelta < 0.6 { return }
+      // Keep position updates close to the display cadence. At the earlier
+      // 0.4 m threshold the camera advanced in clearly visible steps on some
+      // 30 fps CarPlay head units. Heading still has a wider dead zone to
+      // prevent tiny compass changes from making the map wobble.
+      if movement < 0.2 && cameraHeadingDelta < 0.45 { return }
     }
     lastCameraCoordinate = coordinate
     lastCameraHeading = cameraHeading
@@ -747,6 +863,32 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     updateConvoyMarkerRotations()
   }
 
+  func updateMapMarkers(_ markers: [CarPlayManager.MapMarker]) {
+    guard isViewLoaded else { return }
+    let incomingIds = Set(markers.map(\.id))
+
+    for id in mapMarkerAnnotations.keys.filter({ !incomingIds.contains($0) }) {
+      guard let annotation = mapMarkerAnnotations.removeValue(forKey: id) else { continue }
+      mapView.removeAnnotation(annotation)
+    }
+
+    for marker in markers {
+      if let existing = mapMarkerAnnotations[marker.id],
+         existing.typeKey == marker.typeKey,
+         existing.emoji == marker.emoji {
+        existing.title = marker.label
+        existing.coordinate = marker.coordinate
+        continue
+      }
+      if let existing = mapMarkerAnnotations.removeValue(forKey: marker.id) {
+        mapView.removeAnnotation(existing)
+      }
+      let annotation = CruizXMapMarkerAnnotation(marker: marker)
+      mapMarkerAnnotations[marker.id] = annotation
+      mapView.addAnnotation(annotation)
+    }
+  }
+
   func showAllConvoyMembers() {
     guard !convoyAnnotations.isEmpty else { return }
     manualConvoyCameraUntil = CACurrentMediaTime() + 8
@@ -863,20 +1005,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       let identifier = "AppleNavigationArrow"
       let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
         ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-      view.annotation = annotation
-      // Apple Maps' exact turn-by-turn puck isn't part of public MapKit.
-      // Build the public equivalent from Apple's location SF Symbol: a
-      // compact white-rimmed blue puck that replaces the native dot only
-      // while a route is active.
-      view.image = appleNavigationMarkerImage()
-      view.zPriority = .max
-      view.displayPriority = .required
-      view.collisionMode = .none
-      view.layer.shadowColor = UIColor.black.cgColor
-      view.layer.shadowOpacity = 0.42
-      view.layer.shadowRadius = 2.5
-      view.layer.shadowOffset = CGSize(width: 0, height: 1.5)
-      view.canShowCallout = false
+      configureNavigationAnnotationView(view, annotation: annotation)
       return view
     }
 
@@ -898,6 +1027,22 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
       marker.titleVisibility = .hidden
       marker.subtitleVisibility = .hidden
       return marker
+    }
+
+    if let mapMarker = annotation as? CruizXMapMarkerAnnotation {
+      let identifier = "CruizXMapMarker"
+      let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+        ?? MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+      view.annotation = mapMarker
+      view.canShowCallout = false
+      view.image = mapMarkerImage(
+        emoji: mapMarker.emoji,
+        color: mapMarkerColor(for: mapMarker.typeKey)
+      )
+      view.centerOffset = CGPoint(x: 0, y: -2)
+      view.displayPriority = .defaultHigh
+      view.collisionMode = .circle
+      return view
     }
 
     return nil
@@ -926,9 +1071,146 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
   }
 
+  private func configureNavigationAnnotationView(
+    _ view: MKAnnotationView,
+    annotation: MKAnnotation
+  ) {
+    view.annotation = annotation
+    if let assetPath = navigationMarkerAssetPath,
+       let image = markerAssetImage(assetPath: assetPath, size: CGSize(width: 38, height: 38)) {
+      view.image = image
+    } else {
+      let tint = markerTintColor
+      switch navigationMarkerIconName {
+      case "compass":
+        let configuration = UIImage.SymbolConfiguration(pointSize: 27, weight: .bold)
+        view.image = UIImage(systemName: "location.north.circle.fill", withConfiguration: configuration)?
+          .withTintColor(tint, renderingMode: .alwaysOriginal)
+      case "triangle":
+        let configuration = UIImage.SymbolConfiguration(pointSize: 25, weight: .bold)
+        view.image = UIImage(systemName: "arrowtriangle.up.fill", withConfiguration: configuration)?
+          .withTintColor(tint, renderingMode: .alwaysOriginal)
+      case "flatArrow":
+        let configuration = UIImage.SymbolConfiguration(pointSize: 25, weight: .bold)
+        view.image = UIImage(systemName: "location.fill", withConfiguration: configuration)?
+          .withTintColor(tint, renderingMode: .alwaysOriginal)
+      default:
+        view.image = appleNavigationMarkerImage()
+      }
+    }
+    view.zPriority = .max
+    view.displayPriority = .required
+    view.collisionMode = .none
+    view.layer.shadowColor = UIColor.black.cgColor
+    view.layer.shadowOpacity = 0.42
+    view.layer.shadowRadius = 2.5
+    view.layer.shadowOffset = CGSize(width: 0, height: 1.5)
+    view.canShowCallout = false
+  }
+
+  private var markerTintColor: UIColor {
+    guard let value = navigationMarkerTintArgb else {
+      return UIColor(red: 0, green: 0.64, blue: 1, alpha: 1)
+    }
+    let unsigned = UInt32(truncatingIfNeeded: value)
+    return UIColor(
+      red: CGFloat((unsigned >> 16) & 0xff) / 255,
+      green: CGFloat((unsigned >> 8) & 0xff) / 255,
+      blue: CGFloat(unsigned & 0xff) / 255,
+      alpha: CGFloat((unsigned >> 24) & 0xff) / 255
+    )
+  }
+
+  private func markerAssetImage(assetPath: String, size target: CGSize) -> UIImage? {
+    let candidates = [
+      Bundle.main.bundlePath + "/Frameworks/App.framework/flutter_assets/" + assetPath,
+      Bundle.main.bundlePath + "/" + assetPath,
+    ]
+    guard let source = candidates.lazy.compactMap({ UIImage(contentsOfFile: $0) }).first else {
+      return nil
+    }
+    let renderer = UIGraphicsImageRenderer(size: target)
+    return renderer.image { _ in
+      let scale = min(target.width / source.size.width, target.height / source.size.height)
+      let size = CGSize(width: source.size.width * scale, height: source.size.height * scale)
+      source.draw(in: CGRect(
+        x: (target.width - size.width) / 2,
+        y: (target.height - size.height) / 2,
+        width: size.width,
+        height: size.height
+      ))
+    }
+  }
+
+  private func mapMarkerColor(for typeKey: String) -> UIColor {
+    switch typeKey {
+    case "road_closure": return UIColor(red: 0.72, green: 0.11, blue: 0.11, alpha: 1)
+    case "police": return UIColor(red: 0.08, green: 0.40, blue: 0.75, alpha: 1)
+    case "roadwork": return UIColor(red: 0.90, green: 0.32, blue: 0.00, alpha: 1)
+    case "accident": return UIColor(red: 0.78, green: 0.16, blue: 0.16, alpha: 1)
+    case "traffic_jam": return UIColor(red: 0.96, green: 0.50, blue: 0.09, alpha: 1)
+    case "speed_camera": return UIColor(red: 0.42, green: 0.11, blue: 0.60, alpha: 1)
+    case "narrow_road": return UIColor(red: 0.00, green: 0.41, blue: 0.36, alpha: 1)
+    case "steep_hill": return UIColor(red: 0.22, green: 0.29, blue: 0.31, alpha: 1)
+    case "speed_bump": return UIColor(red: 1.00, green: 0.48, blue: 0.00, alpha: 1)
+    case "meetup": return UIColor(red: 0.12, green: 0.53, blue: 0.90, alpha: 1)
+    case "parking": return UIColor(red: 0.01, green: 0.47, blue: 0.74, alpha: 1)
+    case "food_stop": return UIColor(red: 0.94, green: 0.42, blue: 0.00, alpha: 1)
+    case "charging": return UIColor(red: 0.00, green: 0.66, blue: 0.42, alpha: 1)
+    case "hangout": return UIColor(red: 1.00, green: 0.70, blue: 0.00, alpha: 1)
+    default: return UIColor(red: 0.29, green: 0.08, blue: 0.55, alpha: 1)
+    }
+  }
+
+  private func mapMarkerImage(emoji: String, color: UIColor) -> UIImage {
+    let size = CGSize(width: 32, height: 38)
+    return UIGraphicsImageRenderer(size: size).image { _ in
+      let bodyRect = CGRect(x: 3, y: 2, width: 26, height: 26)
+      let bodyPath = UIBezierPath(roundedRect: bodyRect, cornerRadius: 9)
+      color.setFill()
+      bodyPath.fill()
+      UIColor.white.setStroke()
+      bodyPath.lineWidth = 1.4
+      bodyPath.stroke()
+
+      let paragraph = NSMutableParagraphStyle()
+      paragraph.alignment = .center
+      emoji.draw(
+        in: CGRect(x: 4, y: 5, width: 24, height: 20),
+        withAttributes: [
+          .font: UIFont.systemFont(ofSize: 16),
+          .paragraphStyle: paragraph,
+        ]
+      )
+
+      let tail = UIBezierPath()
+      tail.move(to: CGPoint(x: 12, y: 27))
+      tail.addLine(to: CGPoint(x: 20, y: 27))
+      tail.addLine(to: CGPoint(x: 16, y: 34))
+      tail.close()
+      color.setFill()
+      tail.fill()
+    }
+  }
+
 }
 
 private final class CruizXNavigationAnnotation: MKPointAnnotation {}
+
+private final class CruizXMapMarkerAnnotation: MKPointAnnotation {
+  let markerId: String
+  let typeKey: String
+  let emoji: String
+
+  init(marker: CarPlayManager.MapMarker) {
+    markerId = marker.id
+    typeKey = marker.typeKey
+    emoji = marker.emoji
+    super.init()
+    coordinate = marker.coordinate
+    title = marker.label
+  }
+}
 
 private final class CruizXConvoyAnnotation: MKPointAnnotation {
   let userId: String
@@ -987,7 +1269,7 @@ private final class CruizXSegmentedSpeedometerView: UIView {
     let filled = Int((min(max(progress, 0), 1) * Double(segmentCount)).rounded(.down))
     let activeColor = isOverLimit
       ? UIColor(red: 1, green: 0.30, blue: 0.32, alpha: 1)
-      : UIColor(red: 1.0, green: 0.57, blue: 0.14, alpha: 1)
+      : UIColor(red: 0.12, green: 0.55, blue: 1.0, alpha: 1)
     let inactiveColor = UIColor.white.withAlphaComponent(0.30)
     let circle = CGFloat.pi * 2
     let gap = circle / CGFloat(segmentCount) * 0.34

@@ -40,6 +40,7 @@ import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
 import 'package:slowride/widgets/navigation_eta_badge.dart';
+import 'package:slowride/widgets/user_location_marker.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -226,6 +227,9 @@ class _MapScreenState extends State<MapScreen> {
     CarPlayBridgeService.instance.isConnected.addListener(
       _onCarPlayConnectionChanged,
     );
+    UserPreferencesService.instance.mapMarkerStyle.addListener(
+      _onMapMarkerStyleChanged,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onExternalNavigationRequest();
     });
@@ -361,6 +365,12 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _onMapMarkerStyleChanged() {
+    if (mounted && CarPlayBridgeService.instance.isConnected.value) {
+      unawaited(_syncCarPlayNavigationState());
+    }
+  }
+
   Future<void> _loadAlerts() async {
     final center = _currentLocation;
     if (center == null) return;
@@ -378,6 +388,7 @@ class _MapScreenState extends State<MapScreen> {
       if (!mounted) return;
       final combined = [...results[0], ...results[1], ...results[2]];
       setState(() => _alerts = combined);
+      unawaited(_syncCarPlayNavigationState());
     } catch (_) {}
   }
 
@@ -385,6 +396,7 @@ class _MapScreenState extends State<MapScreen> {
     if (!UserPreferencesService.instance.isElectric.value) {
       if (_chargingStations.isNotEmpty) {
         setState(() => _chargingStations = const []);
+        unawaited(_syncCarPlayNavigationState());
       }
       return;
     }
@@ -398,6 +410,7 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _chargingStations = stations.map((s) => s.position).toList();
       });
+      unawaited(_syncCarPlayNavigationState());
     } catch (_) {}
   }
 
@@ -431,7 +444,8 @@ class _MapScreenState extends State<MapScreen> {
       // empty Mapbox/authority response cannot alternate 30 -> nothing -> 30.
       final verifiedPos = _lastVerifiedRoadLimitPos;
       final verifiedAt = _lastVerifiedRoadLimitAt;
-      final isStale = verifiedPos == null ||
+      final isStale =
+          verifiedPos == null ||
           verifiedAt == null ||
           _segDist(verifiedPos, pos) >= _roadLimitStaleDistanceMeters ||
           now.difference(verifiedAt) >= _roadLimitStaleAfter;
@@ -826,12 +840,16 @@ class _MapScreenState extends State<MapScreen> {
     final longitudeRadians = start.longitude * math.pi / 180;
     final destinationLatitude = math.asin(
       math.sin(latitudeRadians) * math.cos(angularDistance) +
-          math.cos(latitudeRadians) * math.sin(angularDistance) * math.cos(headingRadians),
+          math.cos(latitudeRadians) *
+              math.sin(angularDistance) *
+              math.cos(headingRadians),
     );
     final destinationLongitude =
         longitudeRadians +
         math.atan2(
-          math.sin(headingRadians) * math.sin(angularDistance) * math.cos(latitudeRadians),
+          math.sin(headingRadians) *
+              math.sin(angularDistance) *
+              math.cos(latitudeRadians),
           math.cos(angularDistance) -
               math.sin(latitudeRadians) * math.sin(destinationLatitude),
         );
@@ -1299,6 +1317,9 @@ class _MapScreenState extends State<MapScreen> {
     );
     CarPlayBridgeService.instance.isConnected.removeListener(
       _onCarPlayConnectionChanged,
+    );
+    UserPreferencesService.instance.mapMarkerStyle.removeListener(
+      _onMapMarkerStyleChanged,
     );
     _locationNotifier.dispose();
     _headingNotifier.dispose();
@@ -5196,6 +5217,42 @@ class _MapScreenState extends State<MapScreen> {
     // posted road limit. Never send it to the CarPlay speed-sign slot as a
     // fallback: it made an unknown 30 road look like a verified 110 road.
     const double? vehicleSpeedLimitDisplay = null;
+    final markerOption = UserLocationMarker.optionFor(
+      preferences.mapMarkerStyle.value,
+    );
+    final markerStyle = <String, Object?>{
+      'assetPath': markerOption.assetPath,
+      'iconName': switch (markerOption.style) {
+        MapMarkerStyle.navigation => 'navigation',
+        MapMarkerStyle.compass => 'compass',
+        MapMarkerStyle.triangle => 'triangle',
+        MapMarkerStyle.dot => 'flatArrow',
+        _ => null,
+      },
+      'tintArgb': markerOption.tint?.toARGB32(),
+    };
+    final mapMarkers = <Map<String, Object?>>[
+      for (final alert in _alerts)
+        <String, Object?>{
+          'id': alert.id,
+          'label': alert.description.trim().isNotEmpty
+              ? alert.description.trim()
+              : alert.type.label,
+          'typeKey': alert.type.key,
+          'emoji': alert.type.emoji,
+          'latitude': alert.position.latitude,
+          'longitude': alert.position.longitude,
+        },
+      for (var index = 0; index < _chargingStations.length; index++)
+        <String, Object?>{
+          'id': 'charging_station_$index',
+          'label': AlertType.charging.label,
+          'typeKey': AlertType.charging.key,
+          'emoji': AlertType.charging.emoji,
+          'latitude': _chargingStations[index].latitude,
+          'longitude': _chargingStations[index].longitude,
+        },
+    ];
 
     // Send the polyline first. CarPlay can otherwise start the guidance view
     // before its map has received the route, leaving the blue route line out.
@@ -5236,6 +5293,8 @@ class _MapScreenState extends State<MapScreen> {
       nextManeuverText: _nextManeuverText,
       currentStreetName: _currentStreetName,
       upcomingManeuvers: upcomingManeuvers,
+      markerStyle: markerStyle,
+      mapMarkers: mapMarkers,
     );
   }
 
@@ -5598,7 +5657,7 @@ class _MapScreenState extends State<MapScreen> {
     // The arrival panel must not become a second large guidance card on a
     // phone. Use its own, more generous compact breakpoint so it stays inside
     // the bottom safe area on standard iPhone heights as well.
-    final compactArrivalPanel =
+    final horizontalArrivalPanel =
         companionSize.height < 900 || companionSize.width < 430;
     final activeRoute = _activeRoute;
     final remainingSeconds = activeRoute == null
@@ -5876,64 +5935,123 @@ class _MapScreenState extends State<MapScreen> {
                 },
               ),
             ),
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.fromLTRB(
+            Padding(
+              padding: EdgeInsets.fromLTRB(
                 12,
                 0,
                 12,
-                compactArrivalPanel ? 3 : 10,
+                horizontalArrivalPanel ? 3 : 10,
               ),
-              padding: EdgeInsets.fromLTRB(
-                compactArrivalPanel ? 14 : 18,
-                compactArrivalPanel ? 9 : 13,
-                compactArrivalPanel ? 14 : 18,
-                compactArrivalPanel ? 10 : 15,
-              ),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0E3474), Color(0xFF092352)],
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalArrivalPanel ? 14 : 18,
+                      vertical: horizontalArrivalPanel ? 10 : 13,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0E3474), Color(0xFF092352)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0x4437C7FF)),
+                    ),
+                    child: horizontalArrivalPanel
+                        ? Row(
+                            children: [
+                              SizedBox(
+                                width: 92,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    arrivalText,
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 27,
+                                      height: 1,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$remainingMinutes min  •  $remainingDistance',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xCCFFFFFF),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    if (_destinationLabel.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        _destinationLabel,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF47D3FF),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                arrivalText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 31,
+                                  height: 1,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '$remainingMinutes min  •  $remainingDistance',
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    color: Color(0xCCFFFFFF),
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (_destinationLabel.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  _destinationLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF47D3FF),
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0x4437C7FF)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    arrivalText,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: compactArrivalPanel ? 27 : 31,
-                      height: 1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(height: compactArrivalPanel ? 4 : 7),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      '$remainingMinutes min  •  $remainingDistance',
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: const Color(0xCCFFFFFF),
-                        fontSize: compactArrivalPanel ? 15 : 17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (_destinationLabel.isNotEmpty) ...[
-                    SizedBox(height: compactArrivalPanel ? 3 : 6),
-                    Text(
-                      _destinationLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: const Color(0xFF47D3FF),
-                        fontSize: compactArrivalPanel ? 13 : 15,
-                      ),
-                    ),
-                  ],
-                ],
               ),
             ),
           ],

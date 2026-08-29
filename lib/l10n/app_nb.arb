@@ -78,7 +78,7 @@
   "authResetPasswordSuccess": "Passordet ditt har blitt endret.",
   "authErrorAllFieldsRequired": "Alle felt er påkrevd.",
   "authErrorPasswordTooShort": "Passordet må være minst 6 tegn og inneholde et tall og et spesialtegn.",
-  "authErrorConfirmEmail": "Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.",
+  "authErrorConfirmEmail": "Sjekk e-posten din for å bekrefte kontoen. Hvis kontoen allerede finnes, sendes ingen ny bekreftelsesmail – logg inn eller tilbakestill passordet.",
   "authEmailConfirmedTitle": "E-post bekreftet",
   "authEmailConfirmedBody": "E-postadressen din er bekreftet. Du er nå logget inn.",
   "authErrorEmailAndPasswordRequired": "Skriv inn e-post og passord.",

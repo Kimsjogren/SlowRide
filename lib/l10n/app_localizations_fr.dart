@@ -237,7 +237,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get authErrorPasswordTooShort => 'Le mot de passe doit contenir au moins 6 caractères, dont un chiffre et un caractère spécial.';
 
   @override
-  String get authErrorConfirmEmail => 'Vérifiez votre e-mail pour confirmer votre compte, puis connectez-vous.';
+  String get authErrorConfirmEmail => 'Vérifiez votre e-mail pour confirmer votre compte. Si le compte existe déjà, aucun nouvel e-mail de confirmation n’est envoyé – connectez-vous ou réinitialisez le mot de passe.';
 
   @override
   String get authEmailConfirmedTitle => 'Adresse e-mail confirmée';

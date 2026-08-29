@@ -237,7 +237,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authErrorPasswordTooShort => 'Salasanan on oltava vähintään 6 merkkiä ja sisällettävä numero ja erikoismerkki.';
 
   @override
-  String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.';
+  String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi. Jos tili on jo olemassa, uutta vahvistusviestiä ei lähetetä – kirjaudu sisään tai palauta salasana.';
 
   @override
   String get authEmailConfirmedTitle => 'Sähköposti vahvistettu';

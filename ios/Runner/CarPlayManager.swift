@@ -59,6 +59,9 @@ final class CarPlayManager: NSObject {
     let nextManeuverText: String
     let currentStreetName: String
     let upcomingManeuvers: [ManeuverPayload]
+    let markerAssetPath: String?
+    let markerIconName: String?
+    let markerTintArgb: Int?
   }
 
   struct ManeuverPayload {
@@ -79,8 +82,18 @@ final class CarPlayManager: NSObject {
     let tintArgb: Int?
   }
 
+  struct MapMarker {
+    let id: String
+    let label: String
+    let typeKey: String
+    let emoji: String
+    let coordinate: CLLocationCoordinate2D
+  }
+
   private weak var interfaceController: CPInterfaceController?
   private weak var carWindow: CPWindow?
+  private var dashboardController: CPDashboardController?
+  private var dashboardWindow: UIWindow?
   private var mapTemplate: CPMapTemplate?
   private var activeTrip: CPTrip?
   private var activeDestination: Destination?
@@ -95,6 +108,7 @@ final class CarPlayManager: NSObject {
   private var searchDestinations: [ObjectIdentifier: Destination] = [:]
   private var activeConvoyName = ""
   private var convoyMembers: [ConvoyMember] = []
+  private var mapMarkers: [MapMarker] = []
   private var navigationState = NavigationState(
     hasRoute: false,
     isNavigating: false,
@@ -110,12 +124,26 @@ final class CarPlayManager: NSObject {
     remainingDurationSeconds: nil,
     nextManeuverText: "",
     currentStreetName: "",
-    upcomingManeuvers: []
+    upcomingManeuvers: [],
+    markerAssetPath: nil,
+    markerIconName: nil,
+    markerTintArgb: nil
   )
   private var maneuverCache: [String: CPManeuver] = [:]
   private var maneuverPresentationCache: [String: String] = [:]
   private var publishedManeuverIDs: [String] = []
   private let locationManager = CLLocationManager()
+
+  /// Do not rely only on the scene delegate's disconnect callback. A CarPlay
+  /// scene can be torn down while Flutter is suspended, leaving its last
+  /// connection event cached on the phone until the next bridge call.
+  private var hasLiveCarPlayTemplateScene: Bool {
+    guard interfaceController != nil, carWindow != nil else { return false }
+    return UIApplication.shared.connectedScenes.contains { scene in
+      scene.session.role == .carTemplateApplication
+        && scene.activationState != .unattached
+    }
+  }
 
   private override init() {
     super.init()
@@ -186,13 +214,57 @@ final class CarPlayManager: NSObject {
     notifyFlutterConnectionState(false)
   }
 
+  func connectDashboard(controller: CPDashboardController, window: UIWindow) {
+    dashboardController = controller
+    dashboardWindow = window
+
+    let rootViewController = CarPlayMapViewController(isDashboardSurface: true)
+    window.rootViewController = rootViewController
+    window.isHidden = false
+    rootViewController.loadViewIfNeeded()
+
+    // CarPlay displays these only while route guidance is inactive and hides
+    // them automatically when active guidance takes over the dashboard.
+    controller.shortcutButtons = makeDashboardButtons()
+
+    updateMapOverlay()
+    updateRouteMap()
+    updateConvoyMap()
+    requestDestinationSync()
+  }
+
+  func disconnectDashboard() {
+    dashboardController?.shortcutButtons = []
+    dashboardController = nil
+    dashboardWindow?.rootViewController = nil
+    dashboardWindow = nil
+  }
+
+  private func makeDashboardButtons() -> [CPDashboardButton] {
+    let searchButton = CPDashboardButton(
+      titleVariants: ["Sök mål", "Sök"],
+      subtitleVariants: [],
+      image: UIImage(systemName: "magnifyingglass") ?? UIImage()
+    ) { [weak self] _ in
+      self?.showSearch()
+    }
+    let recentsButton = CPDashboardButton(
+      titleVariants: ["Senaste mål", "Senaste"],
+      subtitleVariants: [],
+      image: UIImage(systemName: "clock.arrow.circlepath") ?? UIImage()
+    ) { [weak self] _ in
+      self?.showRecentDestinationsList()
+    }
+    return [searchButton, recentsButton]
+  }
+
   func configureFlutterBridge(with messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(name: Self.channelName, binaryMessenger: messenger)
     flutterChannel = channel
     channel.setMethodCallHandler { [weak self] call, result in
       self?.handleFlutterCall(call, result: result)
     }
-    notifyFlutterConnectionState(interfaceController != nil)
+    notifyFlutterConnectionState(hasLiveCarPlayTemplateScene)
     requestDestinationSync()
   }
 
@@ -434,7 +506,7 @@ final class CarPlayManager: NSObject {
       applyConvoyState(call.arguments)
       result(nil)
     case "getConnectionState":
-      result(interfaceController != nil)
+      result(hasLiveCarPlayTemplateScene)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -471,6 +543,7 @@ final class CarPlayManager: NSObject {
 
   private func applyNavigationState(_ arguments: Any?) {
     guard let payload = arguments as? [String: Any] else { return }
+    let markerStyle = payload["markerStyle"] as? [String: Any]
 
     navigationState = NavigationState(
       hasRoute: (payload["hasRoute"] as? Bool) ?? false,
@@ -487,8 +560,12 @@ final class CarPlayManager: NSObject {
       remainingDurationSeconds: doubleValue(payload["remainingDurationSeconds"]),
       nextManeuverText: stringValue(payload["nextManeuverText"]) ?? "",
       currentStreetName: stringValue(payload["currentStreetName"]) ?? "",
-      upcomingManeuvers: decodeManeuverPayloads(payload["upcomingManeuvers"])
+      upcomingManeuvers: decodeManeuverPayloads(payload["upcomingManeuvers"]),
+      markerAssetPath: stringValue(markerStyle?["assetPath"]),
+      markerIconName: stringValue(markerStyle?["iconName"]),
+      markerTintArgb: intValue(markerStyle?["tintArgb"])
     )
+    mapMarkers = decodeMapMarkers(payload["mapMarkers"])
 
     if let destinationPayload = payload["destination"] as? [String: Any],
        let latitude = doubleValue(destinationPayload["latitude"] ?? destinationPayload["lat"]),
@@ -571,6 +648,26 @@ final class CarPlayManager: NSObject {
         return nil
       }
       return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+  }
+
+  private func decodeMapMarkers(_ raw: Any?) -> [MapMarker] {
+    guard let items = raw as? [Any] else { return [] }
+    return items.compactMap { item in
+      guard let values = item as? [String: Any],
+            let id = stringValue(values["id"]),
+            let latitude = doubleValue(values["latitude"] ?? values["lat"]),
+            let longitude = doubleValue(values["longitude"] ?? values["lon"])
+      else {
+        return nil
+      }
+      return MapMarker(
+        id: id,
+        label: stringValue(values["label"]) ?? "Markör",
+        typeKey: stringValue(values["typeKey"] ?? values["type"]) ?? "hazard",
+        emoji: stringValue(values["emoji"]) ?? "⚠️",
+        coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+      )
     }
   }
 
@@ -760,44 +857,57 @@ final class CarPlayManager: NSObject {
   }
 
   private func updateMapOverlay() {
-    guard let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController else {
-      return
+    for rootViewController in carPlayMapViewControllers {
+      rootViewController.updateNavigationMarkerStyle(
+        assetPath: navigationState.markerAssetPath,
+        iconName: navigationState.markerIconName,
+        tintArgb: navigationState.markerTintArgb
+      )
+      rootViewController.updateNavigationPosition(
+        navigationState.currentLocation,
+        headingDegrees: navigationState.headingDegrees,
+        isNavigating: navigationState.isNavigating
+      )
+      rootViewController.updateMapMarkers(mapMarkers)
+      rootViewController.updateSpeedometers(
+        currentSpeed: navigationState.currentSpeed,
+        roadSpeedLimit: navigationState.roadSpeedLimit,
+        vehicleSpeedLimit: navigationState.vehicleSpeedLimit,
+        unitLabel: navigationState.speedUnitLabel,
+        usesSwedishRoadSign: navigationState.countryCode == "SE",
+        isNavigating: navigationState.isNavigating
+      )
     }
-
-    rootViewController.updateNavigationPosition(
-      navigationState.currentLocation,
-      headingDegrees: navigationState.headingDegrees,
-      isNavigating: navigationState.isNavigating
-    )
-    rootViewController.updateSpeedometers(
-      currentSpeed: navigationState.currentSpeed,
-      roadSpeedLimit: navigationState.roadSpeedLimit,
-      vehicleSpeedLimit: navigationState.vehicleSpeedLimit,
-      unitLabel: navigationState.speedUnitLabel,
-      usesSwedishRoadSign: navigationState.countryCode == "SE",
-      isNavigating: navigationState.isNavigating
-    )
   }
 
   private func updateRouteMap() {
-    guard let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController else {
-      return
+    for rootViewController in carPlayMapViewControllers {
+      rootViewController.updateRoute(
+        coordinates: routeCoordinates,
+        destination: routeDestinationCoordinate,
+        isNavigating: navigationState.isNavigating
+      )
     }
-    rootViewController.updateRoute(
-      coordinates: routeCoordinates,
-      destination: routeDestinationCoordinate,
-      isNavigating: navigationState.isNavigating
-    )
   }
 
   private func updateConvoyMap() {
-    guard let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController else {
-      return
+    for rootViewController in carPlayMapViewControllers {
+      rootViewController.updateConvoyMembers(convoyMembers)
     }
-    rootViewController.updateConvoyMembers(convoyMembers)
+  }
+
+  private var carPlayMapViewControllers: [CarPlayMapViewController] {
+    [
+      carWindow?.rootViewController as? CarPlayMapViewController,
+      dashboardWindow?.rootViewController as? CarPlayMapViewController,
+    ].compactMap { $0 }
   }
 
   private func startFlutterNavigation(to destination: Destination) {
+    guard hasLiveCarPlayTemplateScene else {
+      notifyFlutterConnectionState(false)
+      return
+    }
     flutterChannel?.invokeMethod("startNavigation", arguments: [
       "lat": destination.coordinate.latitude,
       "lon": destination.coordinate.longitude,
@@ -840,12 +950,13 @@ final class CarPlayManager: NSObject {
       isShowingTripPreview = true
     }
 
-    (carWindow?.rootViewController as? CarPlayMapViewController)?
-      .updateNavigationPosition(
+    for rootViewController in carPlayMapViewControllers {
+      rootViewController.updateNavigationPosition(
         navigationState.currentLocation,
         headingDegrees: navigationState.headingDegrees,
         isNavigating: navigationState.isNavigating
       )
+    }
 
     if let mapTemplate {
       mapTemplate.update(makeEstimatesFromNavigationState(for: destination), for: trip, with: .green)
@@ -918,13 +1029,18 @@ final class CarPlayManager: NSObject {
     // Retain the action (for example "Sväng höger") plus the destination
     // road, but never the long spoken turn-by-turn sentence.
     let action = payload.shortInstruction.trimmingCharacters(in: .whitespacesAndNewlines)
+    let displayedAction = isRoundaboutSign(payload.sign)
+      ? roundaboutInstruction(from: payload.text, fallback: action)
+      : action
     let conciseInstruction: String
     if streetName.isEmpty {
-      conciseInstruction = action.isEmpty ? conciseManeuverText(payload.text) : action
-    } else if action.isEmpty {
+      conciseInstruction = displayedAction.isEmpty
+        ? conciseManeuverText(payload.text)
+        : displayedAction
+    } else if displayedAction.isEmpty {
       conciseInstruction = streetName
     } else {
-      conciseInstruction = "\(action) · \(streetName)"
+      conciseInstruction = "\(displayedAction) · \(streetName)"
     }
     let compactVariants = [conciseInstruction]
     maneuver.instructionVariants = compactVariants
@@ -1017,6 +1133,38 @@ final class CarPlayManager: NSObject {
     return String(firstClause.prefix(56)).trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
+  private func isRoundaboutSign(_ sign: Int) -> Bool {
+    sign == -6 || sign == 6
+  }
+
+  /// Preserve the useful exit number in roundabout instructions. The old
+  /// compact formatter deliberately cut after "och", which reduced
+  /// "Kör in i rondellen och ta 2:a avfarten" to just the first clause.
+  private func roundaboutInstruction(from text: String, fallback: String) -> String {
+    let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !cleaned.isEmpty else { return fallback }
+
+    let patterns = [
+      #"(?i)ta\s+(?:den\s+)?(?:\d+(?::[ae])?|första|andra|tredje|fjärde|femte)\s+avfarten"#,
+      #"(?i)take\s+(?:the\s+)?(?:\d+(?:st|nd|rd|th)?|first|second|third|fourth|fifth)\s+exit"#,
+      #"(?i)tom[ae]\s+(?:la\s+)?(?:\d+(?:ª|º)?|primera|segunda|tercera|cuarta|quinta)\s+salida"#,
+      #"(?i)prendre\s+(?:la\s+)?(?:\d+(?:e|ère)?|première|deuxième|troisième|quatrième|cinquième)\s+sortie"#,
+      #"(?i)prendi\s+(?:la\s+)?(?:\d+[ªa]?|prima|seconda|terza|quarta|quinta)\s+uscita"#,
+    ]
+
+    for pattern in patterns {
+      guard let range = cleaned.range(of: pattern, options: .regularExpression) else {
+        continue
+      }
+      let exitInstruction = String(cleaned[range])
+      // Use the localised primary action when available, followed by the
+      // concrete exit instruction that drivers need before the roundabout.
+      return fallback.isEmpty ? exitInstruction : "\(fallback) · \(exitInstruction)"
+    }
+
+    return fallback.isEmpty ? conciseManeuverText(cleaned) : fallback
+  }
+
   private func estimatedTimeToNextManeuver(distanceMeters: Double) -> TimeInterval {
     let remainingDistance = navigationState.remainingDistanceMeters ?? 0
     let remainingTime = navigationState.remainingDurationSeconds ?? 0
@@ -1043,8 +1191,7 @@ extension CarPlayManager: CLLocationManagerDelegate {
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last,
-          location.horizontalAccuracy >= 0,
-          let rootViewController = carWindow?.rootViewController as? CarPlayMapViewController
+          location.horizontalAccuracy >= 0
     else {
       return
     }
@@ -1052,20 +1199,22 @@ extension CarPlayManager: CLLocationManagerDelegate {
     // Update the native CarPlay map directly. This remains live even if iOS
     // temporarily suspends Flutter rendering while the phone is locked.
     let heading = location.course >= 0 ? location.course : navigationState.headingDegrees
-    if rootViewController.requiresImmediateNativePositionUpdate() {
-      // A connected iPhone can keep UIApplication marked active even after
-      // its display turns black. Detect the paused display link directly.
-      rootViewController.updateBackgroundNavigationPosition(
-        location.coordinate,
-        headingDegrees: heading,
-        isNavigating: navigationState.isNavigating
-      )
-    } else {
-      rootViewController.updateNavigationPosition(
-        location.coordinate,
-        headingDegrees: heading,
-        isNavigating: navigationState.isNavigating
-      )
+    for rootViewController in carPlayMapViewControllers {
+      if rootViewController.requiresImmediateNativePositionUpdate() {
+        // A connected iPhone can keep UIApplication marked active even after
+        // its display turns black. Detect the paused display link directly.
+        rootViewController.updateBackgroundNavigationPosition(
+          location.coordinate,
+          headingDegrees: heading,
+          isNavigating: navigationState.isNavigating
+        )
+      } else {
+        rootViewController.updateNavigationPosition(
+          location.coordinate,
+          headingDegrees: heading,
+          isNavigating: navigationState.isNavigating
+        )
+      }
     }
   }
 }

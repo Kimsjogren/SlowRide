@@ -76,7 +76,7 @@
   "authResetPasswordSuccess": "Tu contraseña ha sido cambiada.",
   "authErrorAllFieldsRequired": "Todos los campos son obligatorios.",
   "authErrorPasswordTooShort": "La contraseña debe tener al menos 6 caracteres e incluir un número y un carácter especial.",
-  "authErrorConfirmEmail": "Revisa tu correo para confirmar tu cuenta y luego inicia sesión.",
+  "authErrorConfirmEmail": "Revisa tu correo para confirmar tu cuenta. Si la cuenta ya existe, no se enviará otro correo de confirmación; inicia sesión o restablece la contraseña.",
   "authEmailConfirmedTitle": "Correo electrónico confirmado",
   "authEmailConfirmedBody": "Tu dirección de correo electrónico ha sido confirmada. Ya has iniciado sesión.",
   "authErrorEmailAndPasswordRequired": "Introduce tu correo y contraseña.",

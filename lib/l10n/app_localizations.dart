@@ -566,7 +566,7 @@ abstract class AppLocalizations {
   /// No description provided for @authErrorConfirmEmail.
   ///
   /// In en, this message translates to:
-  /// **'Check your email to confirm your account, then sign in.'**
+  /// **'Check your email to confirm your account. If the account already exists, no new confirmation email is sent – sign in or reset the password.'**
   String get authErrorConfirmEmail;
 
   /// No description provided for @authEmailConfirmedTitle.
