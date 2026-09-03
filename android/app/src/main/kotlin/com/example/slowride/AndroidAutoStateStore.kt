@@ -15,6 +15,8 @@ object AndroidAutoStateStore {
         val navigation: Map<String, Any?> = emptyMap(),
         val route: Map<String, Any?> = emptyMap(),
         val convoy: Map<String, Any?> = emptyMap(),
+        val trafficProposal: Map<String, Any?> = emptyMap(),
+        val trafficWarning: Map<String, Any?> = emptyMap(),
     )
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -22,6 +24,9 @@ object AndroidAutoStateStore {
     private var channel: MethodChannel? = null
     private var applicationContext: Context? = null
     private var pendingFlutterCalls = mutableListOf<Pair<String, Any?>>()
+    private var pendingTrafficProposalID: String? = null
+    private var pendingTrafficProposalResult: MethodChannel.Result? = null
+    private var trafficProposalTimeout: Runnable? = null
 
     @Volatile
     var isConnected: Boolean = false
@@ -48,6 +53,20 @@ object AndroidAutoStateStore {
                     result.success(null)
                 }
                 "getConnectionState" -> result.success(isConnected)
+                "showTrafficRerouteProposal" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    showTrafficRerouteProposal(
+                        call.arguments as? Map<String, Any?> ?: emptyMap(),
+                        result,
+                    )
+                }
+                "showTrafficWarning" -> {
+                    @Suppress("UNCHECKED_CAST")
+                    showTrafficWarning(
+                        call.arguments as? Map<String, Any?> ?: emptyMap(),
+                    )
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -63,6 +82,10 @@ object AndroidAutoStateStore {
 
     fun setConnected(connected: Boolean) {
         isConnected = connected
+        if (!connected) {
+            resolveTrafficRerouteProposal(null, false)
+            clearTrafficWarning()
+        }
         sendToFlutter("carPlayConnectionChanged", connected)
     }
 
@@ -103,6 +126,60 @@ object AndroidAutoStateStore {
         sendOrQueue("stopNavigation", null)
     }
 
+    fun resolveTrafficRerouteProposal(id: String?, accepted: Boolean) {
+        val activeID = pendingTrafficProposalID ?: return
+        if (id != null && id != activeID) return
+        trafficProposalTimeout?.let(mainHandler::removeCallbacks)
+        trafficProposalTimeout = null
+        val callback = pendingTrafficProposalResult
+        pendingTrafficProposalID = null
+        pendingTrafficProposalResult = null
+        snapshot = snapshot.copy(trafficProposal = emptyMap())
+        notifyListeners()
+        callback?.success(accepted)
+    }
+
+    private fun showTrafficRerouteProposal(
+        payload: Map<String, Any?>,
+        result: MethodChannel.Result,
+    ) {
+        if (!isConnected) {
+            result.success(null)
+            return
+        }
+        resolveTrafficRerouteProposal(null, false)
+        val id = payload["id"]?.toString()?.ifBlank { null }
+            ?: System.nanoTime().toString()
+        val timeoutSeconds = (payload["timeoutSeconds"] as? Number)
+            ?.toLong()?.coerceIn(5, 60) ?: 20L
+        pendingTrafficProposalID = id
+        pendingTrafficProposalResult = result
+        snapshot = snapshot.copy(trafficProposal = payload + ("id" to id))
+        notifyListeners()
+        trafficProposalTimeout = Runnable {
+            resolveTrafficRerouteProposal(id, false)
+        }.also { mainHandler.postDelayed(it, timeoutSeconds * 1000) }
+    }
+
+    private fun showTrafficWarning(payload: Map<String, Any?>) {
+        if (!isConnected) return
+        // Don't override an active reroute proposal with a mere warning.
+        if (pendingTrafficProposalID != null) return
+        val timeoutSeconds = (payload["timeoutSeconds"] as? Number)
+            ?.toLong()?.coerceIn(5, 30) ?: 8L
+        snapshot = snapshot.copy(trafficWarning = payload)
+        notifyListeners()
+        mainHandler.postDelayed({
+            clearTrafficWarning()
+        }, timeoutSeconds * 1000)
+    }
+
+    fun clearTrafficWarning() {
+        if (snapshot.trafficWarning.isEmpty()) return
+        snapshot = snapshot.copy(trafficWarning = emptyMap())
+        notifyListeners()
+    }
+
     private fun sendOrQueue(method: String, arguments: Any?) {
         if (channel == null) {
             pendingFlutterCalls.add(method to arguments)
@@ -118,5 +195,9 @@ object AndroidAutoStateStore {
 
     private fun sendToFlutter(method: String, arguments: Any?) {
         mainHandler.post { channel?.invokeMethod(method, arguments) }
+    }
+
+    private fun notifyListeners() {
+        listeners.forEach { listener -> mainHandler.post { listener(snapshot) } }
     }
 }

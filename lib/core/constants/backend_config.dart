@@ -51,6 +51,21 @@ class BackendConfig {
         'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
   );
 
+  /// Live traffic only adjusts ETA; CruizX's legal vehicle route remains the
+  /// source of truth. Disable remotely per build if traffic requests should be
+  /// paused without changing the implementation.
+  static const bool mapboxTrafficEnabled = bool.fromEnvironment(
+    'MAPBOX_TRAFFIC_ENABLED',
+    defaultValue: true,
+  );
+
+  /// Per-install safety valve. A backend proxy is still required for a hard
+  /// account-wide cap shared by every installed copy of the app.
+  static const int mapboxTrafficMonthlyRequestLimit = int.fromEnvironment(
+    'MAPBOX_TRAFFIC_MONTHLY_REQUEST_LIMIT',
+    defaultValue: 800,
+  );
+
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://bgdtzxmcnydvracgqaht.supabase.co',

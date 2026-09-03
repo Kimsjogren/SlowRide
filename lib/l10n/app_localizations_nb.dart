@@ -45,7 +45,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.8 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Sentrer kartet på posisjonen min';
@@ -978,17 +978,17 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Vi fant en mulig rute, men den kunne ikke verifiseres helt for din $vehicleType. Den kan inneholde veier som må kontrolleres. Følg alltid skilt og lokale regler.';
+    return 'Ruten kan ikke verifiseres som lovlig for din $vehicleType og kan inneholde forbudte veier, for eksempel motorvei. Følg alltid skilting og lokale regler. Du bruker ruten på eget ansvar; CruizX kan ikke garantere veivalget og er ikke ansvarlig for kjøring på denne ruten.';
   }
 
   @override
   String get routeFallbackCancel => 'Avbryt';
 
   @override
-  String get routeFallbackUse => 'Vis likevel';
+  String get routeFallbackUse => 'Jeg forstår – vis ruten';
 
   @override
-  String get routeFallbackActive => 'Usikker rute – følg alltid skilting';
+  String get routeFallbackActive => 'Usikker – eget ansvar, følg skilting';
 
   @override
   String get routeOptionsTitle => 'Velg rute';
@@ -1010,7 +1010,7 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Kan ikke verifiseres helt for din $vehicleType. Kontroller skilting før du kjører.';
+    return 'Kan inneholde forbudte veier for din $vehicleType. Eget ansvar.';
   }
 
   @override
@@ -1022,7 +1022,41 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX godkjenner aldri forbudte veier automatisk. Følg alltid skilting og lokale regler.';
+  String get routeOptionWarningFooter => 'Usikre ruter brukes på eget ansvar. CruizX kan ikke garantere veivalget. Følg alltid skilting og lokale regler.';
+
+  @override
+  String get trafficRerouteTitle => 'Raskere rute funnet';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX har sammenlignet livetrafikken på verifiserte veier for din $vehicleType. Den nye ruten anslås å spare omtrent $minutes min og unngår deler av den aktuelle køen.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Behold nåværende';
+
+  @override
+  String get trafficRerouteUse => 'Bytt rute';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Raskere rute valgt – sparer omtrent $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'En raskere verifisert rute er funnet. Den sparer omtrent $minutes minutter.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Trafikkforstyrrelser – ca. $minutes min ekstra reisetid';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Trafikkforstyrrelser foran. Ca. $minutes minutters ekstra reisetid.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';

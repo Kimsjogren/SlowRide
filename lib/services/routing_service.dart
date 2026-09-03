@@ -500,14 +500,14 @@ class RoutingService {
   }) async {
     final userSpeed = UserPreferencesService.instance.maxSpeedKmh.value;
     final country = UserPreferencesService.instance.countryCode.value;
-    // The UI can request a last-resort relaxed route for legacy slow vehicle
-    // profiles. A class I moped must never bypass its country-specific road
-    // restrictions, even when no legal route can be found.
-    final effectiveRelaxedLegalChecks =
-        relaxedLegalChecks &&
-        vehicleType != 'Moped class I' &&
-        vehicleType != 'Moped class II' &&
-        vehicleType != 'Electric scooter';
+    // Strict routing remains the default. Relaxed checks are used only after
+    // the UI explicitly asks for an unverified fallback and presents a driver
+    // warning before that route can be selected.
+    final effectiveRelaxedLegalChecks = _mayRelaxLegalChecks(
+      requested: relaxedLegalChecks,
+      vehicleType: vehicleType,
+      countryCode: country,
+    );
     final eligibleProviders = _eligibleProvidersFor(
       configuredProvider: BackendConfig.routingProvider,
       vehicleType: vehicleType,
@@ -558,6 +558,24 @@ class RoutingService {
     if (lastError is RoutingException) throw lastError;
     throw const RoutingException(RoutingErrorCode.providerUnavailable);
   }
+
+  bool _mayRelaxLegalChecks({
+    required bool requested,
+    required String vehicleType,
+    required String countryCode,
+  }) {
+    return requested;
+  }
+
+  @visibleForTesting
+  bool debugMayRelaxLegalChecks({
+    required String vehicleType,
+    required String countryCode,
+  }) => _mayRelaxLegalChecks(
+    requested: true,
+    vehicleType: vehicleType,
+    countryCode: countryCode,
+  );
 
   Future<RouteResult> _routeWith({
     required String provider,

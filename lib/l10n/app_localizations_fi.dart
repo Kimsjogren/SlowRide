@@ -45,7 +45,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.8 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Keskitä kartta sijaintiini';
@@ -978,17 +978,17 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Löysimme mahdollisen reitin, mutta sitä ei voitu täysin varmistaa ajoneuvollesi $vehicleType. Se voi sisältää teitä, jotka pitää tarkistaa. Noudata aina liikennemerkkejä ja paikallisia sääntöjä.';
+    return 'Reitin laillisuutta ajoneuvollesi $vehicleType ei voida varmistaa, ja se voi sisältää kiellettyjä teitä, kuten moottoriteitä. Noudata aina liikennemerkkejä ja paikallisia sääntöjä. Käytät reittiä omalla vastuullasi; CruizX ei voi taata tievalintaa eikä vastaa tällä reitillä ajamisesta.';
   }
 
   @override
   String get routeFallbackCancel => 'Peruuta';
 
   @override
-  String get routeFallbackUse => 'Näytä silti';
+  String get routeFallbackUse => 'Ymmärrän – näytä reitti';
 
   @override
-  String get routeFallbackActive => 'Varmistamaton reitti – noudata aina merkkejä';
+  String get routeFallbackActive => 'Varmistamaton – omalla vastuulla';
 
   @override
   String get routeOptionsTitle => 'Valitse reitti';
@@ -1010,7 +1010,7 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Ei voida täysin varmistaa ajoneuvollesi $vehicleType. Tarkista liikennemerkit ennen ajoa.';
+    return 'Voi sisältää ajoneuvollesi $vehicleType kiellettyjä teitä. Omalla vastuulla.';
   }
 
   @override
@@ -1022,7 +1022,41 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX ei koskaan hyväksy kiellettyjä teitä automaattisesti. Noudata aina merkkejä ja paikallisia sääntöjä.';
+  String get routeOptionWarningFooter => 'Varmistamattomia reittejä käytetään omalla vastuulla. CruizX ei voi taata tievalintaa. Noudata aina merkkejä ja paikallisia sääntöjä.';
+
+  @override
+  String get trafficRerouteTitle => 'Nopeampi reitti löytyi';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX vertasi reaaliaikaista liikennettä ajoneuvollesi $vehicleType varmistetuilla teillä. Uuden reitin arvioidaan säästävän noin $minutes min ja välttävän osan nykyisestä ruuhkasta.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Pidä nykyinen';
+
+  @override
+  String get trafficRerouteUse => 'Vaihda reittiä';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Nopeampi reitti valittu – säästää noin $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'Nopeampi varmistettu reitti löytyi. Se säästää noin $minutes minuuttia.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Liikennehäiriö – n. $minutes min lisää matka-aikaa';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Liikennehäiriö edessä. Noin $minutes minuuttia lisää matka-aikaa.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';

@@ -90,4 +90,59 @@ void main() {
       expect(payload['members'] as List, hasLength(1));
     },
   );
+
+  test('traffic reroute proposal returns native driver choice', () async {
+    MethodCall? received;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          received = call;
+          return true;
+        });
+    CarPlayBridgeService.instance.isConnected.value = true;
+    addTearDown(() {
+      CarPlayBridgeService.instance.isConnected.value = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final accepted = await CarPlayBridgeService.instance
+        .showTrafficRerouteProposal(
+          title: 'Snabbare rutt hittad',
+          body: 'Sparar cirka 6 minuter.',
+          keepLabel: 'Behåll',
+          useLabel: 'Byt rutt',
+        );
+
+    expect(accepted, isTrue);
+    expect(received?.method, 'showTrafficRerouteProposal');
+    final payload = Map<String, dynamic>.from(received!.arguments as Map);
+    expect(payload['title'], 'Snabbare rutt hittad');
+    expect(payload['timeoutSeconds'], 20);
+    expect(payload['id'], isNotEmpty);
+  });
+
+  test('traffic reroute proposal is skipped without a car screen', () async {
+    var calls = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls++;
+          return true;
+        });
+    CarPlayBridgeService.instance.isConnected.value = false;
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    final result = await CarPlayBridgeService.instance
+        .showTrafficRerouteProposal(
+          title: 'Title',
+          body: 'Body',
+          keepLabel: 'Keep',
+          useLabel: 'Use',
+        );
+
+    expect(result, isNull);
+    expect(calls, 0);
+  });
 }

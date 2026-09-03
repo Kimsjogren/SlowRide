@@ -225,6 +225,45 @@ function cleanStrings(value, maxItems, maxLength) {
     .slice(0, maxItems);
 }
 
+function validateRoadScore(value) {
+  if (!value || typeof value !== "object") return null;
+  if (!Number.isInteger(value.score) || value.score < 0 || value.score > 100) return null;
+  if (!["excellent", "good", "caution", "unverified"].includes(value.grade)) return null;
+  if (typeof value.legally_verified !== "boolean") return null;
+  const integerField = (key, max) =>
+    Number.isInteger(value[key]) && value[key] >= 0 && value[key] <= max
+      ? value[key]
+      : null;
+  const routeAlertCount = integerField("route_alert_count", 500);
+  const complexTurnCount = integerField("complex_turn_count", 1000);
+  const distanceDetourPercent = integerField("distance_detour_percent", 999);
+  const durationDetourPercent = integerField("duration_detour_percent", 999);
+  if (
+    routeAlertCount === null ||
+    complexTurnCount === null ||
+    distanceDetourPercent === null ||
+    durationDetourPercent === null
+  ) return null;
+  const factors = {};
+  if (value.factors && typeof value.factors === "object") {
+    for (const [key, count] of Object.entries(value.factors).slice(0, 20)) {
+      if (/^[a-z_]{1,32}$/.test(key) && Number.isInteger(count) && count >= 0 && count <= 500) {
+        factors[key] = count;
+      }
+    }
+  }
+  return {
+    score: value.score,
+    grade: value.grade,
+    legally_verified: value.legally_verified,
+    route_alert_count: routeAlertCount,
+    complex_turn_count: complexTurnCount,
+    distance_detour_percent: distanceDetourPercent,
+    duration_detour_percent: durationDetourPercent,
+    factors,
+  };
+}
+
 function validateAiRouteFacts(body) {
   if (!body || typeof body !== "object" || !AI_LANGUAGES.has(body.language)) return null;
   if (
@@ -246,6 +285,10 @@ function validateAiRouteFacts(body) {
       }
     }
   }
+  const roadScore = body.road_score === undefined
+    ? null
+    : validateRoadScore(body.road_score);
+  if (body.road_score !== undefined && !roadScore) return null;
   return {
     language: body.language,
     vehicle_type: body.vehicle_type,
@@ -266,6 +309,7 @@ function validateAiRouteFacts(body) {
       street_names: cleanStrings(body.route.street_names, 24, 80),
     },
     alert_counts: alertCounts,
+    ...(roadScore ? { road_score: roadScore } : {}),
   };
 }
 
@@ -389,6 +433,8 @@ async function handleAiRouteAnalysis(request, env, origin) {
           content:
             "You are CruizX AI route analysis. Analyze only the supplied, already-computed route facts. " +
             "Never invent roads, restrictions, incidents, weather, police locations, legal guarantees, or missing data. " +
+            "When road_score is supplied, explain its verified factors and never recalculate or contradict the numeric score. " +
+            "A route with legally_verified=false must be described as unverified and never as certainly safe or legal. " +
             "Do not create or modify a route and do not tell the driver to interact with the app while driving. " +
             "Use the supplied vehicle_context as the exact vehicle classification. Never infer vehicle weight, " +
             "and never call the selected vehicle a heavy vehicle or truck. " +
@@ -414,9 +460,16 @@ async function handleAiRouteAnalysis(request, env, origin) {
       typeof responseContent === "string"
         ? JSON.parse(responseContent)
         : responseContent;
-    const analysis = validateAiAnalysis(rawAnalysis);
+    let analysis = validateAiAnalysis(rawAnalysis);
     if (!analysis) {
       return json({ error: "ai_invalid_response" }, { status: 502 }, origin);
+    }
+    if (
+      facts.road_score &&
+      (!facts.road_score.legally_verified || facts.road_score.score < 50) &&
+      analysis.suitability === "good"
+    ) {
+      analysis = { ...analysis, suitability: "caution" };
     }
 
     const responseId = crypto.randomUUID();

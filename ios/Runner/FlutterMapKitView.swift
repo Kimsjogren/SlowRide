@@ -398,6 +398,10 @@ final class CruizXAlertAnnotation: MKPointAnnotation {
   }
 }
 
+final class CruizXTrafficPolyline: MKPolyline {
+  var congestionLevel = "moderate"
+}
+
 final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate, CLLocationManagerDelegate {
   private let mapView = MKMapView()
   private let channel: FlutterMethodChannel
@@ -409,6 +413,8 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   private var hasDestinationAnnotation = false
   private var hasMeetupAnnotation = false
   private var routeOverlay: MKPolyline?
+  private var trafficOverlays: [CruizXTrafficPolyline] = []
+  private var trafficOverlaySignature = ""
   private var hasCenteredInitialLocation = false
   private var suppressUserPanUntil = Date.distantPast
   private var lastRoutePoints: [CLLocationCoordinate2D] = []
@@ -510,6 +516,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let location = coordinate(from: payload["location"])
     let destination = coordinate(from: payload["destination"])
     let routePoints = coordinates(from: payload["routePoints"])
+    let trafficSections = trafficSectionPayloads(from: payload["trafficSections"])
     let meetup = meetupPayload(from: payload["meetup"])
     let currentUserId = (payload["currentUserId"] as? String)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -522,6 +529,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let followUser = payload["followUser"] as? Bool ?? false
     let use3D = payload["use3D"] as? Bool ?? true
     let darkMode = payload["darkMode"] as? Bool ?? false
+    let showTraffic = payload["showTraffic"] as? Bool ?? false
     let hideUserMarkerWhenFollowing =
       payload["hideUserMarkerWhenFollowing"] as? Bool ?? false
     let markerStyle = markerStyle(from: payload["markerStyle"])
@@ -531,6 +539,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let followModeChanged = followUser != lastFollowUser
 
     mapView.overrideUserInterfaceStyle = darkMode ? .dark : .light
+    mapView.showsTraffic = showTraffic
     navigationRoutePoints = routePoints
     isFollowingUser = followUser
     self.hideUserMarkerWhenFollowing = hideUserMarkerWhenFollowing
@@ -557,6 +566,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     updateConvoyPinAnnotations(with: pins)
     updateAlertAnnotations(with: alerts)
     updateRouteOverlay(with: routePoints, routeChanged: routeChanged)
+    updateTrafficOverlays(with: trafficSections)
     updateCamera(
       location: location,
       routePoints: routePoints,
@@ -842,10 +852,47 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     routeOverlay = polyline
     // Add the replacement before removing the previous line. This prevents a
     // one-frame blue-route flash while the route is trimmed during navigation.
-    mapView.addOverlay(polyline)
+    if let firstTrafficOverlay = trafficOverlays.first {
+      mapView.insertOverlay(polyline, below: firstTrafficOverlay)
+    } else {
+      mapView.addOverlay(polyline)
+    }
     if let previousOverlay {
       mapView.removeOverlay(previousOverlay)
     }
+  }
+
+  private func trafficSectionPayloads(
+    from value: Any?
+  ) -> [(level: String, points: [CLLocationCoordinate2D])] {
+    guard let rawSections = value as? [Any] else { return [] }
+    return rawSections.compactMap { raw in
+      guard let values = raw as? [String: Any] else { return nil }
+      let level = values["level"] as? String ?? "moderate"
+      let points = coordinates(from: values["points"])
+      guard points.count >= 2 else { return nil }
+      return (level, points)
+    }
+  }
+
+  private func updateTrafficOverlays(
+    with sections: [(level: String, points: [CLLocationCoordinate2D])]
+  ) {
+    let signature = sections.map { section in
+      section.level + ":" + section.points.map {
+        String(format: "%.6f,%.6f", $0.latitude, $0.longitude)
+      }.joined(separator: ";")
+    }.joined(separator: "|")
+    guard signature != trafficOverlaySignature else { return }
+    trafficOverlaySignature = signature
+    mapView.removeOverlays(trafficOverlays)
+    trafficOverlays = sections.map { section in
+      var points = section.points
+      let overlay = CruizXTrafficPolyline(coordinates: &points, count: points.count)
+      overlay.congestionLevel = section.level
+      return overlay
+    }
+    mapView.addOverlays(trafficOverlays, level: .aboveRoads)
   }
 
   private func updateCamera(
@@ -1986,8 +2033,17 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     }
 
     let renderer = MKPolylineRenderer(polyline: polyline)
-    renderer.strokeColor = UIColor(red: 0.04, green: 0.38, blue: 1.0, alpha: 0.94)
-    renderer.lineWidth = 7
+    if let traffic = polyline as? CruizXTrafficPolyline {
+      renderer.strokeColor = switch traffic.congestionLevel {
+      case "severe": UIColor(red: 0.55, green: 0.0, blue: 0.08, alpha: 1)
+      case "heavy": UIColor(red: 0.92, green: 0.08, blue: 0.12, alpha: 1)
+      default: UIColor(red: 1.0, green: 0.56, blue: 0.0, alpha: 1)
+      }
+      renderer.lineWidth = 8
+    } else {
+      renderer.strokeColor = UIColor(red: 0.04, green: 0.38, blue: 1.0, alpha: 0.94)
+      renderer.lineWidth = 7
+    }
     renderer.lineCap = .round
     renderer.lineJoin = .round
     return renderer

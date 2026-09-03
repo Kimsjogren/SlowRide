@@ -2,6 +2,11 @@ import CarPlay
 import MapKit
 import UIKit
 
+struct CruizXTrafficSection {
+  let level: String
+  let coordinates: [CLLocationCoordinate2D]
+}
+
 final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private let isDashboardSurface: Bool
   private let mapView = MKMapView()
@@ -15,6 +20,8 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private let speedLimitView = UIView()
   private let speedLimitLabel = UILabel()
   private var routeOverlay: MKPolyline?
+  private var trafficOverlays: [CruizXTrafficPolyline] = []
+  private var trafficOverlaySignature = ""
   private var navigationRouteCoordinates: [CLLocationCoordinate2D] = []
   private var destinationAnnotation: MKPointAnnotation?
   private var navigationAnnotation: CruizXNavigationAnnotation?
@@ -84,6 +91,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     mapView.translatesAutoresizingMaskIntoConstraints = false
     mapView.showsCompass = false
     mapView.showsScale = false
+    mapView.showsTraffic = false
     mapView.isScrollEnabled = true
     // Handle pinch zoom ourselves so it works on CarPlay units that do not
     // forward MapKit's built-in zoom gesture to an app-owned map view.
@@ -291,9 +299,11 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   func updateRoute(
     coordinates: [CLLocationCoordinate2D],
     destination: CLLocationCoordinate2D?,
-    isNavigating: Bool
+    isNavigating: Bool,
+    trafficSections: [CruizXTrafficSection]
   ) {
     guard isViewLoaded else { return }
+    mapView.showsTraffic = coordinates.count >= 2
 
     if let routeOverlay {
       mapView.removeOverlay(routeOverlay)
@@ -303,6 +313,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
 
     guard coordinates.count >= 2 else {
+      updateTrafficOverlays([])
       routeOverlay = nil
       navigationRouteCoordinates = []
       destinationAnnotation = nil
@@ -313,7 +324,12 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
     routeOverlay = polyline
     navigationRouteCoordinates = coordinates
-    mapView.addOverlay(polyline, level: .aboveRoads)
+    if let firstTrafficOverlay = trafficOverlays.first {
+      mapView.insertOverlay(polyline, below: firstTrafficOverlay)
+    } else {
+      mapView.addOverlay(polyline, level: .aboveRoads)
+    }
+    updateTrafficOverlays(trafficSections)
 
     if let destination {
       let annotation = MKPointAnnotation()
@@ -330,6 +346,25 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
         animated: true
       )
     }
+  }
+
+  private func updateTrafficOverlays(_ sections: [CruizXTrafficSection]) {
+    let signature = sections.map { section in
+      section.level + ":" + section.coordinates.map {
+        String(format: "%.6f,%.6f", $0.latitude, $0.longitude)
+      }.joined(separator: ";")
+    }.joined(separator: "|")
+    guard signature != trafficOverlaySignature else { return }
+    trafficOverlaySignature = signature
+    mapView.removeOverlays(trafficOverlays)
+    trafficOverlays = sections.compactMap { section in
+      guard section.coordinates.count >= 2 else { return nil }
+      var points = section.coordinates
+      let overlay = CruizXTrafficPolyline(coordinates: &points, count: points.count)
+      overlay.congestionLevel = section.level
+      return overlay
+    }
+    mapView.addOverlays(trafficOverlays, level: .aboveRoads)
   }
 
   func updateNavigationPosition(
@@ -981,8 +1016,17 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     }
 
     let renderer = MKPolylineRenderer(polyline: polyline)
-    renderer.strokeColor = UIColor(red: 0.12, green: 0.55, blue: 1.0, alpha: 1)
-    renderer.lineWidth = 7
+    if let traffic = polyline as? CruizXTrafficPolyline {
+      renderer.strokeColor = switch traffic.congestionLevel {
+      case "severe": UIColor(red: 0.55, green: 0.0, blue: 0.08, alpha: 1)
+      case "heavy": UIColor(red: 0.92, green: 0.08, blue: 0.12, alpha: 1)
+      default: UIColor(red: 1.0, green: 0.56, blue: 0.0, alpha: 1)
+      }
+      renderer.lineWidth = 8
+    } else {
+      renderer.strokeColor = UIColor(red: 0.12, green: 0.55, blue: 1.0, alpha: 1)
+      renderer.lineWidth = 7
+    }
     renderer.lineCap = .round
     renderer.lineJoin = .round
     return renderer

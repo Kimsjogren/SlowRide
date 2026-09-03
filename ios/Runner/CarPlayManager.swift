@@ -100,9 +100,13 @@ final class CarPlayManager: NSObject {
   private var navigationSession: CPNavigationSession?
   private var isShowingTripPreview = false
   private var flutterChannel: FlutterMethodChannel?
+  private var pendingTrafficProposalID: String?
+  private var pendingTrafficProposalResult: FlutterResult?
+  private var pendingTrafficProposalTemplate: CPAlertTemplate?
   private var favoriteDestinations: [Destination] = []
   private var recentDestinations: [Destination] = []
   private var routeCoordinates: [CLLocationCoordinate2D] = []
+  private var routeTrafficSections: [CruizXTrafficSection] = []
   private var routeDestinationCoordinate: CLLocationCoordinate2D?
   private var activeSearch: MKLocalSearch?
   private var searchDestinations: [ObjectIdentifier: Destination] = [:]
@@ -133,6 +137,7 @@ final class CarPlayManager: NSObject {
   private var maneuverPresentationCache: [String: String] = [:]
   private var publishedManeuverIDs: [String] = []
   private let locationManager = CLLocationManager()
+  private var lastAcceptedCarPlayLocation: CLLocation?
 
   /// Do not rely only on the scene delegate's disconnect callback. A CarPlay
   /// scene can be torn down while Flutter is suspended, leaving its last
@@ -152,6 +157,7 @@ final class CarPlayManager: NSObject {
     locationManager.distanceFilter = kCLDistanceFilterNone
     locationManager.activityType = .automotiveNavigation
     locationManager.pausesLocationUpdatesAutomatically = false
+    locationManager.headingFilter = 1
     // Keep a native stream for the CarPlay surface. iOS can pause Flutter UI
     // work while the handset is locked, but active in-car navigation must
     // continue following the vehicle.
@@ -195,6 +201,7 @@ final class CarPlayManager: NSObject {
   }
 
   func disconnect() {
+    finishTrafficRerouteProposal(accepted: false, dismissTemplate: false)
     activeSearch?.cancel()
     activeSearch = nil
     searchDestinations.removeAll()
@@ -505,11 +512,78 @@ final class CarPlayManager: NSObject {
     case "syncConvoyState":
       applyConvoyState(call.arguments)
       result(nil)
+    case "showTrafficRerouteProposal":
+      showTrafficRerouteProposal(call.arguments, result: result)
+    case "showTrafficWarning":
+      // Traffic-delay alerts used CPAlertTemplate and covered the entire
+      // CarPlay map (for example: "Incident – 4 min extra").  Navigation
+      // must stay visible while driving, so delay/incident information is
+      // reflected in ETA only and is never presented as a modal in CarPlay.
+      result(nil)
     case "getConnectionState":
       result(hasLiveCarPlayTemplateScene)
     default:
       result(FlutterMethodNotImplemented)
     }
+  }
+
+  private func showTrafficRerouteProposal(
+    _ arguments: Any?,
+    result: @escaping FlutterResult
+  ) {
+    guard hasLiveCarPlayTemplateScene,
+          let controller = interfaceController,
+          let payload = arguments as? [String: Any]
+    else {
+      result(nil)
+      return
+    }
+
+    finishTrafficRerouteProposal(accepted: false)
+    let proposalID = stringValue(payload["id"]) ?? UUID().uuidString
+    let title = stringValue(payload["title"]) ?? "Snabbare rutt hittad"
+    let body = stringValue(payload["body"]) ?? "En snabbare verifierad rutt finns."
+    let keepLabel = stringValue(payload["keepLabel"]) ?? "Behåll"
+    let useLabel = stringValue(payload["useLabel"]) ?? "Byt rutt"
+    let timeout = max(5, min(intValue(payload["timeoutSeconds"]) ?? 20, 60))
+
+    let keepAction = CPAlertAction(title: keepLabel, style: .cancel) { [weak self] _ in
+      self?.finishTrafficRerouteProposal(id: proposalID, accepted: false)
+    }
+    let useAction = CPAlertAction(title: useLabel, style: .default) { [weak self] _ in
+      self?.finishTrafficRerouteProposal(id: proposalID, accepted: true)
+    }
+    let alert = CPAlertTemplate(
+      titleVariants: ["\(title)\n\(body)", "\(title) – \(body)", title],
+      actions: [keepAction, useAction]
+    )
+
+    pendingTrafficProposalID = proposalID
+    pendingTrafficProposalResult = result
+    pendingTrafficProposalTemplate = alert
+    controller.presentTemplate(alert, animated: true, completion: nil)
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(timeout)) { [weak self] in
+      self?.finishTrafficRerouteProposal(id: proposalID, accepted: false)
+    }
+  }
+
+  private func finishTrafficRerouteProposal(
+    id: String? = nil,
+    accepted: Bool,
+    dismissTemplate: Bool = true
+  ) {
+    guard pendingTrafficProposalResult != nil else { return }
+    if let id, id != pendingTrafficProposalID { return }
+
+    let callback = pendingTrafficProposalResult
+    pendingTrafficProposalID = nil
+    pendingTrafficProposalResult = nil
+    pendingTrafficProposalTemplate = nil
+    if dismissTemplate {
+      interfaceController?.dismissTemplate(animated: true, completion: nil)
+    }
+    callback?(accepted)
   }
 
   private func applyFlutterState(_ arguments: Any?) {
@@ -587,6 +661,7 @@ final class CarPlayManager: NSObject {
   private func applyRouteGeometry(_ arguments: Any?) {
     guard let payload = arguments as? [String: Any] else { return }
     routeCoordinates = decodeCoordinates(payload["points"])
+    routeTrafficSections = decodeTrafficSections(payload["trafficSections"])
 
     if let destination = payload["destination"] as? [String: Any],
        let latitude = doubleValue(destination["latitude"] ?? destination["lat"]),
@@ -600,6 +675,19 @@ final class CarPlayManager: NSObject {
     }
 
     updateRouteMap()
+  }
+
+  private func decodeTrafficSections(_ value: Any?) -> [CruizXTrafficSection] {
+    guard let rawSections = value as? [Any] else { return [] }
+    return rawSections.compactMap { raw in
+      guard let values = raw as? [String: Any] else { return nil }
+      let coordinates = decodeCoordinates(values["points"])
+      guard coordinates.count >= 2 else { return nil }
+      return CruizXTrafficSection(
+        level: stringValue(values["level"]) ?? "moderate",
+        coordinates: coordinates
+      )
+    }
   }
 
   private func applyConvoyState(_ arguments: Any?) {
@@ -885,7 +973,8 @@ final class CarPlayManager: NSObject {
       rootViewController.updateRoute(
         coordinates: routeCoordinates,
         destination: routeDestinationCoordinate,
-        isNavigating: navigationState.isNavigating
+        isNavigating: navigationState.isNavigating,
+        trafficSections: routeTrafficSections
       )
     }
   }
@@ -1191,10 +1280,26 @@ extension CarPlayManager: CLLocationManagerDelegate {
 
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     guard let location = locations.last,
-          location.horizontalAccuracy >= 0
+          location.horizontalAccuracy >= 0,
+          location.horizontalAccuracy <= 120
     else {
       return
     }
+
+    // Ignore a single impossible Core Location jump while the receiver is
+    // reacquiring GPS. This keeps CarPlay's marker on its actual road rather
+    // than snapping across the map or initiating a false reroute.
+    if let previous = lastAcceptedCarPlayLocation {
+      let elapsed = location.timestamp.timeIntervalSince(previous.timestamp)
+      if elapsed > 0 && elapsed <= 20 {
+        let maximumPlausibleJump =
+          90 + elapsed * 60 + previous.horizontalAccuracy + location.horizontalAccuracy
+        if location.distance(from: previous) > maximumPlausibleJump {
+          return
+        }
+      }
+    }
+    lastAcceptedCarPlayLocation = location
 
     // Update the native CarPlay map directly. This remains live even if iOS
     // temporarily suspends Flutter rendering while the phone is locked.

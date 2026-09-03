@@ -12,11 +12,13 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/mapbox_search_service.dart';
+import 'package:slowride/services/mapbox_traffic_service.dart';
 import 'package:slowride/services/apple_map_search_service.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/routing_service.dart';
+import 'package:slowride/services/road_score_service.dart';
 import 'package:slowride/services/slow_road_service.dart';
 import 'package:slowride/services/speed_calibration_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
@@ -35,6 +37,7 @@ import 'package:slowride/widgets/vector_map_widget.dart';
 import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/tts_service.dart';
+import 'package:slowride/services/traffic_reroute_policy.dart';
 import 'package:slowride/services/ai_route_analysis_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/features/auth/login_screen.dart';
@@ -51,6 +54,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final RoutingService _routingService = RoutingService();
+  final MapboxTrafficService _trafficService = MapboxTrafficService();
   final TextEditingController _addressController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
 
@@ -62,6 +66,7 @@ class _MapScreenState extends State<MapScreen> {
   StreamSubscription<CompassEvent>? _compassSubscription;
   double _speedKmh = 0;
   LatLng? _currentLocation;
+  Position? _lastAcceptedGpsPosition;
   double? _deviceCompassHeading;
 
   // Notifiers that feed MapWidget directly — updating them does NOT cause
@@ -97,6 +102,7 @@ class _MapScreenState extends State<MapScreen> {
   String _routeStopLabel = '';
   List<LatLng> _routePoints = const [];
   RouteResult? _activeRoute;
+  RoadScore? _activeRoadScore;
   bool _isAiAnalyzing = false;
   bool _isAiLoadingDialogVisible = false;
   bool _analyzeNextSelectedRouteWithAi = false;
@@ -125,6 +131,14 @@ class _MapScreenState extends State<MapScreen> {
   double _etaSmoothedSpeedKmh = 0;
   DateTime? _etaLastMovementAt;
   static const Duration _etaPauseGrace = Duration(seconds: 25);
+  TrafficEtaEstimate? _trafficEtaEstimate;
+  Timer? _trafficEtaTimer;
+  bool _trafficRerouteInFlight = false;
+  DateTime? _lastTrafficRerouteEvaluationAt;
+  DateTime? _lastTrafficReroutePromptAt;
+  static const Duration _trafficReroutePromptCooldown = Duration(minutes: 10);
+  DateTime? _lastTrafficWarningAt;
+  static const Duration _trafficWarningCooldown = Duration(minutes: 5);
 
   // ── Community alerts ──────────────────────────────────────────
   final AlertsController _alertsController = AlertsController();
@@ -260,6 +274,13 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted && _autoMapTheme) {
         final night = _isNightTime();
         if (night != _useDarkMap) setState(() => _useDarkMap = night);
+      }
+    });
+    // Check often, but the service itself permits at most one billed request
+    // every five minutes for the active route.
+    _trafficEtaTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted && _activeRoute != null) {
+        unawaited(_refreshTrafficEta());
       }
     });
   }
@@ -1105,6 +1126,35 @@ class _MapScreenState extends State<MapScreen> {
   void _applyGpsPosition(Position position, {required bool hadLocation}) {
     if (!mounted || _isSimulating) return;
 
+    // A phone can briefly report a very broad or jumped position while GPS is
+    // reacquiring (for example after a tunnel or poor urban coverage). Do not
+    // let that single sample pull the marker off the road or trigger a false
+    // reroute. We keep the next normal high-accuracy sample instead.
+    final accuracy = position.accuracy;
+    if (!accuracy.isFinite || accuracy < 0 || (hadLocation && accuracy > 120)) {
+      return;
+    }
+    final previous = _lastAcceptedGpsPosition;
+    if (previous != null) {
+      final elapsedSeconds = position.timestamp
+          .difference(previous.timestamp)
+          .inMilliseconds / 1000.0;
+      if (elapsedSeconds > 0 && elapsedSeconds <= 20) {
+        final jumpMeters = Geolocator.distanceBetween(
+          previous.latitude,
+          previous.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        // More than 216 km/h plus a generous allowance for measurement error
+        // is not a credible navigation fix for CruizX's supported vehicles.
+        final maximumPlausibleJump =
+            90 + elapsedSeconds * 60 + previous.accuracy + accuracy;
+        if (jumpMeters > maximumPlausibleJump) return;
+      }
+    }
+    _lastAcceptedGpsPosition = position;
+
     final currentPos = LatLng(position.latitude, position.longitude);
     final rawSpeedKmh = (position.speed < 0 ? 0 : position.speed) * 3.6;
     // Core Location can occasionally publish a wildly inaccurate speed while
@@ -1328,6 +1378,7 @@ class _MapScreenState extends State<MapScreen> {
     _debounce?.cancel();
     _simTimer?.cancel();
     _alertsTimer?.cancel();
+    _trafficEtaTimer?.cancel();
     _positionSubscription?.cancel();
     _compassSubscription?.cancel();
     if (_supportsVectorMapOnCurrentPlatform) {
@@ -3024,7 +3075,25 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    return options;
+    final shortestDistance = options
+        .map((option) => option.route.distanceMeters)
+        .reduce(math.min);
+    final shortestDuration = options
+        .map((option) => option.route.durationSeconds)
+        .reduce(math.min);
+    return options
+        .map(
+          (option) => option.withRoadScore(
+            RoadScoreService.calculate(
+              route: option.route,
+              isLegallyVerified: option.type != _RouteOptionType.unverified,
+              alertCounts: _routeAlertCountsFor(option.route),
+              shortestDistanceMeters: shortestDistance,
+              shortestDurationSeconds: shortestDuration,
+            ),
+          ),
+        )
+        .toList(growable: false);
   }
 
   String _routeOptionDistanceText(AppLocalizations l10n, RouteResult route) {
@@ -3034,6 +3103,57 @@ class _MapScreenState extends State<MapScreen> {
       km.toStringAsFixed(1),
       minutes.toStringAsFixed(0),
     );
+  }
+
+  Future<bool> _confirmUnverifiedRoute(
+    BuildContext dialogContext,
+    String vehicleName,
+  ) async {
+    final l10n = AppLocalizations.of(dialogContext)!;
+    return await showDialog<bool>(
+          context: dialogContext,
+          useRootNavigator: true,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF0A1F63),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: Row(
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFFFCC02),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.routeFallbackTitle,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              l10n.routeFallbackBody(vehicleName),
+              style: const TextStyle(color: Colors.white70, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.routeFallbackCancel),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFCC02),
+                  foregroundColor: const Color(0xFF071739),
+                ),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l10n.routeFallbackUse),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   Future<_RouteOption?> _showRouteOptionsSheet({
@@ -3096,9 +3216,14 @@ class _MapScreenState extends State<MapScreen> {
                 ...options.map((option) {
                   final isUnverified =
                       option.type == _RouteOptionType.unverified;
+                  final score = option.roadScore?.score ?? 0;
                   final accent = isUnverified
                       ? const Color(0xFFFFCC02)
-                      : const Color(0xFF3AA8FF);
+                      : score >= 85
+                      ? const Color(0xFF42D77D)
+                      : score >= 70
+                      ? const Color(0xFF3AA8FF)
+                      : const Color(0xFFFF9F43);
                   final String title;
                   final String subtitle;
                   final IconData icon;
@@ -3151,14 +3276,47 @@ class _MapScreenState extends State<MapScreen> {
                         style: const TextStyle(color: Colors.white70),
                       ),
                       isThreeLine: true,
-                      trailing: Text(
-                        l10n.routeOptionChoose,
-                        style: TextStyle(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      trailing: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'RoadScore',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 10,
+                            ),
+                          ),
+                          Text(
+                            '$score/100',
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            l10n.routeOptionChoose,
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
-                      onTap: () => Navigator.of(sheetContext).pop(option),
+                      onTap: () async {
+                        if (isUnverified &&
+                            !await _confirmUnverifiedRoute(
+                              sheetContext,
+                              vehicleName,
+                            )) {
+                          return;
+                        }
+                        if (sheetContext.mounted) {
+                          Navigator.of(sheetContext).pop(option);
+                        }
+                      },
                     ),
                   );
                 }),
@@ -3500,6 +3658,331 @@ class _MapScreenState extends State<MapScreen> {
     return result;
   }
 
+  String? _trafficRouteIdFor(List<LatLng> points) {
+    if (points.length < 2) return null;
+    final first = points.first;
+    final middle = points[points.length ~/ 2];
+    final last = points.last;
+    String pointKey(LatLng point) =>
+        '${point.latitude.toStringAsFixed(4)},${point.longitude.toStringAsFixed(4)}';
+    return '${points.length}:${pointKey(first)}:'
+        '${pointKey(middle)}:${pointKey(last)}';
+  }
+
+  String? _activeTrafficRouteId() => _trafficRouteIdFor(_routePoints);
+
+  Future<void> _refreshTrafficEta({bool force = false}) async {
+    final routeId = _activeTrafficRouteId();
+    if (routeId == null) return;
+    final remainingPoints = _routePointsVisibleFromVehicle();
+    if (remainingPoints.length < 2) return;
+
+    final estimate = await _trafficService.estimate(
+      routeId: routeId,
+      remainingRoutePoints: remainingPoints,
+      force: force,
+    );
+    if (!mounted || routeId != _activeTrafficRouteId() || estimate == null) {
+      return;
+    }
+    setState(() => _trafficEtaEstimate = estimate);
+    unawaited(_syncCarPlayNavigationState());
+    if (_isNavigating &&
+        _lastTrafficRerouteEvaluationAt != estimate.fetchedAt) {
+      _lastTrafficRerouteEvaluationAt = estimate.fetchedAt;
+      unawaited(_maybeShowProactiveTrafficWarning(estimate));
+      unawaited(_maybeSuggestTrafficReroute(estimate));
+    }
+  }
+
+  Future<void> _maybeShowProactiveTrafficWarning(
+    TrafficEtaEstimate estimate,
+  ) async {
+    final remainingMeters = _remainingDistM;
+    final delay = _remainingTrafficDelaySeconds(remainingMeters);
+    if (!_isNavigating ||
+        !TrafficReroutePolicy.shouldWarn(
+          trafficDelaySeconds: delay,
+          remainingDistanceMeters: remainingMeters,
+        )) {
+      return;
+    }
+    final now = DateTime.now();
+    final lastWarning = _lastTrafficWarningAt;
+    if (lastWarning != null &&
+        now.difference(lastWarning) < _trafficWarningCooldown) {
+      return;
+    }
+    _lastTrafficWarningAt = now;
+    final delayMinutes = math.max(1, (delay / 60).round());
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    unawaited(
+      TtsService.instance.speak(l10n.trafficWarningVoice(delayMinutes)),
+    );
+    unawaited(
+      CarPlayBridgeService.instance.showTrafficWarning(
+        message: l10n.trafficWarningBanner(delayMinutes),
+      ),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.traffic_rounded,
+              color: Color(0xFFFFCC02),
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                l10n.trafficWarningBanner(delayMinutes),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF0A1F63),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 12),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _maybeSuggestTrafficReroute(
+    TrafficEtaEstimate currentTraffic,
+  ) async {
+    final origin = _currentLocation;
+    final destination = _destination;
+    final activeRoute = _activeRoute;
+    final remainingPoints = _routePointsVisibleFromVehicle();
+    final remainingMeters = _remainingDistM;
+    final currentDelay = _remainingTrafficDelaySeconds(remainingMeters);
+    if (!_isNavigating ||
+        origin == null ||
+        destination == null ||
+        activeRoute == null ||
+        remainingPoints.length < 2 ||
+        _isRouting ||
+        _rerouteInFlight ||
+        _trafficRerouteInFlight ||
+        !TrafficReroutePolicy.shouldSearch(
+          trafficDelaySeconds: currentDelay,
+          remainingDistanceMeters: remainingMeters,
+        )) {
+      return;
+    }
+
+    final now = DateTime.now();
+    final lastPrompt = _lastTrafficReroutePromptAt;
+    if (lastPrompt != null &&
+        now.difference(lastPrompt) < _trafficReroutePromptCooldown) {
+      return;
+    }
+
+    final currentBaseSeconds = _totalRouteDistM > 0
+        ? activeRoute.durationSeconds *
+              (remainingMeters / _totalRouteDistM).clamp(0.0, 1.0)
+        : currentTraffic.typicalDurationSeconds;
+    final currentEtaSeconds = currentBaseSeconds + currentDelay;
+    final preferences = UserPreferencesService.instance;
+    _trafficRerouteInFlight = true;
+
+    try {
+      final avoidLocations = await _lowVehicleBumpAvoidLocations(
+        origin: origin,
+        destination: destination,
+      );
+      final primary = await _routingService.getRoute(
+        origin: origin,
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+        avoidLocations: avoidLocations,
+      );
+      final alternatives = await _routingService.getValhallaAlternatives(
+        origin: origin,
+        destination: destination,
+        vehicleType: preferences.vehicleType.value,
+        primaryRoute: primary,
+        maxAlternatives: 2,
+        avoidLocations: avoidLocations,
+      );
+      if (!mounted || !_isNavigating || _destination != destination) return;
+
+      final remainingRoute = RouteResult(
+        points: remainingPoints,
+        distanceMeters: remainingMeters,
+        durationSeconds: currentBaseSeconds,
+      );
+      final candidates = <RouteResult>[];
+      for (final candidate in <RouteResult>[primary, ...alternatives]) {
+        if (_routesOverlapHeavily(remainingRoute, candidate) ||
+            candidates.any(
+              (existing) => _routesOverlapHeavily(existing, candidate),
+            )) {
+          continue;
+        }
+        candidates.add(candidate);
+        if (candidates.length == 2) break;
+      }
+
+      RouteResult? bestRoute;
+      TrafficEtaEstimate? bestTraffic;
+      var bestEtaSeconds = double.infinity;
+      for (final candidate in candidates) {
+        final routeId = _trafficRouteIdFor(candidate.points);
+        if (routeId == null) continue;
+        final traffic = await _trafficService.estimate(
+          routeId: 'reroute:$routeId',
+          remainingRoutePoints: candidate.points,
+        );
+        if (traffic == null) continue;
+        final candidateEtaSeconds =
+            candidate.durationSeconds + traffic.delaySeconds;
+        if (candidateEtaSeconds < bestEtaSeconds) {
+          bestRoute = candidate;
+          bestTraffic = traffic;
+          bestEtaSeconds = candidateEtaSeconds;
+        }
+      }
+
+      if (!mounted ||
+          !_isNavigating ||
+          _destination != destination ||
+          bestRoute == null ||
+          bestTraffic == null ||
+          !TrafficReroutePolicy.shouldSuggest(
+            currentEtaSeconds: currentEtaSeconds,
+            candidateEtaSeconds: bestEtaSeconds,
+          )) {
+        return;
+      }
+
+      final savingMinutes = math.max(
+        1,
+        ((currentEtaSeconds - bestEtaSeconds) / 60).round(),
+      );
+      _lastTrafficReroutePromptAt = DateTime.now();
+      final accepted = await _showTrafficRerouteDialog(
+        savingMinutes: savingMinutes,
+      );
+      if (!mounted ||
+          !accepted ||
+          !_isNavigating ||
+          _destination != destination) {
+        return;
+      }
+
+      final l10n = AppLocalizations.of(context)!;
+      _applyRouteResult(
+        bestRoute,
+        l10n,
+        roadScore: RoadScoreService.calculate(
+          route: bestRoute,
+          isLegallyVerified: true,
+          alertCounts: _routeAlertCountsFor(bestRoute),
+        ),
+      );
+      setState(() {
+        _trafficEtaEstimate = bestTraffic;
+        _routingStatus = l10n.trafficRerouteApplied(savingMinutes);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.trafficRerouteApplied(savingMinutes))),
+      );
+    } catch (error) {
+      debugPrint('Traffic reroute check failed: $error');
+    } finally {
+      _trafficRerouteInFlight = false;
+    }
+  }
+
+  Future<bool> _showTrafficRerouteDialog({required int savingMinutes}) async {
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context)!;
+    final preferences = UserPreferencesService.instance;
+    final vehicleName = switch (preferences.vehicleType.value) {
+      'A-tractor' => l10n.settingsVehicleAtractor,
+      'Low vehicle' => l10n.settingsVehicleLowVehicle,
+      'Moped car' => l10n.settingsVehicleMopedCar,
+      'Moped class I' => l10n.settingsVehicleMopedClassI,
+      'Moped class II' => l10n.settingsVehicleMopedClassII,
+      'Electric scooter' => l10n.settingsVehicleElectricScooter,
+      'Tractor' => l10n.settingsVehicleTractor,
+      'Car' => l10n.settingsVehicleCar,
+      _ => preferences.vehicleType.value,
+    };
+    unawaited(
+      TtsService.instance.speak(l10n.trafficRerouteVoice(savingMinutes)),
+    );
+    final carScreenDecision = await CarPlayBridgeService.instance
+        .showTrafficRerouteProposal(
+          title: l10n.trafficRerouteTitle,
+          body: l10n.trafficRerouteBody(vehicleName, savingMinutes),
+          keepLabel: l10n.trafficRerouteKeep,
+          useLabel: l10n.trafficRerouteUse,
+        );
+    if (carScreenDecision != null) return carScreenDecision;
+    if (!mounted) return false;
+    return await showDialog<bool>(
+          context: context,
+          useRootNavigator: true,
+          builder: (dialogContext) => AlertDialog(
+            backgroundColor: const Color(0xFF0A1F63),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            title: Row(
+              children: [
+                const Icon(Icons.traffic_rounded, color: Color(0xFF42D77D)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    l10n.trafficRerouteTitle,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              l10n.trafficRerouteBody(vehicleName, savingMinutes),
+              style: const TextStyle(color: Colors.white70, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.trafficRerouteKeep),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF42D77D),
+                  foregroundColor: const Color(0xFF071739),
+                ),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.trafficRerouteUse),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  double _remainingTrafficDelaySeconds(double remainingMeters) {
+    final estimate = _trafficEtaEstimate;
+    if (estimate == null ||
+        DateTime.now().difference(estimate.fetchedAt) >
+            const Duration(minutes: 15)) {
+      return 0;
+    }
+    final remainingFraction = estimate.routeDistanceMeters <= 0
+        ? 0.0
+        : (remainingMeters / estimate.routeDistanceMeters).clamp(0.0, 1.0);
+    return estimate.delaySeconds * remainingFraction;
+  }
+
   /// Smart ETA speed: GPS-driven, smoothed, and resilient to short stops.
   double _smartEtaSpeedKmh(double liveSpeedKmh) {
     final preferences = UserPreferencesService.instance;
@@ -3604,6 +4087,7 @@ class _MapScreenState extends State<MapScreen> {
               (remainingMeters / _totalRouteDistM).clamp(0.0, 1.0)
         : null;
     final preferences = UserPreferencesService.instance;
+    final trafficDelaySeconds = _remainingTrafficDelaySeconds(remainingMeters);
     final hasVehicleSpeedLimit = CountryVehicleRules.hasVehicleSpeedLimit(
       preferences.vehicleType.value,
     );
@@ -3614,7 +4098,7 @@ class _MapScreenState extends State<MapScreen> {
     // Keep provider time as the stable source and reduce it only with route
     // progress; the arrival clock naturally moves forward while stopped.
     if (!hasVehicleSpeedLimit && routeBasedSeconds != null) {
-      return routeBasedSeconds;
+      return routeBasedSeconds + trafficDelaySeconds;
     }
 
     final hasMeasuredDrivingSpeed =
@@ -3644,7 +4128,8 @@ class _MapScreenState extends State<MapScreen> {
             turns: maneuvers.$1,
             complexTurns: maneuvers.$2,
             remainingMeters: remainingMeters,
-          );
+          ) +
+          trafficDelaySeconds;
     }
 
     if (routeBasedSeconds == null) return null;
@@ -3666,7 +4151,8 @@ class _MapScreenState extends State<MapScreen> {
         .min(math.max(learnedSpeed, 1.0), configuredMax)
         .toDouble();
     final vehicleBasedSeconds = remainingMeters / (fallbackSpeed / 3.6);
-    return math.max(routeBasedSeconds, vehicleBasedSeconds).toDouble();
+    return math.max(routeBasedSeconds, vehicleBasedSeconds).toDouble() +
+        trafficDelaySeconds;
   }
 
   String _formatEta() {
@@ -4159,16 +4645,28 @@ class _MapScreenState extends State<MapScreen> {
     return const Color(0xFF274D94);
   }
 
-  void _applyRouteResult(RouteResult route, AppLocalizations l10n) {
+  void _applyRouteResult(
+    RouteResult route,
+    AppLocalizations l10n, {
+    RoadScore? roadScore,
+  }) {
     final km = route.distanceMeters / 1000;
     final minutes = route.durationSeconds / 60;
     final cumDist = _buildCumulativeDist(route.points);
     final totalDist = cumDist.isNotEmpty ? cumDist.last : 0.0;
 
     _resetRoadSpeedLimitLookup();
+    _trafficEtaEstimate = null;
     setState(() {
       _routePoints = route.points;
       _activeRoute = route;
+      _activeRoadScore =
+          roadScore ??
+          RoadScoreService.calculate(
+            route: route,
+            isLegallyVerified: true,
+            alertCounts: _routeAlertCountsFor(route),
+          );
       _cumulativeDist = cumDist;
       _totalRouteDistM = totalDist;
       _remainingDistM = totalDist;
@@ -4186,6 +4684,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     });
     unawaited(_loadRouteSpeedLimits(route.points));
+    unawaited(_refreshTrafficEta());
     _analyzeSelectedRouteIfRequested();
     unawaited(_syncCarPlayNavigationState());
   }
@@ -4306,17 +4805,22 @@ class _MapScreenState extends State<MapScreen> {
     return false;
   }
 
-  Map<String, int> _routeAlertCounts() {
-    final counts = <String, int>{};
+  Map<AlertType, int> _routeAlertCountsFor(RouteResult route) {
+    final counts = <AlertType, int>{};
     for (final alert in _alerts) {
       if (!alert.type.showsProximityWarning ||
-          _distanceToRouteMeters(alert.position, _routePoints) > 750) {
+          _distanceToRouteMeters(alert.position, route.points) > 750) {
         continue;
       }
-      counts.update(alert.type.key, (value) => value + 1, ifAbsent: () => 1);
+      counts.update(alert.type, (value) => value + 1, ifAbsent: () => 1);
     }
     return counts;
   }
+
+  Map<String, int> _routeAlertCounts() => <String, int>{
+    for (final entry in _routeAlertCountsFor(_activeRoute!).entries)
+      entry.key.key: entry.value,
+  };
 
   Future<void> _analyzeRouteWithAi() async {
     final route = _activeRoute;
@@ -4355,6 +4859,7 @@ class _MapScreenState extends State<MapScreen> {
         durationMinutes: route.durationSeconds / 60,
         streetNames: streetNames,
         alertCounts: _routeAlertCounts(),
+        roadScore: _activeRoadScore?.toAiFacts(),
       );
     } on AiRouteAnalysisException catch (error) {
       if (!mounted) return;
@@ -4653,6 +5158,7 @@ class _MapScreenState extends State<MapScreen> {
     final previousRoutePoints = List<LatLng>.from(_routePoints);
     final previousInstructions = List<RouteInstruction>.from(_instructions);
     final previousActiveRoute = _activeRoute;
+    final previousActiveRoadScore = _activeRoadScore;
     final previousLastNearestIdx = _lastNearestIdx;
     final previousDisplayNearestIdx = _displayNearestIdx;
     final previousDisplayRouteProjection = _displayRouteProjection;
@@ -4686,6 +5192,7 @@ class _MapScreenState extends State<MapScreen> {
         _routePoints = previousRoutePoints;
         _instructions = previousInstructions;
         _activeRoute = previousActiveRoute;
+        _activeRoadScore = previousActiveRoadScore;
         _lastNearestIdx = previousLastNearestIdx;
         _displayNearestIdx = previousDisplayNearestIdx;
         _displayRouteProjection = previousDisplayRouteProjection;
@@ -4795,7 +5302,11 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      _applyRouteResult(selected.route, l10n);
+      _applyRouteResult(
+        selected.route,
+        l10n,
+        roadScore: selected.roadScore,
+      );
       if (selected.type == _RouteOptionType.unverified) {
         setState(() => _routingStatus = l10n.routeFallbackActive);
       }
@@ -4815,6 +5326,7 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _routePoints = const [];
         _activeRoute = null;
+        _activeRoadScore = null;
         _lastNearestIdx = 0;
         _displayNearestIdx = 0;
         _displayRouteProjection = null;
@@ -4853,12 +5365,18 @@ class _MapScreenState extends State<MapScreen> {
         if (!mounted) return;
 
         if (fallbackRoute != null) {
+          final fallbackScore = RoadScoreService.calculate(
+            route: fallbackRoute,
+            isLegallyVerified: false,
+            alertCounts: _routeAlertCountsFor(fallbackRoute),
+          );
           final selected = await _showRouteOptionsSheet(
             vehicleName: vehicleName,
             options: [
               _RouteOption(
                 route: fallbackRoute,
                 type: _RouteOptionType.unverified,
+                roadScore: fallbackScore,
               ),
             ],
           );
@@ -4867,7 +5385,11 @@ class _MapScreenState extends State<MapScreen> {
             restorePreviousRouteState();
             return;
           }
-          _applyRouteResult(selected.route, l10n);
+          _applyRouteResult(
+            selected.route,
+            l10n,
+            roadScore: selected.roadScore,
+          );
           setState(() => _routingStatus = l10n.routeFallbackActive);
           unawaited(_saveDestinationHistory(destination));
           SubscriptionService.instance.recordRoute();
@@ -4917,6 +5439,7 @@ class _MapScreenState extends State<MapScreen> {
       setState(() {
         _routePoints = const [];
         _activeRoute = null;
+        _activeRoadScore = null;
         _lastNearestIdx = 0;
         _displayNearestIdx = 0;
         _displayRouteProjection = null;
@@ -4957,10 +5480,12 @@ class _MapScreenState extends State<MapScreen> {
     _carPlayHeadingDegrees = null;
     _resetRoadSpeedLimitLookup();
     _clearRouteSpeedLimits();
+    _trafficEtaEstimate = null;
     setState(() {
       _mapViewEpoch++;
       _routePoints = const [];
       _activeRoute = null;
+      _activeRoadScore = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
       _displayRouteProjection = null;
@@ -5259,6 +5784,9 @@ class _MapScreenState extends State<MapScreen> {
     await CarPlayBridgeService.instance.updateRouteGeometry(
       routePoints: hasRoute ? _routePoints : const [],
       destination: hasRoute ? destination : null,
+      trafficSections: hasRoute
+          ? (_trafficEtaEstimate?.trafficSections ?? const [])
+          : const [],
     );
 
     double? remainingDurationSeconds;
@@ -5378,12 +5906,14 @@ class _MapScreenState extends State<MapScreen> {
       _tripDistanceM = 0;
       _lastNavPos = _currentLocation;
     });
+    unawaited(_refreshTrafficEta());
     unawaited(_syncCarPlayNavigationState());
   }
 
   // ── GPS simulation ────────────────────────────────────────────────────────
   void _startSimulation() {
     if (_routePoints.isEmpty) return;
+    final route = _activeRoute;
     _carPlayHeadingDegrees = _headingNotifier.value;
     _resetRoadSpeedLimitLookup();
     _positionSubscription?.cancel();
@@ -5413,7 +5943,18 @@ class _MapScreenState extends State<MapScreen> {
       _lastNavPos = _routePoints[0];
       _currentLocation = _routePoints[0];
     });
+    unawaited(_refreshTrafficEta());
     unawaited(_syncCarPlayNavigationState());
+    if (!kReleaseMode && route != null) {
+      final simulatedTraffic = TrafficEtaEstimate(
+        liveDurationSeconds: route.durationSeconds + 120,
+        typicalDurationSeconds: route.durationSeconds,
+        routeDistanceMeters: route.distanceMeters,
+        fetchedAt: DateTime.now(),
+      );
+      setState(() => _trafficEtaEstimate = simulatedTraffic);
+      unawaited(_maybeShowProactiveTrafficWarning(simulatedTraffic));
+    }
     _locationNotifier.value = _routePoints[0];
     _simTimer = Timer.periodic(
       _simInterval,
@@ -6106,6 +6647,9 @@ class _MapScreenState extends State<MapScreen> {
                               markerStyle: markerStyle,
                               destination: _destination,
                               routePoints: routeForMap,
+                              trafficSections:
+                                  _trafficEtaEstimate?.trafficSections ??
+                                  const [],
                               alerts: _alerts,
                               studdedTireBanZones:
                                   UserPreferencesService
@@ -7632,6 +8176,74 @@ class _MapScreenState extends State<MapScreen> {
                                               ),
                                             ],
                                           ),
+                                          if (!_isNavigating &&
+                                              _activeRoadScore != null) ...[
+                                            const SizedBox(height: 6),
+                                            Builder(
+                                              builder: (context) {
+                                                final score =
+                                                    _activeRoadScore!.score;
+                                                final color =
+                                                    !_activeRoadScore!
+                                                        .isLegallyVerified
+                                                    ? const Color(0xFFFFCC02)
+                                                    : score >= 85
+                                                    ? const Color(0xFF42D77D)
+                                                    : score >= 70
+                                                    ? const Color(0xFF3AA8FF)
+                                                    : const Color(0xFFFF9F43);
+                                                return Semantics(
+                                                  label:
+                                                      'CruizX RoadScore $score / 100',
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: color.withValues(
+                                                        alpha: 0.14,
+                                                      ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: color.withValues(
+                                                          alpha: 0.65,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .verified_user_rounded,
+                                                          color: color,
+                                                          size: 14,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 5,
+                                                        ),
+                                                        Text(
+                                                          'RoadScore $score/100',
+                                                          style: TextStyle(
+                                                            color: color,
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -8092,10 +8704,21 @@ class _FavPreset {
 enum _RouteOptionType { recommended, alternative, unverified }
 
 class _RouteOption {
-  const _RouteOption({required this.route, required this.type});
+  const _RouteOption({
+    required this.route,
+    required this.type,
+    this.roadScore,
+  });
 
   final RouteResult route;
   final _RouteOptionType type;
+  final RoadScore? roadScore;
+
+  _RouteOption withRoadScore(RoadScore value) => _RouteOption(
+    route: route,
+    type: type,
+    roadScore: value,
+  );
 }
 
 class _SearchShortcutCard extends StatelessWidget {

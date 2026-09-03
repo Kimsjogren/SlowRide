@@ -411,6 +411,34 @@ void main() {
   });
 
   group('RoutingService fallback slow vehicle profiles', () {
+    test('speed-limited vehicles may use explicit unverified fallback', () {
+      for (final vehicleType in <String>[
+        'A-tractor',
+        'Low vehicle',
+        'Moped car',
+        'Moped class I',
+        'Moped class II',
+        'Electric scooter',
+        'Tractor',
+      ]) {
+        expect(
+          service.debugMayRelaxLegalChecks(
+            vehicleType: vehicleType,
+            countryCode: 'SE',
+          ),
+          isTrue,
+          reason: vehicleType,
+        );
+      }
+      expect(
+        service.debugMayRelaxLegalChecks(
+          vehicleType: 'Car',
+          countryCode: 'SE',
+        ),
+        isTrue,
+      );
+    });
+
     test('strict slow routing never falls back to OSRM', () {
       final providers = service.debugEligibleProviders(
         configuredProvider: 'osrm_public',

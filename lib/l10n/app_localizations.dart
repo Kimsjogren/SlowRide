@@ -182,7 +182,7 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.8 | CruizX by KimTechTool'**
+  /// **'v1.1.9 | CruizX by KimTechTool'**
   String get splashVersionLine;
 
   /// No description provided for @a11yCenterOnLocation.
@@ -1994,7 +1994,7 @@ abstract class AppLocalizations {
   /// No description provided for @routeFallbackBody.
   ///
   /// In en, this message translates to:
-  /// **'We found a possible route, but it could not be fully verified for your {vehicleType}. It may include roads that need checking. Always follow signs and local rules.'**
+  /// **'This route cannot be verified as legal for your {vehicleType} and may include restricted roads, such as motorways. Always follow signs and local rules. You use this route at your own risk; CruizX cannot guarantee the road choice and is not responsible for driving on this route.'**
   String routeFallbackBody(Object vehicleType);
 
   /// No description provided for @routeFallbackCancel.
@@ -2006,13 +2006,13 @@ abstract class AppLocalizations {
   /// No description provided for @routeFallbackUse.
   ///
   /// In en, this message translates to:
-  /// **'Show anyway'**
+  /// **'I understand – show route'**
   String get routeFallbackUse;
 
   /// No description provided for @routeFallbackActive.
   ///
   /// In en, this message translates to:
-  /// **'Unverified route – always follow signs'**
+  /// **'Unverified – own risk, follow signs'**
   String get routeFallbackActive;
 
   /// No description provided for @routeOptionsTitle.
@@ -2054,7 +2054,7 @@ abstract class AppLocalizations {
   /// No description provided for @routeOptionUnverifiedSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Cannot be fully verified for your {vehicleType}. Check signs before driving.'**
+  /// **'May include restricted roads for your {vehicleType}. Use at your own risk.'**
   String routeOptionUnverifiedSubtitle(Object vehicleType);
 
   /// No description provided for @routeOptionChoose.
@@ -2072,8 +2072,56 @@ abstract class AppLocalizations {
   /// No description provided for @routeOptionWarningFooter.
   ///
   /// In en, this message translates to:
-  /// **'CruizX never automatically approves restricted roads. Always follow signs and local rules.'**
+  /// **'Unverified routes are used at your own risk. CruizX cannot guarantee the road choice. Always follow signs and local rules.'**
   String get routeOptionWarningFooter;
+
+  /// No description provided for @trafficRerouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster route found'**
+  String get trafficRerouteTitle;
+
+  /// No description provided for @trafficRerouteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX compared live traffic across verified roads for your {vehicleType}. The new route is estimated to save about {minutes} min and avoids part of the current congestion.'**
+  String trafficRerouteBody(Object vehicleType, Object minutes);
+
+  /// No description provided for @trafficRerouteKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current route'**
+  String get trafficRerouteKeep;
+
+  /// No description provided for @trafficRerouteUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch route'**
+  String get trafficRerouteUse;
+
+  /// No description provided for @trafficRerouteApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster route selected – saves about {minutes} min'**
+  String trafficRerouteApplied(Object minutes);
+
+  /// No description provided for @trafficRerouteVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'A faster verified route was found. It saves about {minutes} minutes.'**
+  String trafficRerouteVoice(Object minutes);
+
+  /// No description provided for @trafficWarningBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic ahead – about {minutes} min delay'**
+  String trafficWarningBanner(Object minutes);
+
+  /// No description provided for @trafficWarningVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic congestion ahead. About {minutes} minutes of extra travel time.'**
+  String trafficWarningVoice(Object minutes);
 
   /// No description provided for @mapModeLabel2d.
   ///

@@ -59,6 +59,8 @@ private class CruizXGoogleMapView(
     private var userMarker: Marker? = null
     private var destinationMarker: Marker? = null
     private var routePolyline: Polyline? = null
+    private val trafficPolylines = mutableListOf<Polyline>()
+    private var lastTrafficSections: List<TrafficSection> = emptyList()
     private var markerAnimator: ValueAnimator? = null
     private var lastRoute: List<LatLng> = emptyList()
     private var renderedHeading = 0f
@@ -131,14 +133,18 @@ private class CruizXGoogleMapView(
         val newLocation = coordinate(payload["location"])
         val destination = coordinate(payload["destination"])
         val route = coordinates(payload["routePoints"])
+        val trafficSections = trafficSections(payload["trafficSections"])
         val newFollowUser = payload["followUser"] as? Boolean ?: false
         val newUse3D = payload["use3D"] as? Boolean ?: true
         val newDarkMode = payload["darkMode"] as? Boolean ?: false
+        val showTraffic = payload["showTraffic"] as? Boolean ?: false
         val routeChanged = !sameRoute(route, lastRoute)
+        val trafficChanged = trafficSections != lastTrafficSections
         val followChanged = followUser != newFollowUser
 
         followUser = newFollowUser
         use3D = newUse3D
+        map.isTrafficEnabled = showTraffic
         if (darkMode != newDarkMode) {
             darkMode = newDarkMode
             map.setMapStyle(
@@ -150,6 +156,7 @@ private class CruizXGoogleMapView(
         updateUserMarker(newLocation)
         updateDestination(destination)
         if (routeChanged) updateRoute(route)
+        if (trafficChanged) updateTrafficSections(trafficSections)
 
         when {
             followUser && newLocation != null -> {
@@ -171,6 +178,7 @@ private class CruizXGoogleMapView(
         }
         location = newLocation
         lastRoute = route
+        lastTrafficSections = trafficSections
     }
 
     private fun updateUserMarker(target: LatLng?) {
@@ -249,6 +257,37 @@ private class CruizXGoogleMapView(
                 .geodesic(true)
                 .zIndex(5f),
         )
+    }
+
+    private data class TrafficSection(val level: String, val points: List<LatLng>)
+
+    private fun trafficSections(value: Any?): List<TrafficSection> =
+        (value as? List<*>)?.mapNotNull { raw ->
+            @Suppress("UNCHECKED_CAST")
+            val values = raw as? Map<String, Any?> ?: return@mapNotNull null
+            val points = coordinates(values["points"])
+            if (points.size < 2) return@mapNotNull null
+            TrafficSection(values["level"]?.toString() ?: "moderate", points)
+        } ?: emptyList()
+
+    private fun updateTrafficSections(sections: List<TrafficSection>) {
+        trafficPolylines.forEach(Polyline::remove)
+        trafficPolylines.clear()
+        sections.forEach { section ->
+            val color = when (section.level) {
+                "severe" -> Color.rgb(140, 0, 22)
+                "heavy" -> Color.rgb(235, 20, 31)
+                else -> Color.rgb(255, 143, 0)
+            }
+            googleMap?.addPolyline(
+                PolylineOptions()
+                    .addAll(section.points)
+                    .color(color)
+                    .width(18f)
+                    .geodesic(true)
+                    .zIndex(6f),
+            )?.let(trafficPolylines::add)
+        }
     }
 
     private fun updateFollowCamera(position: LatLng?, cameraHeading: Float = renderedHeading) {

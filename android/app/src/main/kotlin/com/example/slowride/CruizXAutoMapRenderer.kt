@@ -47,6 +47,9 @@ class CruizXAutoMapRenderer(private val carContext: CarContext) : SurfaceCallbac
     private var userMarker: Marker? = null
     private var destinationMarker: Marker? = null
     private var routePolyline: Polyline? = null
+    private val trafficPolylines = mutableListOf<Polyline>()
+    private var renderedRoute: List<LatLng> = emptyList()
+    private var renderedTrafficSections: List<TrafficSection> = emptyList()
     private val convoyMarkers = mutableMapOf<String, Marker>()
     private var visibleArea = Rect()
     private var snapshot = AndroidAutoStateStore.snapshot
@@ -227,13 +230,33 @@ class CruizXAutoMapRenderer(private val carContext: CarContext) : SurfaceCallbac
         }
 
         val route = routePoints()
-        routePolyline?.remove()
-        routePolyline = if (route.size >= 2) {
-            map.addPolyline(
-                PolylineOptions().addAll(route).color(Color.rgb(25, 145, 255)).width(16f).zIndex(5f),
-            )
-        } else {
-            null
+        map.isTrafficEnabled = route.size >= 2
+        if (route != renderedRoute) {
+            routePolyline?.remove()
+            routePolyline = if (route.size >= 2) {
+                map.addPolyline(
+                    PolylineOptions().addAll(route).color(Color.rgb(25, 145, 255)).width(16f).zIndex(5f),
+                )
+            } else {
+                null
+            }
+            renderedRoute = route
+        }
+        val trafficSections = trafficSections()
+        if (trafficSections != renderedTrafficSections) {
+            trafficPolylines.forEach(Polyline::remove)
+            trafficPolylines.clear()
+            trafficSections.forEach { section ->
+                val color = when (section.level) {
+                    "severe" -> Color.rgb(140, 0, 22)
+                    "heavy" -> Color.rgb(235, 20, 31)
+                    else -> Color.rgb(255, 143, 0)
+                }
+                map.addPolyline(
+                    PolylineOptions().addAll(section.points).color(color).width(18f).zIndex(6f),
+                ).let(trafficPolylines::add)
+            }
+            renderedTrafficSections = trafficSections
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -320,6 +343,19 @@ class CruizXAutoMapRenderer(private val carContext: CarContext) : SurfaceCallbac
         (snapshot.route["points"] as? List<*>)?.mapNotNull { coordinate(it as? Map<String, Any?>) }
             ?: emptyList()
 
+    private data class TrafficSection(val level: String, val points: List<LatLng>)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun trafficSections(): List<TrafficSection> =
+        (snapshot.route["trafficSections"] as? List<*>)?.mapNotNull { raw ->
+            val values = raw as? Map<String, Any?> ?: return@mapNotNull null
+            val points = (values["points"] as? List<*>)?.mapNotNull {
+                coordinate(it as? Map<String, Any?>)
+            } ?: emptyList()
+            if (points.size < 2) return@mapNotNull null
+            TrafficSection(values["level"]?.toString() ?: "moderate", points)
+        } ?: emptyList()
+
     @Suppress("UNCHECKED_CAST")
     private fun convoyMembers(): List<Map<String, Any?>> =
         (snapshot.convoy["members"] as? List<*>)
@@ -404,6 +440,9 @@ class CruizXAutoMapRenderer(private val carContext: CarContext) : SurfaceCallbac
         userMarker = null
         destinationMarker = null
         routePolyline = null
+        trafficPolylines.clear()
+        renderedRoute = emptyList()
+        renderedTrafficSections = emptyList()
         convoyMarkers.clear()
         mapView?.onPause()
         mapView?.onStop()

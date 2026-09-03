@@ -45,7 +45,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get splashReady => 'Prêt';
 
   @override
-  String get splashVersionLine => 'v1.1.8 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
 
   @override
   String get a11yCenterOnLocation => 'Centrer la carte sur ma position';
@@ -978,17 +978,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Nous avons trouvé un itinéraire possible, mais il n\'a pas pu être entièrement vérifié pour votre $vehicleType. Il peut inclure des routes à contrôler. Respectez toujours la signalisation et les règles locales.';
+    return 'La légalité de cet itinéraire ne peut pas être vérifiée pour votre $vehicleType et il peut inclure des routes interdites, comme les autoroutes. Respectez toujours la signalisation et les règles locales. Vous utilisez cet itinéraire à vos propres risques ; CruizX ne peut garantir le choix des routes et n\'est pas responsable de la conduite sur cet itinéraire.';
   }
 
   @override
   String get routeFallbackCancel => 'Annuler';
 
   @override
-  String get routeFallbackUse => 'Afficher quand même';
+  String get routeFallbackUse => 'Je comprends – afficher';
 
   @override
-  String get routeFallbackActive => 'Itinéraire non vérifié – suivez toujours la signalisation';
+  String get routeFallbackActive => 'Non vérifié – à vos propres risques';
 
   @override
   String get routeOptionsTitle => 'Choisir un itinéraire';
@@ -1010,7 +1010,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Impossible à vérifier entièrement pour votre $vehicleType. Vérifiez la signalisation avant de conduire.';
+    return 'Peut inclure des routes interdites à votre $vehicleType. À vos propres risques.';
   }
 
   @override
@@ -1022,7 +1022,41 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX n\'approuve jamais automatiquement les routes interdites. Respectez toujours la signalisation et les règles locales.';
+  String get routeOptionWarningFooter => 'Les itinéraires non vérifiés sont utilisés à vos propres risques. CruizX ne peut garantir le choix des routes. Respectez toujours la signalisation.';
+
+  @override
+  String get trafficRerouteTitle => 'Itinéraire plus rapide trouvé';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX a comparé le trafic en direct sur les routes vérifiées pour votre $vehicleType. Le nouvel itinéraire devrait faire gagner environ $minutes min et éviter une partie des embouteillages actuels.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Garder l’itinéraire';
+
+  @override
+  String get trafficRerouteUse => 'Changer d’itinéraire';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Itinéraire plus rapide choisi – gain d’environ $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'Un itinéraire vérifié plus rapide a été trouvé. Il fait gagner environ $minutes minutes.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Perturbation du trafic – env. $minutes min de délai';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Perturbation du trafic à venir. Environ $minutes minutes de temps de trajet supplémentaire.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';

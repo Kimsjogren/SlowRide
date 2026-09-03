@@ -12,7 +12,7 @@
   "splashLoadingPreferences": "Caricamento preferenze...",
   "splashFinalizingStartup": "Finalizzazione dell'avvio...",
   "splashReady": "Pronto",
-  "splashVersionLine": "v1.1.8 | CruizX di KimTechTool",
+  "splashVersionLine": "v1.1.9 | CruizX di KimTechTool",
   "a11yCenterOnLocation": "Centra la mappa sulla mia posizione",
   "a11yStopFollowingLocation": "Smetti di seguire la mia posizione",
   "a11ySwitchTo2d": "Passa alla mappa 2D",
@@ -383,22 +383,22 @@
   "routeBlockedOk": "OK",
   "routeBlockedTryOther": "Prova una destinazione diversa",
   "routeFallbackTitle": "Trovato percorso non verificato",
-  "routeFallbackBody": "Abbiamo trovato un percorso possibile, ma non è stato possibile verificarlo completamente per il tuo {vehicleType}. Potrebbe includere strade che necessitano di controllo. Seguire sempre la segnaletica e le regole locali.",
+  "routeFallbackBody": "Non è possibile verificare che il percorso sia legale per il tuo {vehicleType} e potrebbe includere strade vietate, come le autostrade. Segui sempre la segnaletica e le regole locali. Utilizzi questo percorso a tuo rischio; CruizX non può garantire la scelta delle strade e non è responsabile della guida su questo percorso.",
   "@routeFallbackBody": {
     "placeholders": {
       "vehicleType": {}
     }
   },
   "routeFallbackCancel": "Cancellare",
-  "routeFallbackUse": "Mostra comunque",
-  "routeFallbackActive": "Percorso non verificato: seguire sempre le indicazioni",
+  "routeFallbackUse": "Ho capito – mostra percorso",
+  "routeFallbackActive": "Non verificato – a proprio rischio",
   "routeOptionsTitle": "Scegli percorso",
   "routeOptionRecommended": "Raccomandato",
   "routeOptionRecommendedSubtitle": "Verificato dalle regole CruizX per il veicolo selezionato.",
   "routeOptionAlternative": "Percorso alternativo",
   "routeOptionAlternativeSubtitle": "Percorso legale: strade diverse o leggermente più lunghe.",
   "routeOptionUnverified": "Percorso alternativo non verificato",
-  "routeOptionUnverifiedSubtitle": "Impossibile verificare completamente il tuo {vehicleType}. Controllare la segnaletica prima di mettersi alla guida.",
+  "routeOptionUnverifiedSubtitle": "Può includere strade vietate al tuo {vehicleType}. A tuo rischio.",
   "@routeOptionUnverifiedSubtitle": {
     "placeholders": {
       "vehicleType": {}
@@ -412,7 +412,20 @@
       "minutes": {}
     }
   },
-  "routeOptionWarningFooter": "CruizX non approva mai automaticamente le strade soggette a restrizioni. Seguire sempre la segnaletica e le regole locali.",
+  "routeOptionWarningFooter": "I percorsi non verificati sono usati a proprio rischio. CruizX non può garantire la scelta delle strade. Segui sempre la segnaletica.",
+  "trafficRerouteTitle": "Trovato percorso più veloce",
+  "trafficRerouteBody": "CruizX ha confrontato il traffico in tempo reale sulle strade verificate per il tuo {vehicleType}. Si stima che il nuovo percorso faccia risparmiare circa {minutes} min ed eviti parte della congestione attuale.",
+  "@trafficRerouteBody": { "placeholders": { "vehicleType": {}, "minutes": {} } },
+  "trafficRerouteKeep": "Mantieni percorso",
+  "trafficRerouteUse": "Cambia percorso",
+  "trafficRerouteApplied": "Percorso più veloce scelto – risparmia circa {minutes} min",
+  "@trafficRerouteApplied": { "placeholders": { "minutes": {} } },
+  "trafficRerouteVoice": "È stato trovato un percorso verificato più veloce. Fa risparmiare circa {minutes} minuti.",
+  "@trafficRerouteVoice": { "placeholders": { "minutes": {} } },
+  "trafficWarningBanner": "Traffico rallentato – circa {minutes} min di ritardo",
+  "@trafficWarningBanner": { "placeholders": { "minutes": {} } },
+  "trafficWarningVoice": "Rallentamento del traffico in avanti. Circa {minutes} minuti di tempo in più.",
+  "@trafficWarningVoice": { "placeholders": { "minutes": {} } },
   "mapModeLabel2d": "2D",
   "mapModeLabel3d": "3D",
   "mapManeuverInDistance": "In {distance}",

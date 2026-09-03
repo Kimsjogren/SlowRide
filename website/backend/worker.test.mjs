@@ -170,7 +170,7 @@ test("speed-limit endpoint verifies a matching Norwegian NVDB segment", { concur
   }
 });
 
-test("AI route analysis accepts the Car vehicle type", { concurrency: false }, async () => {
+test("AI route analysis accepts Car and guards an unverified RoadScore", { concurrency: false }, async () => {
   const originalFetch = globalThis.fetch;
   let aiInput;
   globalThis.fetch = async (input, init = {}) => {
@@ -206,6 +206,16 @@ test("AI route analysis accepts the Car vehicle type", { concurrency: false }, a
             street_names: ["Tyresövägen"],
           },
           alert_counts: {},
+          road_score: {
+            score: 45,
+            grade: "unverified",
+            legally_verified: false,
+            route_alert_count: 0,
+            complex_turn_count: 2,
+            distance_detour_percent: 4,
+            duration_detour_percent: 3,
+            factors: {},
+          },
         }),
       }),
       {
@@ -231,9 +241,13 @@ test("AI route analysis accepts the Car vehicle type", { concurrency: false }, a
     );
 
     assert.equal(response.status, 200);
+    const responseBody = await response.json();
+    assert.equal(responseBody.suitability, "caution");
     const facts = JSON.parse(aiInput.messages[1].content);
     assert.equal(facts.vehicle_type, "Car");
     assert.match(facts.vehicle_context, /standard passenger car/i);
+    assert.equal(facts.road_score.score, 45);
+    assert.equal(facts.road_score.legally_verified, false);
   } finally {
     globalThis.fetch = originalFetch;
   }

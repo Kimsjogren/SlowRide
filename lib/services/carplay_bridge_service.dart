@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:slowride/services/destination_history_service.dart';
 import 'package:slowride/services/favorite_places_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
+import 'package:slowride/services/mapbox_traffic_service.dart';
 
 class CarPlayBridgeService {
   CarPlayBridgeService._();
@@ -219,6 +220,7 @@ class CarPlayBridgeService {
   Future<void> updateRouteGeometry({
     required List<LatLng> routePoints,
     required LatLng? destination,
+    List<TrafficRouteSection> trafficSections = const [],
   }) async {
     final payload = <String, Object?>{
       'points': routePoints
@@ -235,6 +237,9 @@ class CarPlayBridgeService {
               'latitude': destination.latitude,
               'longitude': destination.longitude,
             },
+      'trafficSections': trafficSections
+          .map((section) => section.toMap())
+          .toList(growable: false),
     };
     final payloadJson = jsonEncode(payload);
     if (_lastRouteGeometryPayloadJson == payloadJson) return;
@@ -291,6 +296,50 @@ class CarPlayBridgeService {
     currentUserId: null,
     members: const [],
   );
+
+  /// Shows a native route-change choice on CarPlay or Android Auto.
+  ///
+  /// Returns `null` when no supported car screen is connected, `true` when
+  /// the driver accepts, and `false` for keep-current or timeout.
+  Future<bool?> showTrafficRerouteProposal({
+    required String title,
+    required String body,
+    required String keepLabel,
+    required String useLabel,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (!isConnected.value) return null;
+    try {
+      return await _channel.invokeMethod<bool>('showTrafficRerouteProposal', {
+        'id': DateTime.now().microsecondsSinceEpoch.toString(),
+        'title': title.trim(),
+        'body': body.trim(),
+        'keepLabel': keepLabel.trim(),
+        'useLabel': useLabel.trim(),
+        'timeoutSeconds': timeout.inSeconds.clamp(5, 60),
+      });
+    } on MissingPluginException {
+      return null;
+    } catch (error, stackTrace) {
+      debugPrint('Car screen traffic proposal failed: $error\n$stackTrace');
+      return null;
+    }
+  }
+
+  /// Sends a one-way traffic congestion notice to the car screen (no reply).
+  Future<void> showTrafficWarning({required String message}) async {
+    if (!isConnected.value) return;
+    try {
+      await _channel.invokeMethod<void>('showTrafficWarning', {
+        'message': message.trim(),
+        'timeoutSeconds': 8,
+      });
+    } on MissingPluginException {
+      // ignored
+    } catch (error, stackTrace) {
+      debugPrint('Car screen traffic warning failed: $error\n$stackTrace');
+    }
+  }
 
   Future<Object?> _handleMethodCall(MethodCall call) async {
     switch (call.method) {

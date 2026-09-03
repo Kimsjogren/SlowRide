@@ -95,6 +95,7 @@ class AiRouteAnalysisService {
     required double durationMinutes,
     required List<String> streetNames,
     required Map<String, int> alertCounts,
+    Map<String, Object>? roadScore,
   }) async {
     final token = _accessToken;
     if (token == null || token.isEmpty) {
@@ -114,6 +115,7 @@ class AiRouteAnalysisService {
       'alert_counts': Map<String, int>.fromEntries(
         alertCounts.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
       ),
+      'road_score': ?roadScore,
     };
     final userId =
         SupabaseService.instance.client.auth.currentSession?.user.id ?? '';

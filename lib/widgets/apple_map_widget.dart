@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/models/alert_model.dart';
+import 'package:slowride/services/mapbox_traffic_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
 
@@ -18,6 +19,7 @@ class AppleMapWidget extends StatefulWidget {
     required this.markerStyle,
     this.destination,
     this.routePoints = const [],
+    this.trafficSections = const [],
     this.alerts = const [],
     this.studdedTireBanZones = const [],
     this.chargingStations = const [],
@@ -35,6 +37,7 @@ class AppleMapWidget extends StatefulWidget {
   final MapMarkerStyle markerStyle;
   final LatLng? destination;
   final List<LatLng> routePoints;
+  final List<TrafficRouteSection> trafficSections;
   final List<AlertModel> alerts;
   final List<List<LatLng>> studdedTireBanZones;
   final List<LatLng> chargingStations;
@@ -166,6 +169,9 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
             },
           )
           .toList(growable: false),
+      'trafficSections': widget.trafficSections
+          .map((section) => section.toMap())
+          .toList(growable: false),
       'alerts': widget.alerts
           .map(
             (alert) => <String, Object?>{
@@ -191,6 +197,7 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       'followUser': widget.followUser,
       'use3D': widget.use3D,
       'darkMode': widget.darkMode,
+      'showTraffic': widget.routePoints.length >= 2,
       'nextManeuverDistanceMeters': widget.nextManeuverDistanceMeters,
       'nextManeuverSign': widget.nextManeuverSign,
     };

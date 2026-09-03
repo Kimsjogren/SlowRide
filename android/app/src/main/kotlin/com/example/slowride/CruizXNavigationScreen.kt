@@ -35,9 +35,34 @@ class CruizXNavigationScreen(
     private val renderer: CruizXAutoMapRenderer,
 ) : Screen(carContext) {
     private var snapshot = AndroidAutoStateStore.snapshot
+    private var shownTrafficProposalID: String? = null
+    private var shownTrafficWarningKey: String? = null
     private val stateListener: (AndroidAutoStateStore.Snapshot) -> Unit = {
         snapshot = it
+        showTrafficProposalIfNeeded(it.trafficProposal)
+        showTrafficWarningIfNeeded(it.trafficWarning)
         invalidate()
+    }
+
+    private fun showTrafficProposalIfNeeded(proposal: Map<String, Any?>) {
+        val id = proposal["id"]?.toString()?.takeIf(String::isNotBlank) ?: return
+        if (id == shownTrafficProposalID) return
+        shownTrafficProposalID = id
+        Handler(Looper.getMainLooper()).post {
+            screenManager.push(CruizXTrafficRerouteScreen(carContext, proposal))
+        }
+    }
+
+    private fun showTrafficWarningIfNeeded(warning: Map<String, Any?>) {
+        val message = warning["message"]?.toString()?.takeIf(String::isNotBlank) ?: return
+        // Use the message text as a simple dedup key.
+        if (message == shownTrafficWarningKey) return
+        // Don't overlay a reroute proposal with a warning.
+        if (snapshot.trafficProposal.isNotEmpty()) return
+        shownTrafficWarningKey = message
+        Handler(Looper.getMainLooper()).post {
+            screenManager.push(CruizXTrafficWarningScreen(carContext, message))
+        }
     }
 
     init {
@@ -152,6 +177,81 @@ class CruizXNavigationScreen(
         is String -> value.toDoubleOrNull()
         else -> null
     }
+}
+
+private class CruizXTrafficRerouteScreen(
+    carContext: CarContext,
+    private val proposal: Map<String, Any?>,
+) : Screen(carContext) {
+    private val handler = Handler(Looper.getMainLooper())
+    private val proposalID = proposal["id"]?.toString().orEmpty()
+    private var resolved = false
+    private val timeout = Runnable { finish(false) }
+
+    init {
+        val timeoutSeconds = (proposal["timeoutSeconds"] as? Number)
+            ?.toLong()?.coerceIn(5, 60) ?: 20L
+        handler.postDelayed(timeout, timeoutSeconds * 1000)
+        lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onDestroy(owner: LifecycleOwner) {
+                handler.removeCallbacks(timeout)
+                if (!resolved) {
+                    resolved = true
+                    AndroidAutoStateStore.resolveTrafficRerouteProposal(proposalID, false)
+                }
+            }
+        })
+    }
+
+    override fun onGetTemplate(): Template {
+        val title = proposal["title"]?.toString()?.trim().orEmpty()
+            .ifEmpty { "Snabbare rutt hittad" }
+        val body = proposal["body"]?.toString()?.trim().orEmpty()
+            .ifEmpty { "En snabbare verifierad rutt finns." }
+        val keepLabel = proposal["keepLabel"]?.toString()?.trim().orEmpty()
+            .ifEmpty { "Behåll" }
+        val useLabel = proposal["useLabel"]?.toString()?.trim().orEmpty()
+            .ifEmpty { "Byt rutt" }
+        return MessageTemplate.Builder(body)
+            .setTitle(title)
+            .addAction(
+                Action.Builder()
+                    .setTitle(keepLabel)
+                    .setOnClickListener { finish(false) }
+                    .build(),
+            )
+            .addAction(
+                Action.Builder()
+                    .setTitle(useLabel)
+                    .setOnClickListener { finish(true) }
+                    .build(),
+            )
+            .build()
+    }
+
+    private fun finish(accepted: Boolean) {
+        if (resolved) return
+        resolved = true
+        handler.removeCallbacks(timeout)
+        AndroidAutoStateStore.resolveTrafficRerouteProposal(proposalID, accepted)
+        screenManager.pop()
+    }
+}
+
+private class CruizXTrafficWarningScreen(
+    carContext: CarContext,
+    private val message: String,
+) : Screen(carContext) {
+    override fun onGetTemplate(): Template =
+        MessageTemplate.Builder(message)
+            .setTitle("CruizX")
+            .addAction(
+                Action.Builder()
+                    .setTitle("OK")
+                    .setOnClickListener { screenManager.pop() }
+                    .build(),
+            )
+            .build()
 }
 
 private data class AutoDestination(
