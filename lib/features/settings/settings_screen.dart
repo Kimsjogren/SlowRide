@@ -5,6 +5,7 @@ import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/core/constants/legal_links.dart';
 import 'package:slowride/features/paywall/paywall_screen.dart';
 import 'package:slowride/features/settings/parent_settings_screen.dart';
+import 'package:slowride/features/support/support_chat_screen.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/models/country_vehicle_rules.dart';
 import 'package:slowride/services/ad_service.dart';
@@ -21,7 +22,70 @@ class SettingsScreen extends StatelessWidget {
 
   static final Uri _privacyPolicyUri = Uri.parse(LegalLinks.privacyPolicy);
   static final Uri _termsOfUseUri = Uri.parse(LegalLinks.termsOfUse);
-  static final Uri _supportUri = Uri.parse(LegalLinks.support);
+  static const double _settingsActionCardMinHeight = 84;
+
+  static Widget _settingsActionIcon(IconData icon) {
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: const Color(0xFF1E6BFF),
+      child: Icon(icon, color: Colors.white, size: 20),
+    );
+  }
+
+  static Widget _settingsToggleContent({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return MergeSemantics(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => onChanged(!value),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _settingsActionIcon(icon),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch(
+              value: value,
+              activeThumbColor: const Color(0xFF00C8FF),
+              onChanged: onChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   static Widget _proFeatureRow(String text) {
     return Padding(
@@ -99,6 +163,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final showVectorMapToggle =
+        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
     final l10n = AppLocalizations.of(context)!;
     final preferences = UserPreferencesService.instance;
 
@@ -106,11 +172,12 @@ class SettingsScreen extends StatelessWidget {
     const valueStyle = TextStyle(color: Colors.white, fontSize: 16);
 
     return AppBackground(
+      logoHeight: 74,
       child: Column(
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               children: [
                 Container(
                   width: double.infinity,
@@ -137,44 +204,130 @@ class SettingsScreen extends StatelessWidget {
                       ValueListenableBuilder<String>(
                         valueListenable: preferences.vehicleType,
                         builder: (context, vehicleType, _) {
-                          return DropdownButtonFormField<String>(
-                            dropdownColor: const Color(0xFF0A1F63),
-                            style: valueStyle,
-                            iconEnabledColor: Colors.white70,
-                            initialValue: vehicleType,
-                            decoration: InputDecoration(
-                              labelText: l10n.settingsVehicleTypeLabel,
-                              labelStyle: labelStyle,
-                              enabledBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white24),
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Use the same field widget as country and language.
+                              // DropdownMenu has different internal end padding on
+                              // iOS, which made this arrow sit out of line.
+                              DropdownButtonFormField<String>(
+                                initialValue: vehicleType,
+                                dropdownColor: const Color(0xFF0A1F63),
+                                style: valueStyle,
+                                iconEnabledColor: Colors.white70,
+                                decoration: InputDecoration(
+                                  labelText: l10n.settingsVehicleTypeLabel,
+                                  labelStyle: labelStyle,
+                                  enabledBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.white24,
+                                    ),
+                                  ),
+                                  focusedBorder: const UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'A-tractor',
+                                    child: Text(l10n.settingsVehicleAtractor),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Low vehicle',
+                                    child: Text(l10n.settingsVehicleLowVehicle),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Moped car',
+                                    child: Text(l10n.settingsVehicleMopedCar),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Moped class I',
+                                    child: Text(
+                                      l10n.settingsVehicleMopedClassI,
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Moped class II',
+                                    child: Text(
+                                      l10n.settingsVehicleMopedClassII,
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Electric scooter',
+                                    child: Text(
+                                      l10n.settingsVehicleElectricScooter,
+                                    ),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Tractor',
+                                    child: Text(l10n.settingsVehicleTractor),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Car',
+                                    child: Text(l10n.settingsVehicleCar),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    preferences.vehicleType.value = value;
+                                  }
+                                },
                               ),
-                              focusedBorder: const UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white54),
-                              ),
-                            ),
-                            items: [
-                              DropdownMenuItem(
-                                value: 'A-tractor',
-                                child: Text(l10n.settingsVehicleAtractor),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Low vehicle',
-                                child: Text(l10n.settingsVehicleLowVehicle),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Moped car',
-                                child: Text(l10n.settingsVehicleMopedCar),
-                              ),
-                              DropdownMenuItem(
-                                value: 'Tractor',
-                                child: Text(l10n.settingsVehicleTractor),
-                              ),
+                              if (vehicleType == 'Electric scooter') ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  l10n.settingsElectricScooterLegalNotice,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                // Country-specific hard warning (e.g. UK: private
+                                // e-scooters are illegal on public roads).
+                                ValueListenableBuilder<String>(
+                                  valueListenable: preferences.countryCode,
+                                  builder: (context, country, _) {
+                                    final rentalOnly =
+                                        CountryVehicleRules.getProfile(
+                                          country,
+                                          'Electric scooter',
+                                        ).requiresApprovedRental;
+                                    if (!rentalOnly) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                            Icons.warning_amber_rounded,
+                                            color: Color(0xFFFFB020),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              l10n.settingsEscooterRentalOnlyNotice,
+                                              style: const TextStyle(
+                                                color: Color(0xFFFFD27A),
+                                                fontSize: 12,
+                                                height: 1.35,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                preferences.vehicleType.value = value;
-                              }
-                            },
                           );
                         },
                       ),
@@ -224,6 +377,10 @@ class SettingsScreen extends StatelessWidget {
                                 child: Text(l10n.settingsCountrySpain),
                               ),
                               DropdownMenuItem(
+                                value: 'IT',
+                                child: Text(l10n.settingsCountryItaly),
+                              ),
+                              DropdownMenuItem(
                                 value: 'GB',
                                 child: Text(l10n.settingsCountryUnitedKingdom),
                               ),
@@ -239,6 +396,7 @@ class SettingsScreen extends StatelessWidget {
                                   'FI' => 'fi',
                                   'FR' => 'fr',
                                   'ES' => 'es',
+                                  'IT' => 'it',
                                   'GB' => 'en',
                                   _ => null,
                                 };
@@ -311,6 +469,10 @@ class SettingsScreen extends StatelessWidget {
                                 value: 'es',
                                 child: Text(l10n.settingsLanguageSpanish),
                               ),
+                              DropdownMenuItem(
+                                value: 'it',
+                                child: Text(l10n.settingsLanguageItalian),
+                              ),
                             ],
                             onChanged: (value) {
                               if (value == null || value == 'system') {
@@ -326,6 +488,7 @@ class SettingsScreen extends StatelessWidget {
                                 'fi' => 'FI',
                                 'fr' => 'FR',
                                 'es' => 'ES',
+                                'it' => 'IT',
                                 _ => null,
                               };
                               if (syncedCountry != null) {
@@ -347,6 +510,7 @@ class SettingsScreen extends StatelessWidget {
                             'da' => l10n.settingsLanguageDanish,
                             'fi' => l10n.settingsLanguageFinnish,
                             'es' => l10n.settingsLanguageSpanish,
+                            'it' => l10n.settingsLanguageItalian,
                             _ => l10n.settingsLanguageSystem,
                           };
                           return Text(
@@ -379,75 +543,86 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       ValueListenableBuilder<String>(
-                        valueListenable: preferences.countryCode,
-                        builder: (context, country, _) {
-                          return ValueListenableBuilder<SpeedUnit>(
-                            valueListenable: preferences.speedUnit,
-                            builder: (context, unit, _) {
-                              return ValueListenableBuilder<double>(
-                                valueListenable: preferences.maxSpeedKmh,
-                                builder: (context, maxSpeedKmh, _) {
-                                  final maxSpeedDisplay = preferences
-                                      .toDisplaySpeed(
-                                        speedKmh: maxSpeedKmh,
-                                        unit: unit,
-                                      );
-                                  final speedUnitLabel = unit == SpeedUnit.kmh
-                                      ? l10n.settingsSpeedUnitKmh
-                                      : l10n.settingsSpeedUnitMph;
-                                  // Slider max = legal limit + 5 km/h so the
-                                  // user can fine-tune for their actual avg speed.
-                                  final legalMax =
-                                      CountryVehicleRules.maxLegalSpeedFor(
-                                        country,
-                                        preferences.vehicleType.value,
-                                      );
-                                  final sliderMaxKmh = legalMax + 5.0;
-                                  final minDisplay = unit == SpeedUnit.kmh
-                                      ? 15.0
-                                      : 9.0;
-                                  final maxDisplay = unit == SpeedUnit.kmh
-                                      ? sliderMaxKmh
-                                      : preferences.toDisplaySpeed(
-                                          speedKmh: sliderMaxKmh,
-                                          unit: unit,
-                                        );
+                        valueListenable: preferences.vehicleType,
+                        builder: (context, vehicleType, _) {
+                          if (!CountryVehicleRules.hasVehicleSpeedLimit(
+                            vehicleType,
+                          )) {
+                            return const SizedBox.shrink();
+                          }
+                          return ValueListenableBuilder<String>(
+                            valueListenable: preferences.countryCode,
+                            builder: (context, country, _) {
+                              return ValueListenableBuilder<SpeedUnit>(
+                                valueListenable: preferences.speedUnit,
+                                builder: (context, unit, _) {
+                                  return ValueListenableBuilder<double>(
+                                    valueListenable: preferences.maxSpeedKmh,
+                                    builder: (context, maxSpeedKmh, _) {
+                                      final maxSpeedDisplay = preferences
+                                          .toDisplaySpeed(
+                                            speedKmh: maxSpeedKmh,
+                                            unit: unit,
+                                          );
+                                      final speedUnitLabel =
+                                          unit == SpeedUnit.kmh
+                                          ? l10n.settingsSpeedUnitKmh
+                                          : l10n.settingsSpeedUnitMph;
+                                      final sliderMaxKmh =
+                                          CountryVehicleRules.maxSelectableSpeedFor(
+                                            country,
+                                            preferences.vehicleType.value,
+                                          );
+                                      final minDisplay = unit == SpeedUnit.kmh
+                                          ? 15.0
+                                          : 9.0;
+                                      final maxDisplay = unit == SpeedUnit.kmh
+                                          ? sliderMaxKmh
+                                          : preferences.toDisplaySpeed(
+                                              speedKmh: sliderMaxKmh,
+                                              unit: unit,
+                                            );
 
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        l10n.settingsMaxSpeedWithUnit(
-                                          maxSpeedDisplay.toStringAsFixed(0),
-                                          speedUnitLabel,
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Slider(
-                                        min: minDisplay,
-                                        max: maxDisplay,
-                                        divisions: (maxDisplay - minDisplay)
-                                            .round(),
-                                        value: maxSpeedDisplay.clamp(
-                                          minDisplay,
-                                          maxDisplay,
-                                        ),
-                                        label: maxSpeedDisplay.toStringAsFixed(
-                                          0,
-                                        ),
-                                        onChanged: (value) {
-                                          preferences.maxSpeedKmh.value =
-                                              preferences.fromDisplaySpeed(
-                                                value: value,
-                                                unit: unit,
-                                              );
-                                        },
-                                      ),
-                                    ],
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            l10n.settingsMaxSpeedWithUnit(
+                                              maxSpeedDisplay.toStringAsFixed(
+                                                0,
+                                              ),
+                                              speedUnitLabel,
+                                            ),
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Slider(
+                                            min: minDisplay,
+                                            max: maxDisplay,
+                                            divisions: (maxDisplay - minDisplay)
+                                                .round(),
+                                            value: maxSpeedDisplay.clamp(
+                                              minDisplay,
+                                              maxDisplay,
+                                            ),
+                                            label: maxSpeedDisplay
+                                                .toStringAsFixed(
+                                                  0,
+                                                ),
+                                            onChanged: (value) {
+                                              preferences.maxSpeedKmh.value =
+                                                  preferences.fromDisplaySpeed(
+                                                    value: value,
+                                                    unit: unit,
+                                                  );
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   );
                                 },
                               );
@@ -499,12 +674,12 @@ class SettingsScreen extends StatelessWidget {
                 // Voice navigation toggle
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
+                  constraints: const BoxConstraints(
+                    minHeight: _settingsActionCardMinHeight,
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.15),
@@ -513,96 +688,59 @@ class SettingsScreen extends StatelessWidget {
                   child: ValueListenableBuilder<bool>(
                     valueListenable: TtsService.instance.enabled,
                     builder: (context, ttsEnabled, _) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l10n.settingsVoiceNavigation,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Text(
-                            l10n.settingsVoiceNavigationSubtitle,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                            ),
-                          ),
-                          secondary: Icon(
-                            ttsEnabled ? Icons.volume_up : Icons.volume_off,
-                            color: ttsEnabled
-                                ? const Color(0xFF00C8FF)
-                                : Colors.white38,
-                          ),
-                          value: ttsEnabled,
-                          activeThumbColor: const Color(0xFF00C8FF),
-                          onChanged: (v) =>
-                              TtsService.instance.enabled.value = v,
-                        ),
+                      return _settingsToggleContent(
+                        icon: ttsEnabled ? Icons.volume_up : Icons.volume_off,
+                        title: l10n.settingsVoiceNavigation,
+                        subtitle: l10n.settingsVoiceNavigationSubtitle,
+                        value: ttsEnabled,
+                        onChanged: (v) => TtsService.instance.enabled.value = v,
                       );
                     },
                   ),
                 ),
-                const SizedBox(height: 12),
-                // Vector map toggle
-                ValueListenableBuilder<bool>(
-                  valueListenable: UserPreferencesService.instance.useVectorMap,
-                  builder: (context, useVector, _) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                if (!showVectorMapToggle) const SizedBox(height: 16),
+                if (showVectorMapToggle) ...[
+                  const SizedBox(height: 12),
+                  // Vector map toggle
+                  ValueListenableBuilder<bool>(
+                    valueListenable:
+                        UserPreferencesService.instance.useVectorMap,
+                    builder: (context, useVector, _) {
+                      return Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(
+                          minHeight: _settingsActionCardMinHeight,
                         ),
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l10n.settingsVectorMap,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15),
                           ),
-                          subtitle: Text(
-                            useVector
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: _settingsToggleContent(
+                            icon: Icons.map_outlined,
+                            title: l10n.settingsVectorMap,
+                            subtitle: useVector
                                 ? l10n.settingsVectorMapOn
                                 : l10n.settingsVectorMapOff,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 13,
-                            ),
+                            value: useVector,
+                            onChanged: (v) =>
+                                UserPreferencesService
+                                        .instance
+                                        .useVectorMap
+                                        .value =
+                                    v,
                           ),
-                          secondary: Icon(
-                            Icons.map_outlined,
-                            color: useVector
-                                ? const Color(0xFF00C8FF)
-                                : Colors.white38,
-                          ),
-                          value: useVector,
-                          activeThumbColor: const Color(0xFF00C8FF),
-                          onChanged: (v) =>
-                              UserPreferencesService
-                                      .instance
-                                      .useVectorMap
-                                      .value =
-                                  v,
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 // Parent Mode card
                 GestureDetector(
                   onTap: () {
@@ -614,7 +752,10 @@ class SettingsScreen extends StatelessWidget {
                   },
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    constraints: const BoxConstraints(
+                      minHeight: _settingsActionCardMinHeight,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(14),
@@ -624,23 +765,12 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF00C8FF,
-                            ).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.family_restroom,
-                            color: Color(0xFF00C8FF),
-                            size: 24,
-                          ),
-                        ),
+                        _settingsActionIcon(Icons.family_restroom),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
@@ -670,6 +800,77 @@ class SettingsScreen extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SupportChatScreen(),
+                      ),
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(
+                        minHeight: _settingsActionCardMinHeight,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          _settingsActionIcon(Icons.support_agent),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  l10n.supportChatTitle,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.circle,
+                                      color: Color(0xFF28C76F),
+                                      size: 8,
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      l10n.supportChatReplyTime,
+                                      style: const TextStyle(
+                                        color: Colors.white60,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white54,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -779,7 +980,6 @@ class SettingsScreen extends StatelessWidget {
 
                           // ── Feature list ─────────────────────────
                           if (!isPro) ...[
-                            _proFeatureRow(l10n.settingsProFeatureRoutes),
                             _proFeatureRow(l10n.settingsProFeatureConvoy),
                             _proFeatureRow(l10n.settingsProFeatureAds),
                             _proFeatureRow(l10n.settingsProFeatureSupport),
@@ -861,11 +1061,6 @@ class SettingsScreen extends StatelessWidget {
                                     _openExternalLink(context, _termsOfUseUri),
                                 child: Text(l10n.settingsTermsOfUseLabel),
                               ),
-                              TextButton(
-                                onPressed: () =>
-                                    _openExternalLink(context, _supportUri),
-                                child: Text(l10n.settingsSupportLabel),
-                              ),
                             ],
                           ),
                         ],
@@ -903,8 +1098,8 @@ class _MarkerStyleChoice extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        width: 102,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        width: 88,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: selected ? 0.16 : 0.08),
           borderRadius: BorderRadius.circular(14),
@@ -981,11 +1176,29 @@ class _MarkerBrandSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMopedBrand = brand.options.any(
+      (option) =>
+          option.category == MapMarkerCategory.mopedScooter ||
+          option.category == MapMarkerCategory.mopedCross,
+    );
+    final previewSize = isMopedBrand ? 62.0 : 54.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (brand.title.isNotEmpty) ...[
+          Text(
+            brand.title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.78),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         SizedBox(
-          height: 96,
+          height: isMopedBrand ? 92 : 84,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: brand.options.length,
@@ -1003,7 +1216,7 @@ class _MarkerBrandSection extends StatelessWidget {
                 onTap: () => onSelected(option.style),
                 child: UserLocationMarker.stylePreview(
                   option.style,
-                  size: 74,
+                  size: previewSize,
                   selected: selected,
                 ),
               );
@@ -1038,6 +1251,15 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
   }
 
   return [
+    _MarkerVehicleGroup(
+      title: l10n.settingsMapMarkerCategoryClassic,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCategoryClassic,
+          options: byCategory(MapMarkerCategory.classic),
+        ),
+      ],
+    ),
     _MarkerVehicleGroup(
       title: l10n.settingsVehicleAtractor,
       brands: [
@@ -1080,6 +1302,28 @@ List<_MarkerVehicleGroup> _markerVehicleSections(AppLocalizations l10n) {
         _MarkerBrandGroup(
           title: l10n.settingsMapMarkerCategoryLigier,
           options: byCategory(MapMarkerCategory.ligier),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsMapMarkerMopeds,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerScooter,
+          options: byCategory(MapMarkerCategory.mopedScooter),
+        ),
+        _MarkerBrandGroup(
+          title: l10n.settingsMapMarkerCrossMoped,
+          options: byCategory(MapMarkerCategory.mopedCross),
+        ),
+      ],
+    ),
+    _MarkerVehicleGroup(
+      title: l10n.settingsVehicleElectricScooter,
+      brands: [
+        _MarkerBrandGroup(
+          title: l10n.settingsVehicleElectricScooter,
+          options: byCategory(MapMarkerCategory.electricScooter),
         ),
       ],
     ),

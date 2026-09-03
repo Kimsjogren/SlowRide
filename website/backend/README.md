@@ -40,6 +40,11 @@ wrangler secret put STRIPE_PRICE_ID
 wrangler secret put WEB_CHECKOUT_SUCCESS_URL
 wrangler secret put WEB_CHECKOUT_CANCEL_URL
 wrangler secret put TRAFIKVERKET_KEY
+wrangler secret put SUPPORT_WEBHOOK_SECRET
+wrangler secret put SUPPORT_REPLY_SECRET
+wrangler secret put NTFY_SERVER_URL
+wrangler secret put NTFY_TOPIC
+wrangler secret put NTFY_ACCESS_TOKEN       # om ntfy-topic är skyddad
 wrangler deploy
 ```
 
@@ -52,6 +57,14 @@ Verifiera att routen `cruizx.com/api/*` är aktiv i Cloudflare dashboard → Wor
 - `GET /api/stats`: Returnerar `flyer_stats`-vyn. Header: `X-Stats-Token: <STATS_TOKEN>`.
 - `GET /api/web/pricing`: Returnerar aktivt Stripe-pris för webb/APK, lokaliserat per språk.
 - `GET /api/traffic/incidents`: Returnerar cachelagrade, normaliserade livehändelser från Trafikverket utan att exponera API-nyckeln i appen.
+- `GET /api/map/speed-limit`: Returnerar endast en verifierad skyltad hastighetsgräns för aktuellt vägsegment. Parametrar: `lat`, `lng`, `heading`, `country` och valfritt `route_lat`, `route_lng`. Osäkert eller saknat svar returneras som `limit_kmh: null` — aldrig som en gissning. Officiella adaptrar: Trafikverkets NVDB (Sverige), NVDB (Norge), Fintraffic DigiRoad (Finland) och DGT TN-ITS/ROSATTE R-301 (Spaniens statliga vägnät). Danmark och Frankrike returnerar säkert `unknown` tills respektive nationella adapter är aktiverad.
+- `POST /api/ai/route-analysis`: Analyserar begränsade ruttfakta och det deterministiska CruizX RoadScore-betyget med Workers AI för en inloggad användare. AI:n får förklara men aldrig räkna om eller motsäga betyget. GPS-koordinater skickas inte. Appen tillåter 4 anrop per dag för Free och 15 för Pro; Worker-skyddet stoppar vid 15 anrop per användare och dag samt Cloudflares kostnadsfria dagstilldelning.
+- `POST /api/ai/report`: Rapporterar ett AI-svar för uppföljning.
+- `GET /api/support/faq`: Levererar den versionsstyrda FAQ-katalog som appen även har som offline-reserv.
+- `POST /api/support/faq`: Matchar en fråga mot kvalitetssäkrade standardsvar utan en extern AI-leverantör.
+- `POST /api/support/notify`: Tar emot signerade databasnotiser och skickar nya användarmeddelanden till ntfy.
+- `GET /api/support/conversation`: Visar konversationen för en tidsbegränsad signerad svarslänk.
+- `POST /api/support/reply`: Skickar ett supportsvar till användarens CruizX-chatt.
 - `POST /api/web/checkout-session`: Skapar Stripe Checkout Session (`mode=subscription`).
 - `POST /api/web/stripe-webhook`: Tar emot Stripe events och uppdaterar `web_subscriptions`.
 
@@ -96,6 +109,20 @@ Notering:
 
 - Klienten skriver inte till tabellen.
 - Endast webhook/backend med service-role ska uppdatera subscription-status.
+
+## Supportnotiser via ntfy
+
+Migrationen `20260801123000_support_ntfy_notifications.sql` skickar nya rader
+med `sender = 'user'` till Worker-endpointen. Lägg dessa två värden i
+Supabase Vault innan flödet aktiveras:
+
+- `support_webhook_url`: `https://cruizx.com/api/support/notify`
+- `support_webhook_secret`: samma slumpmässiga värde som Worker-secret
+  `SUPPORT_WEBHOOK_SECRET`
+
+ntfy-notisen innehåller en svarsknapp med en signerad länk som gäller i sju
+dagar. Service-role, ntfy-token och signeringshemligheter skickas aldrig till
+appen eller webbläsaren.
 
 ## Ändra Pro-priset
 

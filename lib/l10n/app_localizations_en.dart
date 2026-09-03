@@ -45,7 +45,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splashReady => 'Ready';
 
   @override
-  String get splashVersionLine => 'v1.1.1 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Center the map on my location';
+
+  @override
+  String get a11yStopFollowingLocation => 'Stop following my location';
+
+  @override
+  String get a11ySwitchTo2d => 'Switch to 2D map';
+
+  @override
+  String get a11ySwitchTo3d => 'Switch to 3D map';
+
+  @override
+  String get a11yUseDarkMap => 'Use dark map';
+
+  @override
+  String get a11yUseLightMap => 'Use light map';
+
+  @override
+  String get a11yChooseMapLayer => 'Choose map style';
+
+  @override
+  String get mapLayerStyleTitle => 'Map style';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellite';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Turn on voice navigation';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Turn off voice navigation';
+
+  @override
+  String get a11yDismissAlert => 'Dismiss the alert';
+
+  @override
+  String get a11yClearSearch => 'Clear the search';
+
+  @override
+  String get a11yOpenSearch => 'Open address search';
+
+  @override
+  String get a11yAddFavorite => 'Add favorite place';
+
+  @override
+  String get a11yConfirmAlert => 'Confirm the alert';
 
   @override
   String get alertsTitle => 'Community Alerts';
@@ -135,7 +186,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authPasswordRequired => 'Enter your password';
 
   @override
-  String get authPasswordMinLength => 'At least 6 characters';
+  String get authPasswordMinLength => 'At least 6 characters, a number and a special character';
 
   @override
   String get authConfirmPasswordLabel => 'Confirm password';
@@ -195,10 +246,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'All fields are required.';
 
   @override
-  String get authErrorPasswordTooShort => 'Password must be at least 6 characters.';
+  String get authErrorPasswordTooShort => 'Password must be at least 6 characters and include a number and a special character.';
 
   @override
-  String get authErrorConfirmEmail => 'Check your email to confirm your account, then sign in.';
+  String get authErrorConfirmEmail => 'Check your email to confirm your account. If the account already exists, no new confirmation email is sent – sign in or reset the password.';
+
+  @override
+  String get authEmailConfirmedTitle => 'Email confirmed';
+
+  @override
+  String get authEmailConfirmedBody => 'Your email address has been confirmed. You are now signed in.';
 
   @override
   String get authErrorEmailAndPasswordRequired => 'Enter your email and password.';
@@ -208,6 +265,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'An account with that email already exists.';
+
+  @override
+  String get authErrorInvalidEmail => 'The email address is invalid. Check it and try again.';
+
+  @override
+  String get authErrorRateLimited => 'Too many attempts in a short time. Wait a moment and try again.';
+
+  @override
+  String get authErrorSignUpDisabled => 'New accounts cannot be created right now. Contact CruizX Support.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'The confirmation email could not be sent. Please try again shortly.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Could not connect to the account service. Check your internet connection and try again.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Realtime convoy is not configured yet. Add backend config to share live positions between users.';
@@ -493,6 +565,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageSpanish => 'Spanish';
 
   @override
+  String get settingsLanguageItalian => 'Italian';
+
+  @override
   String get settingsCountryLabel => 'Country (traffic rules)';
 
   @override
@@ -512,6 +587,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCountrySpain => '🇪🇸 Spain';
+
+  @override
+  String get settingsCountryItaly => '🇮🇹 Italy';
 
   @override
   String get settingsCountryUnitedKingdom => '🇬🇧 United Kingdom';
@@ -537,7 +615,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Moped car';
 
   @override
+  String get settingsVehicleMopedClassI => 'Class I moped';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Class II moped (25 km/h)';
+
+  @override
+  String get settingsVehicleElectricScooter => 'Electric scooter';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.';
+
+  @override
+  String get settingsEscooterRentalOnlyNotice => 'In the UK, only approved rental e-scooters are legal on public roads. Private e-scooters may only be used on private land with the landowner’s permission.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
+
+  @override
+  String get settingsVehicleCar => 'Car';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -566,7 +662,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Unlock all features with CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Unlimited routes';
+  String get settingsProFeatureRoutes => 'More AI route analyses';
 
   @override
   String get settingsProFeatureConvoy => 'Unlimited convoy members';
@@ -591,7 +687,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'One-time purchase: CruizX Pro (lifetime). Payment is charged once to your Apple ID. No subscription and no auto-renewal.';
+  String get settingsProOneTimeNote => 'One-time purchase: CruizX Pro (lifetime). Payment is charged once through the app store. No subscription and no auto-renewal.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Privacy Policy';
@@ -601,6 +697,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Support';
+
+  @override
+  String get supportChatTitle => 'Live support chat';
+
+  @override
+  String get supportChatReplyTime => 'Replies within 24 hours';
+
+  @override
+  String get supportChatWelcome => 'Hi! How can we help you with CruizX? Send your message here and we will get back to you as soon as we can.';
+
+  @override
+  String get supportChatGuestNotice => 'You are chatting as a guest. This conversation is stored privately on this device.';
+
+  @override
+  String get supportChatLoginRequired => 'Sign in to start a private support chat and view your previous messages.';
+
+  @override
+  String get supportChatLoginAction => 'Sign in';
+
+  @override
+  String get supportChatMessageHint => 'Write a message…';
+
+  @override
+  String get supportChatSend => 'Send message';
+
+  @override
+  String get supportChatSendFailed => 'The message could not be sent. Please try again.';
+
+  @override
+  String get supportChatUnavailable => 'Support chat is currently unavailable. Please try again later.';
+
+  @override
+  String get supportChatTeam => 'CruizX Support';
+
+  @override
+  String get supportChatYou => 'You';
+
+  @override
+  String get supportAssistantTitle => 'CruizX Help Assistant';
+
+  @override
+  String get supportAssistantIntro => 'Get an instant answer from CruizX\'s prepared help guide, even without internet.';
+
+  @override
+  String get supportAssistantSuggestions => 'Common questions';
+
+  @override
+  String get supportAssistantNoMatch => 'I could not find a reliable prepared answer. You can forward the question to CruizX Support.';
+
+  @override
+  String get supportAssistantContact => 'Send to support';
+
+  @override
+  String get supportAssistantForwarded => 'The question was sent to CruizX Support.';
+
+  @override
+  String get supportAssistantHumanUnavailable => 'Prepared answers work offline, but human support requires internet.';
 
   @override
   String get settingsLinkOpenFailed => 'Could not open the link right now.';
@@ -667,6 +820,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopeds';
+
+  @override
+  String get settingsMapMarkerScooter => 'Scooter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Cross moped';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';
@@ -828,17 +990,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'We found a possible route, but it could not be fully verified for your $vehicleType. It may include roads that need checking. Always follow signs and local rules.';
+    return 'This route cannot be verified as legal for your $vehicleType and may include restricted roads, such as motorways. Always follow signs and local rules. You use this route at your own risk; CruizX cannot guarantee the road choice and is not responsible for driving on this route.';
   }
 
   @override
   String get routeFallbackCancel => 'Cancel';
 
   @override
-  String get routeFallbackUse => 'Show anyway';
+  String get routeFallbackUse => 'I understand – show route';
 
   @override
-  String get routeFallbackActive => 'Unverified route – always follow signs';
+  String get routeFallbackActive => 'Unverified – own risk, follow signs';
 
   @override
   String get routeOptionsTitle => 'Choose route';
@@ -860,7 +1022,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Cannot be fully verified for your $vehicleType. Check signs before driving.';
+    return 'May include restricted roads for your $vehicleType. Use at your own risk.';
   }
 
   @override
@@ -872,7 +1034,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX never automatically approves restricted roads. Always follow signs and local rules.';
+  String get routeOptionWarningFooter => 'Unverified routes are used at your own risk. CruizX cannot guarantee the road choice. Always follow signs and local rules.';
+
+  @override
+  String get trafficRerouteTitle => 'Faster route found';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX compared live traffic across verified roads for your $vehicleType. The new route is estimated to save about $minutes min and avoids part of the current congestion.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Keep current route';
+
+  @override
+  String get trafficRerouteUse => 'Switch route';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Faster route selected – saves about $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'A faster verified route was found. It saves about $minutes minutes.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Traffic ahead – about $minutes min delay';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Traffic congestion ahead. About $minutes minutes of extra travel time.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';
@@ -889,6 +1085,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String mapManeuverTowardRoad(Object road) {
     return 'Toward $road';
   }
+
+  @override
+  String get mapManeuverGenericCycleway => 'the cycleway';
+
+  @override
+  String get mapManeuverGenericFootway => 'the footway';
+
+  @override
+  String get mapManeuverGenericPath => 'the path';
+
+  @override
+  String get mapManeuverGenericRoad => 'the road';
 
   @override
   String get mapSimulateButton => 'Simulate';
@@ -1068,6 +1276,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallUpgradeButton => 'Upgrade to Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Buy Pro permanently · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Restore purchase';
 
   @override
@@ -1081,7 +1294,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1103,10 +1316,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Routes per day';
+  String get paywallFeatureRoutes => 'Navigation routes';
 
   @override
-  String get paywallFreeRouteLimit => '4 routes';
+  String get paywallFreeRouteLimit => 'Unlimited';
 
   @override
   String get paywallProRouteLimit => 'Unlimited';
@@ -1130,10 +1343,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallProAds => 'None';
 
   @override
-  String get paywallRouteLimitTitle => 'Route limit reached';
+  String get paywallRouteLimitTitle => 'Unlimited routes';
 
   @override
-  String get paywallRouteLimitBody => 'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.';
+  String get paywallRouteLimitBody => 'Navigation routes are unlimited in the Free version too.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Continue without ads?';
+
+  @override
+  String get routeUpgradePromptBody => 'You have created two routes today. Free includes unlimited routes, while Pro removes ads and unlocks more features. Would you like to upgrade?';
 
   @override
   String get paywallConvoyLimitTitle => 'Convoy limit reached';
@@ -1178,8 +1397,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileUpgradeToPro => 'Upgrade to Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Routes today: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Routes today: $count';
   }
 
   @override
@@ -1519,4 +1738,136 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Standard — fast and offline-cached';
+
+  @override
+  String get publicGatheringStartTime => 'Start time';
+
+  @override
+  String get publicGatheringEndTime => 'End time';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'The end time must be after the start time.';
+
+  @override
+  String get publicGatheringEndAction => 'End meetup';
+
+  @override
+  String get publicGatheringDeleteAction => 'Delete meetup';
+
+  @override
+  String get publicGatheringEndConfirm => 'End the meetup now? Participants will no longer be able to find it.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Permanently delete this meetup? This cannot be undone.';
+
+  @override
+  String get publicGatheringReportAction => 'Report meetup';
+
+  @override
+  String get publicGatheringBlockAction => 'Block meetup';
+
+  @override
+  String get publicGatheringReportParticipant => 'Report participant';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Block participant';
+
+  @override
+  String get publicGatheringReportReason => 'What would you like to report?';
+
+  @override
+  String get publicGatheringReportSent => 'Your report has been sent.';
+
+  @override
+  String get publicGatheringBlocked => 'Blocked content will no longer be shown.';
+
+  @override
+  String get reportReasonInappropriate => 'Inappropriate content';
+
+  @override
+  String get reportReasonHarassment => 'Harassment';
+
+  @override
+  String get reportReasonDangerous => 'Dangerous behavior';
+
+  @override
+  String get reportReasonSpam => 'Spam or misleading';
+
+  @override
+  String get reportReasonOther => 'Other';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Nearby meetup notifications';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Notify me once when a public meetup within 25 km starts within 24 hours.';
+
+  @override
+  String get publicGatheringUpcoming => 'Upcoming';
+
+  @override
+  String get publicGatheringStarted => 'In progress';
+
+  @override
+  String get aiRouteButton => 'AI route check';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI route analysis';
+
+  @override
+  String get aiConsentTitle => 'Use AI route analysis?';
+
+  @override
+  String get aiConsentBody => 'CruizX uses route facts such as distance, travel time, vehicle type, road names and warning counts to analyze the route. Your exact position, destination coordinates and identity are not shared. The analysis may contain errors and never changes your route.';
+
+  @override
+  String get aiConsentAccept => 'Agree and continue';
+
+  @override
+  String get aiConsentDecline => 'Not now';
+
+  @override
+  String get aiSignInRequired => 'Sign in to use AI route analysis.';
+
+  @override
+  String get aiLoading => 'Checking the route…';
+
+  @override
+  String get aiUnavailable => 'AI route analysis is unavailable right now. Your route is unchanged.';
+
+  @override
+  String get aiDailyLimit => 'You have reached today\'s limit of AI route analyses.';
+
+  @override
+  String get aiHighlights => 'Highlights';
+
+  @override
+  String get aiCautions => 'Things to check';
+
+  @override
+  String get aiRecommendation => 'Recommendation';
+
+  @override
+  String get aiDisclaimer => 'AI summary based only on available route data. Check signs and current road conditions.';
+
+  @override
+  String get aiReport => 'Report answer';
+
+  @override
+  String get aiReportTitle => 'Why are you reporting this answer?';
+
+  @override
+  String get aiReportIncorrect => 'Incorrect information';
+
+  @override
+  String get aiReportUnsafe => 'Unsafe advice';
+
+  @override
+  String get aiReportInappropriate => 'Inappropriate content';
+
+  @override
+  String get aiReportOther => 'Other problem';
+
+  @override
+  String get aiReportSent => 'Thanks. The AI answer has been reported.';
 }

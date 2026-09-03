@@ -62,7 +62,8 @@ class MapWidget extends StatefulWidget {
   /// Sign/type of next maneuver. Used to increase zoom for sharper turns.
   final int? nextManeuverSign;
 
-  static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
+  // Neutral fallback shown only while the app waits for its first GPS fix.
+  static const LatLng _defaultCenter = LatLng(20, 0);
 
   @override
   State<MapWidget> createState() => _MapWidgetState();
@@ -97,6 +98,7 @@ class _MapWidgetState extends State<MapWidget>
   Duration? _lastTickAt;
   Duration? _lastCameraTickAt;
   bool _navInitialized = false;
+  bool _hasCenteredOnInitialLocation = false;
   LatLng? _lastLocForBearing;
   int _lastRouteIdx = 0;
 
@@ -143,6 +145,7 @@ class _MapWidgetState extends State<MapWidget>
       ),
     );
     _markerLocation = widget.locationNotifier.value;
+    _hasCenteredOnInitialLocation = _markerLocation != null;
     _rawCompassHdg = widget.headingNotifier.value;
     _arrowHdg = ValueNotifier<double>(_rawCompassHdg);
     widget.locationNotifier.addListener(_onLocationUpdate);
@@ -283,6 +286,22 @@ class _MapWidgetState extends State<MapWidget>
   void _onLocationUpdate() {
     final loc = widget.locationNotifier.value;
     if (loc == null || !mounted) return;
+
+    if (!widget.followUser &&
+        !_hasCenteredOnInitialLocation &&
+        widget.routePoints.isEmpty) {
+      _hasCenteredOnInitialLocation = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        try {
+          _mapController.move(loc, 14.0);
+        } catch (e) {
+          _hasCenteredOnInitialLocation = false;
+          debugPrint('MapWidget initial GPS centering skipped: $e');
+        }
+      });
+    }
+
     // Update ticker targets (no setState — ticker reads these fields directly).
     if (widget.followUser) {
       if (!_navInitialized) {
@@ -657,12 +676,16 @@ class _MapWidgetState extends State<MapWidget>
           // positioning. No oversized box that would push tiles off-screen.
           final mapHeight = h;
 
+          final initialLocation = widget.locationNotifier.value;
           final mapWidget = FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter:
-                  widget.locationNotifier.value ?? MapWidget._defaultCenter,
-              initialZoom: widget.followUser ? _computeNavZoom() : 12.0,
+              initialCenter: initialLocation ?? MapWidget._defaultCenter,
+              initialZoom: widget.followUser
+                  ? _computeNavZoom()
+                  : initialLocation != null
+                  ? 14.0
+                  : 2.0,
               onTap: (_, point) => widget.onTap?.call(point),
               onPositionChanged: (camera, hasGesture) {
                 if (hasGesture && widget.followUser) {
@@ -793,28 +816,28 @@ class _MapWidgetState extends State<MapWidget>
                   for (final alert in widget.alerts)
                     Marker(
                       point: alert.position,
-                      width: 44,
-                      height: 52,
+                      width: 40,
+                      height: 48,
                       alignment: const Alignment(0, -1),
                       child: _AlertMarker(alert: alert),
                     ),
                   if (widget.destination != null)
                     Marker(
                       point: widget.destination!,
-                      width: 44,
-                      height: 54,
+                      width: 40,
+                      height: 48,
                       alignment: const Alignment(0, -1),
                       child: const _DestinationPin(),
                     ),
                   if (_markerLocation != null && !widget.followUser)
                     Marker(
                       point: _markerLocation!,
-                      width: 40,
-                      height: 40,
+                      width: 36,
+                      height: 36,
                       child: _LocationDot(
                         headingNotifier: _arrowHdg,
                         lockNorthUp: false,
-                        size: 34,
+                        size: 30,
                       ),
                     ),
                 ],
@@ -893,7 +916,7 @@ class _MapWidgetState extends State<MapWidget>
                     child: _LocationDot(
                       headingNotifier: _arrowHdg,
                       lockNorthUp: false,
-                      size: 34,
+                      size: 30,
                     ),
                   ),
                 ),
@@ -955,27 +978,27 @@ class _AlertMarker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 34,
+          height: 34,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(9),
             border: Border.all(color: Colors.white, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: 0.6),
-                blurRadius: 8,
+                blurRadius: 7,
                 spreadRadius: 1,
               ),
             ],
           ),
           child: Center(
-            child: Text(alert.type.emoji, style: const TextStyle(fontSize: 20)),
+            child: Text(alert.type.emoji, style: const TextStyle(fontSize: 18)),
           ),
         ),
         // Small triangle tail.
         CustomPaint(
-          size: const Size(10, 8),
+          size: const Size(9, 7),
           painter: _AlertTailPainter(color: color),
         ),
       ],
@@ -1010,7 +1033,7 @@ class _LocationDot extends StatelessWidget {
   const _LocationDot({
     required this.headingNotifier,
     required this.lockNorthUp,
-    this.size = 34,
+    this.size = 30,
   });
 
   final ValueNotifier<double> headingNotifier;
@@ -1036,8 +1059,8 @@ class _DestinationPin extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFFFF3B30),
@@ -1050,10 +1073,10 @@ class _DestinationPin extends StatelessWidget {
               ),
             ],
           ),
-          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 18),
+          child: const Icon(Icons.flag_rounded, color: Colors.white, size: 16),
         ),
         // Pin tail.
-        CustomPaint(size: const Size(12, 10), painter: _PinTailPainter()),
+        CustomPaint(size: const Size(10, 8), painter: _PinTailPainter()),
       ],
     );
   }

@@ -15,12 +15,25 @@ if (hasReleaseKeystore) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val mapsApiKey =
+    localProperties.getProperty("MAPS_API_KEY")
+        ?: System.getenv("MAPS_API_KEY")
+        ?: "MISSING_MAPS_API_KEY"
+
 android {
     namespace = "com.cruizx.slowride"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android requires API 37. Compile against it while
+    // retaining the existing target SDK and minimum compatibility.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -38,6 +51,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     signingConfigs {
@@ -53,6 +67,15 @@ android {
 
     buildTypes {
         release {
+            // Optimize the Play Store bundle with R8 and remove resources that
+            // are unreachable from the optimized release code.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+
             // Use release keystore if available, otherwise keep debug signing for local builds.
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
@@ -65,4 +88,15 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation("androidx.core:core-ktx:1.18.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Keep the app on the latest Google Play Billing Library even when the
+    // Flutter IAP plugin still declares an older compatible version.
+    implementation("com.android.billingclient:billing:9.1.0")
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
+    implementation("androidx.car.app:app:1.7.0")
+    implementation("androidx.car.app:app-projected:1.7.0")
 }

@@ -260,6 +260,76 @@ class ParentService {
     }
   }
 
+  static String? _stringOrNull(Object? value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
+  }
+
+  static Map<String, dynamic>? _mapOrNull(Object? value) {
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return null;
+  }
+
+  static DateTime? _dateTimeOrNull(Object? value) {
+    final text = _stringOrNull(value);
+    if (text == null) return null;
+    return DateTime.tryParse(text);
+  }
+
+  static LatLng? _latLngOrNull(Object? value) {
+    final map = _mapOrNull(value);
+    final lat = (map?['lat'] as num?)?.toDouble();
+    final lng = (map?['lng'] as num?)?.toDouble();
+    if (lat == null || lng == null) return null;
+    return LatLng(lat, lng);
+  }
+
+  @visibleForTesting
+  static LinkedChild? parseLinkedChildRow(Map<String, dynamic> row) {
+    final childId = _stringOrNull(row['child_id']);
+    final linkedAt = _dateTimeOrNull(row['linked_at']);
+    if (childId == null || linkedAt == null) return null;
+
+    final profile = _mapOrNull(row['profiles']);
+    final share = _mapOrNull(row['parent_shares']);
+
+    return LinkedChild(
+      id: childId,
+      email: _stringOrNull(profile?['email']) ?? '',
+      name: _stringOrNull(profile?['display_name']),
+      linkedAt: linkedAt,
+      location: _latLngOrNull(share?['last_location']),
+      speedKmh: (share?['last_speed_kmh'] as num?)?.toDouble(),
+      isDriving: share?['is_driving'] as bool? ?? false,
+      lastUpdate: _dateTimeOrNull(share?['last_update']),
+    );
+  }
+
+  @visibleForTesting
+  static ParentAlert? parseParentAlertRow(
+    Map<String, dynamic> row, {
+    required Map<String, String> childMap,
+  }) {
+    final id = _stringOrNull(row['id']);
+    final childId = _stringOrNull(row['child_id']);
+    final type = _stringOrNull(row['type']);
+    final createdAt = _dateTimeOrNull(row['created_at']);
+    if (id == null || childId == null || type == null || createdAt == null) {
+      return null;
+    }
+
+    return ParentAlert(
+      id: id,
+      childId: childId,
+      childName: childMap[childId] ?? 'Unknown',
+      type: type,
+      data: _mapOrNull(row['data']) ?? const {},
+      createdAt: createdAt,
+    );
+  }
+
   /// Enable parent sharing and generate invite code.
   Future<String> enableSharing() async {
     if (!AuthService.instance.isLoggedIn.value) {
@@ -354,7 +424,8 @@ class ParentService {
 
       if (shareResponse == null) return 'not_found';
 
-      final childId = shareResponse['user_id'] as String;
+      final childId = _stringOrNull(shareResponse['user_id']);
+      if (childId == null) return 'error';
 
       // Don't allow linking to yourself.
       if (childId == parentId) return 'self';
@@ -403,35 +474,10 @@ class ParentService {
 
       final children = <LinkedChild>[];
       for (final row in response as List) {
-        final profile = row['profiles'] as Map<String, dynamic>?;
-        final share = row['parent_shares'] as Map<String, dynamic>?;
-        final locData = share?['last_location'] as Map<String, dynamic>?;
-
-        LatLng? location;
-        if (locData != null) {
-          location = LatLng(
-            (locData['lat'] as num).toDouble(),
-            (locData['lng'] as num).toDouble(),
-          );
-        }
-
-        DateTime? lastUpdate;
-        if (share?['last_update'] != null) {
-          lastUpdate = DateTime.tryParse(share!['last_update'] as String);
-        }
-
-        children.add(
-          LinkedChild(
-            id: row['child_id'] as String,
-            email: profile?['email'] as String? ?? '',
-            name: profile?['display_name'] as String?,
-            linkedAt: DateTime.parse(row['linked_at'] as String),
-            location: location,
-            speedKmh: (share?['last_speed_kmh'] as num?)?.toDouble(),
-            isDriving: share?['is_driving'] as bool? ?? false,
-            lastUpdate: lastUpdate,
-          ),
+        final parsed = parseLinkedChildRow(
+          Map<String, dynamic>.from(row as Map),
         );
+        if (parsed != null) children.add(parsed);
       }
       linkedChildren.value = children;
     } catch (e) {
@@ -469,10 +515,13 @@ class ParentService {
 
       final childMap = <String, String>{};
       for (final link in links as List) {
-        final profile = link['profiles'] as Map<String, dynamic>?;
-        childMap[link['child_id'] as String] =
-            profile?['display_name'] as String? ??
-            (profile?['email'] as String?)?.split('@').first ??
+        final map = Map<String, dynamic>.from(link as Map);
+        final childId = _stringOrNull(map['child_id']);
+        if (childId == null) continue;
+        final profile = _mapOrNull(map['profiles']);
+        childMap[childId] =
+            _stringOrNull(profile?['display_name']) ??
+            _stringOrNull(profile?['email'])?.split('@').first ??
             'Unknown';
       }
 
@@ -493,16 +542,11 @@ class ParentService {
 
       final alertList = <ParentAlert>[];
       for (final row in response as List) {
-        alertList.add(
-          ParentAlert(
-            id: row['id'] as String,
-            childId: row['child_id'] as String,
-            childName: childMap[row['child_id']] ?? 'Unknown',
-            type: row['type'] as String,
-            data: Map<String, dynamic>.from(row['data'] as Map),
-            createdAt: DateTime.parse(row['created_at'] as String),
-          ),
+        final parsed = parseParentAlertRow(
+          Map<String, dynamic>.from(row as Map),
+          childMap: childMap,
         );
+        if (parsed != null) alertList.add(parsed);
       }
       alerts.value = alertList;
     } catch (e) {

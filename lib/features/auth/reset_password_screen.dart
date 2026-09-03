@@ -347,7 +347,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               ),
               validator: (v) {
                 if (v == null || v.isEmpty) return l10n.authPasswordRequired;
-                if (v.length < 6) return l10n.authErrorPasswordTooShort;
+                if (v.length < 6 ||
+                    !RegExp(r'\d').hasMatch(v) ||
+                    !RegExp('[^A-Za-z0-9]').hasMatch(v)) {
+                  return l10n.authErrorPasswordTooShort;
+                }
                 return null;
               },
             ),

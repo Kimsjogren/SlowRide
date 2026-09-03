@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+**/.wrangler/
 
 # Symbolication related
 app.*.symbols
@@ -44,3 +45,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 website/assets/downloads/*.apk
+/supabase/.temp/
+# Widget Preview related
+.widget_preview/

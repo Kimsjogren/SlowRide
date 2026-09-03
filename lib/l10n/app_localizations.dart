@@ -10,6 +10,7 @@ import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fi.dart';
 import 'app_localizations_fr.dart';
+import 'app_localizations_it.dart';
 import 'app_localizations_nb.dart';
 import 'app_localizations_sv.dart';
 
@@ -101,6 +102,7 @@ abstract class AppLocalizations {
     Locale('es'),
     Locale('fi'),
     Locale('fr'),
+    Locale('it'),
     Locale('nb'),
     Locale('sv')
   ];
@@ -180,8 +182,110 @@ abstract class AppLocalizations {
   /// No description provided for @splashVersionLine.
   ///
   /// In en, this message translates to:
-  /// **'v1.1.1 | CruizX by KimTechTool'**
+  /// **'v1.1.9 | CruizX by KimTechTool'**
   String get splashVersionLine;
+
+  /// No description provided for @a11yCenterOnLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Center the map on my location'**
+  String get a11yCenterOnLocation;
+
+  /// No description provided for @a11yStopFollowingLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop following my location'**
+  String get a11yStopFollowingLocation;
+
+  /// No description provided for @a11ySwitchTo2d.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to 2D map'**
+  String get a11ySwitchTo2d;
+
+  /// No description provided for @a11ySwitchTo3d.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to 3D map'**
+  String get a11ySwitchTo3d;
+
+  /// No description provided for @a11yUseDarkMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Use dark map'**
+  String get a11yUseDarkMap;
+
+  /// No description provided for @a11yUseLightMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Use light map'**
+  String get a11yUseLightMap;
+
+  /// No description provided for @a11yChooseMapLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose map style'**
+  String get a11yChooseMapLayer;
+
+  /// No description provided for @mapLayerStyleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map style'**
+  String get mapLayerStyleTitle;
+
+  /// No description provided for @mapLayerStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get mapLayerStandard;
+
+  /// No description provided for @mapLayerSatellite.
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite'**
+  String get mapLayerSatellite;
+
+  /// No description provided for @a11yEnableVoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on voice navigation'**
+  String get a11yEnableVoiceNavigation;
+
+  /// No description provided for @a11yDisableVoiceNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off voice navigation'**
+  String get a11yDisableVoiceNavigation;
+
+  /// No description provided for @a11yDismissAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss the alert'**
+  String get a11yDismissAlert;
+
+  /// No description provided for @a11yClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the search'**
+  String get a11yClearSearch;
+
+  /// No description provided for @a11yOpenSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Open address search'**
+  String get a11yOpenSearch;
+
+  /// No description provided for @a11yAddFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Add favorite place'**
+  String get a11yAddFavorite;
+
+  /// No description provided for @a11yConfirmAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm the alert'**
+  String get a11yConfirmAlert;
 
   /// No description provided for @alertsTitle.
   ///
@@ -360,7 +464,7 @@ abstract class AppLocalizations {
   /// No description provided for @authPasswordMinLength.
   ///
   /// In en, this message translates to:
-  /// **'At least 6 characters'**
+  /// **'At least 6 characters, a number and a special character'**
   String get authPasswordMinLength;
 
   /// No description provided for @authConfirmPasswordLabel.
@@ -480,14 +584,26 @@ abstract class AppLocalizations {
   /// No description provided for @authErrorPasswordTooShort.
   ///
   /// In en, this message translates to:
-  /// **'Password must be at least 6 characters.'**
+  /// **'Password must be at least 6 characters and include a number and a special character.'**
   String get authErrorPasswordTooShort;
 
   /// No description provided for @authErrorConfirmEmail.
   ///
   /// In en, this message translates to:
-  /// **'Check your email to confirm your account, then sign in.'**
+  /// **'Check your email to confirm your account. If the account already exists, no new confirmation email is sent – sign in or reset the password.'**
   String get authErrorConfirmEmail;
+
+  /// No description provided for @authEmailConfirmedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email confirmed'**
+  String get authEmailConfirmedTitle;
+
+  /// No description provided for @authEmailConfirmedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email address has been confirmed. You are now signed in.'**
+  String get authEmailConfirmedBody;
 
   /// No description provided for @authErrorEmailAndPasswordRequired.
   ///
@@ -506,6 +622,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An account with that email already exists.'**
   String get authErrorEmailAlreadyInUse;
+
+  /// No description provided for @authErrorInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'The email address is invalid. Check it and try again.'**
+  String get authErrorInvalidEmail;
+
+  /// No description provided for @authErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts in a short time. Wait a moment and try again.'**
+  String get authErrorRateLimited;
+
+  /// No description provided for @authErrorSignUpDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'New accounts cannot be created right now. Contact CruizX Support.'**
+  String get authErrorSignUpDisabled;
+
+  /// No description provided for @authErrorEmailDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The confirmation email could not be sent. Please try again shortly.'**
+  String get authErrorEmailDeliveryFailed;
+
+  /// No description provided for @authErrorNetworkUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the account service. Check your internet connection and try again.'**
+  String get authErrorNetworkUnavailable;
 
   /// No description provided for @convoyRealtimeBackendMissing.
   ///
@@ -1053,6 +1199,12 @@ abstract class AppLocalizations {
   /// **'Spanish'**
   String get settingsLanguageSpanish;
 
+  /// No description provided for @settingsLanguageItalian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get settingsLanguageItalian;
+
   /// No description provided for @settingsCountryLabel.
   ///
   /// In en, this message translates to:
@@ -1094,6 +1246,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'🇪🇸 Spain'**
   String get settingsCountrySpain;
+
+  /// No description provided for @settingsCountryItaly.
+  ///
+  /// In en, this message translates to:
+  /// **'🇮🇹 Italy'**
+  String get settingsCountryItaly;
 
   /// No description provided for @settingsCountryUnitedKingdom.
   ///
@@ -1137,11 +1295,47 @@ abstract class AppLocalizations {
   /// **'Moped car'**
   String get settingsVehicleMopedCar;
 
+  /// No description provided for @settingsVehicleMopedClassI.
+  ///
+  /// In en, this message translates to:
+  /// **'Class I moped'**
+  String get settingsVehicleMopedClassI;
+
+  /// No description provided for @settingsVehicleMopedClassII.
+  ///
+  /// In en, this message translates to:
+  /// **'Class II moped (25 km/h)'**
+  String get settingsVehicleMopedClassII;
+
+  /// No description provided for @settingsVehicleElectricScooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Electric scooter'**
+  String get settingsVehicleElectricScooter;
+
+  /// No description provided for @settingsElectricScooterLegalNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Only use a road-legal electric scooter where local rules permit it. Signs, municipal rules and rental zones always take priority over the route.'**
+  String get settingsElectricScooterLegalNotice;
+
+  /// No description provided for @settingsEscooterRentalOnlyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'In the UK, only approved rental e-scooters are legal on public roads. Private e-scooters may only be used on private land with the landowner’s permission.'**
+  String get settingsEscooterRentalOnlyNotice;
+
   /// No description provided for @settingsVehicleTractor.
   ///
   /// In en, this message translates to:
   /// **'Tractor'**
   String get settingsVehicleTractor;
+
+  /// No description provided for @settingsVehicleCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get settingsVehicleCar;
 
   /// No description provided for @settingsSpeedUnitKmh.
   ///
@@ -1194,7 +1388,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProFeatureRoutes.
   ///
   /// In en, this message translates to:
-  /// **'Unlimited routes'**
+  /// **'More AI route analyses'**
   String get settingsProFeatureRoutes;
 
   /// No description provided for @settingsProFeatureConvoy.
@@ -1236,7 +1430,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsProOneTimeNote.
   ///
   /// In en, this message translates to:
-  /// **'One-time purchase: CruizX Pro (lifetime). Payment is charged once to your Apple ID. No subscription and no auto-renewal.'**
+  /// **'One-time purchase: CruizX Pro (lifetime). Payment is charged once through the app store. No subscription and no auto-renewal.'**
   String get settingsProOneTimeNote;
 
   /// No description provided for @settingsPrivacyPolicyLabel.
@@ -1256,6 +1450,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Support'**
   String get settingsSupportLabel;
+
+  /// No description provided for @supportChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live support chat'**
+  String get supportChatTitle;
+
+  /// No description provided for @supportChatReplyTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Replies within 24 hours'**
+  String get supportChatReplyTime;
+
+  /// No description provided for @supportChatWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi! How can we help you with CruizX? Send your message here and we will get back to you as soon as we can.'**
+  String get supportChatWelcome;
+
+  /// No description provided for @supportChatGuestNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'You are chatting as a guest. This conversation is stored privately on this device.'**
+  String get supportChatGuestNotice;
+
+  /// No description provided for @supportChatLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to start a private support chat and view your previous messages.'**
+  String get supportChatLoginRequired;
+
+  /// No description provided for @supportChatLoginAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get supportChatLoginAction;
+
+  /// No description provided for @supportChatMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a message…'**
+  String get supportChatMessageHint;
+
+  /// No description provided for @supportChatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send message'**
+  String get supportChatSend;
+
+  /// No description provided for @supportChatSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The message could not be sent. Please try again.'**
+  String get supportChatSendFailed;
+
+  /// No description provided for @supportChatUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Support chat is currently unavailable. Please try again later.'**
+  String get supportChatUnavailable;
+
+  /// No description provided for @supportChatTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Support'**
+  String get supportChatTeam;
+
+  /// No description provided for @supportChatYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get supportChatYou;
+
+  /// No description provided for @supportAssistantTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX Help Assistant'**
+  String get supportAssistantTitle;
+
+  /// No description provided for @supportAssistantIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Get an instant answer from CruizX\'s prepared help guide, even without internet.'**
+  String get supportAssistantIntro;
+
+  /// No description provided for @supportAssistantSuggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Common questions'**
+  String get supportAssistantSuggestions;
+
+  /// No description provided for @supportAssistantNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'I could not find a reliable prepared answer. You can forward the question to CruizX Support.'**
+  String get supportAssistantNoMatch;
+
+  /// No description provided for @supportAssistantContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to support'**
+  String get supportAssistantContact;
+
+  /// No description provided for @supportAssistantForwarded.
+  ///
+  /// In en, this message translates to:
+  /// **'The question was sent to CruizX Support.'**
+  String get supportAssistantForwarded;
+
+  /// No description provided for @supportAssistantHumanUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepared answers work offline, but human support requires internet.'**
+  String get supportAssistantHumanUnavailable;
 
   /// No description provided for @settingsLinkOpenFailed.
   ///
@@ -1388,6 +1696,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'BMW'**
   String get settingsMapMarkerBmw;
+
+  /// No description provided for @settingsMapMarkerMopeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Mopeds'**
+  String get settingsMapMarkerMopeds;
+
+  /// No description provided for @settingsMapMarkerScooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Scooter'**
+  String get settingsMapMarkerScooter;
+
+  /// No description provided for @settingsMapMarkerCrossMoped.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross moped'**
+  String get settingsMapMarkerCrossMoped;
 
   /// No description provided for @settingsMapMarkerTractor.
   ///
@@ -1692,7 +2018,7 @@ abstract class AppLocalizations {
   /// No description provided for @routeFallbackBody.
   ///
   /// In en, this message translates to:
-  /// **'We found a possible route, but it could not be fully verified for your {vehicleType}. It may include roads that need checking. Always follow signs and local rules.'**
+  /// **'This route cannot be verified as legal for your {vehicleType} and may include restricted roads, such as motorways. Always follow signs and local rules. You use this route at your own risk; CruizX cannot guarantee the road choice and is not responsible for driving on this route.'**
   String routeFallbackBody(Object vehicleType);
 
   /// No description provided for @routeFallbackCancel.
@@ -1704,13 +2030,13 @@ abstract class AppLocalizations {
   /// No description provided for @routeFallbackUse.
   ///
   /// In en, this message translates to:
-  /// **'Show anyway'**
+  /// **'I understand – show route'**
   String get routeFallbackUse;
 
   /// No description provided for @routeFallbackActive.
   ///
   /// In en, this message translates to:
-  /// **'Unverified route – always follow signs'**
+  /// **'Unverified – own risk, follow signs'**
   String get routeFallbackActive;
 
   /// No description provided for @routeOptionsTitle.
@@ -1752,7 +2078,7 @@ abstract class AppLocalizations {
   /// No description provided for @routeOptionUnverifiedSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Cannot be fully verified for your {vehicleType}. Check signs before driving.'**
+  /// **'May include restricted roads for your {vehicleType}. Use at your own risk.'**
   String routeOptionUnverifiedSubtitle(Object vehicleType);
 
   /// No description provided for @routeOptionChoose.
@@ -1770,8 +2096,56 @@ abstract class AppLocalizations {
   /// No description provided for @routeOptionWarningFooter.
   ///
   /// In en, this message translates to:
-  /// **'CruizX never automatically approves restricted roads. Always follow signs and local rules.'**
+  /// **'Unverified routes are used at your own risk. CruizX cannot guarantee the road choice. Always follow signs and local rules.'**
   String get routeOptionWarningFooter;
+
+  /// No description provided for @trafficRerouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster route found'**
+  String get trafficRerouteTitle;
+
+  /// No description provided for @trafficRerouteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX compared live traffic across verified roads for your {vehicleType}. The new route is estimated to save about {minutes} min and avoids part of the current congestion.'**
+  String trafficRerouteBody(Object vehicleType, Object minutes);
+
+  /// No description provided for @trafficRerouteKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current route'**
+  String get trafficRerouteKeep;
+
+  /// No description provided for @trafficRerouteUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch route'**
+  String get trafficRerouteUse;
+
+  /// No description provided for @trafficRerouteApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster route selected – saves about {minutes} min'**
+  String trafficRerouteApplied(Object minutes);
+
+  /// No description provided for @trafficRerouteVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'A faster verified route was found. It saves about {minutes} minutes.'**
+  String trafficRerouteVoice(Object minutes);
+
+  /// No description provided for @trafficWarningBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic ahead – about {minutes} min delay'**
+  String trafficWarningBanner(Object minutes);
+
+  /// No description provided for @trafficWarningVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic congestion ahead. About {minutes} minutes of extra travel time.'**
+  String trafficWarningVoice(Object minutes);
 
   /// No description provided for @mapModeLabel2d.
   ///
@@ -1796,6 +2170,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Toward {road}'**
   String mapManeuverTowardRoad(Object road);
+
+  /// No description provided for @mapManeuverGenericCycleway.
+  ///
+  /// In en, this message translates to:
+  /// **'the cycleway'**
+  String get mapManeuverGenericCycleway;
+
+  /// No description provided for @mapManeuverGenericFootway.
+  ///
+  /// In en, this message translates to:
+  /// **'the footway'**
+  String get mapManeuverGenericFootway;
+
+  /// No description provided for @mapManeuverGenericPath.
+  ///
+  /// In en, this message translates to:
+  /// **'the path'**
+  String get mapManeuverGenericPath;
+
+  /// No description provided for @mapManeuverGenericRoad.
+  ///
+  /// In en, this message translates to:
+  /// **'the road'**
+  String get mapManeuverGenericRoad;
 
   /// No description provided for @mapSimulateButton.
   ///
@@ -2115,6 +2513,12 @@ abstract class AppLocalizations {
   /// **'Upgrade to Pro'**
   String get paywallUpgradeButton;
 
+  /// No description provided for @paywallLifetimeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy Pro permanently · {price}'**
+  String paywallLifetimeButton(Object price);
+
   /// No description provided for @paywallRestoreButton.
   ///
   /// In en, this message translates to:
@@ -2136,7 +2540,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPriceOneTime.
   ///
   /// In en, this message translates to:
-  /// **'79 kr'**
+  /// **'249 kr'**
   String get paywallPriceOneTime;
 
   /// No description provided for @paywallDisclosureOneTime.
@@ -2172,13 +2576,13 @@ abstract class AppLocalizations {
   /// No description provided for @paywallFeatureRoutes.
   ///
   /// In en, this message translates to:
-  /// **'Routes per day'**
+  /// **'Navigation routes'**
   String get paywallFeatureRoutes;
 
   /// No description provided for @paywallFreeRouteLimit.
   ///
   /// In en, this message translates to:
-  /// **'4 routes'**
+  /// **'Unlimited'**
   String get paywallFreeRouteLimit;
 
   /// No description provided for @paywallProRouteLimit.
@@ -2226,14 +2630,26 @@ abstract class AppLocalizations {
   /// No description provided for @paywallRouteLimitTitle.
   ///
   /// In en, this message translates to:
-  /// **'Route limit reached'**
+  /// **'Unlimited routes'**
   String get paywallRouteLimitTitle;
 
   /// No description provided for @paywallRouteLimitBody.
   ///
   /// In en, this message translates to:
-  /// **'Free users can calculate 4 routes per day. Upgrade to Pro for unlimited navigation.'**
+  /// **'Navigation routes are unlimited in the Free version too.'**
   String get paywallRouteLimitBody;
+
+  /// No description provided for @routeUpgradePromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without ads?'**
+  String get routeUpgradePromptTitle;
+
+  /// No description provided for @routeUpgradePromptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have created two routes today. Free includes unlimited routes, while Pro removes ads and unlocks more features. Would you like to upgrade?'**
+  String get routeUpgradePromptBody;
 
   /// No description provided for @paywallConvoyLimitTitle.
   ///
@@ -2322,8 +2738,8 @@ abstract class AppLocalizations {
   /// No description provided for @profileRoutesUsed.
   ///
   /// In en, this message translates to:
-  /// **'Routes today: {count} / {max}'**
-  String profileRoutesUsed(Object count, Object max);
+  /// **'Routes today: {count}'**
+  String profileRoutesUsed(Object count);
 
   /// No description provided for @profileChangePhoto.
   ///
@@ -2960,6 +3376,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Standard — fast and offline-cached'**
   String get settingsVectorMapOff;
+
+  /// No description provided for @publicGatheringStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get publicGatheringStartTime;
+
+  /// No description provided for @publicGatheringEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get publicGatheringEndTime;
+
+  /// No description provided for @publicGatheringScheduleInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The end time must be after the start time.'**
+  String get publicGatheringScheduleInvalid;
+
+  /// No description provided for @publicGatheringEndAction.
+  ///
+  /// In en, this message translates to:
+  /// **'End meetup'**
+  String get publicGatheringEndAction;
+
+  /// No description provided for @publicGatheringDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete meetup'**
+  String get publicGatheringDeleteAction;
+
+  /// No description provided for @publicGatheringEndConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'End the meetup now? Participants will no longer be able to find it.'**
+  String get publicGatheringEndConfirm;
+
+  /// No description provided for @publicGatheringDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete this meetup? This cannot be undone.'**
+  String get publicGatheringDeleteConfirm;
+
+  /// No description provided for @publicGatheringReportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Report meetup'**
+  String get publicGatheringReportAction;
+
+  /// No description provided for @publicGatheringBlockAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Block meetup'**
+  String get publicGatheringBlockAction;
+
+  /// No description provided for @publicGatheringReportParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Report participant'**
+  String get publicGatheringReportParticipant;
+
+  /// No description provided for @publicGatheringBlockParticipant.
+  ///
+  /// In en, this message translates to:
+  /// **'Block participant'**
+  String get publicGatheringBlockParticipant;
+
+  /// No description provided for @publicGatheringReportReason.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to report?'**
+  String get publicGatheringReportReason;
+
+  /// No description provided for @publicGatheringReportSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your report has been sent.'**
+  String get publicGatheringReportSent;
+
+  /// No description provided for @publicGatheringBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked content will no longer be shown.'**
+  String get publicGatheringBlocked;
+
+  /// No description provided for @reportReasonInappropriate.
+  ///
+  /// In en, this message translates to:
+  /// **'Inappropriate content'**
+  String get reportReasonInappropriate;
+
+  /// No description provided for @reportReasonHarassment.
+  ///
+  /// In en, this message translates to:
+  /// **'Harassment'**
+  String get reportReasonHarassment;
+
+  /// No description provided for @reportReasonDangerous.
+  ///
+  /// In en, this message translates to:
+  /// **'Dangerous behavior'**
+  String get reportReasonDangerous;
+
+  /// No description provided for @reportReasonSpam.
+  ///
+  /// In en, this message translates to:
+  /// **'Spam or misleading'**
+  String get reportReasonSpam;
+
+  /// No description provided for @reportReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get reportReasonOther;
+
+  /// No description provided for @publicGatheringNearbyNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby meetup notifications'**
+  String get publicGatheringNearbyNotifications;
+
+  /// No description provided for @publicGatheringNearbyNotificationsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify me once when a public meetup within 25 km starts within 24 hours.'**
+  String get publicGatheringNearbyNotificationsSubtitle;
+
+  /// No description provided for @publicGatheringUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get publicGatheringUpcoming;
+
+  /// No description provided for @publicGatheringStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get publicGatheringStarted;
+
+  /// No description provided for @aiRouteButton.
+  ///
+  /// In en, this message translates to:
+  /// **'AI route check'**
+  String get aiRouteButton;
+
+  /// No description provided for @aiRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX AI route analysis'**
+  String get aiRouteTitle;
+
+  /// No description provided for @aiConsentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use AI route analysis?'**
+  String get aiConsentTitle;
+
+  /// No description provided for @aiConsentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'CruizX uses route facts such as distance, travel time, vehicle type, road names and warning counts to analyze the route. Your exact position, destination coordinates and identity are not shared. The analysis may contain errors and never changes your route.'**
+  String get aiConsentBody;
+
+  /// No description provided for @aiConsentAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Agree and continue'**
+  String get aiConsentAccept;
+
+  /// No description provided for @aiConsentDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get aiConsentDecline;
+
+  /// No description provided for @aiSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to use AI route analysis.'**
+  String get aiSignInRequired;
+
+  /// No description provided for @aiLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the route…'**
+  String get aiLoading;
+
+  /// No description provided for @aiUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'AI route analysis is unavailable right now. Your route is unchanged.'**
+  String get aiUnavailable;
+
+  /// No description provided for @aiDailyLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reached today\'s limit of AI route analyses.'**
+  String get aiDailyLimit;
+
+  /// No description provided for @aiHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get aiHighlights;
+
+  /// No description provided for @aiCautions.
+  ///
+  /// In en, this message translates to:
+  /// **'Things to check'**
+  String get aiCautions;
+
+  /// No description provided for @aiRecommendation.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommendation'**
+  String get aiRecommendation;
+
+  /// No description provided for @aiDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'AI summary based only on available route data. Check signs and current road conditions.'**
+  String get aiDisclaimer;
+
+  /// No description provided for @aiReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report answer'**
+  String get aiReport;
+
+  /// No description provided for @aiReportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Why are you reporting this answer?'**
+  String get aiReportTitle;
+
+  /// No description provided for @aiReportIncorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect information'**
+  String get aiReportIncorrect;
+
+  /// No description provided for @aiReportUnsafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsafe advice'**
+  String get aiReportUnsafe;
+
+  /// No description provided for @aiReportInappropriate.
+  ///
+  /// In en, this message translates to:
+  /// **'Inappropriate content'**
+  String get aiReportInappropriate;
+
+  /// No description provided for @aiReportOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other problem'**
+  String get aiReportOther;
+
+  /// No description provided for @aiReportSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. The AI answer has been reported.'**
+  String get aiReportSent;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
@@ -2971,7 +3651,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'nb', 'sv'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['da', 'en', 'es', 'fi', 'fr', 'it', 'nb', 'sv'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2987,6 +3667,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
     case 'es': return AppLocalizationsEs();
     case 'fi': return AppLocalizationsFi();
     case 'fr': return AppLocalizationsFr();
+    case 'it': return AppLocalizationsIt();
     case 'nb': return AppLocalizationsNb();
     case 'sv': return AppLocalizationsSv();
   }

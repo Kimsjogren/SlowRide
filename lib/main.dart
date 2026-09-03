@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:slowride/l10n/app_localizations.dart';
 import 'package:slowride/core/theme/app_theme.dart';
 import 'package:slowride/features/convoy/convoy_screen.dart';
@@ -10,8 +12,10 @@ import 'package:slowride/features/settings/settings_screen.dart';
 import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/tts_service.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/carplay_bridge_service.dart';
 import 'package:slowride/services/firebase_service.dart';
 import 'package:slowride/services/navigation_request_service.dart';
+import 'package:slowride/services/public_gathering_notification_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/subscription_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
@@ -19,6 +23,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
@@ -28,7 +33,7 @@ Future<void> main() async {
 
   PlatformDispatcher.instance.onError = (error, stack) {
     debugPrint('PlatformDispatcher error: $error\n$stack');
-    return false;
+    return true;
   };
 
   try {
@@ -40,6 +45,11 @@ Future<void> main() async {
     await SupabaseService.instance.initialize();
   } catch (e, st) {
     debugPrint('Supabase init error: $e\n$st');
+  }
+  try {
+    await CarPlayBridgeService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('CarPlay bridge init error: $e\n$st');
   }
   runApp(const CruizXApp());
 }
@@ -65,10 +75,15 @@ class _CruizXAppState extends State<CruizXApp> {
   void _startAuthListener() {
     if (!SupabaseService.instance.isEnabled) return;
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (data) {
+      (data) async {
         debugPrint(
           'Auth event: ${data.event}, session: ${data.session != null}',
         );
+        final emailWasConfirmed = await AuthService.instance
+            .handleAuthStateChange(data);
+        if (emailWasConfirmed) {
+          _showEmailConfirmedDialog();
+        }
         // Password recovery is handled fully in-app via the OTP reset sheet,
         // so we intentionally do not navigate here (avoids a duplicate reset
         // screen and unnecessary MFA prompts).
@@ -78,6 +93,29 @@ class _CruizXAppState extends State<CruizXApp> {
         _showErrorDialog(e.toString());
       },
     );
+  }
+
+  void _showEmailConfirmedDialog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ctx = navigatorKey.currentContext;
+      if (ctx == null) return;
+      final l10n = AppLocalizations.of(ctx)!;
+      await showDialog<void>(
+        context: ctx,
+        builder: (_) => AlertDialog(
+          title: Text(l10n.authEmailConfirmedTitle),
+          content: Text(l10n.authEmailConfirmedBody),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.routeBlockedOk),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    });
   }
 
   void _showErrorDialog(String message) {
@@ -141,11 +179,13 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
 
   int _progress = 0;
   String _startupStatus = '';
+  String _versionLine = '';
   bool _defaultsInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadVersionLine());
     _runStartupProgress();
   }
 
@@ -158,7 +198,26 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     }
 
     _startupStatus = AppLocalizations.of(context)!.splashPreparingStartup;
+    if (_versionLine.isEmpty) {
+      _versionLine = AppLocalizations.of(context)!.splashVersionLine;
+    }
     _defaultsInitialized = true;
+  }
+
+  Future<void> _loadVersionLine() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      final localizedLine = AppLocalizations.of(context)!.splashVersionLine;
+      setState(() {
+        _versionLine = localizedLine.replaceFirst(
+          RegExp(r'v\d+\.\d+\.\d+'),
+          'v${packageInfo.version}',
+        );
+      });
+    } catch (_) {
+      // Keep the localized fallback if package metadata is unavailable.
+    }
   }
 
   Future<void> _runStartupProgress() async {
@@ -187,6 +246,9 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
     _updateStartupStatus(l10n.splashInitializingAccountSession);
     try {
       await AuthService.instance.initialize();
+    } catch (_) {}
+    try {
+      await PublicGatheringNotificationService.instance.initialize();
     } catch (_) {}
     await _setProgress(58);
 
@@ -247,10 +309,12 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     final size = MediaQuery.sizeOf(context);
-    final logoWidth = size.width * 0.82;
-    final barWidth = size.width * 0.62;
+    final isCompactHeight = size.height < 500;
+    final logoWidth = isCompactHeight ? size.width * 0.48 : size.width * 0.82;
+    final logoHeight = isCompactHeight ? size.height * 0.2 : size.height * 0.28;
+    final barWidth = isCompactHeight ? size.width * 0.48 : size.width * 0.62;
+    final horizontalPadding = isCompactHeight ? 20.0 : 32.0;
 
     return Scaffold(
       body: Stack(
@@ -261,40 +325,55 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
           // Centered logo + progress section
           Align(
             alignment: Alignment.center,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset('assets/logga_nobg.png', width: logoWidth),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: barWidth,
-                  child: LinearProgressIndicator(
-                    value: _progress / 100,
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(999),
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF37C871),
+            child: SafeArea(
+              minimum: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: logoWidth,
+                        maxHeight: logoHeight,
+                      ),
+                      child: Image.asset(
+                        'assets/logga_nobg.png',
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                  ),
+                    SizedBox(height: isCompactHeight ? 8 : 12),
+                    SizedBox(
+                      width: barWidth,
+                      child: LinearProgressIndicator(
+                        value: _progress / 100,
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(999),
+                        backgroundColor: Colors.white.withValues(alpha: 0.25),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF37C871),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '$_progress%',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _startupStatus,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  '$_progress%',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _startupStatus,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+              ),
             ),
           ),
           // Version text bottom-right
@@ -302,7 +381,7 @@ class _StartupSplashScreenState extends State<StartupSplashScreen> {
             right: 40,
             bottom: 12,
             child: Text(
-              AppLocalizations.of(context)!.splashVersionLine,
+              _versionLine,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: Colors.white.withValues(alpha: 0.75),
               ),
@@ -342,8 +421,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _onNavigationRequest() {
-    final dest = NavigationRequestService.instance.pendingDestination.value;
-    if (dest != null && mounted) {
+    final request = NavigationRequestService.instance.pendingDestination.value;
+    if (request != null && mounted) {
       setState(() => _index = 0);
     }
   }
@@ -388,22 +467,19 @@ class _AppShellState extends State<AppShell> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: pages[_index],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _index,
-          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-          destinations: destinations,
-          onDestinationSelected: (value) {
-            if (value == 1 && _index != 1) {
-              // Convoy tab — show interstitial for free users first
-              AdService.instance.showConvoyInterstitial(
-                onDone: () {
-                  if (mounted) setState(() => _index = 1);
-                },
-              );
-            } else {
-              setState(() => _index = value);
-            }
-          },
+        bottomNavigationBar: ValueListenableBuilder<bool>(
+          valueListenable: CarPlayBridgeService.instance.companionMode,
+          builder: (context, companionMode, _) => companionMode
+              ? const SizedBox.shrink()
+              : NavigationBar(
+                  selectedIndex: _index,
+                  labelBehavior:
+                      NavigationDestinationLabelBehavior.onlyShowSelected,
+                  destinations: destinations,
+                  onDestinationSelected: (value) {
+                    setState(() => _index = value);
+                  },
+                ),
         ),
       ),
     );

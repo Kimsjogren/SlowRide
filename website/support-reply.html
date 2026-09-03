@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="referrer" content="no-referrer">
+    <title>CruizX Support</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #061027;
+        --panel: rgba(10, 27, 65, 0.94);
+        --line: rgba(255, 255, 255, 0.14);
+        --text: #f4f8ff;
+        --muted: rgba(244, 248, 255, 0.68);
+        --blue: #1e6bff;
+        --support: #17345d;
+        --danger: #ff6b7a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        color: var(--text);
+        font-family: "SF Pro Display", "Segoe UI", Arial, sans-serif;
+        background:
+          linear-gradient(rgba(3, 10, 27, 0.72), rgba(3, 10, 27, 0.92)),
+          url("./assets/background.png") center/cover fixed no-repeat;
+      }
+      main {
+        width: min(760px, calc(100% - 24px));
+        margin: 20px auto;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--panel);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      header img { width: 68px; height: 68px; object-fit: contain; }
+      h1 { margin: 0 0 4px; font-size: 1.25rem; }
+      #user-label { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+      #status { min-height: 1.4rem; margin: 0; padding: 10px 18px 0; color: var(--muted); }
+      #status.error { color: var(--danger); }
+      #messages {
+        min-height: 360px;
+        max-height: 58vh;
+        overflow-y: auto;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .message {
+        max-width: min(82%, 540px);
+        padding: 11px 13px 8px;
+        border-radius: 16px;
+        background: var(--support);
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        line-height: 1.4;
+      }
+      .message.user { align-self: flex-start; border-bottom-left-radius: 4px; }
+      .message.support { align-self: flex-end; background: var(--blue); border-bottom-right-radius: 4px; }
+      .message time { display: block; margin-top: 5px; color: rgba(255,255,255,.58); font-size: .75rem; }
+      form {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 14px 18px 18px;
+        border-top: 1px solid var(--line);
+      }
+      textarea {
+        width: 100%;
+        min-height: 76px;
+        max-height: 220px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        color: var(--text);
+        background: rgba(255,255,255,.06);
+        font: inherit;
+      }
+      textarea:focus { outline: 2px solid rgba(58,168,255,.7); outline-offset: 1px; }
+      button {
+        align-self: end;
+        min-height: 48px;
+        border: 0;
+        border-radius: 14px;
+        padding: 0 20px;
+        color: white;
+        background: linear-gradient(135deg, #1554db, #3aa8ff);
+        font: inherit;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      button:disabled, textarea:disabled { opacity: .52; cursor: not-allowed; }
+      @media (max-width: 560px) {
+        main { width: 100%; min-height: 100vh; margin: 0; border: 0; border-radius: 0; }
+        #messages { max-height: calc(100vh - 250px); }
+        form { grid-template-columns: 1fr; }
+        button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="./assets/cruizx-logo-nobg.png" alt="CruizX">
+        <div>
+          <h1>Supportchatt</h1>
+          <p id="user-label">Laddar konversation…</p>
+        </div>
+      </header>
+      <p id="status" role="status" aria-live="polite"></p>
+      <section id="messages" aria-label="Meddelanden"></section>
+      <form id="reply-form">
+        <textarea id="reply" maxlength="2000" required placeholder="Skriv ditt svar…" aria-label="Svar"></textarea>
+        <button id="send" type="submit">Skicka svar</button>
+      </form>
+    </main>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const access = new URLSearchParams({
+        user: params.get("user") || "",
+        guest: params.get("guest") || "",
+        expires: params.get("expires") || "",
+        signature: params.get("signature") || "",
+      });
+      const messagesElement = document.getElementById("messages");
+      const statusElement = document.getElementById("status");
+      const userElement = document.getElementById("user-label");
+      const form = document.getElementById("reply-form");
+      const reply = document.getElementById("reply");
+      const send = document.getElementById("send");
+      let lastFingerprint = "";
+
+      function apiUrl(path) {
+        return `${path}?${access.toString()}`;
+      }
+
+      function setStatus(text, isError = false) {
+        statusElement.textContent = text;
+        statusElement.classList.toggle("error", isError);
+      }
+
+      function setEnabled(enabled) {
+        reply.disabled = !enabled;
+        send.disabled = !enabled;
+      }
+
+      function renderMessages(messages) {
+        const fingerprint = JSON.stringify(messages.map((item) => [item.id, item.read_at]));
+        if (fingerprint === lastFingerprint) return;
+        lastFingerprint = fingerprint;
+        messagesElement.replaceChildren();
+        for (const item of messages) {
+          const bubble = document.createElement("article");
+          bubble.className = `message ${item.sender === "support" ? "support" : "user"}`;
+          const text = document.createElement("span");
+          text.textContent = item.body;
+          const time = document.createElement("time");
+          const date = new Date(item.created_at);
+          time.dateTime = item.created_at;
+          time.textContent = Number.isNaN(date.valueOf())
+            ? ""
+            : new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "short" }).format(date);
+          bubble.append(text, time);
+          messagesElement.appendChild(bubble);
+        }
+        messagesElement.scrollTop = messagesElement.scrollHeight;
+      }
+
+      async function loadConversation({ quiet = false } = {}) {
+        try {
+          const response = await fetch(apiUrl("/api/support/conversation"), {
+            cache: "no-store",
+            referrerPolicy: "no-referrer",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Kunde inte hämta chatten");
+          userElement.textContent = data.user?.email || data.user?.id || "CruizX-användare";
+          renderMessages(Array.isArray(data.messages) ? data.messages : []);
+          setEnabled(true);
+          if (!quiet) setStatus("");
+        } catch (error) {
+          setEnabled(false);
+          setStatus(
+            error.message === "invalid_or_expired_link"
+              ? "Svarslänken är ogiltig eller har gått ut."
+              : "Konversationen kunde inte laddas.",
+            true
+          );
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const body = reply.value.trim();
+        if (!body) return;
+        setEnabled(false);
+        setStatus("Skickar…");
+        try {
+          const response = await fetch(apiUrl("/api/support/reply"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ body }),
+            referrerPolicy: "no-referrer",
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "reply_failed");
+          reply.value = "";
+          lastFingerprint = "";
+          await loadConversation({ quiet: true });
+          setStatus("Svaret är skickat till användaren.");
+          reply.focus();
+        } catch {
+          setEnabled(true);
+          setStatus("Svaret kunde inte skickas. Försök igen.", true);
+        }
+      });
+
+      setEnabled(false);
+      loadConversation();
+      window.setInterval(() => loadConversation({ quiet: true }), 15000);
+    </script>
+  </body>
+</html>

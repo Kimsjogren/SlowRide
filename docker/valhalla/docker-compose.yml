@@ -16,6 +16,7 @@
 #   France:  https://download.geofabrik.de/europe/france-latest.osm.pbf
 #   Spain:   https://download.geofabrik.de/europe/spain-latest.osm.pbf
 #   Great Britain: https://download.geofabrik.de/europe/great-britain-latest.osm.pbf
+#   Italy:   https://download.geofabrik.de/europe/italy-latest.osm.pbf
 #
 # To update maps: download new PBFs, then:
 #   docker-compose down

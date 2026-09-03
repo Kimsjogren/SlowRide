@@ -14,6 +14,11 @@ String _localizeAuthError(AuthException e, AppLocalizations l10n) {
       l10n.authErrorEmailAndPasswordRequired,
     AuthErrorCode.invalidCredentials => l10n.authErrorInvalidCredentials,
     AuthErrorCode.emailAlreadyInUse => l10n.authErrorEmailAlreadyInUse,
+    AuthErrorCode.invalidEmail => l10n.authErrorInvalidEmail,
+    AuthErrorCode.rateLimited => l10n.authErrorRateLimited,
+    AuthErrorCode.signUpDisabled => l10n.authErrorSignUpDisabled,
+    AuthErrorCode.emailDeliveryFailed => l10n.authErrorEmailDeliveryFailed,
+    AuthErrorCode.networkUnavailable => l10n.authErrorNetworkUnavailable,
     _ => l10n.authGenericError,
   };
 }

@@ -5,18 +5,26 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_compass/flutter_compass.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:slowride/core/constants/backend_config.dart';
 import 'package:slowride/features/alerts/alerts_controller.dart';
+import 'package:slowride/features/auth/login_screen.dart';
 import 'package:slowride/features/convoy/convoy_controller.dart';
 import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
+import 'package:slowride/services/ai_route_analysis_service.dart';
+import 'package:slowride/services/ad_service.dart';
 import 'package:slowride/services/routing_service.dart';
+import 'package:slowride/services/apple_map_search_service.dart';
+import 'package:slowride/services/carplay_bridge_service.dart';
+import 'package:slowride/services/mapbox_search_service.dart';
 import 'package:slowride/services/osm_speed_bump_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/tts_service.dart';
@@ -31,7 +39,12 @@ import 'package:slowride/models/convoy_message.dart';
 import 'package:slowride/models/convoy_model.dart';
 import 'package:slowride/models/convoy_pin.dart';
 import 'package:slowride/widgets/user_location_marker.dart';
+import 'package:slowride/widgets/accessible_tap_target.dart';
+import 'package:slowride/widgets/ad_banner_widget.dart';
 import 'package:slowride/services/destination_history_service.dart';
+import 'package:slowride/widgets/apple_convoy_map_widget.dart';
+import 'package:slowride/widgets/cruizx_ai_dialog_style.dart';
+import 'package:slowride/widgets/navigation_eta_badge.dart';
 
 class ConvoyRoomScreen extends StatefulWidget {
   const ConvoyRoomScreen({required this.convoy, super.key});
@@ -86,11 +99,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   Duration? _lastCameraTickAt;
 
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  double? _deviceCompassHeading;
   Timer? _pinRefreshTimer;
   Timer? _locationPollTimer;
   Timer? _alertsTimer;
   Timer? _themeTimer;
   List<ConvoyMemberLocation> _memberLocations = [];
+  Set<String> _blockedParticipantIds = <String>{};
   List<AlertModel> _alerts = const [];
 
   Future<List<LatLng>> _lowVehicleBumpAvoidLocations({
@@ -108,7 +124,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   AlertModel? _nearbyAlert;
-  String? _dismissedNearbyAlertId;
+  AlertModel? _dismissedNearbyAlert;
   double? _roadSpeedLimitKmh;
   LatLng? _lastRoadLimitLookupPos;
   DateTime _lastRoadLimitLookupAt = DateTime.fromMillisecondsSinceEpoch(0);
@@ -116,11 +132,14 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const Duration _roadLimitLookupInterval = Duration(seconds: 10);
   static const double _roadLimitLookupMinMoveMeters = 55;
   LatLng? _myLocation;
+  bool _hasCenteredOnInitialGps = false;
   double _myHeading = 0;
   bool _isFollowingMyPosition = false;
   bool _shareLiveLocation = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
+  bool _useSatelliteMap = false;
+  Timer? _mapInteractionResumeTimer;
   // When true, the map style follows time of day; a manual toggle disables it.
   bool _autoMapTheme = true;
   String? _myUserId;
@@ -133,12 +152,22 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _isRouting = false;
   String _routingStatus = '';
   List<RouteInstruction> _routeInstructions = const [];
+  RouteResult? _activeRoute;
+  bool _isAiAnalyzing = false;
+  bool _isAiLoadingDialogVisible = false;
+  bool _analyzeNextSelectedRouteWithAi = false;
+  bool _aiDestinationSelectionStarted = false;
   double _distToNextManeuver = double.infinity;
+  int _mapViewEpoch = 0;
+  int _mapViewportCommandId = 0;
+  List<LatLng> _mapViewportCommandPoints = const [];
 
   // ── Navigation mode state ──────────────────────────────────────────────────
   bool _isNavigating = false;
+  bool _isNavigationPanelExpanded = false;
   int _nextManeuverSign = 0;
   String _nextManeuverText = '';
+  String _nextManeuverStreetName = '';
   String _currentStreetName = '';
   String _lastSpokenManeuver = '';
   bool _spokenEarlyWarning = false;
@@ -169,6 +198,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   static const Duration _poiPinTtl = Duration(hours: 6);
   static const Duration _etaPauseGrace = Duration(seconds: 25);
 
+  bool get _usingAppleMapKit =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
   double _wrap360(double angle) => (angle % 360 + 360) % 360;
 
   double _angleDiff(double from, double to) {
@@ -198,6 +230,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     required double headingDeg,
     required double zoom,
   }) {
+    if (_usingAppleMapKit) {
+      return;
+    }
     final center = _cameraCenterForNav(
       lat: lat,
       lng: lng,
@@ -211,9 +246,38 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     }
   }
 
+  void _queueViewportFit(List<LatLng> points) {
+    setState(() {
+      _mapViewportCommandId++;
+      _mapViewportCommandPoints = points;
+    });
+  }
+
+  ConvoyMemberLocation? _memberByUserId(
+    List<ConvoyMemberLocation> locations,
+    String userId,
+  ) {
+    for (final member in locations) {
+      if (member.userId == userId) {
+        return member;
+      }
+    }
+    return null;
+  }
+
+  ConvoyPin? _pinById(List<ConvoyPin> pins, String pinId) {
+    for (final pin in pins) {
+      if (pin.id == pinId) {
+        return pin;
+      }
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
+    _startCompassTracking();
     _bindRealtimeStreams();
     _tileHttpClient = http.Client();
     _tileProvider = NetworkTileProvider(
@@ -231,6 +295,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
     }
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    _useSatelliteMap = UserPreferencesService.instance.useSatelliteMap.value;
     ConvoyFavoritePlacesService.instance.initialize();
     // Auto-pick a dark map at night and a light map during the day.
     _useDarkMap = _isNightTime();
@@ -266,6 +331,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   Future<void> _fetchMemberLocations() async {
     try {
+      final blockedIds = await _controller.blockedParticipantIds();
       final rows = await SupabaseService.instance.client
           .from('convoy_locations')
           .select()
@@ -279,13 +345,148 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           )
           .where(
             (location) =>
-                !widget.convoy.isPublic ||
-                DateTime.now().difference(location.updatedAt) <
-                    const Duration(minutes: 2),
+                !blockedIds.contains(location.userId) &&
+                (!widget.convoy.isPublic ||
+                    DateTime.now().difference(location.updatedAt) <
+                        const Duration(minutes: 2)),
           )
           .toList();
-      setState(() => _memberLocations = locations);
+      setState(() {
+        _blockedParticipantIds = blockedIds;
+        _memberLocations = locations;
+      });
+      unawaited(_syncCarPlayConvoyState(locations));
     } catch (_) {}
+  }
+
+  Future<void> _syncCarPlayConvoyState(
+    List<ConvoyMemberLocation> locations,
+  ) {
+    final currentUserId = (AuthService.instance.userId.value ?? _myUserId)
+        ?.trim();
+    final members = locations
+        .map((member) {
+          final style = MapMarkerStyle.values.firstWhere(
+            (candidate) => candidate.name == member.vehicleStyle,
+            orElse: () => MapMarkerStyle.navigation,
+          );
+          final option = UserLocationMarker.optionFor(style);
+          return <String, Object?>{
+            'userId': member.userId,
+            'label': member.userLabel,
+            'latitude': member.position.latitude,
+            'longitude': member.position.longitude,
+            'assetPath': option.assetPath,
+            'iconName': switch (option.style) {
+              MapMarkerStyle.navigation => 'navigation',
+              MapMarkerStyle.compass => 'compass',
+              MapMarkerStyle.triangle => 'triangle',
+              MapMarkerStyle.dot => 'flatArrow',
+              _ => null,
+            },
+            'tintArgb': option.tint?.toARGB32(),
+          };
+        })
+        .toList(growable: false);
+
+    return CarPlayBridgeService.instance.updateConvoyState(
+      isActive: true,
+      convoyName: widget.convoy.name,
+      currentUserId: currentUserId,
+      members: members,
+      currentLocation: _myLocation,
+      headingDegrees: _arrowHdg.value,
+      currentSpeed: _speedNotifier.value,
+    );
+  }
+
+  Future<String?> _chooseParticipantReportReason(AppLocalizations l10n) {
+    final reasons = <String, String>{
+      'inappropriate': l10n.reportReasonInappropriate,
+      'harassment': l10n.reportReasonHarassment,
+      'dangerous': l10n.reportReasonDangerous,
+      'spam': l10n.reportReasonSpam,
+      'other': l10n.reportReasonOther,
+    };
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                l10n.publicGatheringReportReason,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final entry in reasons.entries)
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(entry.value),
+                onTap: () => Navigator.pop(sheetContext, entry.key),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showParticipantSafetyActions(
+    ConvoyMemberLocation member,
+    AppLocalizations l10n,
+  ) async {
+    if (!widget.convoy.isPublic || member.userId == _myUserId) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                member.userLabel,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined),
+              title: Text(l10n.publicGatheringReportParticipant),
+              onTap: () => Navigator.pop(sheetContext, 'report'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.block),
+              title: Text(l10n.publicGatheringBlockParticipant),
+              onTap: () => Navigator.pop(sheetContext, 'block'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == 'report') {
+      final reason = await _chooseParticipantReportReason(l10n);
+      if (reason == null) return;
+      await _controller.reportParticipant(
+        convoyId: widget.convoy.id,
+        participantId: member.userId,
+        reason: reason,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringReportSent)));
+      }
+    } else if (action == 'block') {
+      await _controller.blockParticipant(participantId: member.userId);
+      if (!mounted) return;
+      setState(() {
+        _blockedParticipantIds.add(member.userId);
+        _memberLocations.removeWhere((item) => item.userId == member.userId);
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.publicGatheringBlocked)));
+    }
   }
 
   bool _isPinActive(ConvoyPin pin) {
@@ -543,6 +744,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             double newDistToManeuver = double.infinity;
             int? newSign;
             String? newText;
+            String? newManeuverStreetName;
             String? newStreetName;
             double? newRemaining;
             double headingForArrow = newHeading;
@@ -585,8 +787,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 newDistToManeuver = dist;
                 newSign = next.sign;
                 newText = next.text;
+                newManeuverStreetName = next.streetName;
               } else {
                 newText = '';
+                newManeuverStreetName = '';
               }
 
               // ROUTE-LOCKED HEADING: Use route direction exclusively when
@@ -608,9 +812,35 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             _myLocation = point;
             _locationNotifier.value = point;
             _myHeading = headingForArrow;
-            if (!_isFollowingMyPosition) _arrowHdg.value = headingForArrow;
+            if (!_isFollowingMyPosition &&
+                (_deviceCompassHeading == null || newSpeed > 6.0)) {
+              _arrowHdg.value = headingForArrow;
+            }
             _distToNextManeuver = newDistToManeuver;
             unawaited(_maybeRefreshRoadSpeedLimit(point));
+
+            if (!_hasCenteredOnInitialGps &&
+                !_isFollowingMyPosition &&
+                _routePoints.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || _hasCenteredOnInitialGps) return;
+                if (_usingAppleMapKit) {
+                  setState(() {
+                    _hasCenteredOnInitialGps = true;
+                  });
+                  return;
+                }
+                try {
+                  _mapController.move(point, _followZoom);
+                  _hasCenteredOnInitialGps = true;
+                } catch (e) {
+                  debugPrint('Convoy initial GPS centering skipped: $e');
+                }
+              });
+            }
+            if (!hadLocation) {
+              unawaited(_loadAlerts());
+            }
 
             // Voice navigation (fire before setState check).
             if (_isNavigating &&
@@ -642,10 +872,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
             }
 
             // Proximity check.
+            _pruneDismissedNearbyAlert(point);
             _nearbyAlert = AlertModel.mostRelevantNearby(
               _alerts,
               point,
-              excludedId: _dismissedNearbyAlertId,
+              dismissedAlert: _dismissedNearbyAlert,
             );
 
             // Only call setState when UI-visible text actually changes, or
@@ -654,11 +885,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 !_isFollowingMyPosition ||
                 newSign != null ||
                 newText != null ||
+                newManeuverStreetName != null ||
                 newStreetName != null;
             if (needsRebuild) {
               setState(() {
                 if (newSign != null) _nextManeuverSign = newSign;
                 if (newText != null) _nextManeuverText = newText;
+                if (newManeuverStreetName != null) {
+                  _nextManeuverStreetName = newManeuverStreetName;
+                }
                 if (newStreetName != null) _currentStreetName = newStreetName;
               });
             }
@@ -783,6 +1018,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               position: point,
             );
           }
+          unawaited(_syncCarPlayConvoyState(_memberLocations));
         });
   }
 
@@ -804,14 +1040,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   @override
   void dispose() {
+    unawaited(CarPlayBridgeService.instance.clearConvoyState());
     if (widget.convoy.isPublic && _shareLiveLocation) {
       unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
     }
     _positionSubscription?.cancel();
+    _compassSubscription?.cancel();
     _pinRefreshTimer?.cancel();
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
     _themeTimer?.cancel();
+    _mapInteractionResumeTimer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _speedNotifier.dispose();
@@ -824,6 +1063,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _searchFocus.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _startCompassTracking() {
+    _compassSubscription = FlutterCompass.events?.listen((event) {
+      final rawHeading = event.heading;
+      if (!mounted || rawHeading == null || !rawHeading.isFinite) return;
+
+      final normalizedHeading = (rawHeading % 360 + 360) % 360;
+      final previousHeading = _deviceCompassHeading;
+      if (previousHeading == null) {
+        _deviceCompassHeading = normalizedHeading;
+      } else {
+        final shortestTurn =
+            ((normalizedHeading - previousHeading + 540) % 360) - 180;
+        _deviceCompassHeading =
+            (previousHeading + shortestTurn * 0.32 + 360) % 360;
+      }
+
+      if (!_isFollowingMyPosition && _speedNotifier.value <= 6.0) {
+        _arrowHdg.value = _deviceCompassHeading!;
+      }
+    });
   }
 
   @override
@@ -1056,6 +1317,40 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         .trim();
 
     return cleaned.isNotEmpty ? cleaned : t;
+  }
+
+  String? _localizedManeuverTarget(
+    AppLocalizations l10n,
+    String streetName,
+    String instructionText,
+  ) {
+    final parsedTarget = _maneuverTargetFromText(instructionText);
+    final target = streetName.trim().isNotEmpty
+        ? streetName.trim()
+        : parsedTarget;
+    if (target == null || target.isEmpty) return null;
+
+    final normalized = target
+        .toLowerCase()
+        .replaceFirst(
+          RegExp(
+            r'^(?:the|a|an|den|det|en|ett|le|la|les|un|une|el|los|las|il|lo|i|gli|die|der|das)\s+',
+          ),
+          '',
+        )
+        .trim();
+    return switch (normalized) {
+      'cycleway' ||
+      'cycle path' ||
+      'cycle track' ||
+      'bike path' => l10n.mapManeuverGenericCycleway,
+      'footway' ||
+      'walkway' ||
+      'pedestrian path' => l10n.mapManeuverGenericFootway,
+      'path' || 'trail' => l10n.mapManeuverGenericPath,
+      'road' || 'street' => l10n.mapManeuverGenericRoad,
+      _ => target,
+    };
   }
 
   String _localizedManeuverPrimaryText(
@@ -1406,129 +1701,79 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'nb': 'no',
       'da': 'da',
       'fi': 'fi',
+      'es': 'es',
+      'it': 'it',
     };
     return map[appLang] ?? 'sv';
-  }
-
-  String _mapboxContextValue(List<dynamic> context, List<String> prefixes) {
-    for (final c in context) {
-      if (c is! Map) continue;
-      final id = (c['id'] ?? '').toString();
-      if (prefixes.any((p) => id.startsWith(p))) {
-        final text = (c['text'] ?? c['name'] ?? '').toString().trim();
-        if (text.isNotEmpty) return text;
-      }
-    }
-    return '';
-  }
-
-  Map<String, dynamic>? _mapboxFeatureToResult(Map<String, dynamic> feature) {
-    final center = feature['center'];
-    if (center is! List || center.length < 2) return null;
-    final lon = (center[0]).toString();
-    final lat = (center[1]).toString();
-
-    final context = (feature['context'] is List)
-        ? (feature['context'] as List)
-        : const [];
-    final placeTypes = (feature['place_type'] is List)
-        ? (feature['place_type'] as List)
-        : const [];
-    final placeType = placeTypes.isNotEmpty ? placeTypes.first.toString() : '';
-    final properties = (feature['properties'] is Map)
-        ? (feature['properties'] as Map)
-        : const {};
-
-    final featureText = (feature['text'] ?? '').toString().trim();
-    final road = placeType == 'poi'
-        ? _mapboxContextValue(context, ['address.'])
-        : (feature['text'] ?? feature['place_name'] ?? '').toString().trim();
-    final houseNumber = (properties['address'] ?? '').toString().trim();
-    final city = _mapboxContextValue(context, ['place.', 'locality.']);
-    final suburb = _mapboxContextValue(context, ['neighborhood.', 'district.']);
-    final municipality = _mapboxContextValue(context, ['region.']);
-    final country = _mapboxContextValue(context, ['country.']);
-
-    final address = <String, String>{
-      if (road.isNotEmpty) 'road': road,
-      if (houseNumber.isNotEmpty) 'house_number': houseNumber,
-      if (suburb.isNotEmpty) 'suburb': suburb,
-      if (city.isNotEmpty) 'city': city,
-      if (municipality.isNotEmpty) 'municipality': municipality,
-      if (country.isNotEmpty) 'country': country,
-    };
-
-    final title = placeType == 'poi' && featureText.isNotEmpty
-        ? featureText
-        : road.isNotEmpty
-        ? (houseNumber.isNotEmpty ? '$road $houseNumber' : road)
-        : featureText;
-
-    return {
-      'lat': lat,
-      'lon': lon,
-      'place_id': feature['id']?.toString() ?? '$lat,$lon',
-      'importance': feature['relevance'] ?? 0.0,
-      'name': title,
-      'display_name': (feature['place_name'] ?? feature['text'] ?? title)
-          .toString(),
-      'address': address,
-      '_mapbox_place_type': placeType,
-    };
   }
 
   Future<List<Map<String, dynamic>>> _fetchMapboxResults(
     String query, {
     int limit = 12,
+    LatLng? proximity,
+    bool useProximity = true,
   }) async {
     final token = BackendConfig.mapboxAccessToken.trim();
     if (token.isEmpty) return const [];
 
-    final countries = CountryVehicleRules.supportedCountries
-        .map((c) => c.toLowerCase())
-        .join(',');
-    final path =
-        '/geocoding/v5/mapbox.places/${Uri.encodeComponent(query)}.json';
-    final params = <String, String>{
-      'access_token': token,
-      'autocomplete': 'true',
-      'limit': '$limit',
-      'country': countries,
-      'language': _mapboxLanguageCode(),
-      'types': 'poi,address,street,place,locality,neighborhood',
-    };
-
-    if (_myLocation != null) {
-      params['proximity'] =
-          '${_myLocation!.longitude},${_myLocation!.latitude}';
-    }
-
-    final uri = Uri.https('api.mapbox.com', path, params);
-    final response = await http.get(
-      uri,
-      headers: const {
-        'User-Agent': 'CruizX/1.0 (mapbox-search)',
-        'Accept': 'application/json',
-      },
+    return MapboxSearchService.search(
+      query,
+      accessToken: token,
+      language: _mapboxLanguageCode(),
+      countryCodes: CountryVehicleRules.supportedCountries,
+      proximity: useProximity ? (proximity ?? _myLocation) : null,
+      limit: limit,
     );
-    if (response.statusCode != 200) return const [];
+  }
 
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map || decoded['features'] is! List) return const [];
-    final features = (decoded['features'] as List)
-        .whereType<Map<String, dynamic>>()
-        .toList();
-    final converted = <Map<String, dynamic>>[];
-    for (final f in features) {
-      final mapped = _mapboxFeatureToResult(f);
-      if (mapped != null) converted.add(mapped);
+  Future<List<Map<String, dynamic>>> _fetchPrimaryGeocodingResults(
+    String query, {
+    int limit = 12,
+    LatLng? proximity,
+    bool includeGlobalResults = true,
+  }) async {
+    final effectiveProximity = proximity ?? _myLocation;
+    if (AppleMapSearchService.isSupported) {
+      var appleResults = await AppleMapSearchService.search(
+        query,
+        proximity: effectiveProximity,
+        limit: limit,
+      );
+      if (appleResults.isEmpty &&
+          includeGlobalResults &&
+          effectiveProximity != null) {
+        appleResults = await AppleMapSearchService.search(
+          query,
+          limit: limit,
+        );
+      }
+      if (appleResults.isNotEmpty) {
+        return appleResults;
+      }
     }
-    return converted;
+
+    var raw = await _fetchMapboxResults(
+      query,
+      limit: limit,
+      proximity: proximity,
+    );
+    if (raw.isEmpty && includeGlobalResults && effectiveProximity != null) {
+      raw = await _fetchMapboxResults(query, limit: limit, useProximity: false);
+    }
+    if (raw.isEmpty) {
+      raw = await _fetchNominatimResults(
+        query,
+        limit: math.max(limit, 25),
+        proximity: proximity,
+      );
+    }
+    return raw;
   }
 
   Future<List<Map<String, dynamic>>> _fetchNominatimResults(
     String query, {
-    int limit = 20,
+    int limit = 25,
+    LatLng? proximity,
   }) async {
     final codes = CountryVehicleRules.supportedCountries
         .join(',')
@@ -1551,11 +1796,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       structuredParams.remove('q');
     }
 
-    if (_myLocation != null) {
-      final lat = _myLocation!.latitude;
-      final lon = _myLocation!.longitude;
+    final prox = proximity ?? _myLocation;
+    if (prox != null) {
+      final lat = prox.latitude;
+      final lon = prox.longitude;
       baseParams['viewbox'] =
-          '${lon - 0.5},${lat + 0.5},${lon + 0.5},${lat - 0.5}';
+          '${lon - 0.35},${lat + 0.35},${lon + 0.35},${lat - 0.35}';
       structuredParams['viewbox'] = baseParams['viewbox']!;
     }
 
@@ -1701,7 +1947,30 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         candidates
             .map((r) => (item: r, score: _scoreSuggestion(r, query, hnMatch)))
             .toList()
-          ..sort((a, b) => b.score.compareTo(a.score));
+          ..sort((a, b) {
+            final byScore = b.score.compareTo(a.score);
+            if (byScore != 0) return byScore;
+            final current = _myLocation;
+            if (current != null) {
+              double distanceTo(Map<String, dynamic> result) {
+                final lat = double.tryParse(result['lat']?.toString() ?? '');
+                final lon = double.tryParse(result['lon']?.toString() ?? '');
+                if (lat == null || lon == null) return double.infinity;
+                return Geolocator.distanceBetween(
+                  current.latitude,
+                  current.longitude,
+                  lat,
+                  lon,
+                );
+              }
+
+              final byDistance = distanceTo(
+                a.item,
+              ).compareTo(distanceTo(b.item));
+              if (byDistance != 0) return byDistance;
+            }
+            return 0;
+          });
 
     final seen = <String>{};
     final deduped = <Map<String, dynamic>>[];
@@ -1719,17 +1988,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final l10n = AppLocalizations.of(context)!;
     final query = rawQuery.trim();
     if (query.isEmpty) return;
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
     setState(() => _showSuggestions = false);
     try {
-      var raw = await _fetchMapboxResults(query, limit: 12);
-      if (raw.isEmpty) {
-        raw = await _fetchNominatimResults(query, limit: 20);
-      }
+      final raw = await _fetchPrimaryGeocodingResults(query, limit: 12);
       if (raw.isEmpty) {
         if (!mounted) return;
         setState(() {
           _routingStatus = l10n.mapAddressNotFound;
         });
+        _cancelPendingConvoyAiRouteAnalysis();
         return;
       }
       final ranked = _rankAndDedupeSuggestions(raw, query);
@@ -1743,6 +2013,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() => _routingStatus = l10n.mapAddressLookupFailed);
+      _cancelPendingConvoyAiRouteAnalysis();
     }
   }
 
@@ -1781,8 +2052,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       }
       setSheetState(() => isSearching = true);
       try {
-        var raw = await _fetchMapboxResults(query, limit: 12);
-        if (raw.isEmpty) raw = await _fetchNominatimResults(query, limit: 15);
+        final raw = await _fetchPrimaryGeocodingResults(query, limit: 12);
         final ranked = _rankAndDedupeSuggestions(raw, query);
         if (!mounted) return;
         setSheetState(() {
@@ -2347,9 +2617,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     if (candidates.isEmpty) {
       final responses = await Future.wait(
         queries.map(
-          (q) => _fetchMapboxResults(
+          (q) => _fetchPrimaryGeocodingResults(
             q,
             limit: 12,
+            proximity: me,
+            includeGlobalResults: false,
           ).catchError((_) => <Map<String, dynamic>>[]),
         ),
       );
@@ -2417,41 +2689,53 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     final initial = member.userLabel.isNotEmpty
         ? member.userLabel[0].toUpperCase()
         : '?';
+    final labelText = isMe ? l10n.convoyMemberMe : member.userLabel;
     final memberStyle = MapMarkerStyle.values.firstWhere(
       (style) => style.name == member.vehicleStyle,
       orElse: () => MapMarkerStyle.navigation,
     );
+    final labelFontSize = isMe ? 11.0 : 9.0;
+    final labelPadding = EdgeInsets.symmetric(
+      horizontal: isMe ? 8 : 6,
+      vertical: isMe ? 3 : 2,
+    );
+    final labelRadius = isMe ? 10.0 : 8.0;
+    final markerSize = isMe ? 34.0 : 25.0;
+    final iconSize = isMe ? 32.0 : 21.0;
+    final arrowSize = isMe ? 30.0 : 21.0;
     return Opacity(
       opacity: stale ? 0.4 : 1.0,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: labelPadding,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(labelRadius),
               boxShadow: [
                 BoxShadow(
                   color: color.withValues(alpha: 0.5),
-                  blurRadius: 6,
+                  blurRadius: isMe ? 6 : 4,
                   spreadRadius: 0,
                 ),
               ],
             ),
             child: Text(
-              isMe ? l10n.convoyMemberMe : member.userLabel,
-              style: const TextStyle(
+              labelText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 11,
+                fontSize: labelFontSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
           const SizedBox(height: 2),
           Container(
-            width: 38,
-            height: 38,
+            width: markerSize,
+            height: markerSize,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
@@ -2459,8 +2743,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
               boxShadow: [
                 BoxShadow(
                   color: color.withValues(alpha: 0.6),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+                  blurRadius: isMe ? 10 : 7,
+                  spreadRadius: isMe ? 2 : 1,
                 ),
               ],
             ),
@@ -2468,7 +2752,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 ? UserLocationMarker(
                     headingNotifier: _arrowHdg,
                     lockNorthUp: false,
-                    size: 34,
+                    size: arrowSize,
                     backgroundColor: Colors.transparent,
                     borderColor: Colors.transparent,
                     borderWidth: 0,
@@ -2480,13 +2764,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                             initial,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
                           )
                         : UserLocationMarker.stylePreview(
                             memberStyle,
-                            size: 36,
+                            size: iconSize,
                             selected: false,
                           ),
                   ),
@@ -2498,10 +2782,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 
   Widget _convoyCircleButton({
     required VoidCallback onTap,
+    required String semanticLabel,
     required Widget child,
     Color? color,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: semanticLabel,
       onTap: onTap,
       child: Container(
         width: 40,
@@ -2523,6 +2809,458 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     );
   }
 
+  void _pauseConvoyMapFollowingForInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    if (!_isFollowingMyPosition) return;
+    setState(() => _isFollowingMyPosition = false);
+  }
+
+  void _resumeConvoyMapFollowingAfterInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    if (!_isNavigating) return;
+    _mapInteractionResumeTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || _isFollowingMyPosition || _myLocation == null) return;
+      setState(() => _isFollowingMyPosition = true);
+    });
+  }
+
+  Future<void> _showConvoyMapLayerPicker(AppLocalizations l10n) async {
+    final useSatellite = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.mapLayerStyleTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.map_outlined, color: Colors.white70),
+                title: Text(
+                  l10n.mapLayerStandard,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: !_useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, false),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.satellite_alt_outlined,
+                  color: Colors.white70,
+                ),
+                title: Text(
+                  l10n.mapLayerSatellite,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: _useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (useSatellite == null || useSatellite == _useSatelliteMap || !mounted) {
+      return;
+    }
+    setState(() => _useSatelliteMap = useSatellite);
+    UserPreferencesService.instance.useSatelliteMap.value = useSatellite;
+  }
+
+  Future<void> _openAiFromConvoyButton() async {
+    if (_activeRoute == null) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.mapAddressFieldHint),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      _analyzeNextSelectedRouteWithAi = true;
+      _aiDestinationSelectionStarted = false;
+      await _showConvoySearchSheet();
+      if (!_aiDestinationSelectionStarted) {
+        _cancelPendingConvoyAiRouteAnalysis();
+      }
+      return;
+    }
+    await _analyzeConvoyRouteWithAi();
+  }
+
+  void _cancelPendingConvoyAiRouteAnalysis() {
+    _analyzeNextSelectedRouteWithAi = false;
+    _aiDestinationSelectionStarted = false;
+  }
+
+  void _analyzeSelectedConvoyRouteIfRequested() {
+    if (!_analyzeNextSelectedRouteWithAi || _activeRoute == null) return;
+    _cancelPendingConvoyAiRouteAnalysis();
+    unawaited(_analyzeConvoyRouteWithAi());
+  }
+
+  Future<bool> _ensureConvoyAiConsent(AppLocalizations l10n) async {
+    if (await AiRouteAnalysisService.instance.hasConsent()) return true;
+    if (!mounted) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
+        title: Text(
+          l10n.aiConsentTitle,
+          style: CruizXAiDialogStyle.titleTextStyle,
+        ),
+        content: Text(
+          l10n.aiConsentBody,
+          style: CruizXAiDialogStyle.bodyTextStyle,
+        ),
+        actions: [
+          TextButton(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.aiConsentDecline),
+          ),
+          FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.aiConsentAccept),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true) return false;
+    await AiRouteAnalysisService.instance.setConsent(true);
+    return true;
+  }
+
+  double _distanceToConvoyRouteMeters(LatLng point) {
+    if (_routePoints.isEmpty) return double.infinity;
+    if (_routePoints.length == 1) return _segDist(point, _routePoints.first);
+
+    const lat2m = 111320.0;
+    var best = double.infinity;
+    for (var i = 0; i < _routePoints.length - 1; i++) {
+      final a = _routePoints[i];
+      final b = _routePoints[i + 1];
+      final lng2m =
+          lat2m *
+          math.cos(
+            ((point.latitude + a.latitude + b.latitude) / 3) * math.pi / 180,
+          );
+      final ax = a.longitude * lng2m;
+      final ay = a.latitude * lat2m;
+      final bx = b.longitude * lng2m;
+      final by = b.latitude * lat2m;
+      final px = point.longitude * lng2m;
+      final py = point.latitude * lat2m;
+      final dx = bx - ax;
+      final dy = by - ay;
+      final denominator = dx * dx + dy * dy;
+      final t = denominator == 0
+          ? 0.0
+          : (((px - ax) * dx + (py - ay) * dy) / denominator).clamp(0.0, 1.0);
+      final distance = math.sqrt(
+        math.pow(px - (ax + t * dx), 2) + math.pow(py - (ay + t * dy), 2),
+      );
+      if (distance < best) best = distance;
+    }
+    return best;
+  }
+
+  Map<String, int> _convoyRouteAlertCounts() {
+    final counts = <String, int>{};
+    for (final alert in _alerts) {
+      if (!alert.type.showsProximityWarning ||
+          _distanceToConvoyRouteMeters(alert.position) > 750) {
+        continue;
+      }
+      counts.update(alert.type.key, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return counts;
+  }
+
+  Future<void> _analyzeConvoyRouteWithAi() async {
+    final route = _activeRoute;
+    if (route == null || _isAiAnalyzing) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!await _ensureConvoyAiConsent(l10n) || !mounted) return;
+
+    final token = SupabaseService.instance.isEnabled
+        ? SupabaseService.instance.client.auth.currentSession?.accessToken
+        : null;
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.aiSignInRequired)));
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const LoginScreen()));
+      return;
+    }
+
+    setState(() => _isAiAnalyzing = true);
+    unawaited(_showConvoyAiLoadingDialog(l10n));
+    AiRouteAnalysis? analysis;
+    try {
+      final streetNames = route.instructions
+          .map((instruction) => instruction.streetName.trim())
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+      analysis = await AiRouteAnalysisService.instance.analyze(
+        language: Localizations.localeOf(context).languageCode,
+        vehicleType: UserPreferencesService.instance.vehicleType.value,
+        countryCode: UserPreferencesService.instance.countryCode.value,
+        maxSpeedKmh: UserPreferencesService.instance.maxSpeedKmh.value,
+        distanceKm: route.distanceMeters / 1000,
+        durationMinutes: route.durationSeconds / 60,
+        streetNames: streetNames,
+        alertCounts: _convoyRouteAlertCounts(),
+      );
+    } on AiRouteAnalysisException catch (error) {
+      if (!mounted) return;
+      final message = switch (error.code) {
+        'sign_in_required' => l10n.aiSignInRequired,
+        'daily_limit' => l10n.aiDailyLimit,
+        _ => l10n.aiUnavailable,
+      };
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    } finally {
+      _closeConvoyAiLoadingDialog();
+      if (mounted) setState(() => _isAiAnalyzing = false);
+    }
+    if (mounted && analysis != null) {
+      await _showConvoyAiAnalysis(analysis);
+    }
+  }
+
+  Future<void> _showConvoyAiLoadingDialog(AppLocalizations l10n) async {
+    _isAiLoadingDialogVisible = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: CruizXAiDialogStyle.background,
+          surfaceTintColor: Colors.transparent,
+          shadowColor: Colors.black87,
+          shape: CruizXAiDialogStyle.shape,
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 24,
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+          title: Image.asset(
+            'assets/CruizX_Ai_transparent.png',
+            height: 135,
+            fit: BoxFit.contain,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 22),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: CruizXAiDialogStyle.accent,
+                  strokeWidth: 2.5,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Flexible(
+                child: Text(
+                  l10n.aiLoading,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    _isAiLoadingDialogVisible = false;
+  }
+
+  void _closeConvoyAiLoadingDialog() {
+    if (!mounted || !_isAiLoadingDialogVisible) return;
+    _isAiLoadingDialogVisible = false;
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  Future<void> _showConvoyAiAnalysis(AiRouteAnalysis analysis) async {
+    final l10n = AppLocalizations.of(context)!;
+    final color = switch (analysis.suitability) {
+      'good' => const Color(0xFF22A95A),
+      'not_recommended' => const Color(0xFFD32F2F),
+      _ => const Color(0xFFF39C12),
+    };
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: CruizXAiDialogStyle.background,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: Colors.black87,
+        shape: CruizXAiDialogStyle.shape,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(18, 16, 18, 2),
+        title: Image.asset(
+          'assets/CruizX_Ai_transparent.png',
+          height: 145,
+          fit: BoxFit.contain,
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  analysis.headline,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    height: 1.24,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  analysis.summary,
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.bodyText,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+                if (analysis.highlights.isNotEmpty)
+                  _ConvoyAiAnalysisSection(
+                    title: l10n.aiHighlights,
+                    icon: Icons.check_circle_outline,
+                    color: const Color(0xFF22A95A),
+                    items: analysis.highlights,
+                  ),
+                if (analysis.cautions.isNotEmpty)
+                  _ConvoyAiAnalysisSection(
+                    title: l10n.aiCautions,
+                    icon: Icons.warning_amber_rounded,
+                    color: const Color(0xFFF39C12),
+                    items: analysis.cautions,
+                  ),
+                _ConvoyAiAnalysisSection(
+                  title: l10n.aiRecommendation,
+                  icon: Icons.lightbulb_outline,
+                  color: const Color(0xFF3AA8FF),
+                  items: [analysis.recommendation],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.aiDisclaimer,
+                  style: const TextStyle(
+                    color: CruizXAiDialogStyle.mutedText,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        actions: [
+          TextButton.icon(
+            style: CruizXAiDialogStyle.secondaryButtonStyle,
+            onPressed: () => _reportConvoyAiAnswer(analysis.responseId),
+            icon: const Icon(Icons.flag_outlined),
+            label: Text(l10n.aiReport),
+          ),
+          FilledButton(
+            style: CruizXAiDialogStyle.primaryButtonStyle,
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.ttsVoiceHintDismiss),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reportConvoyAiAnswer(String responseId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reason = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(l10n.aiReportTitle)),
+            for (final item in <(String, String)>[
+              ('incorrect', l10n.aiReportIncorrect),
+              ('unsafe', l10n.aiReportUnsafe),
+              ('inappropriate', l10n.aiReportInappropriate),
+              ('other', l10n.aiReportOther),
+            ])
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(item.$2),
+                onTap: () => Navigator.pop(sheetContext, item.$1),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (reason == null) return;
+    try {
+      await AiRouteAnalysisService.instance.report(
+        responseId: responseId,
+        reason: reason,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiReportSent)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.aiUnavailable)));
+      }
+    }
+  }
+
   Widget _favChip({
     required IconData icon,
     required String label,
@@ -2531,7 +3269,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     VoidCallback? onLongPress,
     bool compact = false,
   }) {
-    return GestureDetector(
+    return AccessibleTapTarget(
+      label: label,
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
@@ -2738,6 +3477,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _isFollowingMyPosition = false;
       _use3DMap = false;
     });
+    if (_usingAppleMapKit) {
+      _queueViewportFit(points);
+      return;
+    }
     if (points.length == 1) {
       _mapController.moveAndRotate(points.first, _followZoom, 0);
       return;
@@ -2754,7 +3497,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   Future<void> _loadAlerts() async {
-    final center = _myLocation ?? const LatLng(59.3293, 18.0686);
+    final center = _myLocation;
+    if (center == null) return;
     try {
       final results = await Future.wait<List<AlertModel>>([
         _alertsController.fetchNearby(center),
@@ -2791,6 +3535,59 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   }
 
   Future<void> _routeToDestination(LatLng destination) async {
+    final previousRouteDestination = _routeDestination;
+    final previousRoutePoints = List<LatLng>.from(_routePoints);
+    final previousActiveRoute = _activeRoute;
+    final previousRoutingStatus = _routingStatus;
+    final previousIsFollowingMyPosition = _isFollowingMyPosition;
+    final previousRouteInstructions = List<RouteInstruction>.from(
+      _routeInstructions,
+    );
+    final previousCumulativeDist = List<double>.from(_cumulativeDist);
+    final previousTotalRouteDistM = _totalRouteDistM;
+    final previousRemainingDistM = _remainingDistM;
+    final previousLastNearestIdx = _lastNearestIdx;
+    final previousDisplayNearestIdx = _displayNearestIdx;
+    final previousDistToNextManeuver = _distToNextManeuver;
+    final previousNextManeuverSign = _nextManeuverSign;
+    final previousNextManeuverText = _nextManeuverText;
+    final previousNextManeuverStreetName = _nextManeuverStreetName;
+    final previousCurrentStreetName = _currentStreetName;
+    final previousDestinationLabel = _destinationLabel;
+
+    void restorePreviousRouteState() {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _mapViewEpoch++;
+        _routeDestination = previousRouteDestination;
+        _routePoints = previousRoutePoints;
+        _activeRoute = previousActiveRoute;
+        _routingStatus = previousRoutingStatus;
+        _isFollowingMyPosition = previousIsFollowingMyPosition;
+        _routeInstructions = previousRouteInstructions;
+        _cumulativeDist = previousCumulativeDist;
+        _totalRouteDistM = previousTotalRouteDistM;
+        _remainingDistM = previousRemainingDistM;
+        _lastNearestIdx = previousLastNearestIdx;
+        _displayNearestIdx = previousDisplayNearestIdx;
+        _distToNextManeuver = previousDistToNextManeuver;
+        _nextManeuverSign = previousNextManeuverSign;
+        _nextManeuverText = previousNextManeuverText;
+        _nextManeuverStreetName = previousNextManeuverStreetName;
+        _currentStreetName = previousCurrentStreetName;
+        _destinationLabel = previousDestinationLabel;
+        _isRouting = false;
+      });
+      if (previousActiveRoute == null) {
+        _cancelPendingConvoyAiRouteAnalysis();
+      }
+    }
+
+    if (_analyzeNextSelectedRouteWithAi) {
+      _aiDestinationSelectionStarted = true;
+    }
     if (_myLocation == null) {
       // GPS not ready yet — save destination, auto-retry on first fix.
       setState(() {
@@ -2805,12 +3602,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _isRouting = true;
       _routeDestination = destination;
       _routePoints = const [];
+      _activeRoute = null;
       _routingStatus = AppLocalizations.of(context)!.mapCalculatingRoute;
       _isFollowingMyPosition = false;
     });
     // Zoom in on my vehicle while the route is being calculated.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _mapController.move(_myLocation!, 16.5);
+      if (mounted && !_usingAppleMapKit) {
+        _mapController.move(_myLocation!, 16.5);
+      }
     });
 
     try {
@@ -2836,7 +3636,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final selected = options.length > 1
           ? await _showConvoyRouteOptionsSheet(options: options)
           : options.first;
-      if (!mounted || selected == null) return;
+      if (!mounted) return;
+      if (selected == null) {
+        restorePreviousRouteState();
+        return;
+      }
 
       final chosenRoute = selected.route;
       final km = chosenRoute.distanceMeters / 1000;
@@ -2844,6 +3648,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       final cumDist = _buildCumulativeDist(chosenRoute.points);
       setState(() {
         _routePoints = chosenRoute.points;
+        _activeRoute = chosenRoute;
         _routeInstructions = chosenRoute.instructions;
         _cumulativeDist = cumDist;
         _totalRouteDistM = cumDist.isNotEmpty ? cumDist.last : 0;
@@ -2853,13 +3658,17 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _distToNextManeuver = double.infinity;
         _nextManeuverSign = 0;
         _nextManeuverText = '';
+        _nextManeuverStreetName = '';
         _routingStatus = AppLocalizations.of(
           context,
         )!.mapRouteReady(km.toStringAsFixed(1), minutes.toString());
         _isFollowingMyPosition = false;
       });
+      _analyzeSelectedConvoyRouteIfRequested();
       // Zoom to fit the full route so the driver sees start→destination.
-      if (chosenRoute.points.length >= 2) {
+      if (_usingAppleMapKit) {
+        _queueViewportFit(chosenRoute.points);
+      } else if (chosenRoute.points.length >= 2) {
         final bounds = LatLngBounds.fromPoints(chosenRoute.points);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -2904,7 +3713,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
           'A-tractor' => l10n.settingsVehicleAtractor,
           'Low vehicle' => l10n.settingsVehicleLowVehicle,
           'Moped car' => l10n.settingsVehicleMopedCar,
+          'Moped class I' => l10n.settingsVehicleMopedClassI,
+          'Moped class II' => l10n.settingsVehicleMopedClassII,
+          'Electric scooter' => l10n.settingsVehicleElectricScooter,
           'Tractor' => l10n.settingsVehicleTractor,
+          'Car' => l10n.settingsVehicleCar,
           _ => vehicleType,
         };
 
@@ -2953,7 +3766,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         _routingStatus = AppLocalizations.of(context)!.mapRouteFailed;
       });
     } finally {
-      if (mounted) setState(() => _isRouting = false);
+      if (mounted) {
+        setState(() => _isRouting = false);
+        if (_activeRoute == null) {
+          _cancelPendingConvoyAiRouteAnalysis();
+        }
+      }
     }
   }
 
@@ -3104,7 +3922,11 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       'A-tractor' => l10n.settingsVehicleAtractor,
       'Low vehicle' => l10n.settingsVehicleLowVehicle,
       'Moped car' => l10n.settingsVehicleMopedCar,
+      'Moped class I' => l10n.settingsVehicleMopedClassI,
+      'Moped class II' => l10n.settingsVehicleMopedClassII,
+      'Electric scooter' => l10n.settingsVehicleElectricScooter,
       'Tractor' => l10n.settingsVehicleTractor,
+      'Car' => l10n.settingsVehicleCar,
       _ => vehicleType,
     };
     return showModalBottomSheet<_ConvoyRouteOption>(
@@ -3245,15 +4067,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   void _clearConvoyRoute() {
     setState(() {
       _routePoints = const [];
+      _activeRoute = null;
       _routeDestination = null;
       _pendingDestination = null;
       _isNavigating = false;
+      _isNavigationPanelExpanded = false;
       _destinationLabel = '';
       _routingStatus = '';
       _routeInstructions = const [];
       _distToNextManeuver = double.infinity;
       _nextManeuverSign = 0;
       _nextManeuverText = '';
+      _nextManeuverStreetName = '';
       _currentStreetName = '';
       _lastSpokenManeuver = '';
       _spokenEarlyWarning = false;
@@ -3264,6 +4089,26 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       _etaLastMovementAt = null;
       _lastNearestIdx = 0;
       _displayNearestIdx = 0;
+      _nearbyAlert = null;
+      _dismissedNearbyAlert = null;
+    });
+  }
+
+  void _pruneDismissedNearbyAlert(LatLng currentPos) {
+    final dismissed = _dismissedNearbyAlert;
+    if (dismissed == null) return;
+    final releaseDistance = dismissed.type.warningRadiusMeters + 150;
+    if (dismissed.distanceTo(currentPos) > releaseDistance) {
+      _dismissedNearbyAlert = null;
+    }
+  }
+
+  void _dismissNearbyAlert() {
+    final nearbyAlert = _nearbyAlert;
+    if (nearbyAlert == null) return;
+    setState(() {
+      _dismissedNearbyAlert = nearbyAlert;
+      _nearbyAlert = null;
     });
   }
 
@@ -3586,6 +4431,123 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     };
   }
 
+  Widget _buildCompactConvoyNavigationSpeed() {
+    final preferences = UserPreferencesService.instance;
+    return ValueListenableBuilder<double>(
+      valueListenable: _speedNotifier,
+      builder: (context, liveSpeed, _) {
+        return ValueListenableBuilder<SpeedUnit>(
+          valueListenable: preferences.speedUnit,
+          builder: (context, speedUnit, _) {
+            return ValueListenableBuilder<double>(
+              valueListenable: preferences.maxSpeedKmh,
+              builder: (context, maxSpeedKmh, _) {
+                final roadLimitKmh = _roadSpeedLimitKmh;
+                final effectiveLimitKmh = roadLimitKmh ?? maxSpeedKmh;
+                final over = liveSpeed > effectiveLimitKmh;
+                final speedDisplay = preferences.toDisplaySpeed(
+                  speedKmh: liveSpeed,
+                  unit: speedUnit,
+                );
+                final effectiveLimitDisplay = preferences.toDisplaySpeed(
+                  speedKmh: effectiveLimitKmh,
+                  unit: speedUnit,
+                );
+                final roadLimitDisplay = roadLimitKmh == null
+                    ? null
+                    : preferences.toDisplaySpeed(
+                        speedKmh: roadLimitKmh,
+                        unit: speedUnit,
+                      );
+                final speedRatio = effectiveLimitDisplay > 0
+                    ? (speedDisplay / effectiveLimitDisplay).clamp(0.0, 1.25)
+                    : 0.0;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: const Size(50, 50),
+                            painter: _ConvoySpeedBarsPainter(
+                              ratio: speedRatio,
+                              activeColor: over
+                                  ? const Color(0xFFFF5A5F)
+                                  : const Color(0xFFFF9A2F),
+                              inactiveColor: const Color(0x40FFFFFF),
+                              strokeWidth: 3.6,
+                              segments: 28,
+                            ),
+                          ),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: over ? Colors.red : Colors.white24,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                speedDisplay.toStringAsFixed(0),
+                                style: TextStyle(
+                                  color: over ? Colors.redAccent : Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: roadLimitDisplay != null
+                              ? Colors.red.shade700
+                              : Colors.grey.shade500,
+                          width: 3.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          roadLimitDisplay?.toStringAsFixed(0) ?? '--',
+                          style: TextStyle(
+                            color: roadLimitDisplay != null
+                                ? Colors.black
+                                : Colors.black45,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -3594,6 +4556,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       length: 2,
       child: Scaffold(
         backgroundColor: const Color(0xFF0A1628),
+        bottomNavigationBar: AdBannerWidget(
+          adUnitId: AdService.instance.bannerConvoyUnitId,
+        ),
         appBar: AppBar(
           backgroundColor: const Color(0xFF0D1B2E),
           foregroundColor: Colors.white,
@@ -3659,12 +4624,18 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                 final pins = allPins
                     .where(_isPinActive)
                     .toList(growable: false);
+                final currentUserId =
+                    (AuthService.instance.userId.value ?? _myUserId)?.trim();
                 final meetupPosition = widget.convoy.meetupPosition;
+                final hasInitialMapCenter =
+                    _myLocation != null ||
+                    locations.isNotEmpty ||
+                    meetupPosition != null;
                 final center =
                     _myLocation ??
                     (locations.isNotEmpty
                         ? locations.first.position
-                        : meetupPosition ?? const LatLng(59.3293, 18.0686));
+                        : meetupPosition ?? const LatLng(20, 0));
 
                 return Column(
                   children: [
@@ -3678,13 +4649,41 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 builder: (context, constraints) {
                                   final h = constraints.maxHeight;
                                   final w = constraints.maxWidth;
+                                  final useAppleMapKit = _usingAppleMapKit;
                                   final is3D =
-                                      _isFollowingMyPosition && _use3DMap;
+                                      !useAppleMapKit &&
+                                      _isFollowingMyPosition &&
+                                      _use3DMap;
                                   final matrix = is3D
                                       ? (Matrix4.identity()
                                           ..setEntry(3, 2, 0.0008)
                                           ..rotateX(_k3DTiltRad))
                                       : Matrix4.identity();
+                                  final routeForMap =
+                                      _isNavigating && _displayNearestIdx > 0
+                                      ? _routePoints.sublist(
+                                          _displayNearestIdx.clamp(
+                                            0,
+                                            _routePoints.length,
+                                          ),
+                                        )
+                                      : _routePoints;
+                                  final selfUserIds = <String>{
+                                    if ((currentUserId ?? '').isNotEmpty)
+                                      currentUserId!,
+                                    if ((_myUserId ?? '').trim().isNotEmpty)
+                                      (_myUserId ?? '').trim(),
+                                  };
+                                  final convoyMembersForApple = locations
+                                      .where(
+                                        (member) => !selfUserIds.contains(
+                                          member.userId.trim(),
+                                        ),
+                                      )
+                                      .toList(growable: false);
+                                  final initialZoom = hasInitialMapCenter
+                                      ? _followZoom
+                                      : 2.0;
                                   return Stack(
                                     clipBehavior: Clip.hardEdge,
                                     children: [
@@ -3706,304 +4705,451 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                           child: SizedBox(
                                             width: w,
                                             height: h,
-                                            child: FlutterMap(
-                                              options: MapOptions(
-                                                initialCenter: center,
-                                                initialZoom: _followZoom,
-                                                initialRotation: 0,
-                                                onTap: (_, point) =>
-                                                    _showQuickHazardPicker(
-                                                      point,
-                                                      l10n,
-                                                    ),
-                                                onPositionChanged: (_, hasGesture) {
-                                                  if (!hasGesture ||
-                                                      !_isFollowingMyPosition) {
-                                                    return;
-                                                  }
-                                                  setState(() {
-                                                    _isFollowingMyPosition =
-                                                        false;
-                                                  });
-                                                },
-                                              ),
-                                              mapController: _mapController,
-                                              children: [
-                                                TileLayer(
-                                                  urlTemplate: _useDarkMap
-                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                                  fallbackUrl: _useDarkMap
-                                                      ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-                                                      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                                  subdomains: const [
-                                                    'a',
-                                                    'b',
-                                                    'c',
-                                                    'd',
-                                                  ],
-                                                  userAgentPackageName:
-                                                      'com.cruizx.mobile',
-                                                  tileProvider: _tileProvider,
-                                                  tileUpdateTransformer:
-                                                      TileUpdateTransformers.throttle(
-                                                        const Duration(
-                                                          milliseconds: 28,
-                                                        ),
-                                                      ),
-                                                  retinaMode:
-                                                      RetinaMode.isHighDensity(
-                                                        context,
-                                                      ),
-                                                  maxNativeZoom: 20,
-                                                  keepBuffer: 3,
-                                                  panBuffer: 1,
-                                                  tileDisplay:
-                                                      const TileDisplay.instantaneous(),
-                                                ),
-                                                if (_useDarkMap)
-                                                  TileLayer(
-                                                    urlTemplate:
-                                                        'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
-                                                    fallbackUrl:
-                                                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                                    subdomains: const [
-                                                      'a',
-                                                      'b',
-                                                      'c',
-                                                      'd',
-                                                    ],
-                                                    userAgentPackageName:
-                                                        'com.cruizx.mobile',
-                                                    tileProvider: _tileProvider,
-                                                    tileUpdateTransformer:
-                                                        TileUpdateTransformers.throttle(
-                                                          const Duration(
-                                                            milliseconds: 28,
-                                                          ),
-                                                        ),
-                                                    retinaMode:
-                                                        RetinaMode.isHighDensity(
+                                            child: useAppleMapKit
+                                                ? ValueListenableBuilder<
+                                                    MapMarkerStyle
+                                                  >(
+                                                    valueListenable:
+                                                        UserPreferencesService
+                                                            .instance
+                                                            .mapMarkerStyle,
+                                                    builder:
+                                                        (
                                                           context,
-                                                        ),
-                                                    maxNativeZoom: 20,
-                                                    keepBuffer: 2,
-                                                    panBuffer: 1,
-                                                    tileDisplay:
-                                                        const TileDisplay.instantaneous(),
-                                                  ),
-                                                MarkerLayer(
-                                                  markers: [
-                                                    if (meetupPosition != null)
-                                                      Marker(
-                                                        point: meetupPosition,
-                                                        width: 120,
-                                                        height: 64,
-                                                        alignment:
-                                                            const Alignment(
-                                                              0,
-                                                              -0.8,
+                                                          markerStyle,
+                                                          _,
+                                                        ) {
+                                                          return AppleConvoyMapWidget(
+                                                            key: ValueKey(
+                                                              'apple-convoy-mapkit-$_mapViewEpoch',
                                                             ),
-                                                        child: GestureDetector(
-                                                          onTap: () {
-                                                            _destinationLabel =
-                                                                widget
-                                                                    .convoy
-                                                                    .meetupLabel;
-                                                            _routeToDestination(
-                                                              meetupPosition,
-                                                            );
-                                                          },
-                                                          child: Column(
-                                                            children: [
-                                                              Container(
-                                                                padding:
-                                                                    const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          8,
-                                                                      vertical:
-                                                                          3,
-                                                                    ),
-                                                                decoration: BoxDecoration(
-                                                                  color: const Color(
-                                                                    0xEE071739,
-                                                                  ),
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        9,
-                                                                      ),
-                                                                  border: Border.all(
-                                                                    color: const Color(
-                                                                      0xFF66D9FF,
-                                                                    ),
-                                                                  ),
+                                                            currentUserId:
+                                                                currentUserId,
+                                                            locationNotifier:
+                                                                _locationNotifier,
+                                                            headingNotifier:
+                                                                _arrowHdg,
+                                                            markerStyle:
+                                                                markerStyle,
+                                                            members:
+                                                                convoyMembersForApple,
+                                                            pins: pins,
+                                                            destination:
+                                                                _routeDestination,
+                                                            routePoints:
+                                                                routeForMap,
+                                                            alerts: _alerts,
+                                                            meetupPosition:
+                                                                meetupPosition,
+                                                            meetupLabel: widget
+                                                                .convoy
+                                                                .meetupLabel,
+                                                            followUser:
+                                                                _isFollowingMyPosition &&
+                                                                _myLocation !=
+                                                                    null,
+                                                            use3D:
+                                                                _isNavigating &&
+                                                                _use3DMap,
+                                                            darkMode:
+                                                                _useDarkMap,
+                                                            satellite:
+                                                                _useSatelliteMap,
+                                                            nextManeuverDistanceMeters:
+                                                                _isNavigating
+                                                                ? _distToNextManeuver
+                                                                : null,
+                                                            nextManeuverSign:
+                                                                _isNavigating
+                                                                ? _nextManeuverSign
+                                                                : null,
+                                                            viewportCommandId:
+                                                                _mapViewportCommandId,
+                                                            viewportCommandPoints:
+                                                                _mapViewportCommandPoints,
+                                                            onTap: (point) =>
+                                                                _showQuickHazardPicker(
+                                                                  point,
+                                                                  l10n,
                                                                 ),
-                                                                child: Text(
+                                                            onUserPanned: () {
+                                                              _pauseConvoyMapFollowingForInteraction();
+                                                            },
+                                                            onUserInteractionEnded:
+                                                                _resumeConvoyMapFollowingAfterInteraction,
+                                                            onMeetupTap: () {
+                                                              if (meetupPosition ==
+                                                                  null) {
+                                                                return;
+                                                              }
+                                                              _destinationLabel =
                                                                   widget
                                                                       .convoy
-                                                                      .meetupLabel,
-                                                                  maxLines: 1,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                  style: const TextStyle(
-                                                                    color: Colors
-                                                                        .white,
-                                                                    fontSize:
-                                                                        11,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              const Icon(
-                                                                Icons
-                                                                    .location_on,
-                                                                color: Color(
-                                                                  0xFF66D9FF,
-                                                                ),
-                                                                size: 28,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    // Alert markers
-                                                    for (final alert in _alerts)
-                                                      Marker(
-                                                        point: alert.position,
-                                                        width: 44,
-                                                        height: 52,
-                                                        alignment:
-                                                            const Alignment(
-                                                              0,
-                                                              -1,
-                                                            ),
-                                                        child:
-                                                            _ConvoyAlertMarker(
-                                                              alert: alert,
-                                                            ),
-                                                      ),
-                                                    for (final member
-                                                        in locations)
-                                                      if (!(member.userId ==
-                                                              _myUserId &&
-                                                          _isFollowingMyPosition))
-                                                        Marker(
-                                                          point:
-                                                              member.position,
-                                                          width: 100,
-                                                          height: 72,
-                                                          child:
-                                                              _buildMemberMarker(
+                                                                      .meetupLabel;
+                                                              _routeToDestination(
+                                                                meetupPosition,
+                                                              );
+                                                            },
+                                                            onMemberTap: (userId) {
+                                                              final member =
+                                                                  _memberByUserId(
+                                                                    locations,
+                                                                    userId,
+                                                                  );
+                                                              if (member ==
+                                                                  null) {
+                                                                return;
+                                                              }
+                                                              _showParticipantSafetyActions(
                                                                 member,
                                                                 l10n,
-                                                              ),
-                                                        ),
-                                                    for (final pin in pins)
-                                                      Marker(
-                                                        point: pin.position,
-                                                        width: 90,
-                                                        height: 42,
-                                                        child: GestureDetector(
-                                                          onTap: () =>
+                                                              );
+                                                            },
+                                                            onPinTap: (pinId) {
+                                                              final tappedPin =
+                                                                  _pinById(
+                                                                    pins,
+                                                                    pinId,
+                                                                  );
+                                                              if (tappedPin ==
+                                                                  null) {
+                                                                return;
+                                                              }
                                                               _showPinOptions(
-                                                                pin,
-                                                              ),
-                                                          child: Column(
-                                                            children: [
-                                                              Container(
-                                                                padding:
-                                                                    const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          6,
-                                                                      vertical:
-                                                                          2,
-                                                                    ),
-                                                                decoration: BoxDecoration(
-                                                                  color: Theme.of(
-                                                                    context,
-                                                                  ).colorScheme.surface,
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        8,
-                                                                      ),
-                                                                  border: Border.all(
-                                                                    color:
-                                                                        _pinColor(
-                                                                          pin.type,
-                                                                        ).withValues(
-                                                                          alpha:
-                                                                              0.6,
-                                                                        ),
-                                                                  ),
-                                                                ),
-                                                                child: Text(
-                                                                  pin.label,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                  style: Theme.of(
-                                                                    context,
-                                                                  ).textTheme.labelSmall,
-                                                                ),
-                                                              ),
-                                                              Icon(
-                                                                _pinIcon(
-                                                                  pin.type,
-                                                                ),
-                                                                color:
-                                                                    _pinColor(
-                                                                      pin.type,
-                                                                    ),
-                                                                size: 18,
-                                                              ),
-                                                            ],
+                                                                tappedPin,
+                                                              );
+                                                            },
+                                                          );
+                                                        },
+                                                  )
+                                                : FlutterMap(
+                                                    options: MapOptions(
+                                                      initialCenter: center,
+                                                      initialZoom: initialZoom,
+                                                      initialRotation: 0,
+                                                      onTap: (_, point) =>
+                                                          _showQuickHazardPicker(
+                                                            point,
+                                                            l10n,
                                                           ),
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                                RichAttributionWidget(
-                                                  attributions: [
-                                                    TextSourceAttribution(
-                                                      '© Mapbox',
+                                                      onPositionChanged:
+                                                          (
+                                                            _,
+                                                            hasGesture,
+                                                          ) {
+                                                            if (!hasGesture) {
+                                                              return;
+                                                            }
+                                                            _pauseConvoyMapFollowingForInteraction();
+                                                            _resumeConvoyMapFollowingAfterInteraction();
+                                                          },
                                                     ),
-                                                    TextSourceAttribution(
-                                                      '© OpenStreetMap contributors',
-                                                    ),
-                                                  ],
-                                                ),
-                                                // Route polyline
-                                                if (_routePoints.isNotEmpty)
-                                                  PolylineLayer(
-                                                    polylines: [
-                                                      Polyline(
-                                                        points:
-                                                            _isNavigating &&
-                                                                _displayNearestIdx >
-                                                                    0
-                                                            ? _routePoints.sublist(
-                                                                _displayNearestIdx
-                                                                    .clamp(
-                                                                      0,
-                                                                      _routePoints
-                                                                          .length,
-                                                                    ),
-                                                              )
-                                                            : _routePoints,
-                                                        color: const Color(
-                                                          0xFF3AA8FF,
-                                                        ),
-                                                        strokeWidth: 5,
-                                                        borderColor:
-                                                            const Color(
-                                                              0xFF0A3D6E,
+                                                    mapController:
+                                                        _mapController,
+                                                    children: [
+                                                      TileLayer(
+                                                        urlTemplate:
+                                                            _useSatelliteMap
+                                                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                                                            : _useDarkMap
+                                                            ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+                                                            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                                        fallbackUrl:
+                                                            _useSatelliteMap
+                                                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                                                            : _useDarkMap
+                                                            ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+                                                            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                                                        subdomains:
+                                                            _useSatelliteMap
+                                                            ? const []
+                                                            : const [
+                                                                'a',
+                                                                'b',
+                                                                'c',
+                                                                'd',
+                                                              ],
+                                                        userAgentPackageName:
+                                                            'com.cruizx.mobile',
+                                                        tileProvider:
+                                                            _tileProvider,
+                                                        tileUpdateTransformer:
+                                                            TileUpdateTransformers.throttle(
+                                                              const Duration(
+                                                                milliseconds:
+                                                                    28,
+                                                              ),
                                                             ),
-                                                        borderStrokeWidth: 2,
+                                                        retinaMode:
+                                                            RetinaMode.isHighDensity(
+                                                              context,
+                                                            ),
+                                                        maxNativeZoom: 20,
+                                                        keepBuffer: 3,
+                                                        panBuffer: 1,
+                                                        tileDisplay:
+                                                            const TileDisplay.instantaneous(),
                                                       ),
+                                                      if (_useSatelliteMap)
+                                                        TileLayer(
+                                                          urlTemplate:
+                                                              'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                                                          userAgentPackageName:
+                                                              'com.cruizx.mobile',
+                                                          tileProvider:
+                                                              _tileProvider,
+                                                          maxNativeZoom: 20,
+                                                          tileDisplay:
+                                                              const TileDisplay.instantaneous(),
+                                                        )
+                                                      else if (_useDarkMap)
+                                                        TileLayer(
+                                                          urlTemplate:
+                                                              'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+                                                          fallbackUrl:
+                                                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                          subdomains: const [
+                                                            'a',
+                                                            'b',
+                                                            'c',
+                                                            'd',
+                                                          ],
+                                                          userAgentPackageName:
+                                                              'com.cruizx.mobile',
+                                                          tileProvider:
+                                                              _tileProvider,
+                                                          tileUpdateTransformer:
+                                                              TileUpdateTransformers.throttle(
+                                                                const Duration(
+                                                                  milliseconds:
+                                                                      28,
+                                                                ),
+                                                              ),
+                                                          retinaMode:
+                                                              RetinaMode.isHighDensity(
+                                                                context,
+                                                              ),
+                                                          maxNativeZoom: 20,
+                                                          keepBuffer: 2,
+                                                          panBuffer: 1,
+                                                          tileDisplay:
+                                                              const TileDisplay.instantaneous(),
+                                                        ),
+                                                      MarkerLayer(
+                                                        markers: [
+                                                          if (meetupPosition !=
+                                                              null)
+                                                            Marker(
+                                                              point:
+                                                                  meetupPosition,
+                                                              width: 120,
+                                                              height: 64,
+                                                              alignment:
+                                                                  const Alignment(
+                                                                    0,
+                                                                    -0.8,
+                                                                  ),
+                                                              child: GestureDetector(
+                                                                onTap: () {
+                                                                  _destinationLabel =
+                                                                      widget
+                                                                          .convoy
+                                                                          .meetupLabel;
+                                                                  _routeToDestination(
+                                                                    meetupPosition,
+                                                                  );
+                                                                },
+                                                                child: Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            8,
+                                                                        vertical:
+                                                                            3,
+                                                                      ),
+                                                                      decoration: BoxDecoration(
+                                                                        color: const Color(
+                                                                          0xEE071739,
+                                                                        ),
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              9,
+                                                                            ),
+                                                                        border: Border.all(
+                                                                          color: const Color(
+                                                                            0xFF66D9FF,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      child: Text(
+                                                                        widget
+                                                                            .convoy
+                                                                            .meetupLabel,
+                                                                        maxLines:
+                                                                            1,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                        style: const TextStyle(
+                                                                          color:
+                                                                              Colors.white,
+                                                                          fontSize:
+                                                                              11,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                    const Icon(
+                                                                      Icons
+                                                                          .location_on,
+                                                                      color: Color(
+                                                                        0xFF66D9FF,
+                                                                      ),
+                                                                      size: 28,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          for (final alert
+                                                              in _alerts)
+                                                            Marker(
+                                                              point: alert
+                                                                  .position,
+                                                              width: 44,
+                                                              height: 52,
+                                                              alignment:
+                                                                  const Alignment(
+                                                                    0,
+                                                                    -1,
+                                                                  ),
+                                                              child:
+                                                                  _ConvoyAlertMarker(
+                                                                    alert:
+                                                                        alert,
+                                                                  ),
+                                                            ),
+                                                          for (final member
+                                                              in locations)
+                                                            if (!(member.userId ==
+                                                                    _myUserId &&
+                                                                _isFollowingMyPosition))
+                                                              Marker(
+                                                                point: member
+                                                                    .position,
+                                                                width: 86,
+                                                                height: 56,
+                                                                child: AccessibleTapTarget(
+                                                                  label: member
+                                                                      .userLabel,
+                                                                  onTap: () =>
+                                                                      _showParticipantSafetyActions(
+                                                                        member,
+                                                                        l10n,
+                                                                      ),
+                                                                  child:
+                                                                      _buildMemberMarker(
+                                                                        member,
+                                                                        l10n,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                          for (final pin
+                                                              in pins)
+                                                            Marker(
+                                                              point:
+                                                                  pin.position,
+                                                              width: 90,
+                                                              height: 42,
+                                                              child: AccessibleTapTarget(
+                                                                label:
+                                                                    pin.label,
+                                                                onTap: () =>
+                                                                    _showPinOptions(
+                                                                      pin,
+                                                                    ),
+                                                                child: Column(
+                                                                  children: [
+                                                                    Container(
+                                                                      padding: const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            6,
+                                                                        vertical:
+                                                                            2,
+                                                                      ),
+                                                                      decoration: BoxDecoration(
+                                                                        color: Theme.of(
+                                                                          context,
+                                                                        ).colorScheme.surface,
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(
+                                                                              8,
+                                                                            ),
+                                                                        border: Border.all(
+                                                                          color:
+                                                                              _pinColor(
+                                                                                pin.type,
+                                                                              ).withValues(
+                                                                                alpha: 0.6,
+                                                                              ),
+                                                                        ),
+                                                                      ),
+                                                                      child: Text(
+                                                                        pin.label,
+                                                                        overflow:
+                                                                            TextOverflow.ellipsis,
+                                                                        style: Theme.of(
+                                                                          context,
+                                                                        ).textTheme.labelSmall,
+                                                                      ),
+                                                                    ),
+                                                                    Icon(
+                                                                      _pinIcon(
+                                                                        pin.type,
+                                                                      ),
+                                                                      color: _pinColor(
+                                                                        pin.type,
+                                                                      ),
+                                                                      size: 18,
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      RichAttributionWidget(
+                                                        attributions: [
+                                                          TextSourceAttribution(
+                                                            '© Mapbox',
+                                                          ),
+                                                          TextSourceAttribution(
+                                                            '© OpenStreetMap contributors',
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      if (_routePoints
+                                                          .isNotEmpty)
+                                                        PolylineLayer(
+                                                          polylines: [
+                                                            Polyline(
+                                                              points:
+                                                                  routeForMap,
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF3AA8FF,
+                                                                  ),
+                                                              strokeWidth: 5,
+                                                              borderColor:
+                                                                  const Color(
+                                                                    0xFF0A3D6E,
+                                                                  ),
+                                                              borderStrokeWidth:
+                                                                  2,
+                                                            ),
+                                                          ],
+                                                        ),
                                                     ],
                                                   ),
-                                              ],
-                                            ),
                                           ),
                                         ),
                                       ),
@@ -4069,6 +5215,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                       ),
                                     ),
                                     child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Icon(
                                           _shareLiveLocation
@@ -4324,7 +5472,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               ),
                                               _favChip(
                                                 icon: Icons.add,
-                                                label: '+',
+                                                label: l10n.a11yAddFavorite,
                                                 hasValue: false,
                                                 onTap: _promptAddCustomFavorite,
                                                 compact: true,
@@ -4352,6 +5500,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 .text
                                                 .isNotEmpty
                                             ? IconButton(
+                                                tooltip: l10n.a11yClearSearch,
                                                 icon: const Icon(Icons.close),
                                                 onPressed: () {
                                                   _addressSearchController
@@ -4363,6 +5512,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 },
                                               )
                                             : IconButton(
+                                                tooltip: l10n.a11yOpenSearch,
                                                 icon: const Icon(
                                                   Icons.arrow_forward,
                                                 ),
@@ -4390,26 +5540,28 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 bottom: false,
                                 child: Padding(
                                   padding: const EdgeInsets.fromLTRB(
-                                    12,
-                                    10,
-                                    12,
+                                    14,
+                                    8,
+                                    14,
                                     0,
                                   ),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF071739),
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(16),
                                       boxShadow: const [
                                         BoxShadow(
-                                          color: Colors.black87,
-                                          blurRadius: 18,
-                                          offset: Offset(0, 4),
+                                          color: Colors.black54,
+                                          blurRadius: 12,
+                                          offset: Offset(0, 3),
                                         ),
                                       ],
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      10,
+                                      14,
+                                      11,
                                     ),
                                     child: Row(
                                       children: [
@@ -4427,7 +5579,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   alpha: 0.36,
                                                 ),
                                                 borderRadius:
-                                                    BorderRadius.circular(14),
+                                                    BorderRadius.circular(13),
                                                 border: Border.all(
                                                   color: accent.withValues(
                                                     alpha: 0.9,
@@ -4438,12 +5590,12 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               child: Icon(
                                                 _turnIcon(_nextManeuverSign),
                                                 color: Colors.white,
-                                                size: 30,
+                                                size: 34,
                                               ),
                                             );
                                           },
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: 11),
                                         Expanded(
                                           child: Builder(
                                             builder: (_) {
@@ -4460,8 +5612,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   Container(
                                                     padding:
                                                         const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
+                                                          horizontal: 9,
+                                                          vertical: 3,
                                                         ),
                                                     decoration: BoxDecoration(
                                                       color: accent,
@@ -4478,7 +5630,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       ),
                                                       style: const TextStyle(
                                                         color: Colors.white,
-                                                        fontSize: 13,
+                                                        fontSize: 11,
                                                         fontWeight:
                                                             FontWeight.w700,
                                                         letterSpacing: 0.1,
@@ -4497,13 +5649,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                       fontSize: 18,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      height: 1.2,
+                                                      height: 1.15,
                                                     ),
-                                                    maxLines: 1,
+                                                    maxLines: 2,
                                                     overflow:
                                                         TextOverflow.ellipsis,
                                                   ),
-                                                  if (_maneuverTargetFromText(
+                                                  if (_localizedManeuverTarget(
+                                                        l10n,
+                                                        _nextManeuverStreetName,
                                                         _nextManeuverText,
                                                       ) !=
                                                       null)
@@ -4514,13 +5668,15 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           ),
                                                       child: Text(
                                                         l10n.mapManeuverTowardRoad(
-                                                          _maneuverTargetFromText(
+                                                          _localizedManeuverTarget(
+                                                            l10n,
+                                                            _nextManeuverStreetName,
                                                             _nextManeuverText,
                                                           )!,
                                                         ),
                                                         style: const TextStyle(
                                                           color: Colors.white70,
-                                                          fontSize: 14,
+                                                          fontSize: 12,
                                                           fontWeight:
                                                               FontWeight.w600,
                                                         ),
@@ -4534,6 +5690,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                             },
                                           ),
                                         ),
+                                        const SizedBox(width: 8),
+                                        NavigationEtaBadge(eta: _formatEta()),
                                       ],
                                     ),
                                   ),
@@ -4544,37 +5702,42 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                           if (_nearbyAlert != null && _myLocation != null)
                             Positioned(
                               top: _isNavigating && _nextManeuverText.isNotEmpty
-                                  ? 165
+                                  ? 128
                                   : 80,
                               left: 0,
                               right: 0,
                               child: Material(
                                 color: Colors.transparent,
                                 child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color:
                                         _nearbyAlert!.type ==
                                             AlertType.roadClosure
                                         ? const Color(0xF2B71C1C)
-                                        : const Color(0xEEF57F17),
-                                    border: const Border(
-                                      bottom: BorderSide(
-                                        color: Color(0x66FFCC02),
-                                        width: 1,
+                                        : const Color(0xF2D97706),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 2),
                                       ),
-                                    ),
+                                    ],
                                   ),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
+                                    horizontal: 12,
+                                    vertical: 8,
                                   ),
                                   child: Row(
                                     children: [
                                       Text(
                                         _nearbyAlert!.type.emoji,
-                                        style: const TextStyle(fontSize: 22),
+                                        style: const TextStyle(fontSize: 18),
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Builder(
                                           builder: (ctx) {
@@ -4592,23 +5755,23 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                               ),
                                               style: const TextStyle(
                                                 color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                                height: 1.15,
                                               ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             );
                                           },
                                         ),
                                       ),
-                                      GestureDetector(
-                                        onTap: () => setState(() {
-                                          _dismissedNearbyAlertId =
-                                              _nearbyAlert!.id;
-                                          _nearbyAlert = null;
-                                        }),
+                                      AccessibleTapTarget(
+                                        label: l10n.a11yDismissAlert,
+                                        onTap: _dismissNearbyAlert,
                                         child: const Icon(
                                           Icons.close,
                                           color: Colors.white70,
-                                          size: 18,
+                                          size: 16,
                                         ),
                                       ),
                                     ],
@@ -4622,7 +5785,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               left: 0,
                               right: 0,
                               bottom: (_routeDestination != null || _isRouting)
-                                  ? 165
+                                  ? (_isNavigationPanelExpanded ? 165 : 68)
                                   : 100,
                               child: Center(
                                 child: Container(
@@ -4654,8 +5817,105 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 ),
                               ),
                             ),
+                          if (_isNavigating &&
+                              !_isNavigationPanelExpanded &&
+                              _routeDestination != null)
+                            Positioned(
+                              left: 14,
+                              right: 14,
+                              bottom: 12,
+                              child: SafeArea(
+                                top: false,
+                                child: SizedBox(
+                                  height: 108,
+                                  child: Stack(
+                                    alignment: Alignment.bottomCenter,
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.bottomLeft,
+                                        child:
+                                            _buildCompactConvoyNavigationSpeed(),
+                                      ),
+                                      Semantics(
+                                        button: true,
+                                        label: l10n.routeOptionsTitle,
+                                        child: Tooltip(
+                                          message: l10n.routeOptionsTitle,
+                                          child: GestureDetector(
+                                            onTap: () => setState(
+                                              () => _isNavigationPanelExpanded =
+                                                  true,
+                                            ),
+                                            child: Container(
+                                              width: 42,
+                                              height: 42,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0x661E6BFF),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: const Color(
+                                                    0x993AA8FF,
+                                                  ),
+                                                  width: 1.5,
+                                                ),
+                                                boxShadow: const [
+                                                  BoxShadow(
+                                                    color: Colors.black38,
+                                                    blurRadius: 9,
+                                                    offset: Offset(0, 3),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: const Icon(
+                                                Icons.more_horiz,
+                                                color: Colors.white,
+                                                size: 22,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Semantics(
+                                          button: true,
+                                          label: l10n.mapEndNavigation,
+                                          child: Tooltip(
+                                            message: l10n.mapEndNavigation,
+                                            child: GestureDetector(
+                                              onTap: _clearConvoyRoute,
+                                              child: Container(
+                                                width: 42,
+                                                height: 42,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xE6D32F2F),
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black45,
+                                                      blurRadius: 9,
+                                                      offset: Offset(0, 3),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Icon(
+                                                  Icons.stop_rounded,
+                                                  color: Colors.white,
+                                                  size: 21,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           // Route / navigation bottom panel (Apple Maps dark)
-                          if (_routeDestination != null || _isRouting)
+                          if ((_routeDestination != null || _isRouting) &&
+                              (!_isNavigating || _isNavigationPanelExpanded))
                             Positioned(
                               left: 0,
                               right: 0,
@@ -4705,11 +5965,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                 final roadLimitKmh =
                                                     _roadSpeedLimitKmh;
                                                 final effectiveLimitKmh =
-                                                    roadLimitKmh;
+                                                    roadLimitKmh ?? maxSpeedKmh;
                                                 final over =
-                                                    effectiveLimitKmh != null &&
                                                     liveSpeed >
-                                                        effectiveLimitKmh;
+                                                    effectiveLimitKmh;
                                                 final speedDisplay =
                                                     UserPreferencesService
                                                         .instance
@@ -4718,15 +5977,13 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                           unit: speedUnit,
                                                         );
                                                 final effectiveLimitDisplay =
-                                                    effectiveLimitKmh == null
-                                                    ? 0.0
-                                                    : UserPreferencesService
-                                                          .instance
-                                                          .toDisplaySpeed(
-                                                            speedKmh:
-                                                                effectiveLimitKmh,
-                                                            unit: speedUnit,
-                                                          );
+                                                    UserPreferencesService
+                                                        .instance
+                                                        .toDisplaySpeed(
+                                                          speedKmh:
+                                                              effectiveLimitKmh,
+                                                          unit: speedUnit,
+                                                        );
                                                 final roadLimitDisplay =
                                                     roadLimitKmh == null
                                                     ? null
@@ -4754,19 +6011,51 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                   children: [
                                                     // Drag handle
                                                     Center(
-                                                      child: Container(
-                                                        width: 34,
-                                                        height: 3,
-                                                        margin:
-                                                            const EdgeInsets.only(
-                                                              bottom: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: Colors.white24,
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                2,
+                                                      child: GestureDetector(
+                                                        behavior:
+                                                            HitTestBehavior
+                                                                .opaque,
+                                                        onTap: _isNavigating
+                                                            ? () => setState(
+                                                                () =>
+                                                                    _isNavigationPanelExpanded =
+                                                                        false,
+                                                              )
+                                                            : null,
+                                                        onVerticalDragEnd:
+                                                            _isNavigating
+                                                            ? (details) {
+                                                                if ((details.primaryVelocity ??
+                                                                        0) >
+                                                                    100) {
+                                                                  setState(
+                                                                    () => _isNavigationPanelExpanded =
+                                                                        false,
+                                                                  );
+                                                                }
+                                                              }
+                                                            : null,
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.fromLTRB(
+                                                                34,
+                                                                0,
+                                                                34,
+                                                                8,
                                                               ),
+                                                          child: Container(
+                                                            width: 34,
+                                                            height: 3,
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color: Colors
+                                                                      .white24,
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        2,
+                                                                      ),
+                                                                ),
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
@@ -5051,6 +6340,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                       onTap: () => setState(() {
                                                                         _isNavigating =
                                                                             true;
+                                                                        _isNavigationPanelExpanded =
+                                                                            false;
                                                                         _isFollowingMyPosition =
                                                                             true;
                                                                         _lastNearestIdx =
@@ -5248,8 +6539,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                           ),
                                           const SizedBox(height: 4),
                                           Container(
-                                            width: 34,
-                                            height: 34,
+                                            width: 42,
+                                            height: 42,
                                             decoration: BoxDecoration(
                                               color: Colors.white,
                                               shape: BoxShape.circle,
@@ -5302,26 +6593,20 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 _convoyCircleButton(
-                                  onTap: () => _fitAllMembers(locations),
-                                  child: const Icon(
-                                    Icons.people_alt_outlined,
-                                    color: Colors.white70,
-                                    size: 19,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                _convoyCircleButton(
+                                  semanticLabel: _isFollowingMyPosition
+                                      ? l10n.a11yStopFollowingLocation
+                                      : l10n.a11yCenterOnLocation,
                                   onTap: () {
                                     final me = _myLocation;
                                     if (me == null) return;
+                                    final nextFollowing =
+                                        !_isFollowingMyPosition;
                                     setState(() {
-                                      if (_isNavigating ||
-                                          _routePoints.isNotEmpty) {
-                                        _isFollowingMyPosition = true;
-                                      } else {
-                                        _isFollowingMyPosition =
-                                            !_isFollowingMyPosition;
+                                      if (_isFollowingMyPosition &&
+                                          !nextFollowing) {
+                                        _mapViewEpoch++;
                                       }
+                                      _isFollowingMyPosition = nextFollowing;
                                     });
 
                                     if (_isFollowingMyPosition) {
@@ -5354,8 +6639,63 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 8),
+                                _convoyCircleButton(
+                                  semanticLabel: l10n.convoyMembers(
+                                    locations.length,
+                                  ),
+                                  onTap: () => _fitAllMembers(locations),
+                                  child: const Icon(
+                                    Icons.people_alt_outlined,
+                                    color: Colors.white70,
+                                    size: 19,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _convoyCircleButton(
+                                  semanticLabel: l10n.a11yChooseMapLayer,
+                                  color: _useSatelliteMap
+                                      ? const Color(0xFF1E6BFF)
+                                      : null,
+                                  onTap: () => _showConvoyMapLayerPicker(l10n),
+                                  child: Icon(
+                                    Icons.layers_outlined,
+                                    color: _useSatelliteMap
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _convoyCircleButton(
+                                  semanticLabel: l10n.aiRouteButton,
+                                  onTap: _openAiFromConvoyButton,
+                                  color: _activeRoute != null
+                                      ? const Color(0xFF1B4F9C)
+                                      : null,
+                                  child: _isAiAnalyzing
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Color(0xFF8FCBFF),
+                                          ),
+                                        )
+                                      : const Text(
+                                          'AI',
+                                          style: TextStyle(
+                                            color: Color(0xFF8FCBFF),
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                ),
+                                const SizedBox(height: 8),
                                 // 2D / 3D toggle
                                 _convoyCircleButton(
+                                  semanticLabel: _use3DMap
+                                      ? l10n.a11ySwitchTo2d
+                                      : l10n.a11ySwitchTo3d,
                                   onTap: () {
                                     setState(() => _use3DMap = !_use3DMap);
                                     UserPreferencesService
@@ -5378,6 +6718,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 const SizedBox(height: 8),
                                 // Light / Dark map style toggle
                                 _convoyCircleButton(
+                                  semanticLabel: _useDarkMap
+                                      ? l10n.a11yUseLightMap
+                                      : l10n.a11yUseDarkMap,
                                   onTap: () {
                                     setState(() {
                                       _useDarkMap = !_useDarkMap;
@@ -5398,6 +6741,9 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                   valueListenable: TtsService.instance.enabled,
                                   builder: (context, ttsOn, _) {
                                     return _convoyCircleButton(
+                                      semanticLabel: ttsOn
+                                          ? l10n.a11yDisableVoiceNavigation
+                                          : l10n.a11yEnableVoiceNavigation,
                                       onTap: () {
                                         TtsService.instance.enabled.value =
                                             !ttsOn;
@@ -5415,6 +6761,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                 const SizedBox(height: 8),
                                 // Report alert button
                                 _convoyCircleButton(
+                                  semanticLabel: l10n.reportAlertTitle,
                                   onTap: _showReportAlertSheet,
                                   child: const Icon(
                                     Icons.warning_amber_rounded,
@@ -5587,6 +6934,76 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
 }
 
 enum _ConvoyRouteOptionType { recommended, alternative, unverified }
+
+class _ConvoyAiAnalysisSection extends StatelessWidget {
+  const _ConvoyAiAnalysisSection({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 7),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(top: 5, left: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '•',
+                    style: TextStyle(
+                      color: CruizXAiDialogStyle.mutedText,
+                      fontSize: 15,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        color: CruizXAiDialogStyle.bodyText,
+                        fontSize: 14.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ConvoyRouteOption {
   const _ConvoyRouteOption({required this.route, required this.type});

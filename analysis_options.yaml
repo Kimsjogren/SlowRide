@@ -8,11 +8,27 @@
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
 analyzer:
+  language:
+    strict-inference: false
+    strict-raw-types: false
   exclude:
     - build/**
+    - tmp/**
+    - output/**
+    - website/backend/node_modules/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   errors:
     duplicate_ignore: ignore
-include: package:flutter_lints/flutter.yaml
+    inference_failure_on_collection_literal: ignore
+    inference_failure_on_function_invocation: ignore
+    inference_failure_on_instance_creation: ignore
+    strict_raw_type: ignore
+include: package:very_good_analysis/analysis_options.yaml
 
 linter:
   # The lint rules applied to this project can be customized in the
@@ -26,6 +42,41 @@ linter:
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
   rules:
+    always_put_required_named_parameters_first: false
+    public_member_api_docs: false
+    lines_longer_than_80_chars: false
+    one_member_abstracts: false
+    sort_constructors_first: false
+    document_ignores: false
+    flutter_style_todos: false
+    avoid_positional_boolean_parameters: false
+    always_use_package_imports: false
+    directives_ordering: false
+    avoid_catches_without_on_clauses: false
+    discarded_futures: false
+    prefer_int_literals: false
+    avoid_redundant_argument_values: false
+    omit_local_variable_types: false
+    unawaited_futures: false
+    cascade_invocations: false
+    unnecessary_lambdas: false
+    avoid_dynamic_calls: false
+    unnecessary_breaks: false
+    prefer_const_declarations: false
+    noop_primitive_operations: false
+    avoid_multiple_declarations_per_line: false
+    use_named_constants: false
+    prefer_if_elements_to_conditional_expressions: false
+    avoid_types_on_closure_parameters: false
+    sort_pub_dependencies: false
+    prefer_const_literals_to_create_immutables: false
+    join_return_with_assignment: false
+    comment_references: false
+    use_setters_to_change_properties: false
+    use_late_for_private_fields_and_variables: false
+    unnecessary_ignore: false
+    specify_nonobvious_property_types: false
+    prefer_const_constructors: false
     # avoid_print: false  # Uncomment to disable the `avoid_print` rule
     # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
 

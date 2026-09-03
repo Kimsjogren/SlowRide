@@ -43,7 +43,8 @@ class VectorMapWidget extends StatefulWidget {
   final double? nextManeuverDistanceMeters;
   final int? nextManeuverSign;
 
-  static const LatLng _defaultCenter = LatLng(59.3293, 18.0686);
+  // Neutral fallback shown only while the app waits for its first GPS fix.
+  static const LatLng _defaultCenter = LatLng(20, 0);
 
   @override
   State<VectorMapWidget> createState() => _VectorMapWidgetState();
@@ -66,6 +67,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   double _lastCameraBearing = 0.0;
   double _lastCameraZoom = 0.0;
   double _lastAnimatedHeading = 0.0;
+  bool _hasCenteredOnInitialLocation = false;
 
   String get _styleUrl {
     if (widget.darkMode) {
@@ -83,6 +85,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   @override
   void initState() {
     super.initState();
+    _hasCenteredOnInitialLocation = widget.locationNotifier.value != null;
     widget.locationNotifier.addListener(_onLocationUpdate);
     widget.headingNotifier.addListener(_onHeadingUpdate);
   }
@@ -102,6 +105,16 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     final loc = widget.locationNotifier.value;
     if (loc != null && widget.followUser) {
       _updateFollowCamera(loc);
+    } else if (loc != null && !_hasCenteredOnInitialLocation) {
+      _hasCenteredOnInitialLocation = true;
+      _controller?.moveCamera(
+        ml.CameraUpdate.newCameraPosition(
+          ml.CameraPosition(
+            target: ml.LatLng(loc.latitude, loc.longitude),
+            zoom: 14.0,
+          ),
+        ),
+      );
     }
   }
 
@@ -210,6 +223,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
     if (loc != null && widget.followUser) {
       _updateFollowCamera(loc);
     } else if (loc != null) {
+      _hasCenteredOnInitialLocation = true;
       _controller?.moveCamera(
         ml.CameraUpdate.newCameraPosition(
           ml.CameraPosition(
@@ -603,6 +617,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
   Widget build(BuildContext context) {
     final initial =
         widget.locationNotifier.value ?? VectorMapWidget._defaultCenter;
+    final hasInitialLocation = widget.locationNotifier.value != null;
     return ClipRRect(
       borderRadius: widget.followUser
           ? BorderRadius.zero
@@ -629,7 +644,7 @@ class _VectorMapWidgetState extends State<VectorMapWidget> {
                 styleString: _styleUrl,
                 initialCameraPosition: ml.CameraPosition(
                   target: ml.LatLng(initial.latitude, initial.longitude),
-                  zoom: 12.0,
+                  zoom: hasInitialLocation ? 14.0 : 2.0,
                 ),
                 onMapCreated: _onMapCreated,
                 onStyleLoadedCallback: _onStyleLoaded,

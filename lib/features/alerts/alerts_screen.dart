@@ -9,6 +9,7 @@ import 'package:slowride/models/alert_model.dart';
 import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/trafikverket_service.dart';
 import 'package:slowride/widgets/app_background.dart';
+import 'package:slowride/widgets/accessible_tap_target.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -305,7 +306,8 @@ class _AlertTile extends StatelessWidget {
                   size: 22,
                 ),
               )
-            : GestureDetector(
+            : AccessibleTapTarget(
+                label: l10n.a11yConfirmAlert,
                 onTap: () async {
                   await controller.upvote(alert.id);
                   onUpvoted();
@@ -491,7 +493,9 @@ class _ReportSheetState extends State<_ReportSheet> {
                     runSpacing: 8,
                     children: AlertType.values.map((t) {
                       final sel = _selected == t;
-                      return GestureDetector(
+                      return AccessibleTapTarget(
+                        label: t.localizedLabel(l10n),
+                        selected: sel,
                         onTap: () => setState(() => _selected = t),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),

@@ -51,6 +51,21 @@ class BackendConfig {
         'pk.eyJ1Ijoia2ltc2pvZ3JlbjE5ODciLCJhIjoiY21taXQ0dDB3MWJlMzJxczUzc2tvZDN2NyJ9.-eZcy-sIG46WBe_y05rUeQ',
   );
 
+  /// Live traffic only adjusts ETA; CruizX's legal vehicle route remains the
+  /// source of truth. Disable remotely per build if traffic requests should be
+  /// paused without changing the implementation.
+  static const bool mapboxTrafficEnabled = bool.fromEnvironment(
+    'MAPBOX_TRAFFIC_ENABLED',
+    defaultValue: true,
+  );
+
+  /// Per-install safety valve. A backend proxy is still required for a hard
+  /// account-wide cap shared by every installed copy of the app.
+  static const int mapboxTrafficMonthlyRequestLimit = int.fromEnvironment(
+    'MAPBOX_TRAFFIC_MONTHLY_REQUEST_LIMIT',
+    defaultValue: 800,
+  );
+
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
     defaultValue: 'https://bgdtzxmcnydvracgqaht.supabase.co',
@@ -130,6 +145,32 @@ class BackendConfig {
   static const String trafficIncidentsUrl = String.fromEnvironment(
     'TRAFFIC_INCIDENTS_URL',
     defaultValue: 'https://cruizx.com/api/traffic/incidents',
+  );
+
+  /// CruizX AI endpoints. Inference runs behind the Cloudflare Worker and no
+  /// provider key is included in either the iOS or Android app.
+  static const String aiRouteAnalysisUrl = String.fromEnvironment(
+    'AI_ROUTE_ANALYSIS_URL',
+    defaultValue: 'https://cruizx.com/api/ai/route-analysis',
+  );
+
+  static const String aiReportUrl = String.fromEnvironment(
+    'AI_REPORT_URL',
+    defaultValue: 'https://cruizx.com/api/ai/report',
+  );
+
+  /// Public CruizX endpoint for private support conversations without an
+  /// account. A random device token is hashed by the backend before storage.
+  static const String supportGuestUrl = String.fromEnvironment(
+    'SUPPORT_GUEST_URL',
+    defaultValue: 'https://cruizx.com/api/support/guest',
+  );
+
+  /// Provider-free support FAQ catalog. The app includes the same catalog as
+  /// an offline fallback and refreshes it from this endpoint when available.
+  static const String supportFaqUrl = String.fromEnvironment(
+    'SUPPORT_FAQ_URL',
+    defaultValue: 'https://cruizx.com/api/support/faq',
   );
 
   /// Enable the route simulation button in release builds.

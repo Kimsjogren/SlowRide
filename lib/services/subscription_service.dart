@@ -10,7 +10,7 @@ import 'package:slowride/services/auth_service.dart';
 import 'package:slowride/services/supabase_service.dart';
 import 'package:slowride/services/user_preferences_service.dart';
 
-enum PaywallReason { routeLimit, convoyLimit, memberLimit }
+enum PaywallReason { convoyLimit, memberLimit }
 
 /// Thrown when the store connection or product cannot be reached so the UI can
 /// show a clear message instead of a silent failure.
@@ -22,7 +22,6 @@ class SubscriptionService {
   SubscriptionService._();
   static final SubscriptionService instance = SubscriptionService._();
 
-  static const int freeMaxDailyRoutes = 4;
   static const int freeMaxConvoyMembers = 2;
 
   /// App Store Connect product ID for the auto-renewable monthly subscription.
@@ -30,16 +29,22 @@ class SubscriptionService {
   /// product in App Store Connect, so Apple handles the trial natively.
   static const String _monthlyProductId = 'cruizx_pro_monthly_v2';
 
+  /// Non-consumable lifetime Pro unlock. This ID was used by the original
+  /// one-time purchase flow and is also used for the Google Play product.
+  static const String _lifetimeProductId = 'cruizx_pro_lifetime';
+
   static const String _isProKey = 'sub_is_pro';
   static const String _routeCountKey = 'sub_route_count';
   static const String _routeDateKey = 'sub_route_date';
-  static const String _routeInterstitialDateKey = 'sub_route_interstitial_date';
+  static const String _routeUpgradePromptDateKey =
+      'sub_route_upgrade_prompt_date_v1';
 
   final InAppPurchase _iap = InAppPurchase.instance;
   late SharedPreferences _prefs;
   bool _initialized = false;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
-  ProductDetails? _proProduct;
+  ProductDetails? _monthlyProduct;
+  ProductDetails? _lifetimeProduct;
   Completer<bool>? _purchaseCompleter;
   Completer<bool>? _restoreCompleter;
   Timer? _webSyncTimer;
@@ -52,6 +57,17 @@ class SubscriptionService {
 
   /// Localized price string from App Store or Stripe pricing endpoint.
   final ValueNotifier<String?> localizedPrice = ValueNotifier<String?>(null);
+
+  /// Localized App Store or Google Play price for the optional lifetime unlock.
+  final ValueNotifier<String?> localizedLifetimePrice = ValueNotifier<String?>(
+    null,
+  );
+
+  bool get supportsLifetimePurchase =>
+      !kIsWeb &&
+      !isWebCheckout &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   bool get isWebCheckout => kIsWeb || BackendConfig.webCheckoutOnly;
 
@@ -144,7 +160,11 @@ class SubscriptionService {
     } else if (isWebCheckout) {
       _attachLanguageListener();
       _refreshWebDisplayPrice();
+      _attachAuthListeners();
+      await syncWebEntitlement();
     } else {
+      _attachAuthListeners();
+      await syncWebEntitlement();
       await _startIap();
     }
 
@@ -210,7 +230,6 @@ class SubscriptionService {
   }
 
   void _onAuthChanged() {
-    if (!kIsWeb) return;
     unawaited(syncWebEntitlement(force: true));
   }
 
@@ -222,7 +241,6 @@ class SubscriptionService {
   }
 
   Future<bool> syncWebEntitlement({bool force = false}) async {
-    if (!kIsWeb) return isPro.value;
     if (_webSyncInFlight && !force) return isPro.value;
     if (BackendConfig.forcePro) {
       await activatePro();
@@ -240,8 +258,8 @@ class SubscriptionService {
     try {
       final uid = AuthService.instance.userId.value;
       if (uid == null || uid.isEmpty) {
-        await deactivatePro();
-        return false;
+        await _applyAccountEntitlement(false);
+        return isPro.value;
       }
 
       final rows = await SupabaseService.instance.client
@@ -252,8 +270,8 @@ class SubscriptionService {
           .limit(1);
 
       if (rows.isEmpty) {
-        await deactivatePro();
-        return false;
+        await _applyAccountEntitlement(false);
+        return isPro.value;
       }
 
       final row = Map<String, dynamic>.from(rows.first as Map);
@@ -270,18 +288,43 @@ class SubscriptionService {
           periodEndUtc.isAfter(nowUtc);
 
       if (activeStatus || graceStatus) {
-        await activatePro();
+        await _applyAccountEntitlement(true);
         return true;
       }
 
-      await deactivatePro();
-      return false;
+      await _applyAccountEntitlement(false);
+      return isPro.value;
     } catch (e) {
       debugPrint('Web subscription sync failed: $e');
       return isPro.value;
     } finally {
       _webSyncInFlight = false;
     }
+  }
+
+  /// Applies a server-managed account entitlement without turning it into a
+  /// permanent local store purchase on native platforms.
+  ///
+  /// Native Google Play/App Store purchases remain stored in [_isProKey].
+  /// When an account entitlement is revoked or the user signs out, the app
+  /// falls back to that local store entitlement. Web uses the account
+  /// entitlement as its source of truth and keeps the existing local cache.
+  Future<void> _applyAccountEntitlement(bool active) async {
+    if (kIsWeb) {
+      if (active) {
+        await activatePro();
+      } else {
+        await deactivatePro();
+      }
+      return;
+    }
+
+    if (active) {
+      isPro.value = true;
+      return;
+    }
+
+    isPro.value = _prefs.getBool(_isProKey) ?? false;
   }
 
   Future<void> _startIap() async {
@@ -306,13 +349,32 @@ class SubscriptionService {
 
   Future<void> _loadProductDetails() async {
     try {
-      final response = await _iap.queryProductDetails({_monthlyProductId});
+      final response = await _iap.queryProductDetails({
+        _monthlyProductId,
+        _lifetimeProductId,
+      });
       if (response.productDetails.isEmpty) {
-        debugPrint('IAP product not found: $_monthlyProductId');
+        debugPrint(
+          'IAP products not found: $_monthlyProductId, $_lifetimeProductId',
+        );
         return;
       }
-      _proProduct = response.productDetails.first;
-      localizedPrice.value = _proProduct!.price;
+      for (final product in response.productDetails) {
+        switch (product.id) {
+          case _monthlyProductId:
+            _monthlyProduct = product;
+            localizedPrice.value = product.price;
+          case _lifetimeProductId:
+            _lifetimeProduct = product;
+            localizedLifetimePrice.value = product.price;
+        }
+      }
+      if (_monthlyProduct == null) {
+        debugPrint('IAP product not found: $_monthlyProductId');
+      }
+      if (_lifetimeProduct == null) {
+        debugPrint('IAP product not found: $_lifetimeProductId');
+      }
     } catch (e) {
       debugPrint('Failed to fetch IAP product details: $e');
     }
@@ -320,7 +382,8 @@ class SubscriptionService {
 
   Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
     for (final purchase in updates) {
-      if (purchase.productID != _monthlyProductId) {
+      if (purchase.productID != _monthlyProductId &&
+          purchase.productID != _lifetimeProductId) {
         continue;
       }
 
@@ -360,8 +423,6 @@ class SubscriptionService {
     return _prefs.getInt(_routeCountKey) ?? 0;
   }
 
-  bool canStartRoute() => isPro.value || routesToday < freeMaxDailyRoutes;
-
   void recordRoute() {
     final today = _todayString;
     final savedDate = _prefs.getString(_routeDateKey) ?? '';
@@ -370,17 +431,43 @@ class SubscriptionService {
     _prefs.setInt(_routeCountKey, count + 1);
   }
 
-  /// Free users see at most one route interstitial per day. It is eligible
-  /// before route 3, with route 4 acting as a retry if the ad was not loaded.
+  /// Free users see an interstitial before every third route of the day.
+  /// Route tracking is only used for ad timing; navigation itself remains
+  /// unlimited.
   bool get shouldShowRouteInterstitial {
-    if (isPro.value) return false;
-    final count = routesToday;
-    if (count < 2 || count >= freeMaxDailyRoutes) return false;
-    return _prefs.getString(_routeInterstitialDateKey) != _todayString;
+    return routeInterstitialEligible(
+      isPro: isPro.value,
+      routesToday: routesToday,
+    );
   }
 
-  void recordRouteInterstitialShown() {
-    _prefs.setString(_routeInterstitialDateKey, _todayString);
+  @visibleForTesting
+  static bool routeInterstitialEligible({
+    required bool isPro,
+    required int routesToday,
+  }) => !isPro && routesToday >= 2 && (routesToday + 1) % 3 == 0;
+
+  /// Shown after an ad once two routes have already been created that day.
+  /// The prompt is reset automatically on the next local calendar day.
+  bool get shouldShowDailyRouteUpgradePrompt {
+    return dailyRouteUpgradePromptEligible(
+      isPro: isPro.value,
+      routesToday: routesToday,
+      lastPromptDate: _prefs.getString(_routeUpgradePromptDateKey),
+      today: _todayString,
+    );
+  }
+
+  @visibleForTesting
+  static bool dailyRouteUpgradePromptEligible({
+    required bool isPro,
+    required int routesToday,
+    required String? lastPromptDate,
+    required String today,
+  }) => !isPro && routesToday >= 2 && lastPromptDate != today;
+
+  void recordDailyRouteUpgradePromptShown() {
+    _prefs.setString(_routeUpgradePromptDateKey, _todayString);
   }
 
   String get _todayString {
@@ -419,23 +506,59 @@ class SubscriptionService {
 
     // Retry loading the product a few times before giving up so the purchase
     // prompt reliably triggers even when product details arrive late.
-    if (_proProduct == null) {
-      for (var attempt = 0; attempt < 3 && _proProduct == null; attempt++) {
+    if (_monthlyProduct == null) {
+      for (var attempt = 0; attempt < 3 && _monthlyProduct == null; attempt++) {
         await _loadProductDetails();
-        if (_proProduct == null) {
+        if (_monthlyProduct == null) {
           await Future<void>.delayed(const Duration(milliseconds: 800));
         }
       }
-      if (_proProduct == null) {
+      if (_monthlyProduct == null) {
         throw const StoreUnavailableException();
       }
     }
 
+    return _purchaseProduct(_monthlyProduct!);
+  }
+
+  /// Starts the App Store or Google Play non-consumable lifetime Pro purchase.
+  Future<bool> purchaseLifetimePro() async {
+    if (!supportsLifetimePurchase) return false;
+    if (BackendConfig.forceFree) return false;
+    if (BackendConfig.forcePro) {
+      await activatePro();
+      return true;
+    }
+
+    if (!await _ensureStoreReady()) {
+      throw const StoreUnavailableException();
+    }
+
+    if (_lifetimeProduct == null) {
+      for (
+        var attempt = 0;
+        attempt < 3 && _lifetimeProduct == null;
+        attempt++
+      ) {
+        await _loadProductDetails();
+        if (_lifetimeProduct == null) {
+          await Future<void>.delayed(const Duration(milliseconds: 800));
+        }
+      }
+      if (_lifetimeProduct == null) {
+        throw const StoreUnavailableException();
+      }
+    }
+
+    return _purchaseProduct(_lifetimeProduct!);
+  }
+
+  Future<bool> _purchaseProduct(ProductDetails product) async {
     final completer = Completer<bool>();
     _purchaseCompleter = completer;
 
     final started = await _iap.buyNonConsumable(
-      purchaseParam: PurchaseParam(productDetails: _proProduct!),
+      purchaseParam: PurchaseParam(productDetails: product),
     );
     if (!started) {
       _purchaseCompleter = null;
@@ -473,6 +596,11 @@ class SubscriptionService {
 
   /// Activates Pro after successful verified purchase.
   Future<void> activatePro() async {
+    if (BackendConfig.forceFree) {
+      isPro.value = false;
+      await _prefs.setBool(_isProKey, false);
+      return;
+    }
     isPro.value = true;
     await _prefs.setBool(_isProKey, true);
   }
@@ -480,13 +608,18 @@ class SubscriptionService {
   /// Restores previous store purchases and reapplies Pro entitlement.
   Future<bool> restorePurchase() async {
     if (kIsWeb) return false;
+    if (BackendConfig.forceFree) {
+      await deactivatePro();
+      return false;
+    }
     if (BackendConfig.forcePro) {
       await activatePro();
       return true;
     }
 
-    final available = await _iap.isAvailable();
-    if (!available) return false;
+    if (!await _ensureStoreReady()) {
+      return false;
+    }
 
     final completer = Completer<bool>();
     _restoreCompleter = completer;

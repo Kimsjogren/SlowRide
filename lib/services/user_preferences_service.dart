@@ -43,6 +43,16 @@ enum MapMarkerStyle {
   mgoRed,
   mgoBlack,
   mgoYellow,
+  scooterBlack,
+  scooterBlue,
+  scooterGold,
+  scooterRed,
+  crossMopedBlack,
+  crossMopedBlue,
+  crossMopedGold,
+  crossMopedRed,
+  electricScooterGold,
+  electricScooterRed,
 }
 
 class UserPreferencesService {
@@ -63,6 +73,10 @@ class UserPreferencesService {
   final ValueNotifier<bool> isElectric = ValueNotifier<bool>(false);
   final ValueNotifier<bool> hasStuddedTires = ValueNotifier<bool>(false);
   final ValueNotifier<bool> useVectorMap = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> useSatelliteMap = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> nearbyGatheringNotifications = ValueNotifier<bool>(
+    false,
+  );
   final ValueNotifier<MapMarkerStyle> mapMarkerStyle =
       ValueNotifier<MapMarkerStyle>(MapMarkerStyle.navigation);
 
@@ -75,7 +89,10 @@ class UserPreferencesService {
   static const String _isElectricKey = 'user_is_electric';
   static const String _hasStuddedTiresKey = 'user_has_studded_tires';
   static const String _useVectorMapKey = 'user_use_vector_map';
+  static const String _useSatelliteMapKey = 'user_use_satellite_map';
   static const String _mapMarkerStyleKey = 'user_map_marker_style';
+  static const String _nearbyGatheringNotificationsKey =
+      'nearby_gathering_notifications';
 
   /// Per-vehicle speed key prefix. Stored as e.g. 'vehicle_speed_SE_A-tractor'.
   static const String _vehicleSpeedPrefix = 'vehicle_speed_';
@@ -103,6 +120,9 @@ class UserPreferencesService {
     hasStuddedTires.value = _prefs!.getBool(_hasStuddedTiresKey) ?? false;
     // Standard map is the default; vector is only enabled when the user opts in.
     useVectorMap.value = _prefs!.getBool(_useVectorMapKey) ?? false;
+    useSatelliteMap.value = _prefs!.getBool(_useSatelliteMapKey) ?? false;
+    nearbyGatheringNotifications.value =
+        _prefs!.getBool(_nearbyGatheringNotificationsKey) ?? false;
     final storedMarkerStyle = _prefs!.getString(_mapMarkerStyleKey);
     mapMarkerStyle.value = MapMarkerStyle.values.firstWhere(
       (style) => style.name == storedMarkerStyle,
@@ -121,7 +141,11 @@ class UserPreferencesService {
       isElectric.addListener(_persistIsElectric);
       hasStuddedTires.addListener(_persistHasStuddedTires);
       useVectorMap.addListener(_persistUseVectorMap);
+      useSatelliteMap.addListener(_persistUseSatelliteMap);
       mapMarkerStyle.addListener(_persistMapMarkerStyle);
+      nearbyGatheringNotifications.addListener(
+        _persistNearbyGatheringNotifications,
+      );
       _listenersAttached = true;
     }
   }
@@ -182,6 +206,17 @@ class UserPreferencesService {
 
   Future<void> _persistUseVectorMap() async {
     await _prefs?.setBool(_useVectorMapKey, useVectorMap.value);
+  }
+
+  Future<void> _persistUseSatelliteMap() async {
+    await _prefs?.setBool(_useSatelliteMapKey, useSatelliteMap.value);
+  }
+
+  Future<void> _persistNearbyGatheringNotifications() async {
+    await _prefs?.setBool(
+      _nearbyGatheringNotificationsKey,
+      nearbyGatheringNotifications.value,
+    );
   }
 
   Future<void> _persistMapMarkerStyle() async {

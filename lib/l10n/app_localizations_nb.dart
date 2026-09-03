@@ -45,7 +45,58 @@ class AppLocalizationsNb extends AppLocalizations {
   String get splashReady => 'Klar';
 
   @override
-  String get splashVersionLine => 'v1.1.1 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Sentrer kartet på posisjonen min';
+
+  @override
+  String get a11yStopFollowingLocation => 'Slutt å følge posisjonen min';
+
+  @override
+  String get a11ySwitchTo2d => 'Bytt til 2D-kart';
+
+  @override
+  String get a11ySwitchTo3d => 'Bytt til 3D-kart';
+
+  @override
+  String get a11yUseDarkMap => 'Bruk mørkt kart';
+
+  @override
+  String get a11yUseLightMap => 'Bruk lyst kart';
+
+  @override
+  String get a11yChooseMapLayer => 'Velg karttype';
+
+  @override
+  String get mapLayerStyleTitle => 'Karttype';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellitt';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Slå på stemmenavigasjon';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Slå av stemmenavigasjon';
+
+  @override
+  String get a11yDismissAlert => 'Lukk advarselen';
+
+  @override
+  String get a11yClearSearch => 'Tøm søket';
+
+  @override
+  String get a11yOpenSearch => 'Åpne adressesøk';
+
+  @override
+  String get a11yAddFavorite => 'Legg til favorittsted';
+
+  @override
+  String get a11yConfirmAlert => 'Bekreft advarselen';
 
   @override
   String get alertsTitle => 'Fellesskapsvarsler';
@@ -135,7 +186,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authPasswordRequired => 'Skriv inn passordet ditt';
 
   @override
-  String get authPasswordMinLength => 'Minst 6 tegn';
+  String get authPasswordMinLength => 'Minst 6 tegn, et tall og et spesialtegn';
 
   @override
   String get authConfirmPasswordLabel => 'Bekreft passord';
@@ -195,10 +246,16 @@ class AppLocalizationsNb extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Alle felt er påkrevd.';
 
   @override
-  String get authErrorPasswordTooShort => 'Passordet må være minst 6 tegn.';
+  String get authErrorPasswordTooShort => 'Passordet må være minst 6 tegn og inneholde et tall og et spesialtegn.';
 
   @override
-  String get authErrorConfirmEmail => 'Sjekk e-posten din for å bekrefte kontoen, deretter logg inn.';
+  String get authErrorConfirmEmail => 'Sjekk e-posten din for å bekrefte kontoen. Hvis kontoen allerede finnes, sendes ingen ny bekreftelsesmail – logg inn eller tilbakestill passordet.';
+
+  @override
+  String get authEmailConfirmedTitle => 'E-post bekreftet';
+
+  @override
+  String get authEmailConfirmedBody => 'E-postadressen din er bekreftet. Du er nå logget inn.';
 
   @override
   String get authErrorEmailAndPasswordRequired => 'Skriv inn e-post og passord.';
@@ -208,6 +265,21 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Det finnes allerede en konto med den e-postadressen.';
+
+  @override
+  String get authErrorInvalidEmail => 'E-postadressen er ugyldig. Kontroller den og prøv igjen.';
+
+  @override
+  String get authErrorRateLimited => 'For mange forsøk på kort tid. Vent litt og prøv igjen.';
+
+  @override
+  String get authErrorSignUpDisabled => 'Nye kontoer kan ikke opprettes akkurat nå. Kontakt CruizX Support.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'Bekreftelsesmeldingen kunne ikke sendes. Prøv igjen om litt.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Kunne ikke koble til kontotjenesten. Kontroller internettforbindelsen og prøv igjen.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Sanntidskolonne er ikke konfigurert ennå. Legg til backend-konfigurasjon for å dele direkteposisjon mellom brukere.';
@@ -493,6 +565,9 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsLanguageSpanish => 'Spansk';
 
   @override
+  String get settingsLanguageItalian => 'Italiensk';
+
+  @override
   String get settingsCountryLabel => 'Land (trafikkregler)';
 
   @override
@@ -512,6 +587,9 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get settingsCountrySpain => '🇪🇸 Spania';
+
+  @override
+  String get settingsCountryItaly => '🇮🇹 Italia';
 
   @override
   String get settingsCountryUnitedKingdom => '🇬🇧 Storbritannia';
@@ -537,7 +615,25 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Mopedbil';
 
   @override
+  String get settingsVehicleMopedClassI => 'Moped klasse I';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Moped klasse II (25 km/t)';
+
+  @override
+  String get settingsVehicleElectricScooter => 'Elsparkesykkel';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Bruk bare en lovlig elsparkesykkel der lokale regler tillater det. Skilting, kommunale regler og utleiesoner gjelder alltid foran ruten.';
+
+  @override
+  String get settingsEscooterRentalOnlyNotice => 'I Storbritannia er bare godkjente utleie-elsparkesykler lovlige på offentlig vei. Private elsparkesykler kan bare brukes på privat grunn med grunneierens tillatelse.';
+
+  @override
   String get settingsVehicleTractor => 'Traktor';
+
+  @override
+  String get settingsVehicleCar => 'Bil';
 
   @override
   String get settingsSpeedUnitKmh => 'km/t';
@@ -566,7 +662,7 @@ class AppLocalizationsNb extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Lås opp alle funksjoner med CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Ubegrensede ruter';
+  String get settingsProFeatureRoutes => 'Flere AI-ruteanalyser';
 
   @override
   String get settingsProFeatureConvoy => 'Ubegrenset antall konvojmedlemmer';
@@ -591,7 +687,7 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes din Apple ID én gang. Ingen abonnement og ingen automatisk fornyelse.';
+  String get settingsProOneTimeNote => 'Engangskjøp: CruizX Pro (livstid). Betalingen belastes én gang via appbutikken. Ingen abonnement og ingen automatisk fornyelse.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Personvernregler';
@@ -601,6 +697,63 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Support';
+
+  @override
+  String get supportChatTitle => 'Direktechat med support';
+
+  @override
+  String get supportChatReplyTime => 'Svarer innen 24 timer';
+
+  @override
+  String get supportChatWelcome => 'Hei! Hvordan kan vi hjelpe deg med CruizX? Skriv meldingen din her, så svarer vi så snart vi kan.';
+
+  @override
+  String get supportChatGuestNotice => 'Du chatter som gjest. Samtalen lagres privat på denne enheten.';
+
+  @override
+  String get supportChatLoginRequired => 'Logg inn for å starte en privat supportchat og se tidligere meldinger.';
+
+  @override
+  String get supportChatLoginAction => 'Logg inn';
+
+  @override
+  String get supportChatMessageHint => 'Skriv en melding…';
+
+  @override
+  String get supportChatSend => 'Send melding';
+
+  @override
+  String get supportChatSendFailed => 'Meldingen kunne ikke sendes. Prøv igjen.';
+
+  @override
+  String get supportChatUnavailable => 'Supportchatten er ikke tilgjengelig akkurat nå. Prøv igjen senere.';
+
+  @override
+  String get supportChatTeam => 'CruizX Support';
+
+  @override
+  String get supportChatYou => 'Du';
+
+  @override
+  String get supportAssistantTitle => 'CruizX Hjelpeassistent';
+
+  @override
+  String get supportAssistantIntro => 'Få et øyeblikkelig svar fra CruizX sin klargjorte hjelpeguide – også uten internett.';
+
+  @override
+  String get supportAssistantSuggestions => 'Vanlige spørsmål';
+
+  @override
+  String get supportAssistantNoMatch => 'Jeg fant ikke et sikkert standardsvar. Du kan sende spørsmålet videre til CruizX Support.';
+
+  @override
+  String get supportAssistantContact => 'Send til support';
+
+  @override
+  String get supportAssistantForwarded => 'Spørsmålet er sendt til CruizX Support.';
+
+  @override
+  String get supportAssistantHumanUnavailable => 'Standardsvar virker offline, men menneskelig support krever internett.';
 
   @override
   String get settingsLinkOpenFailed => 'Kunne ikke åpne lenken akkurat nå.';
@@ -667,6 +820,15 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopeder';
+
+  @override
+  String get settingsMapMarkerScooter => 'Scooter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Crossmoped';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';
@@ -828,17 +990,17 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Vi fant en mulig rute, men den kunne ikke verifiseres helt for din $vehicleType. Den kan inneholde veier som må kontrolleres. Følg alltid skilt og lokale regler.';
+    return 'Ruten kan ikke verifiseres som lovlig for din $vehicleType og kan inneholde forbudte veier, for eksempel motorvei. Følg alltid skilting og lokale regler. Du bruker ruten på eget ansvar; CruizX kan ikke garantere veivalget og er ikke ansvarlig for kjøring på denne ruten.';
   }
 
   @override
   String get routeFallbackCancel => 'Avbryt';
 
   @override
-  String get routeFallbackUse => 'Vis likevel';
+  String get routeFallbackUse => 'Jeg forstår – vis ruten';
 
   @override
-  String get routeFallbackActive => 'Usikker rute – følg alltid skilting';
+  String get routeFallbackActive => 'Usikker – eget ansvar, følg skilting';
 
   @override
   String get routeOptionsTitle => 'Velg rute';
@@ -860,7 +1022,7 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Kan ikke verifiseres helt for din $vehicleType. Kontroller skilting før du kjører.';
+    return 'Kan inneholde forbudte veier for din $vehicleType. Eget ansvar.';
   }
 
   @override
@@ -872,7 +1034,41 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX godkjenner aldri forbudte veier automatisk. Følg alltid skilting og lokale regler.';
+  String get routeOptionWarningFooter => 'Usikre ruter brukes på eget ansvar. CruizX kan ikke garantere veivalget. Følg alltid skilting og lokale regler.';
+
+  @override
+  String get trafficRerouteTitle => 'Raskere rute funnet';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX har sammenlignet livetrafikken på verifiserte veier for din $vehicleType. Den nye ruten anslås å spare omtrent $minutes min og unngår deler av den aktuelle køen.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Behold nåværende';
+
+  @override
+  String get trafficRerouteUse => 'Bytt rute';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Raskere rute valgt – sparer omtrent $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'En raskere verifisert rute er funnet. Den sparer omtrent $minutes minutter.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Trafikkforstyrrelser – ca. $minutes min ekstra reisetid';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Trafikkforstyrrelser foran. Ca. $minutes minutters ekstra reisetid.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';
@@ -889,6 +1085,18 @@ class AppLocalizationsNb extends AppLocalizations {
   String mapManeuverTowardRoad(Object road) {
     return 'Mot $road';
   }
+
+  @override
+  String get mapManeuverGenericCycleway => 'sykkelveien';
+
+  @override
+  String get mapManeuverGenericFootway => 'gangveien';
+
+  @override
+  String get mapManeuverGenericPath => 'stien';
+
+  @override
+  String get mapManeuverGenericRoad => 'veien';
 
   @override
   String get mapSimulateButton => 'Simuler';
@@ -1068,6 +1276,11 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallUpgradeButton => 'Oppgrader til Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Kjøp Pro permanent · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Gjenopprett kjøp';
 
   @override
@@ -1081,7 +1294,7 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1103,10 +1316,10 @@ class AppLocalizationsNb extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Ruter per dag';
+  String get paywallFeatureRoutes => 'Navigasjonsruter';
 
   @override
-  String get paywallFreeRouteLimit => '4 ruter';
+  String get paywallFreeRouteLimit => 'Ubegrenset';
 
   @override
   String get paywallProRouteLimit => 'Ubegrenset';
@@ -1130,10 +1343,16 @@ class AppLocalizationsNb extends AppLocalizations {
   String get paywallProAds => 'Ingen';
 
   @override
-  String get paywallRouteLimitTitle => 'Rutegrensen nådd';
+  String get paywallRouteLimitTitle => 'Ubegrensede ruter';
 
   @override
-  String get paywallRouteLimitBody => 'Gratisbrukere kan beregne 4 ruter per dag. Oppgrader til Pro for ubegrenset navigasjon.';
+  String get paywallRouteLimitBody => 'Navigasjonsruter er også ubegrensede i gratisversjonen.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Fortsette uten reklame?';
+
+  @override
+  String get routeUpgradePromptBody => 'Du har opprettet to ruter i dag. Gratisversjonen har ubegrensede ruter, mens Pro fjerner reklame og låser opp flere funksjoner. Vil du oppgradere?';
 
   @override
   String get paywallConvoyLimitTitle => 'Kolonnegrensen nådd';
@@ -1178,8 +1397,8 @@ class AppLocalizationsNb extends AppLocalizations {
   String get profileUpgradeToPro => 'Oppgrader til Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Ruter i dag: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Ruter i dag: $count';
   }
 
   @override
@@ -1519,4 +1738,136 @@ class AppLocalizationsNb extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Standard — rask og offline-bufret';
+
+  @override
+  String get publicGatheringStartTime => 'Starttid';
+
+  @override
+  String get publicGatheringEndTime => 'Sluttid';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'Sluttiden må være etter starttiden.';
+
+  @override
+  String get publicGatheringEndAction => 'Avslutt treffet';
+
+  @override
+  String get publicGatheringDeleteAction => 'Slett treffet';
+
+  @override
+  String get publicGatheringEndConfirm => 'Avslutte treffet nå? Deltakerne kan ikke lenger finne det.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Slette treffet permanent? Dette kan ikke angres.';
+
+  @override
+  String get publicGatheringReportAction => 'Rapporter treffet';
+
+  @override
+  String get publicGatheringBlockAction => 'Blokker treffet';
+
+  @override
+  String get publicGatheringReportParticipant => 'Rapporter deltakeren';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Blokker deltakeren';
+
+  @override
+  String get publicGatheringReportReason => 'Hva vil du rapportere?';
+
+  @override
+  String get publicGatheringReportSent => 'Rapporten er sendt.';
+
+  @override
+  String get publicGatheringBlocked => 'Blokkert innhold vises ikke lenger.';
+
+  @override
+  String get reportReasonInappropriate => 'Upassende innhold';
+
+  @override
+  String get reportReasonHarassment => 'Trakassering';
+
+  @override
+  String get reportReasonDangerous => 'Farlig atferd';
+
+  @override
+  String get reportReasonSpam => 'Søppel eller villedende';
+
+  @override
+  String get reportReasonOther => 'Annet';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Varsler om treff i nærheten';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Varsle meg én gang når et offentlig treff innen 25 km starter innen 24 timer.';
+
+  @override
+  String get publicGatheringUpcoming => 'Kommende';
+
+  @override
+  String get publicGatheringStarted => 'Pågår';
+
+  @override
+  String get aiRouteButton => 'AI-sjekk ruten';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI-ruteanalyse';
+
+  @override
+  String get aiConsentTitle => 'Bruke AI-ruteanalyse?';
+
+  @override
+  String get aiConsentBody => 'CruizX bruker rutefakta som avstand, reisetid, kjøretøytype, veinavn og antall varsler for å analysere ruten. Din nøyaktige posisjon, destinasjonskoordinater og identitet deles ikke. Analysen kan inneholde feil og endrer aldri ruten din.';
+
+  @override
+  String get aiConsentAccept => 'Godta og fortsett';
+
+  @override
+  String get aiConsentDecline => 'Ikke nå';
+
+  @override
+  String get aiSignInRequired => 'Logg inn for å bruke AI-ruteanalyse.';
+
+  @override
+  String get aiLoading => 'Sjekker ruten…';
+
+  @override
+  String get aiUnavailable => 'AI-ruteanalyse er utilgjengelig akkurat nå. Ruten din er uendret.';
+
+  @override
+  String get aiDailyLimit => 'Du har nådd dagens grense for AI-ruteanalyser.';
+
+  @override
+  String get aiHighlights => 'Fordeler';
+
+  @override
+  String get aiCautions => 'Ting å sjekke';
+
+  @override
+  String get aiRecommendation => 'Anbefaling';
+
+  @override
+  String get aiDisclaimer => 'AI-sammendrag basert bare på tilgjengelige rutedata. Følg skilt og gjeldende veiforhold.';
+
+  @override
+  String get aiReport => 'Rapporter svaret';
+
+  @override
+  String get aiReportTitle => 'Hvorfor rapporterer du svaret?';
+
+  @override
+  String get aiReportIncorrect => 'Feil informasjon';
+
+  @override
+  String get aiReportUnsafe => 'Utrygt råd';
+
+  @override
+  String get aiReportInappropriate => 'Upassende innhold';
+
+  @override
+  String get aiReportOther => 'Annet problem';
+
+  @override
+  String get aiReportSent => 'Takk. AI-svaret er rapportert.';
 }

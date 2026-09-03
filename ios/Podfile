@@ -30,6 +30,10 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
 
+  # 13.8 introduces a private beta header that fails to build with Xcode 26
+  # through the current Flutter plugin. google_mobile_ads 9.1 supports 13.7.
+  pod 'Google-Mobile-Ads-SDK', '13.7.0'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
@@ -39,5 +43,18 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # Google Mobile Ads 13.8 exposes a beta header through the Flutter
+    # plugin. Xcode 26 treats that private-header import as an error unless
+    # this CocoaPods compatibility setting is enabled.
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      config.build_settings['OTHER_CFLAGS'] = '$(inherited) -Wno-error=non-modular-include-in-framework-module'
+      if target.name == 'google_mobile_ads'
+        # The plugin imports GoogleMobileAds_Beta.h, which is intentionally a
+        # private SDK header. Building this Objective-C pod as a module makes
+        # Xcode 26 reject that import before the plugin itself is compiled.
+        config.build_settings['DEFINES_MODULE'] = 'NO'
+      end
+    end
   end
 end

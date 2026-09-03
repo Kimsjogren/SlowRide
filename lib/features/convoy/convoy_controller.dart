@@ -12,6 +12,8 @@ import 'package:slowride/services/user_preferences_service.dart';
 class ConvoyController {
   final List<ConvoyModel> _localConvoys = [];
   final Set<String> _localJoinedConvoyIds = <String>{};
+  final Set<String> _localBlockedGatheringIds = <String>{};
+  final Set<String> _localBlockedParticipantIds = <String>{};
   final StreamController<List<ConvoyModel>> _localStreamController =
       StreamController<List<ConvoyModel>>.broadcast();
 
@@ -34,12 +36,12 @@ class ConvoyController {
     if (!SupabaseService.instance.isEnabled) {
       _localStreamController.add(
         _buildLocalConvoysForCurrentUser()
-            .where((convoy) => convoy.isPublic && convoy.isActive)
+            .where((convoy) => convoy.isPublic && !convoy.hasEnded)
             .toList(growable: false),
       );
       return _localStreamController.stream.map(
         (convoys) => convoys
-            .where((convoy) => convoy.isPublic && convoy.isActive)
+            .where((convoy) => convoy.isPublic && !convoy.hasEnded)
             .toList(growable: false),
       );
     }
@@ -50,9 +52,10 @@ class ConvoyController {
         .eq('visibility', 'public')
         .order('created_at', ascending: false)
         .asyncMap(_withMembershipState)
+        .asyncMap(_withoutBlockedGatherings)
         .map(
           (convoys) => convoys
-              .where((convoy) => convoy.isPublic && convoy.isActive)
+              .where((convoy) => convoy.isPublic && !convoy.hasEnded)
               .toList(growable: false),
         );
   }
@@ -111,6 +114,7 @@ class ConvoyController {
       meetupLat: (matchRow['meetup_lat'] as num?)?.toDouble(),
       meetupLng: (matchRow['meetup_lng'] as num?)?.toDouble(),
       meetupLabel: matchRow['meetup_label']?.toString() ?? '',
+      startsAt: DateTime.tryParse(matchRow['starts_at']?.toString() ?? ''),
       endsAt: DateTime.tryParse(matchRow['ends_at']?.toString() ?? ''),
     );
   }
@@ -129,6 +133,7 @@ class ConvoyController {
             meetupLat: convoy.meetupLat,
             meetupLng: convoy.meetupLng,
             meetupLabel: convoy.meetupLabel,
+            startsAt: convoy.startsAt,
             endsAt: convoy.endsAt,
           ),
         )
@@ -174,6 +179,7 @@ class ConvoyController {
             'meetup_lat': row['meetup_lat'],
             'meetup_lng': row['meetup_lng'],
             'meetup_label': row['meetup_label'],
+            'starts_at': row['starts_at'],
             'ends_at': row['ends_at'],
           };
           return ConvoyModel.fromMap(id: convoyId, map: map);
@@ -181,11 +187,55 @@ class ConvoyController {
         .toList(growable: false);
   }
 
+  Future<List<ConvoyModel>> _withoutBlockedGatherings(
+    List<ConvoyModel> convoys,
+  ) async {
+    final blockedIds = await blockedGatheringIds();
+    return convoys
+        .where((convoy) => !blockedIds.contains(convoy.id))
+        .toList(growable: false);
+  }
+
+  Future<Set<String>> blockedGatheringIds() async {
+    if (!SupabaseService.instance.isEnabled) {
+      return Set<String>.from(_localBlockedGatheringIds);
+    }
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return <String>{};
+    final rows = await SupabaseService.instance.client
+        .from('convoy_blocks')
+        .select('gathering_id')
+        .eq('blocker_id', userId)
+        .eq('target_type', 'gathering');
+    return rows
+        .map<String>((row) => row['gathering_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
+  Future<Set<String>> blockedParticipantIds() async {
+    if (!SupabaseService.instance.isEnabled) {
+      return Set<String>.from(_localBlockedParticipantIds);
+    }
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return <String>{};
+    final rows = await SupabaseService.instance.client
+        .from('convoy_blocks')
+        .select('blocked_user_id')
+        .eq('blocker_id', userId)
+        .eq('target_type', 'participant');
+    return rows
+        .map<String>((row) => row['blocked_user_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
   Future<void> createConvoy({
     required String name,
     bool isPublic = false,
     LatLng? meetupPosition,
     String meetupLabel = '',
+    DateTime? startsAt,
     DateTime? endsAt,
   }) async {
     final now = DateTime.now();
@@ -208,6 +258,7 @@ class ConvoyController {
           meetupLat: meetupPosition?.latitude,
           meetupLng: meetupPosition?.longitude,
           meetupLabel: meetupLabel,
+          startsAt: startsAt,
           endsAt: endsAt,
         ),
       );
@@ -226,6 +277,7 @@ class ConvoyController {
           'meetup_lat': meetupPosition?.latitude,
           'meetup_lng': meetupPosition?.longitude,
           'meetup_label': meetupLabel.trim(),
+          'starts_at': (startsAt ?? now).toIso8601String(),
           'ends_at': endsAt?.toIso8601String(),
         })
         .select('id')
@@ -257,6 +309,7 @@ class ConvoyController {
         meetupLat: current.meetupLat,
         meetupLng: current.meetupLng,
         meetupLabel: current.meetupLabel,
+        startsAt: current.startsAt,
         endsAt: current.endsAt,
       );
       _localStreamController.add(_buildLocalConvoysForCurrentUser());
@@ -291,6 +344,7 @@ class ConvoyController {
           meetupLat: current.meetupLat,
           meetupLng: current.meetupLng,
           meetupLabel: current.meetupLabel,
+          startsAt: current.startsAt,
           endsAt: current.endsAt,
         );
       }
@@ -310,6 +364,126 @@ class ConvoyController {
         .delete()
         .eq('convoy_id', convoy.id)
         .eq('user_id', userId);
+  }
+
+  Future<void> endGathering({required String convoyId}) async {
+    final endedAt = DateTime.now();
+    final startedAt = endedAt.subtract(const Duration(seconds: 1));
+    if (!SupabaseService.instance.isEnabled) {
+      final index = _localConvoys.indexWhere((item) => item.id == convoyId);
+      if (index == -1) return;
+      final current = _localConvoys[index];
+      _localConvoys[index] = ConvoyModel(
+        id: current.id,
+        name: current.name,
+        leaderId: current.leaderId,
+        memberCount: current.memberCount,
+        createdAt: current.createdAt,
+        isJoined: current.isJoined,
+        isPublic: current.isPublic,
+        meetupLat: current.meetupLat,
+        meetupLng: current.meetupLng,
+        meetupLabel: current.meetupLabel,
+        startsAt:
+            current.startsAt != null && current.startsAt!.isBefore(endedAt)
+            ? current.startsAt
+            : startedAt,
+        endsAt: endedAt,
+      );
+      _localStreamController.add(_buildLocalConvoysForCurrentUser());
+      return;
+    }
+    await SupabaseService.instance.client
+        .from('convoys')
+        .update({
+          'starts_at': startedAt.toIso8601String(),
+          'ends_at': endedAt.toIso8601String(),
+        })
+        .eq('id', convoyId);
+  }
+
+  Future<void> deleteGathering({required String convoyId}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      _localConvoys.removeWhere((item) => item.id == convoyId);
+      _localJoinedConvoyIds.remove(convoyId);
+      _localStreamController.add(_buildLocalConvoysForCurrentUser());
+      return;
+    }
+    await SupabaseService.instance.client
+        .from('convoys')
+        .delete()
+        .eq('id', convoyId);
+  }
+
+  Future<void> reportGathering({
+    required String convoyId,
+    required String reason,
+  }) => _report(convoyId: convoyId, targetType: 'gathering', reason: reason);
+
+  Future<void> reportParticipant({
+    required String convoyId,
+    required String participantId,
+    required String reason,
+  }) => _report(
+    convoyId: convoyId,
+    targetType: 'participant',
+    targetUserId: participantId,
+    reason: reason,
+  );
+
+  Future<void> _report({
+    required String convoyId,
+    required String targetType,
+    required String reason,
+    String? targetUserId,
+  }) async {
+    if (!SupabaseService.instance.isEnabled) return;
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return;
+    await SupabaseService.instance.client.from('convoy_reports').insert({
+      'reporter_id': userId,
+      'target_type': targetType,
+      'gathering_id': convoyId,
+      'target_user_id': targetUserId,
+      'reason': reason,
+    });
+  }
+
+  Future<void> blockGathering({required String convoyId}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      _localBlockedGatheringIds.add(convoyId);
+      _localStreamController.add(_buildLocalConvoysForCurrentUser());
+      return;
+    }
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return;
+    try {
+      await SupabaseService.instance.client.from('convoy_blocks').insert({
+        'blocker_id': userId,
+        'target_type': 'gathering',
+        'gathering_id': convoyId,
+      });
+    } catch (error) {
+      if (!error.toString().contains('23505')) rethrow;
+    }
+  }
+
+  Future<void> blockParticipant({required String participantId}) async {
+    if (!SupabaseService.instance.isEnabled) {
+      _localBlockedParticipantIds.add(participantId);
+      return;
+    }
+    final userId = AuthService.instance.userId.value;
+    if (userId == null || userId.isEmpty) return;
+    try {
+      await SupabaseService.instance.client.from('convoy_blocks').insert({
+        'blocker_id': userId,
+        'target_type': 'participant',
+        'blocked_user_id': participantId,
+      });
+    } catch (error) {
+      if (!error.toString().contains('23505')) rethrow;
+    }
   }
 
   Future<void> clearMyLocation({required String convoyId}) async {

@@ -45,7 +45,58 @@ class AppLocalizationsEs extends AppLocalizations {
   String get splashReady => 'Listo';
 
   @override
-  String get splashVersionLine => 'v1.1.1 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Centrar el mapa en mi ubicación';
+
+  @override
+  String get a11yStopFollowingLocation => 'Dejar de seguir mi ubicación';
+
+  @override
+  String get a11ySwitchTo2d => 'Cambiar al mapa 2D';
+
+  @override
+  String get a11ySwitchTo3d => 'Cambiar al mapa 3D';
+
+  @override
+  String get a11yUseDarkMap => 'Usar mapa oscuro';
+
+  @override
+  String get a11yUseLightMap => 'Usar mapa claro';
+
+  @override
+  String get a11yChooseMapLayer => 'Elegir tipo de mapa';
+
+  @override
+  String get mapLayerStyleTitle => 'Tipo de mapa';
+
+  @override
+  String get mapLayerStandard => 'Estándar';
+
+  @override
+  String get mapLayerSatellite => 'Satélite';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Activar la navegación por voz';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Desactivar la navegación por voz';
+
+  @override
+  String get a11yDismissAlert => 'Cerrar la alerta';
+
+  @override
+  String get a11yClearSearch => 'Borrar la búsqueda';
+
+  @override
+  String get a11yOpenSearch => 'Abrir búsqueda de direcciones';
+
+  @override
+  String get a11yAddFavorite => 'Añadir lugar favorito';
+
+  @override
+  String get a11yConfirmAlert => 'Confirmar la alerta';
 
   @override
   String get alertsTitle => 'Alertas de la comunidad';
@@ -135,7 +186,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get authPasswordRequired => 'Introduce tu contraseña';
 
   @override
-  String get authPasswordMinLength => 'Al menos 6 caracteres';
+  String get authPasswordMinLength => 'Al menos 6 caracteres, un número y un carácter especial';
 
   @override
   String get authConfirmPasswordLabel => 'Confirmar contraseña';
@@ -195,10 +246,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Todos los campos son obligatorios.';
 
   @override
-  String get authErrorPasswordTooShort => 'La contraseña debe tener al menos 6 caracteres.';
+  String get authErrorPasswordTooShort => 'La contraseña debe tener al menos 6 caracteres e incluir un número y un carácter especial.';
 
   @override
-  String get authErrorConfirmEmail => 'Revisa tu correo para confirmar tu cuenta y luego inicia sesión.';
+  String get authErrorConfirmEmail => 'Revisa tu correo para confirmar tu cuenta. Si la cuenta ya existe, no se enviará otro correo de confirmación; inicia sesión o restablece la contraseña.';
+
+  @override
+  String get authEmailConfirmedTitle => 'Correo electrónico confirmado';
+
+  @override
+  String get authEmailConfirmedBody => 'Tu dirección de correo electrónico ha sido confirmada. Ya has iniciado sesión.';
 
   @override
   String get authErrorEmailAndPasswordRequired => 'Introduce tu correo y contraseña.';
@@ -208,6 +265,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Ya existe una cuenta con ese correo.';
+
+  @override
+  String get authErrorInvalidEmail => 'La dirección de correo no es válida. Compruébala e inténtalo de nuevo.';
+
+  @override
+  String get authErrorRateLimited => 'Demasiados intentos en poco tiempo. Espera un momento e inténtalo de nuevo.';
+
+  @override
+  String get authErrorSignUpDisabled => 'Ahora mismo no se pueden crear cuentas nuevas. Contacta con el soporte de CruizX.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'No se pudo enviar el correo de confirmación. Inténtalo de nuevo en unos instantes.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'No se pudo conectar con el servicio de cuentas. Comprueba tu conexión a Internet e inténtalo de nuevo.';
 
   @override
   String get convoyRealtimeBackendMissing => 'El convoy en tiempo real aún no está configurado. Añade la configuración del backend para compartir posiciones en vivo entre usuarios.';
@@ -493,6 +565,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsLanguageSpanish => 'Español';
 
   @override
+  String get settingsLanguageItalian => 'Italiano';
+
+  @override
   String get settingsCountryLabel => 'País (normas de tráfico)';
 
   @override
@@ -512,6 +587,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsCountrySpain => '🇪🇸 España';
+
+  @override
+  String get settingsCountryItaly => '🇮🇹 Italia';
 
   @override
   String get settingsCountryUnitedKingdom => '🇬🇧 Reino Unido';
@@ -537,7 +615,25 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Coche sin carnet';
 
   @override
+  String get settingsVehicleMopedClassI => 'Ciclomotor clase I';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Ciclomotor clase II (25 km/h)';
+
+  @override
+  String get settingsVehicleElectricScooter => 'Patinete eléctrico';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Utiliza únicamente un patinete eléctrico autorizado donde lo permitan las normas locales. La señalización, las ordenanzas municipales y las zonas de alquiler siempre prevalecen sobre la ruta.';
+
+  @override
+  String get settingsEscooterRentalOnlyNotice => 'En el Reino Unido, solo los patinetes eléctricos de alquiler autorizados son legales en la vía pública. Los patinetes privados solo pueden usarse en terrenos privados con permiso del propietario.';
+
+  @override
   String get settingsVehicleTractor => 'Tractor';
+
+  @override
+  String get settingsVehicleCar => 'Coche';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -566,7 +662,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Desbloquea todas las funciones con CruizX Pro.';
 
   @override
-  String get settingsProFeatureRoutes => 'Rutas ilimitadas';
+  String get settingsProFeatureRoutes => 'Más análisis de rutas con IA';
 
   @override
   String get settingsProFeatureConvoy => 'Miembros de convoy ilimitados';
@@ -591,7 +687,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Pago único: CruizX Pro (de por vida). El pago se carga una vez en tu Apple ID. Sin suscripción y sin renovación automática.';
+  String get settingsProOneTimeNote => 'Pago único: CruizX Pro (de por vida). El pago se cobra una vez a través de la tienda de aplicaciones. Sin suscripción y sin renovación automática.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Política de privacidad';
@@ -601,6 +697,63 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Soporte';
+
+  @override
+  String get supportChatTitle => 'Chat en directo con soporte';
+
+  @override
+  String get supportChatReplyTime => 'Respondemos en un plazo de 24 horas';
+
+  @override
+  String get supportChatWelcome => '¡Hola! ¿Cómo podemos ayudarte con CruizX? Escribe tu mensaje aquí y te responderemos lo antes posible.';
+
+  @override
+  String get supportChatGuestNotice => 'Estás chateando como invitado. La conversación se guarda de forma privada en este dispositivo.';
+
+  @override
+  String get supportChatLoginRequired => 'Inicia sesión para comenzar un chat privado con soporte y ver tus mensajes anteriores.';
+
+  @override
+  String get supportChatLoginAction => 'Iniciar sesión';
+
+  @override
+  String get supportChatMessageHint => 'Escribe un mensaje…';
+
+  @override
+  String get supportChatSend => 'Enviar mensaje';
+
+  @override
+  String get supportChatSendFailed => 'No se pudo enviar el mensaje. Inténtalo de nuevo.';
+
+  @override
+  String get supportChatUnavailable => 'El chat de soporte no está disponible en este momento. Inténtalo más tarde.';
+
+  @override
+  String get supportChatTeam => 'Soporte de CruizX';
+
+  @override
+  String get supportChatYou => 'Tú';
+
+  @override
+  String get supportAssistantTitle => 'Asistente de ayuda CruizX';
+
+  @override
+  String get supportAssistantIntro => 'Obtén una respuesta inmediata de la guía preparada de CruizX, incluso sin internet.';
+
+  @override
+  String get supportAssistantSuggestions => 'Preguntas frecuentes';
+
+  @override
+  String get supportAssistantNoMatch => 'No encontré una respuesta preparada fiable. Puedes enviar la pregunta al soporte de CruizX.';
+
+  @override
+  String get supportAssistantContact => 'Enviar a soporte';
+
+  @override
+  String get supportAssistantForwarded => 'La pregunta se envió al soporte de CruizX.';
+
+  @override
+  String get supportAssistantHumanUnavailable => 'Las respuestas preparadas funcionan sin conexión, pero el soporte humano necesita internet.';
 
   @override
   String get settingsLinkOpenFailed => 'No se pudo abrir el enlace ahora mismo.';
@@ -667,6 +820,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Ciclomotores';
+
+  @override
+  String get settingsMapMarkerScooter => 'Escúter';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Ciclomotor de cross';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';
@@ -828,17 +990,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Encontramos una ruta posible, pero no se pudo verificar por completo para tu $vehicleType. Puede incluir vías que deben comprobarse. Sigue siempre las señales y las normas locales.';
+    return 'No se puede verificar que la ruta sea legal para tu $vehicleType y puede incluir vías restringidas, como autopistas. Sigue siempre las señales y las normas locales. Usas esta ruta bajo tu propia responsabilidad; CruizX no puede garantizar la elección de vías y no se responsabiliza de la conducción en esta ruta.';
   }
 
   @override
   String get routeFallbackCancel => 'Cancelar';
 
   @override
-  String get routeFallbackUse => 'Mostrar de todos modos';
+  String get routeFallbackUse => 'Entiendo – mostrar ruta';
 
   @override
-  String get routeFallbackActive => 'Ruta no verificada – sigue siempre las señales';
+  String get routeFallbackActive => 'No verificada – bajo tu responsabilidad';
 
   @override
   String get routeOptionsTitle => 'Elegir ruta';
@@ -860,7 +1022,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'No se puede verificar por completo para tu $vehicleType. Comprueba las señales antes de conducir.';
+    return 'Puede incluir vías restringidas para tu $vehicleType. Bajo tu responsabilidad.';
   }
 
   @override
@@ -872,7 +1034,41 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX nunca aprueba automáticamente vías restringidas. Sigue siempre las señales y las normas locales.';
+  String get routeOptionWarningFooter => 'Las rutas no verificadas se usan bajo tu responsabilidad. CruizX no puede garantizar la elección de vías. Sigue siempre las señales y normas locales.';
+
+  @override
+  String get trafficRerouteTitle => 'Ruta más rápida encontrada';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX ha comparado el tráfico en directo en vías verificadas para tu $vehicleType. Se estima que la nueva ruta ahorra unos $minutes min y evita parte de la congestión actual.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Mantener ruta actual';
+
+  @override
+  String get trafficRerouteUse => 'Cambiar ruta';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Ruta más rápida elegida – ahorra unos $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'Se ha encontrado una ruta verificada más rápida. Ahorra unos $minutes minutos.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Tráfico lento – aprox. $minutes min de retraso';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Retenciones de tráfico por delante. Aproximadamente $minutes minutos de tiempo extra.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';
@@ -889,6 +1085,18 @@ class AppLocalizationsEs extends AppLocalizations {
   String mapManeuverTowardRoad(Object road) {
     return 'Hacia $road';
   }
+
+  @override
+  String get mapManeuverGenericCycleway => 'el carril bici';
+
+  @override
+  String get mapManeuverGenericFootway => 'la vía peatonal';
+
+  @override
+  String get mapManeuverGenericPath => 'el sendero';
+
+  @override
+  String get mapManeuverGenericRoad => 'la carretera';
 
   @override
   String get mapSimulateButton => 'Simular';
@@ -1068,6 +1276,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paywallUpgradeButton => 'Actualizar a Pro';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Comprar Pro para siempre · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Restaurar compra';
 
   @override
@@ -1081,7 +1294,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1103,10 +1316,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Rutas por día';
+  String get paywallFeatureRoutes => 'Rutas de navegación';
 
   @override
-  String get paywallFreeRouteLimit => '4 rutas';
+  String get paywallFreeRouteLimit => 'Ilimitadas';
 
   @override
   String get paywallProRouteLimit => 'Ilimitadas';
@@ -1130,10 +1343,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paywallProAds => 'Ninguno';
 
   @override
-  String get paywallRouteLimitTitle => 'Límite de rutas alcanzado';
+  String get paywallRouteLimitTitle => 'Rutas ilimitadas';
 
   @override
-  String get paywallRouteLimitBody => 'Los usuarios gratuitos pueden calcular 4 rutas por día. Actualiza a Pro para navegación ilimitada.';
+  String get paywallRouteLimitBody => 'Las rutas de navegación también son ilimitadas en la versión gratuita.';
+
+  @override
+  String get routeUpgradePromptTitle => '¿Continuar sin anuncios?';
+
+  @override
+  String get routeUpgradePromptBody => 'Has creado dos rutas hoy. La versión gratuita incluye rutas ilimitadas, mientras que Pro elimina los anuncios y desbloquea más funciones. ¿Quieres actualizar?';
 
   @override
   String get paywallConvoyLimitTitle => 'Límite de convoy alcanzado';
@@ -1178,8 +1397,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileUpgradeToPro => 'Actualizar a Pro';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Rutas hoy: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Rutas hoy: $count';
   }
 
   @override
@@ -1519,4 +1738,136 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Estándar — rápido y en caché sin conexión';
+
+  @override
+  String get publicGatheringStartTime => 'Hora de inicio';
+
+  @override
+  String get publicGatheringEndTime => 'Hora de fin';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'La hora de fin debe ser posterior a la de inicio.';
+
+  @override
+  String get publicGatheringEndAction => 'Finalizar encuentro';
+
+  @override
+  String get publicGatheringDeleteAction => 'Eliminar encuentro';
+
+  @override
+  String get publicGatheringEndConfirm => '¿Finalizar el encuentro ahora? Los participantes ya no podrán encontrarlo.';
+
+  @override
+  String get publicGatheringDeleteConfirm => '¿Eliminar el encuentro permanentemente? Esta acción no se puede deshacer.';
+
+  @override
+  String get publicGatheringReportAction => 'Denunciar encuentro';
+
+  @override
+  String get publicGatheringBlockAction => 'Bloquear encuentro';
+
+  @override
+  String get publicGatheringReportParticipant => 'Denunciar participante';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Bloquear participante';
+
+  @override
+  String get publicGatheringReportReason => '¿Qué quieres denunciar?';
+
+  @override
+  String get publicGatheringReportSent => 'Tu denuncia ha sido enviada.';
+
+  @override
+  String get publicGatheringBlocked => 'El contenido bloqueado ya no se mostrará.';
+
+  @override
+  String get reportReasonInappropriate => 'Contenido inapropiado';
+
+  @override
+  String get reportReasonHarassment => 'Acoso';
+
+  @override
+  String get reportReasonDangerous => 'Comportamiento peligroso';
+
+  @override
+  String get reportReasonSpam => 'Spam o engañoso';
+
+  @override
+  String get reportReasonOther => 'Otro';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Avisos de encuentros cercanos';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Avísame una vez cuando un encuentro público a menos de 25 km comience en las próximas 24 horas.';
+
+  @override
+  String get publicGatheringUpcoming => 'Próximo';
+
+  @override
+  String get publicGatheringStarted => 'En curso';
+
+  @override
+  String get aiRouteButton => 'Revisar ruta con IA';
+
+  @override
+  String get aiRouteTitle => 'Análisis de ruta con IA de CruizX';
+
+  @override
+  String get aiConsentTitle => '¿Usar el análisis de ruta con IA?';
+
+  @override
+  String get aiConsentBody => 'CruizX utiliza datos como la distancia, la duración, el tipo de vehículo, los nombres de vías y el número de avisos para analizar la ruta. No se comparten tu posición exacta, las coordenadas del destino ni tu identidad. El análisis puede contener errores y nunca cambia tu ruta.';
+
+  @override
+  String get aiConsentAccept => 'Aceptar y continuar';
+
+  @override
+  String get aiConsentDecline => 'Ahora no';
+
+  @override
+  String get aiSignInRequired => 'Inicia sesión para usar el análisis de ruta con IA.';
+
+  @override
+  String get aiLoading => 'Revisando la ruta…';
+
+  @override
+  String get aiUnavailable => 'El análisis con IA no está disponible ahora. Tu ruta no ha cambiado.';
+
+  @override
+  String get aiDailyLimit => 'Has alcanzado el límite diario de análisis de ruta con IA.';
+
+  @override
+  String get aiHighlights => 'Puntos positivos';
+
+  @override
+  String get aiCautions => 'Aspectos a comprobar';
+
+  @override
+  String get aiRecommendation => 'Recomendación';
+
+  @override
+  String get aiDisclaimer => 'Resumen de IA basado solo en los datos disponibles. Respeta las señales y las condiciones actuales de la vía.';
+
+  @override
+  String get aiReport => 'Denunciar respuesta';
+
+  @override
+  String get aiReportTitle => '¿Por qué denuncias esta respuesta?';
+
+  @override
+  String get aiReportIncorrect => 'Información incorrecta';
+
+  @override
+  String get aiReportUnsafe => 'Consejo inseguro';
+
+  @override
+  String get aiReportInappropriate => 'Contenido inapropiado';
+
+  @override
+  String get aiReportOther => 'Otro problema';
+
+  @override
+  String get aiReportSent => 'Gracias. La respuesta de IA ha sido denunciada.';
 }

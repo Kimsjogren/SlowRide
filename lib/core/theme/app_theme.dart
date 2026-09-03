@@ -22,7 +22,7 @@ class AppTheme {
         backgroundColor: Color(0x990A1F7A),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: const Color(0xF2071328),
+        backgroundColor: const Color(0xF20A1F63),
         indicatorColor: const Color(0x441E6BFF),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {

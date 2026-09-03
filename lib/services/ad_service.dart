@@ -12,8 +12,6 @@ class AdService {
   static final AdService instance = AdService._();
 
   // ── Ad unit IDs ──────────────────────────────────────────────────────────
-  static const String _iosInterstitialConvoyId =
-      'ca-app-pub-8409578758600641/2936933028';
   static const String _iosInterstitialRouteId =
       'ca-app-pub-8409578758600641/5874855772';
   static const String _iosBannerSettingsId =
@@ -21,17 +19,12 @@ class AdService {
   static const String _iosBannerConvoyId =
       'ca-app-pub-8409578758600641/2783187067';
 
-  static const String _androidInterstitialConvoyId =
-      'ca-app-pub-8409578758600641/7389190997';
   static const String _androidInterstitialRouteId =
       'ca-app-pub-8409578758600641/6787527904';
   static const String _androidBannerSettingsId =
       'ca-app-pub-8409578758600641/8719270290';
   static const String _androidBannerConvoyId =
       'ca-app-pub-8409578758600641/4818867975';
-
-  String get _interstitialConvoyId =>
-      Platform.isIOS ? _iosInterstitialConvoyId : _androidInterstitialConvoyId;
 
   String get _interstitialRouteId =>
       Platform.isIOS ? _iosInterstitialRouteId : _androidInterstitialRouteId;
@@ -52,9 +45,6 @@ class AdService {
     return adUnitId.startsWith('ca-app-pub-3940256099942544/');
   }
 
-  // ── Interstitial: convoy tab ─────────────────────────────────────────────
-  InterstitialAd? _convoyInterstitial;
-  bool _convoyAdLoading = false;
   InterstitialAd? _routeInterstitial;
   bool _routeAdLoading = false;
 
@@ -135,26 +125,7 @@ class AdService {
       );
     }
 
-    _preloadConvoyInterstitial();
     _preloadRouteInterstitial();
-  }
-
-  void _preloadConvoyInterstitial() {
-    if (_convoyAdLoading) return;
-    _convoyAdLoading = true;
-    InterstitialAd.load(
-      adUnitId: _interstitialConvoyId,
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _convoyInterstitial = ad;
-          _convoyAdLoading = false;
-        },
-        onAdFailedToLoad: (_) {
-          _convoyAdLoading = false;
-        },
-      ),
-    );
   }
 
   void _preloadRouteInterstitial() {
@@ -175,79 +146,45 @@ class AdService {
     );
   }
 
-  /// Shows one interstitial between routes 2 and 4 for free users. If the ad
-  /// is not ready before route 3, it remains eligible before route 4.
-  Future<void> showRouteInterstitialIfNeeded() async {
+  /// Shows an interstitial before every route after the first for free users.
+  /// Returns true only when an ad was displayed and dismissed normally.
+  Future<bool> showRouteInterstitialIfNeeded() async {
     final subscriptions = SubscriptionService.instance;
-    if (!subscriptions.shouldShowRouteInterstitial) return;
+    if (!subscriptions.shouldShowRouteInterstitial) return false;
 
     final ad = _routeInterstitial;
     if (ad == null) {
       _preloadRouteInterstitial();
-      return;
+      return false;
     }
 
     _routeInterstitial = null;
-    final completer = Completer<void>();
-    void finish() {
-      if (!completer.isCompleted) completer.complete();
+    final completer = Completer<bool>();
+    void finish(bool wasShown) {
+      if (!completer.isCompleted) completer.complete(wasShown);
     }
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (_) {
-        subscriptions.recordRouteInterstitialShown();
-      },
       onAdDismissedFullScreenContent: (a) {
         a.dispose();
-        finish();
+        finish(true);
         _preloadRouteInterstitial();
       },
       onAdFailedToShowFullScreenContent: (a, _) {
         a.dispose();
-        finish();
+        finish(false);
         _preloadRouteInterstitial();
       },
     );
 
     try {
       await ad.show();
-      await completer.future;
+      return await completer.future;
     } catch (_) {
       ad.dispose();
-      finish();
+      finish(false);
       _preloadRouteInterstitial();
+      return false;
     }
-  }
-
-  /// Shows the convoy interstitial if the user is on the free tier.
-  /// [onDone] is called after the ad closes (or immediately if ad is not
-  /// available or user is Pro).
-  Future<void> showConvoyInterstitial({required void Function() onDone}) async {
-    if (SubscriptionService.instance.isPro.value) {
-      onDone();
-      return;
-    }
-
-    final ad = _convoyInterstitial;
-    if (ad == null) {
-      onDone();
-      _preloadConvoyInterstitial();
-      return;
-    }
-
-    _convoyInterstitial = null;
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (a) {
-        a.dispose();
-        onDone();
-        _preloadConvoyInterstitial();
-      },
-      onAdFailedToShowFullScreenContent: (a, _) {
-        a.dispose();
-        onDone();
-        _preloadConvoyInterstitial();
-      },
-    );
-    await ad.show();
   }
 }

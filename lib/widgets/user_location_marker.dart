@@ -12,6 +12,9 @@ enum MapMarkerCategory {
   pickup,
   atraktor,
   tractor,
+  mopedScooter,
+  mopedCross,
+  electricScooter,
 }
 
 class MapMarkerOption {
@@ -21,7 +24,7 @@ class MapMarkerOption {
     required this.assetPath,
     required this.labelBuilder,
     this.colorNameBuilder,
-    this.rotatesWithHeading = false,
+    this.rotatesWithHeading = true,
     this.tint,
   });
 
@@ -43,7 +46,7 @@ class UserLocationMarker extends StatelessWidget {
     super.key,
     required this.headingNotifier,
     required this.lockNorthUp,
-    this.size = 42,
+    this.size = 38,
     this.backgroundColor = const Color(0xFF1E90FF),
     this.borderColor = Colors.white,
     this.borderWidth = 2.5,
@@ -89,6 +92,76 @@ class UserLocationMarker extends StatelessWidget {
       assetPath: null,
       labelBuilder: _dotLabel,
       tint: Color(0xFF25C281),
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterBlack,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_black_transparent.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterBlue,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_blue_transparent.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterGold,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_gold_transparent.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.scooterRed,
+      category: MapMarkerCategory.mopedScooter,
+      assetPath: 'assets/Moped/scooter_red_transparent.png',
+      labelBuilder: _scooterLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedBlack,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_black_transparent.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _blackLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedBlue,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_blue_transparent.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _blueLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedGold,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_gold_transparent.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.crossMopedRed,
+      category: MapMarkerCategory.mopedCross,
+      assetPath: 'assets/Moped/cross_red_transparent.png',
+      labelBuilder: _crossMopedLabel,
+      colorNameBuilder: _redLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.electricScooterGold,
+      category: MapMarkerCategory.electricScooter,
+      assetPath: 'assets/Elsparkcykel/scooter_gold.png',
+      labelBuilder: _electricScooterLabel,
+      colorNameBuilder: _goldLabel,
+    ),
+    MapMarkerOption(
+      style: MapMarkerStyle.electricScooterRed,
+      category: MapMarkerCategory.electricScooter,
+      assetPath: 'assets/Elsparkcykel/scooter_red.png',
+      labelBuilder: _electricScooterLabel,
+      colorNameBuilder: _redLabel,
     ),
     MapMarkerOption(
       style: MapMarkerStyle.microcarBlue,
@@ -330,12 +403,15 @@ class UserLocationMarker extends StatelessWidget {
       MapMarkerCategory.pickup => l10n.settingsMapMarkerCategoryPickup,
       MapMarkerCategory.atraktor => l10n.settingsMapMarkerCategoryAtractor,
       MapMarkerCategory.tractor => l10n.settingsMapMarkerCategoryTractor,
+      MapMarkerCategory.mopedScooter => l10n.settingsMapMarkerScooter,
+      MapMarkerCategory.mopedCross => l10n.settingsMapMarkerCrossMoped,
+      MapMarkerCategory.electricScooter => l10n.settingsVehicleElectricScooter,
     };
   }
 
   static Widget stylePreview(
     MapMarkerStyle style, {
-    double size = 56,
+    double size = 50,
     bool selected = false,
   }) {
     final option = optionFor(style);
@@ -356,7 +432,7 @@ class UserLocationMarker extends StatelessWidget {
             final rotatesWithHeading =
                 !lockNorthUp && option.rotatesWithHeading;
             final tint = option.tint ?? backgroundColor;
-            final previewSize = option.assetPath != null ? size * 1.12 : size;
+            final previewSize = size;
 
             return Center(
               child: Transform.rotate(
@@ -365,7 +441,7 @@ class UserLocationMarker extends StatelessWidget {
                   option: option,
                   size: previewSize,
                   selected: true,
-                  assetScale: option.assetPath != null ? 1.48 : 1.16,
+                  assetScale: option.assetPath != null ? 1.0 : 1.08,
                   forceTint: tint,
                   borderColor: borderColor,
                   borderWidth: borderWidth,
@@ -385,7 +461,7 @@ class _MarkerPreview extends StatelessWidget {
     required this.option,
     required this.size,
     required this.selected,
-    this.assetScale = 1.16,
+    this.assetScale = 1.0,
     this.forceTint,
     this.borderColor,
     this.borderWidth,
@@ -413,8 +489,8 @@ class _MarkerPreview extends StatelessWidget {
           children: [
             if (effectiveGlow)
               Container(
-                width: size * 0.70,
-                height: size * 0.70,
+                width: size * 0.56,
+                height: size * 0.56,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
@@ -422,8 +498,8 @@ class _MarkerPreview extends StatelessWidget {
                       color: Colors.white.withValues(
                         alpha: selected ? 0.20 : 0.12,
                       ),
-                      blurRadius: selected ? 22 : 14,
-                      spreadRadius: selected ? 3 : 1,
+                      blurRadius: selected ? 18 : 12,
+                      spreadRadius: selected ? 2 : 0.5,
                     ),
                   ],
                 ),
@@ -443,6 +519,15 @@ class _MarkerPreview extends StatelessWidget {
       );
     }
 
+    if (option.style == MapMarkerStyle.dot) {
+      return _FlatClassicMarker(
+        size: size,
+        tint: forceTint ?? option.tint ?? const Color(0xFF19A7FF),
+        borderColor: borderColor ?? (selected ? Colors.white : Colors.white70),
+        showOuterGlow: showOuterGlow ?? selected,
+      );
+    }
+
     final tint = forceTint ?? option.tint ?? const Color(0xFF1E90FF);
     final icon = switch (option.style) {
       MapMarkerStyle.navigation => Icons.navigation,
@@ -457,28 +542,97 @@ class _MarkerPreview extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color.lerp(tint, Colors.white, 0.42)!, tint],
-        ),
-        border: Border.all(
-          color: borderColor ?? (selected ? Colors.white : Colors.white70),
-          width: borderWidth ?? (selected ? 2.0 : 1.2),
-        ),
         boxShadow: [
           if (showOuterGlow ?? selected)
             BoxShadow(
               color: tint.withValues(alpha: 0.36),
-              blurRadius: 18,
-              spreadRadius: 2,
+              blurRadius: 14,
+              spreadRadius: 1.5,
             ),
         ],
       ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: option.style == MapMarkerStyle.dot ? size * 0.42 : size * 0.56,
+      child: ClipOval(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color.lerp(tint, Colors.white, 0.42)!, tint],
+            ),
+            border: Border.all(
+              color: borderColor ?? (selected ? Colors.white : Colors.white70),
+              width: borderWidth ?? (selected ? 1.8 : 1.0),
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: size * 0.50,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlatClassicMarker extends StatelessWidget {
+  const _FlatClassicMarker({
+    required this.size,
+    required this.tint,
+    required this.borderColor,
+    required this.showOuterGlow,
+  });
+
+  final double size;
+  final Color tint;
+  final Color borderColor;
+  final bool showOuterGlow;
+
+  @override
+  Widget build(BuildContext context) {
+    const outlineOffsets = <Offset>[
+      Offset(-1.2, 0),
+      Offset(1.2, 0),
+      Offset(0, -1.2),
+      Offset(0, 1.2),
+    ];
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (showOuterGlow)
+            Icon(
+              Icons.navigation_rounded,
+              color: tint.withValues(alpha: 0.28),
+              size: size * 0.92,
+              shadows: [
+                Shadow(
+                  color: tint.withValues(alpha: 0.42),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+          for (final offset in outlineOffsets)
+            Transform.translate(
+              offset: offset,
+              child: Icon(
+                Icons.navigation_rounded,
+                color: borderColor,
+                size: size * 0.72,
+              ),
+            ),
+          Icon(
+            Icons.navigation_rounded,
+            color: tint,
+            size: size * 0.72,
+          ),
+        ],
       ),
     );
   }
@@ -495,6 +649,11 @@ String _pickupLabel(AppLocalizations l10n) => l10n.settingsMapMarkerPickup;
 String _miniLabel(AppLocalizations l10n) => l10n.settingsMapMarkerMini;
 String _bmwLabel(AppLocalizations l10n) => l10n.settingsMapMarkerBmw;
 String _tractorLabel(AppLocalizations l10n) => l10n.settingsMapMarkerTractor;
+String _scooterLabel(AppLocalizations l10n) => l10n.settingsMapMarkerScooter;
+String _crossMopedLabel(AppLocalizations l10n) =>
+    l10n.settingsMapMarkerCrossMoped;
+String _electricScooterLabel(AppLocalizations l10n) =>
+    l10n.settingsVehicleElectricScooter;
 String _redLabel(AppLocalizations l10n) => l10n.settingsColorRed;
 String _blueLabel(AppLocalizations l10n) => l10n.settingsColorBlue;
 String _greenLabel(AppLocalizations l10n) => l10n.settingsColorGreen;

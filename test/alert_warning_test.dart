@@ -55,6 +55,31 @@ void main() {
 
       expect(selected, isNull);
     });
+
+    test(
+      'suppresses the same nearby warning after a refresh with a new id',
+      () {
+        const position = LatLng(59.0, 18.0);
+        final dismissed = _alert(
+          id: 'roadwork_old',
+          type: AlertType.roadwork,
+          latitude: 59.0010,
+        );
+        final selected = AlertModel.mostRelevantNearby(
+          [
+            _alert(
+              id: 'roadwork_new',
+              type: AlertType.roadwork,
+              latitude: 59.0011,
+            ),
+          ],
+          position,
+          dismissedAlert: dismissed,
+        );
+
+        expect(selected, isNull);
+      },
+    );
   });
 
   group('Trafikverket alert classification', () {

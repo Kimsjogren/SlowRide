@@ -45,7 +45,58 @@ class AppLocalizationsFi extends AppLocalizations {
   String get splashReady => 'Valmis';
 
   @override
-  String get splashVersionLine => 'v1.1.1 | CruizX by KimTechTool';
+  String get splashVersionLine => 'v1.1.9 | CruizX by KimTechTool';
+
+  @override
+  String get a11yCenterOnLocation => 'Keskitä kartta sijaintiini';
+
+  @override
+  String get a11yStopFollowingLocation => 'Lopeta sijaintini seuraaminen';
+
+  @override
+  String get a11ySwitchTo2d => 'Vaihda 2D-karttaan';
+
+  @override
+  String get a11ySwitchTo3d => 'Vaihda 3D-karttaan';
+
+  @override
+  String get a11yUseDarkMap => 'Käytä tummaa karttaa';
+
+  @override
+  String get a11yUseLightMap => 'Käytä vaaleaa karttaa';
+
+  @override
+  String get a11yChooseMapLayer => 'Valitse karttatyyppi';
+
+  @override
+  String get mapLayerStyleTitle => 'Karttatyyppi';
+
+  @override
+  String get mapLayerStandard => 'Vakio';
+
+  @override
+  String get mapLayerSatellite => 'Satelliitti';
+
+  @override
+  String get a11yEnableVoiceNavigation => 'Ota ääninavigointi käyttöön';
+
+  @override
+  String get a11yDisableVoiceNavigation => 'Poista ääninavigointi käytöstä';
+
+  @override
+  String get a11yDismissAlert => 'Sulje varoitus';
+
+  @override
+  String get a11yClearSearch => 'Tyhjennä haku';
+
+  @override
+  String get a11yOpenSearch => 'Avaa osoitehaku';
+
+  @override
+  String get a11yAddFavorite => 'Lisää suosikkipaikka';
+
+  @override
+  String get a11yConfirmAlert => 'Vahvista varoitus';
 
   @override
   String get alertsTitle => 'Yhteisön hälytykset';
@@ -135,7 +186,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authPasswordRequired => 'Syötä salasanasi';
 
   @override
-  String get authPasswordMinLength => 'Vähintään 6 merkkiä';
+  String get authPasswordMinLength => 'Vähintään 6 merkkiä, numero ja erikoismerkki';
 
   @override
   String get authConfirmPasswordLabel => 'Vahvista salasana';
@@ -195,10 +246,16 @@ class AppLocalizationsFi extends AppLocalizations {
   String get authErrorAllFieldsRequired => 'Kaikki kentät ovat pakollisia.';
 
   @override
-  String get authErrorPasswordTooShort => 'Salasanan on oltava vähintään 6 merkkiä.';
+  String get authErrorPasswordTooShort => 'Salasanan on oltava vähintään 6 merkkiä ja sisällettävä numero ja erikoismerkki.';
 
   @override
-  String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi ja kirjaudu sitten sisään.';
+  String get authErrorConfirmEmail => 'Tarkista sähköpostisi vahvistaaksesi tilisi. Jos tili on jo olemassa, uutta vahvistusviestiä ei lähetetä – kirjaudu sisään tai palauta salasana.';
+
+  @override
+  String get authEmailConfirmedTitle => 'Sähköposti vahvistettu';
+
+  @override
+  String get authEmailConfirmedBody => 'Sähköpostiosoitteesi on vahvistettu. Olet nyt kirjautunut sisään.';
 
   @override
   String get authErrorEmailAndPasswordRequired => 'Syötä sähköposti ja salasana.';
@@ -208,6 +265,21 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get authErrorEmailAlreadyInUse => 'Tällä sähköpostilla on jo tili.';
+
+  @override
+  String get authErrorInvalidEmail => 'Sähköpostiosoite ei kelpaa. Tarkista se ja yritä uudelleen.';
+
+  @override
+  String get authErrorRateLimited => 'Liian monta yritystä lyhyessä ajassa. Odota hetki ja yritä uudelleen.';
+
+  @override
+  String get authErrorSignUpDisabled => 'Uusia tilejä ei voi luoda juuri nyt. Ota yhteyttä CruizX-tukeen.';
+
+  @override
+  String get authErrorEmailDeliveryFailed => 'Vahvistussähköpostia ei voitu lähettää. Yritä hetken kuluttua uudelleen.';
+
+  @override
+  String get authErrorNetworkUnavailable => 'Tilipalveluun ei saatu yhteyttä. Tarkista internetyhteys ja yritä uudelleen.';
 
   @override
   String get convoyRealtimeBackendMissing => 'Reaaliaikaista saattuetta ei ole vielä määritetty. Lisää backend-konfiguraatio jakaaksesi live-sijainnit käyttäjien kesken.';
@@ -493,6 +565,9 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsLanguageSpanish => 'Espanja';
 
   @override
+  String get settingsLanguageItalian => 'Italia';
+
+  @override
   String get settingsCountryLabel => 'Maa (liikennesäännöt)';
 
   @override
@@ -512,6 +587,9 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsCountrySpain => '🇪🇸 Espanja';
+
+  @override
+  String get settingsCountryItaly => '🇮🇹 Italia';
 
   @override
   String get settingsCountryUnitedKingdom => '🇬🇧 Yhdistynyt kuningaskunta';
@@ -537,7 +615,25 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsVehicleMopedCar => 'Mopoauto';
 
   @override
+  String get settingsVehicleMopedClassI => 'Luokan I mopo';
+
+  @override
+  String get settingsVehicleMopedClassII => 'Luokan II mopo (25 km/h)';
+
+  @override
+  String get settingsVehicleElectricScooter => 'Sähköpotkulauta';
+
+  @override
+  String get settingsElectricScooterLegalNotice => 'Käytä vain tieliikenteeseen hyväksyttyä sähköpotkulautaa siellä, missä paikalliset säännöt sen sallivat. Liikennemerkit, kuntakohtaiset säännöt ja vuokrausalueet ovat aina reittiä ensisijaisia.';
+
+  @override
+  String get settingsEscooterRentalOnlyNotice => 'Isossa-Britanniassa vain hyväksytyt vuokrasähköpotkulaudat ovat laillisia yleisillä teillä. Yksityisiä sähköpotkulautoja saa käyttää vain yksityisalueella maanomistajan luvalla.';
+
+  @override
   String get settingsVehicleTractor => 'Traktori';
+
+  @override
+  String get settingsVehicleCar => 'Auto';
 
   @override
   String get settingsSpeedUnitKmh => 'km/h';
@@ -566,7 +662,7 @@ class AppLocalizationsFi extends AppLocalizations {
   String get settingsProDescriptionInactive => 'Avaa kaikki ominaisuudet CruizX Prolla.';
 
   @override
-  String get settingsProFeatureRoutes => 'Rajattomat reitit';
+  String get settingsProFeatureRoutes => 'Enemmän AI-reittianalyysejä';
 
   @override
   String get settingsProFeatureConvoy => 'Rajaton saattue';
@@ -591,7 +687,7 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get settingsProOneTimeNote => 'Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran Apple ID -tililtäsi. Ei tilausta eikä automaattista uusimista.';
+  String get settingsProOneTimeNote => 'Kertaosto: CruizX Pro (elinikäinen). Maksu veloitetaan kerran sovelluskaupan kautta. Ei tilausta eikä automaattista uusimista.';
 
   @override
   String get settingsPrivacyPolicyLabel => 'Tietosuojakäytäntö';
@@ -601,6 +697,63 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsSupportLabel => 'Tuki';
+
+  @override
+  String get supportChatTitle => 'Tuen live-chat';
+
+  @override
+  String get supportChatReplyTime => 'Vastaamme 24 tunnin kuluessa';
+
+  @override
+  String get supportChatWelcome => 'Hei! Kuinka voimme auttaa CruizXin kanssa? Kirjoita viestisi tähän, niin vastaamme mahdollisimman pian.';
+
+  @override
+  String get supportChatGuestNotice => 'Keskustelet vieraana. Keskustelu tallennetaan yksityisesti tälle laitteelle.';
+
+  @override
+  String get supportChatLoginRequired => 'Kirjaudu sisään aloittaaksesi yksityisen tukikeskustelun ja nähdäksesi aiemmat viestisi.';
+
+  @override
+  String get supportChatLoginAction => 'Kirjaudu sisään';
+
+  @override
+  String get supportChatMessageHint => 'Kirjoita viesti…';
+
+  @override
+  String get supportChatSend => 'Lähetä viesti';
+
+  @override
+  String get supportChatSendFailed => 'Viestiä ei voitu lähettää. Yritä uudelleen.';
+
+  @override
+  String get supportChatUnavailable => 'Tukikeskustelu ei ole juuri nyt käytettävissä. Yritä myöhemmin uudelleen.';
+
+  @override
+  String get supportChatTeam => 'CruizX-tuki';
+
+  @override
+  String get supportChatYou => 'Sinä';
+
+  @override
+  String get supportAssistantTitle => 'CruizX-ohjeavustaja';
+
+  @override
+  String get supportAssistantIntro => 'Saat heti vastauksen CruizXin valmiista ohjeesta myös ilman internetyhteyttä.';
+
+  @override
+  String get supportAssistantSuggestions => 'Yleisiä kysymyksiä';
+
+  @override
+  String get supportAssistantNoMatch => 'En löytänyt luotettavaa valmista vastausta. Voit lähettää kysymyksen CruizX-tuelle.';
+
+  @override
+  String get supportAssistantContact => 'Lähetä tukeen';
+
+  @override
+  String get supportAssistantForwarded => 'Kysymys lähetettiin CruizX-tuelle.';
+
+  @override
+  String get supportAssistantHumanUnavailable => 'Valmiit vastaukset toimivat offline-tilassa, mutta ihmistuki vaatii internetyhteyden.';
 
   @override
   String get settingsLinkOpenFailed => 'Linkkiä ei voitu avata juuri nyt.';
@@ -667,6 +820,15 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsMapMarkerBmw => 'BMW';
+
+  @override
+  String get settingsMapMarkerMopeds => 'Mopot';
+
+  @override
+  String get settingsMapMarkerScooter => 'Skootteri';
+
+  @override
+  String get settingsMapMarkerCrossMoped => 'Crossimopo';
 
   @override
   String get settingsMapMarkerTractor => 'Traktor';
@@ -828,17 +990,17 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String routeFallbackBody(Object vehicleType) {
-    return 'Löysimme mahdollisen reitin, mutta sitä ei voitu täysin varmistaa ajoneuvollesi $vehicleType. Se voi sisältää teitä, jotka pitää tarkistaa. Noudata aina liikennemerkkejä ja paikallisia sääntöjä.';
+    return 'Reitin laillisuutta ajoneuvollesi $vehicleType ei voida varmistaa, ja se voi sisältää kiellettyjä teitä, kuten moottoriteitä. Noudata aina liikennemerkkejä ja paikallisia sääntöjä. Käytät reittiä omalla vastuullasi; CruizX ei voi taata tievalintaa eikä vastaa tällä reitillä ajamisesta.';
   }
 
   @override
   String get routeFallbackCancel => 'Peruuta';
 
   @override
-  String get routeFallbackUse => 'Näytä silti';
+  String get routeFallbackUse => 'Ymmärrän – näytä reitti';
 
   @override
-  String get routeFallbackActive => 'Varmistamaton reitti – noudata aina merkkejä';
+  String get routeFallbackActive => 'Varmistamaton – omalla vastuulla';
 
   @override
   String get routeOptionsTitle => 'Valitse reitti';
@@ -860,7 +1022,7 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String routeOptionUnverifiedSubtitle(Object vehicleType) {
-    return 'Ei voida täysin varmistaa ajoneuvollesi $vehicleType. Tarkista liikennemerkit ennen ajoa.';
+    return 'Voi sisältää ajoneuvollesi $vehicleType kiellettyjä teitä. Omalla vastuulla.';
   }
 
   @override
@@ -872,7 +1034,41 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get routeOptionWarningFooter => 'CruizX ei koskaan hyväksy kiellettyjä teitä automaattisesti. Noudata aina merkkejä ja paikallisia sääntöjä.';
+  String get routeOptionWarningFooter => 'Varmistamattomia reittejä käytetään omalla vastuulla. CruizX ei voi taata tievalintaa. Noudata aina merkkejä ja paikallisia sääntöjä.';
+
+  @override
+  String get trafficRerouteTitle => 'Nopeampi reitti löytyi';
+
+  @override
+  String trafficRerouteBody(Object vehicleType, Object minutes) {
+    return 'CruizX vertasi reaaliaikaista liikennettä ajoneuvollesi $vehicleType varmistetuilla teillä. Uuden reitin arvioidaan säästävän noin $minutes min ja välttävän osan nykyisestä ruuhkasta.';
+  }
+
+  @override
+  String get trafficRerouteKeep => 'Pidä nykyinen';
+
+  @override
+  String get trafficRerouteUse => 'Vaihda reittiä';
+
+  @override
+  String trafficRerouteApplied(Object minutes) {
+    return 'Nopeampi reitti valittu – säästää noin $minutes min';
+  }
+
+  @override
+  String trafficRerouteVoice(Object minutes) {
+    return 'Nopeampi varmistettu reitti löytyi. Se säästää noin $minutes minuuttia.';
+  }
+
+  @override
+  String trafficWarningBanner(Object minutes) {
+    return 'Liikennehäiriö – n. $minutes min lisää matka-aikaa';
+  }
+
+  @override
+  String trafficWarningVoice(Object minutes) {
+    return 'Liikennehäiriö edessä. Noin $minutes minuuttia lisää matka-aikaa.';
+  }
 
   @override
   String get mapModeLabel2d => '2D';
@@ -889,6 +1085,18 @@ class AppLocalizationsFi extends AppLocalizations {
   String mapManeuverTowardRoad(Object road) {
     return 'Kohti $road';
   }
+
+  @override
+  String get mapManeuverGenericCycleway => 'pyörätietä';
+
+  @override
+  String get mapManeuverGenericFootway => 'kävelytietä';
+
+  @override
+  String get mapManeuverGenericPath => 'polkua';
+
+  @override
+  String get mapManeuverGenericRoad => 'tietä';
 
   @override
   String get mapSimulateButton => 'Simuloi';
@@ -1068,6 +1276,11 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallUpgradeButton => 'Päivitä Prohon';
 
   @override
+  String paywallLifetimeButton(Object price) {
+    return 'Osta Pro pysyvästi · $price';
+  }
+
+  @override
   String get paywallRestoreButton => 'Palauta osto';
 
   @override
@@ -1081,7 +1294,7 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get paywallPriceOneTime => '79 kr';
+  String get paywallPriceOneTime => '249 kr';
 
   @override
   String paywallDisclosureOneTime(Object price) {
@@ -1103,10 +1316,10 @@ class AppLocalizationsFi extends AppLocalizations {
   }
 
   @override
-  String get paywallFeatureRoutes => 'Reittejä päivässä';
+  String get paywallFeatureRoutes => 'Navigointireitit';
 
   @override
-  String get paywallFreeRouteLimit => '4 reittiä';
+  String get paywallFreeRouteLimit => 'Rajaton';
 
   @override
   String get paywallProRouteLimit => 'Rajaton';
@@ -1130,10 +1343,16 @@ class AppLocalizationsFi extends AppLocalizations {
   String get paywallProAds => 'Ei mainoksia';
 
   @override
-  String get paywallRouteLimitTitle => 'Päivittäinen reittirajaus saavutettu';
+  String get paywallRouteLimitTitle => 'Rajattomat reitit';
 
   @override
-  String get paywallRouteLimitBody => 'Ilmaiskäyttäjät voivat laskea 4 reittiä päivässä. Päivitä Prohon rajattomaan navigointiin.';
+  String get paywallRouteLimitBody => 'Navigointireitit ovat rajattomia myös ilmaisversiossa.';
+
+  @override
+  String get routeUpgradePromptTitle => 'Jatka ilman mainoksia?';
+
+  @override
+  String get routeUpgradePromptBody => 'Olet luonut tänään kaksi reittiä. Ilmaisversiossa on rajattomasti reittejä, kun taas Pro poistaa mainokset ja avaa lisää ominaisuuksia. Haluatko päivittää?';
 
   @override
   String get paywallConvoyLimitTitle => 'Saattueraja saavutettu';
@@ -1178,8 +1397,8 @@ class AppLocalizationsFi extends AppLocalizations {
   String get profileUpgradeToPro => 'Päivitä Prohon';
 
   @override
-  String profileRoutesUsed(Object count, Object max) {
-    return 'Reitit tänään: $count / $max';
+  String profileRoutesUsed(Object count) {
+    return 'Reitit tänään: $count';
   }
 
   @override
@@ -1519,4 +1738,136 @@ class AppLocalizationsFi extends AppLocalizations {
 
   @override
   String get settingsVectorMapOff => 'Vakio — nopea ja offline-välimuistissa';
+
+  @override
+  String get publicGatheringStartTime => 'Aloitusaika';
+
+  @override
+  String get publicGatheringEndTime => 'Päättymisaika';
+
+  @override
+  String get publicGatheringScheduleInvalid => 'Päättymisajan on oltava aloitusajan jälkeen.';
+
+  @override
+  String get publicGatheringEndAction => 'Päätä tapaaminen';
+
+  @override
+  String get publicGatheringDeleteAction => 'Poista tapaaminen';
+
+  @override
+  String get publicGatheringEndConfirm => 'Päätetäänkö tapaaminen nyt? Osallistujat eivät enää löydä sitä.';
+
+  @override
+  String get publicGatheringDeleteConfirm => 'Poistetaanko tapaaminen pysyvästi? Tätä ei voi perua.';
+
+  @override
+  String get publicGatheringReportAction => 'Ilmoita tapaamisesta';
+
+  @override
+  String get publicGatheringBlockAction => 'Estä tapaaminen';
+
+  @override
+  String get publicGatheringReportParticipant => 'Ilmoita osallistujasta';
+
+  @override
+  String get publicGatheringBlockParticipant => 'Estä osallistuja';
+
+  @override
+  String get publicGatheringReportReason => 'Mitä haluat ilmoittaa?';
+
+  @override
+  String get publicGatheringReportSent => 'Ilmoitus on lähetetty.';
+
+  @override
+  String get publicGatheringBlocked => 'Estettyä sisältöä ei enää näytetä.';
+
+  @override
+  String get reportReasonInappropriate => 'Sopimaton sisältö';
+
+  @override
+  String get reportReasonHarassment => 'Häirintä';
+
+  @override
+  String get reportReasonDangerous => 'Vaarallinen toiminta';
+
+  @override
+  String get reportReasonSpam => 'Roskaposti tai harhaanjohtava';
+
+  @override
+  String get reportReasonOther => 'Muu';
+
+  @override
+  String get publicGatheringNearbyNotifications => 'Ilmoitukset lähellä olevista tapaamisista';
+
+  @override
+  String get publicGatheringNearbyNotificationsSubtitle => 'Ilmoita kerran, kun 25 km:n sisällä oleva julkinen tapaaminen alkaa 24 tunnin kuluessa.';
+
+  @override
+  String get publicGatheringUpcoming => 'Tulossa';
+
+  @override
+  String get publicGatheringStarted => 'Käynnissä';
+
+  @override
+  String get aiRouteButton => 'AI-tarkista reitti';
+
+  @override
+  String get aiRouteTitle => 'CruizX AI-reittianalyysi';
+
+  @override
+  String get aiConsentTitle => 'Käytetäänkö AI-reittianalyysiä?';
+
+  @override
+  String get aiConsentBody => 'CruizX käyttää reittitietoja, kuten matkaa, ajoaikaa, ajoneuvotyyppiä, tienimiä ja varoitusten määrää, reitin analysointiin. Tarkkaa sijaintiasi, määränpään koordinaatteja tai henkilöllisyyttäsi ei jaeta. Analyysi voi sisältää virheitä eikä koskaan muuta reittiäsi.';
+
+  @override
+  String get aiConsentAccept => 'Hyväksy ja jatka';
+
+  @override
+  String get aiConsentDecline => 'Ei nyt';
+
+  @override
+  String get aiSignInRequired => 'Kirjaudu sisään käyttääksesi AI-reittianalyysiä.';
+
+  @override
+  String get aiLoading => 'Tarkistetaan reittiä…';
+
+  @override
+  String get aiUnavailable => 'AI-reittianalyysi ei ole juuri nyt käytettävissä. Reittisi ei muutu.';
+
+  @override
+  String get aiDailyLimit => 'Olet saavuttanut tämän päivän AI-reittianalyysirajan.';
+
+  @override
+  String get aiHighlights => 'Hyvät puolet';
+
+  @override
+  String get aiCautions => 'Tarkistettavaa';
+
+  @override
+  String get aiRecommendation => 'Suositus';
+
+  @override
+  String get aiDisclaimer => 'AI-yhteenveto perustuu vain saatavilla oleviin reittitietoihin. Noudata liikennemerkkejä ja nykyisiä tieolosuhteita.';
+
+  @override
+  String get aiReport => 'Ilmoita vastauksesta';
+
+  @override
+  String get aiReportTitle => 'Miksi ilmoitat vastauksesta?';
+
+  @override
+  String get aiReportIncorrect => 'Virheellistä tietoa';
+
+  @override
+  String get aiReportUnsafe => 'Turvaton neuvo';
+
+  @override
+  String get aiReportInappropriate => 'Sopimatonta sisältöä';
+
+  @override
+  String get aiReportOther => 'Muu ongelma';
+
+  @override
+  String get aiReportSent => 'Kiitos. AI-vastauksesta on ilmoitettu.';
 }
