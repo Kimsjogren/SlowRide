@@ -66,6 +66,18 @@ class AppLocalizationsDa extends AppLocalizations {
   String get a11yUseLightMap => 'Brug lyst kort';
 
   @override
+  String get a11yChooseMapLayer => 'Vælg korttype';
+
+  @override
+  String get mapLayerStyleTitle => 'Korttype';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellit';
+
+  @override
   String get a11yEnableVoiceNavigation => 'Slå stemmenavigation til';
 
   @override

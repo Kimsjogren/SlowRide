@@ -66,6 +66,18 @@ class AppLocalizationsNb extends AppLocalizations {
   String get a11yUseLightMap => 'Bruk lyst kart';
 
   @override
+  String get a11yChooseMapLayer => 'Velg karttype';
+
+  @override
+  String get mapLayerStyleTitle => 'Karttype';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellitt';
+
+  @override
   String get a11yEnableVoiceNavigation => 'Slå på stemmenavigasjon';
 
   @override

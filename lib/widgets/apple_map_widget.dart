@@ -26,8 +26,10 @@ class AppleMapWidget extends StatefulWidget {
     this.onTap,
     this.followUser = false,
     this.onUserPanned,
+    this.onUserInteractionEnded,
     this.use3D = true,
     this.darkMode = false,
+    this.satellite = false,
     this.nextManeuverDistanceMeters,
     this.nextManeuverSign,
   });
@@ -44,8 +46,10 @@ class AppleMapWidget extends StatefulWidget {
   final ValueChanged<LatLng>? onTap;
   final bool followUser;
   final VoidCallback? onUserPanned;
+  final VoidCallback? onUserInteractionEnded;
   final bool use3D;
   final bool darkMode;
+  final bool satellite;
   final double? nextManeuverDistanceMeters;
   final int? nextManeuverSign;
 
@@ -57,10 +61,8 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
   MethodChannel? _channel;
   Timer? _stateSyncDebounce;
   Timer? _headingSyncDebounce;
-  Timer? _userPanCooldownTimer;
   String? _lastPayloadJson;
   double? _lastHeading;
-  bool _userPanning = false;
 
   @override
   void initState() {
@@ -90,7 +92,6 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
     widget.headingNotifier.removeListener(_scheduleHeadingSync);
     _stateSyncDebounce?.cancel();
     _headingSyncDebounce?.cancel();
-    _userPanCooldownTimer?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }
@@ -119,6 +120,9 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
         break;
       case 'userPanned':
         widget.onUserPanned?.call();
+        break;
+      case 'userInteractionEnded':
+        widget.onUserInteractionEnded?.call();
         break;
     }
   }
@@ -197,6 +201,7 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
       'followUser': widget.followUser,
       'use3D': widget.use3D,
       'darkMode': widget.darkMode,
+      'satellite': widget.satellite,
       'showTraffic': widget.routePoints.length >= 2,
       'nextManeuverDistanceMeters': widget.nextManeuverDistanceMeters,
       'nextManeuverSign': widget.nextManeuverSign,
@@ -267,47 +272,33 @@ class _AppleMapWidgetState extends State<AppleMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) {
-        if (widget.followUser && !_userPanning) {
-          _userPanning = true;
-          widget.onUserPanned?.call();
-          _userPanCooldownTimer?.cancel();
-          _userPanCooldownTimer = Timer(const Duration(milliseconds: 900), () {
-            if (mounted) {
-              _userPanning = false;
-            }
-          });
-        }
-      },
-      child: Stack(
-        children: [
-          if (defaultTargetPlatform == TargetPlatform.android)
-            AndroidView(
-              viewType: 'cruizx/google-maps-view',
-              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<EagerGestureRecognizer>(
-                  () => EagerGestureRecognizer(),
-                ),
-              },
-              onPlatformViewCreated: _onPlatformViewCreated,
-              creationParams: const <String, Object?>{},
-              creationParamsCodec: const StandardMessageCodec(),
-            )
-          else
-            UiKitView(
-              viewType: 'cruizx/mapkit-view',
-              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<EagerGestureRecognizer>(
-                  () => EagerGestureRecognizer(),
-                ),
-              },
-              onPlatformViewCreated: _onPlatformViewCreated,
-              creationParams: const <String, Object?>{},
-              creationParamsCodec: const StandardMessageCodec(),
-            ),
-        ],
-      ),
+    return Stack(
+      children: [
+        if (defaultTargetPlatform == TargetPlatform.android)
+          AndroidView(
+            viewType: 'cruizx/google-maps-view',
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<EagerGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            },
+            onPlatformViewCreated: _onPlatformViewCreated,
+            creationParams: const <String, Object?>{},
+            creationParamsCodec: const StandardMessageCodec(),
+          )
+        else
+          UiKitView(
+            viewType: 'cruizx/mapkit-view',
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<EagerGestureRecognizer>(
+                () => EagerGestureRecognizer(),
+              ),
+            },
+            onPlatformViewCreated: _onPlatformViewCreated,
+            creationParams: const <String, Object?>{},
+            creationParamsCodec: const StandardMessageCodec(),
+          ),
+      ],
     );
   }
 }

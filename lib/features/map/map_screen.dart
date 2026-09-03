@@ -94,6 +94,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _useVectorMap = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
+  bool _useSatelliteMap = false;
   // When true, the map style follows time of day; a manual toggle disables it.
   bool _autoMapTheme = true;
   LatLng? _destination;
@@ -133,6 +134,7 @@ class _MapScreenState extends State<MapScreen> {
   static const Duration _etaPauseGrace = Duration(seconds: 25);
   TrafficEtaEstimate? _trafficEtaEstimate;
   Timer? _trafficEtaTimer;
+  Timer? _mapInteractionResumeTimer;
   bool _trafficRerouteInFlight = false;
   DateTime? _lastTrafficRerouteEvaluationAt;
   DateTime? _lastTrafficReroutePromptAt;
@@ -248,6 +250,7 @@ class _MapScreenState extends State<MapScreen> {
       if (mounted) _onExternalNavigationRequest();
     });
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    _useSatelliteMap = UserPreferencesService.instance.useSatelliteMap.value;
     // iOS now always uses MapKit, so the vector-map preference only applies
     // on platforms where the MapLibre path is still available.
     _useVectorMap =
@@ -1136,9 +1139,9 @@ class _MapScreenState extends State<MapScreen> {
     }
     final previous = _lastAcceptedGpsPosition;
     if (previous != null) {
-      final elapsedSeconds = position.timestamp
-          .difference(previous.timestamp)
-          .inMilliseconds / 1000.0;
+      final elapsedSeconds =
+          position.timestamp.difference(previous.timestamp).inMilliseconds /
+          1000.0;
       if (elapsedSeconds > 0 && elapsedSeconds <= 20) {
         final jumpMeters = Geolocator.distanceBetween(
           previous.latitude,
@@ -1379,6 +1382,7 @@ class _MapScreenState extends State<MapScreen> {
     _simTimer?.cancel();
     _alertsTimer?.cancel();
     _trafficEtaTimer?.cancel();
+    _mapInteractionResumeTimer?.cancel();
     _positionSubscription?.cancel();
     _compassSubscription?.cancel();
     if (_supportsVectorMapOnCurrentPlatform) {
@@ -4174,6 +4178,84 @@ class _MapScreenState extends State<MapScreen> {
     return l10n.convoyEtaHours(minLeft ~/ 60, minLeft % 60, hhmm);
   }
 
+  void _pauseMapFollowingForInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    if (!_isFollowing) return;
+    setState(() => _isFollowing = false);
+  }
+
+  void _resumeMapFollowingAfterInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    // Outside active guidance, a manual map position should stay where the
+    // user left it. During navigation we return to heading-up only after the
+    // pan/zoom gesture has ended and the map has been idle briefly.
+    if (!_isNavigating) return;
+    _mapInteractionResumeTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || _isFollowing || _currentLocation == null) return;
+      setState(() => _isFollowing = true);
+    });
+  }
+
+  Future<void> _showMapLayerPicker(AppLocalizations l10n) async {
+    final useSatellite = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.mapLayerStyleTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.map_outlined, color: Colors.white70),
+                title: Text(
+                  l10n.mapLayerStandard,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: !_useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, false),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.satellite_alt_outlined,
+                  color: Colors.white70,
+                ),
+                title: Text(
+                  l10n.mapLayerSatellite,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: _useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (useSatellite == null || useSatellite == _useSatelliteMap || !mounted) {
+      return;
+    }
+    setState(() => _useSatelliteMap = useSatellite);
+    UserPreferencesService.instance.useSatelliteMap.value = useSatellite;
+  }
+
   Widget _mapCircleButton({
     required VoidCallback onTap,
     required String semanticLabel,
@@ -6672,13 +6754,12 @@ class _MapScreenState extends State<MapScreen> {
                                   _isFollowing && _currentLocation != null,
                               use3D: _isNavigating && _use3DMap,
                               darkMode: _useDarkMap,
+                              satellite: _useSatelliteMap,
                               onUserPanned: () {
-                                if (!_isFollowing) return;
-                                setState(() {
-                                  _isFollowing = false;
-                                  _mapViewEpoch++;
-                                });
+                                _pauseMapFollowingForInteraction();
                               },
+                              onUserInteractionEnded:
+                                  _resumeMapFollowingAfterInteraction,
                             );
                           },
                         );
@@ -6702,11 +6783,8 @@ class _MapScreenState extends State<MapScreen> {
                           use3D: _isNavigating && _use3DMap,
                           darkMode: _useDarkMap,
                           onUserPanned: () {
-                            if (!_isFollowing) return;
-                            setState(() {
-                              _isFollowing = false;
-                              _mapViewEpoch++;
-                            });
+                            _pauseMapFollowingForInteraction();
+                            _resumeMapFollowingAfterInteraction();
                           },
                         );
                       }
@@ -6738,11 +6816,8 @@ class _MapScreenState extends State<MapScreen> {
                         use3D: _isNavigating && _use3DMap,
                         darkMode: _useDarkMap,
                         onUserPanned: () {
-                          if (!_isFollowing) return;
-                          setState(() {
-                            _isFollowing = false;
-                            _mapViewEpoch++;
-                          });
+                          _pauseMapFollowingForInteraction();
+                          _resumeMapFollowingAfterInteraction();
                         },
                       );
                     },
@@ -7491,6 +7566,18 @@ class _MapScreenState extends State<MapScreen> {
                             fontSize: 13,
                           ),
                         ),
+                ),
+                const SizedBox(height: 8),
+                // Standard / satellite map layer.
+                _mapCircleButton(
+                  semanticLabel: l10n.a11yChooseMapLayer,
+                  color: _useSatelliteMap ? const Color(0xFF1E6BFF) : null,
+                  onTap: () => _showMapLayerPicker(l10n),
+                  child: Icon(
+                    Icons.layers_outlined,
+                    color: _useSatelliteMap ? Colors.white : Colors.white70,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // 2D / 3D toggle

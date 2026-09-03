@@ -46,6 +46,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
   private var manualPanStartCenter: MKMapPoint?
   private var manualPanStartVisibleRect: MKMapRect?
   private var manualZoomStartDistance: CLLocationDistance?
+  private var usesHybridMap = false
 
   init(isDashboardSurface: Bool = false) {
     self.isDashboardSurface = isDashboardSurface
@@ -107,6 +108,7 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     // matching the richer map view on the phone.
     mapView.pointOfInterestFilter = .includingAll
     mapView.overrideUserInterfaceStyle = .dark
+    mapView.mapType = .standard
     mapView.delegate = self
 
     let pinchZoom = UIPinchGestureRecognizer(
@@ -860,6 +862,19 @@ final class CarPlayMapViewController: UIViewController, MKMapViewDelegate {
     manualZoomStartDistance = nil
     guard isFollowingNavigation, let coordinate = displayedCoordinate else { return }
     updateNavigationCamera(at: coordinate, headingDegrees: displayedHeading)
+  }
+
+  var isHybridMapEnabled: Bool {
+    usesHybridMap
+  }
+
+  /// CarPlay's hybrid style keeps satellite imagery while retaining road
+  /// labels, which is substantially safer to read during active guidance than
+  /// an imagery-only map.
+  func setHybridMapEnabled(_ enabled: Bool) {
+    usesHybridMap = enabled
+    guard isViewLoaded else { return }
+    mapView.mapType = enabled ? .hybrid : .standard
   }
 
   func updateConvoyMembers(_ members: [CarPlayManager.ConvoyMember]) {

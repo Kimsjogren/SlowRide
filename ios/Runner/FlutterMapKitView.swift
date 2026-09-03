@@ -428,6 +428,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   private var markerImageCache: [String: UIImage] = [:]
   private var didNotifyUserPan = false
   private var followReleaseTargetsAttached = false
+  private var activeInteractionGestures: Set<ObjectIdentifier> = []
   private var memberAnnotations: [String: CruizXConvoyMemberAnnotation] = [:]
   private var pinAnnotations: [String: CruizXConvoyPinAnnotation] = [:]
   private var alertAnnotations: [String: CruizXAlertAnnotation] = [:]
@@ -529,6 +530,7 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let followUser = payload["followUser"] as? Bool ?? false
     let use3D = payload["use3D"] as? Bool ?? true
     let darkMode = payload["darkMode"] as? Bool ?? false
+    let satellite = payload["satellite"] as? Bool ?? false
     let showTraffic = payload["showTraffic"] as? Bool ?? false
     let hideUserMarkerWhenFollowing =
       payload["hideUserMarkerWhenFollowing"] as? Bool ?? false
@@ -539,6 +541,8 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
     let followModeChanged = followUser != lastFollowUser
 
     mapView.overrideUserInterfaceStyle = darkMode ? .dark : .light
+    if followUser { didNotifyUserPan = false }
+    mapView.mapType = satellite ? .hybrid : .standard
     mapView.showsTraffic = showTraffic
     navigationRoutePoints = routePoints
     isFollowingUser = followUser
@@ -1988,9 +1992,13 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   private func handleMapInteractionGesture(_ recognizer: UIGestureRecognizer) {
     switch recognizer.state {
     case .began:
+      activeInteractionGestures.insert(ObjectIdentifier(recognizer))
       notifyDirectUserPanIfNeeded()
     case .ended, .cancelled, .failed:
-      didNotifyUserPan = false
+      activeInteractionGestures.remove(ObjectIdentifier(recognizer))
+      if activeInteractionGestures.isEmpty {
+        channel.invokeMethod("userInteractionEnded", arguments: nil)
+      }
     default:
       break
     }
@@ -2022,9 +2030,9 @@ final class FlutterMapKitView: NSObject, FlutterPlatformView, MKMapViewDelegate,
   }
 
   func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-    if !isGestureDrivenChange() {
-      didNotifyUserPan = false
-    }
+    // The gesture recognizer above reports the actual end of panning,
+    // pinching, or rotating. Programmatic follow-camera movements must not
+    // be mistaken for user interaction here.
   }
 
   func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {

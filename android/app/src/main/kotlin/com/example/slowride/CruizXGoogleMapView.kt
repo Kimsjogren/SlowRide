@@ -66,6 +66,7 @@ private class CruizXGoogleMapView(
     private var renderedHeading = 0f
     private var targetLocation: LatLng? = null
     private var hasCenteredOnUser = false
+    private var userCameraGestureInProgress = false
 
     init {
         MapsInitializer.initialize(context, MapsInitializer.Renderer.LATEST) {}
@@ -102,7 +103,14 @@ private class CruizXGoogleMapView(
         }
         map.setOnCameraMoveStartedListener { reason ->
             if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE && followUser) {
+                userCameraGestureInProgress = true
                 channel.invokeMethod("userPanned", null)
+            }
+        }
+        map.setOnCameraIdleListener {
+            if (userCameraGestureInProgress) {
+                userCameraGestureInProgress = false
+                channel.invokeMethod("userInteractionEnded", null)
             }
         }
         pendingState?.let(::applyState)
@@ -137,6 +145,7 @@ private class CruizXGoogleMapView(
         val newFollowUser = payload["followUser"] as? Boolean ?: false
         val newUse3D = payload["use3D"] as? Boolean ?: true
         val newDarkMode = payload["darkMode"] as? Boolean ?: false
+        val satellite = payload["satellite"] as? Boolean ?: false
         val showTraffic = payload["showTraffic"] as? Boolean ?: false
         val routeChanged = !sameRoute(route, lastRoute)
         val trafficChanged = trafficSections != lastTrafficSections
@@ -144,6 +153,7 @@ private class CruizXGoogleMapView(
 
         followUser = newFollowUser
         use3D = newUse3D
+        map.mapType = if (satellite) GoogleMap.MAP_TYPE_HYBRID else GoogleMap.MAP_TYPE_NORMAL
         map.isTrafficEnabled = showTraffic
         if (darkMode != newDarkMode) {
             darkMode = newDarkMode

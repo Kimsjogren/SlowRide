@@ -66,6 +66,18 @@ class AppLocalizationsFi extends AppLocalizations {
   String get a11yUseLightMap => 'Käytä vaaleaa karttaa';
 
   @override
+  String get a11yChooseMapLayer => 'Valitse karttatyyppi';
+
+  @override
+  String get mapLayerStyleTitle => 'Karttatyyppi';
+
+  @override
+  String get mapLayerStandard => 'Vakio';
+
+  @override
+  String get mapLayerSatellite => 'Satelliitti';
+
+  @override
   String get a11yEnableVoiceNavigation => 'Ota ääninavigointi käyttöön';
 
   @override

@@ -66,6 +66,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get a11yUseLightMap => 'Utiliser la carte claire';
 
   @override
+  String get a11yChooseMapLayer => 'Choisir le type de carte';
+
+  @override
+  String get mapLayerStyleTitle => 'Type de carte';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellite';
+
+  @override
   String get a11yEnableVoiceNavigation => 'Activer la navigation vocale';
 
   @override

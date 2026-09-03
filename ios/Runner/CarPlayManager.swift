@@ -315,10 +315,17 @@ final class CarPlayManager: NSObject {
     }
     browseButton.image = makeMapButtonImage(systemName: "magnifyingglass")
 
-    let convoyButton = CPMapButton { [weak self] _ in
-      self?.showConvoyList()
+    let hybridMapButton = CPMapButton { [weak self] button in
+      guard let self else { return }
+      let enableHybrid = !(self.carPlayMapViewControllers.first?.isHybridMapEnabled ?? false)
+      for mapViewController in self.carPlayMapViewControllers {
+        mapViewController.setHybridMapEnabled(enableHybrid)
+      }
+      button.image = self.makeMapButtonImage(
+        systemName: enableHybrid ? "map.fill" : "map"
+      )
     }
-    convoyButton.image = makeMapButtonImage(systemName: "person.3.fill")
+    hybridMapButton.image = makeMapButtonImage(systemName: "map")
 
     let endButton = CPMapButton { [weak self] _ in
       self?.endActiveNavigation(notifyFlutter: true)
@@ -326,13 +333,18 @@ final class CarPlayManager: NSObject {
     endButton.image = makeMapButtonImage(systemName: "xmark")
 
     // CarPlay renders at most four map buttons in array order, top to bottom.
-    template.mapButtons = [followButton, browseButton, convoyButton, endButton]
+    // Hybrid replaces the less frequently used convoy shortcut here; convoy
+    // remains available from the normal CruizX navigation flow.
+    template.mapButtons = [followButton, browseButton, hybridMapButton, endButton]
     return template
   }
 
   private func makeMapButtonImage(systemName: String) -> UIImage {
-    let canvasSize = CGSize(width: 30, height: 30)
-    let symbolConfiguration = UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)
+    // CarPlay owns the circular touch target size. Use smaller, centred
+    // symbols so every map control looks lighter while retaining the
+    // system-required tap area.
+    let canvasSize = CGSize(width: 26, height: 26)
+    let symbolConfiguration = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
     guard let symbol = UIImage(systemName: systemName, withConfiguration: symbolConfiguration) else {
       return UIImage()
     }

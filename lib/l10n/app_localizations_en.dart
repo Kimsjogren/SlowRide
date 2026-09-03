@@ -66,6 +66,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get a11yUseLightMap => 'Use light map';
 
   @override
+  String get a11yChooseMapLayer => 'Choose map style';
+
+  @override
+  String get mapLayerStyleTitle => 'Map style';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellite';
+
+  @override
   String get a11yEnableVoiceNavigation => 'Turn on voice navigation';
 
   @override

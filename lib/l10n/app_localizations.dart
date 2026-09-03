@@ -221,6 +221,30 @@ abstract class AppLocalizations {
   /// **'Use light map'**
   String get a11yUseLightMap;
 
+  /// No description provided for @a11yChooseMapLayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose map style'**
+  String get a11yChooseMapLayer;
+
+  /// No description provided for @mapLayerStyleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map style'**
+  String get mapLayerStyleTitle;
+
+  /// No description provided for @mapLayerStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get mapLayerStandard;
+
+  /// No description provided for @mapLayerSatellite.
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite'**
+  String get mapLayerSatellite;
+
   /// No description provided for @a11yEnableVoiceNavigation.
   ///
   /// In en, this message translates to:

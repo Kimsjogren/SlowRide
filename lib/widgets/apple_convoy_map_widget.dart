@@ -30,12 +30,14 @@ class AppleConvoyMapWidget extends StatefulWidget {
     this.viewportCommandPoints = const [],
     this.onTap,
     this.onUserPanned,
+    this.onUserInteractionEnded,
     this.onMemberTap,
     this.onPinTap,
     this.onMeetupTap,
     this.followUser = false,
     this.use3D = true,
     this.darkMode = false,
+    this.satellite = false,
     this.nextManeuverDistanceMeters,
     this.nextManeuverSign,
   });
@@ -55,12 +57,14 @@ class AppleConvoyMapWidget extends StatefulWidget {
   final List<LatLng> viewportCommandPoints;
   final ValueChanged<LatLng>? onTap;
   final VoidCallback? onUserPanned;
+  final VoidCallback? onUserInteractionEnded;
   final ValueChanged<String>? onMemberTap;
   final ValueChanged<String>? onPinTap;
   final VoidCallback? onMeetupTap;
   final bool followUser;
   final bool use3D;
   final bool darkMode;
+  final bool satellite;
   final double? nextManeuverDistanceMeters;
   final int? nextManeuverSign;
 
@@ -73,10 +77,8 @@ class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
   MethodChannel? _channel;
   Timer? _stateSyncDebounce;
   Timer? _headingSyncDebounce;
-  Timer? _userPanCooldownTimer;
   String? _lastPayloadJson;
   double? _lastHeading;
-  bool _userPanning = false;
 
   @override
   void initState() {
@@ -107,7 +109,6 @@ class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
     widget.headingNotifier.removeListener(_scheduleHeadingSync);
     _stateSyncDebounce?.cancel();
     _headingSyncDebounce?.cancel();
-    _userPanCooldownTimer?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }
@@ -133,6 +134,9 @@ class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
         break;
       case 'userPanned':
         widget.onUserPanned?.call();
+        break;
+      case 'userInteractionEnded':
+        widget.onUserInteractionEnded?.call();
         break;
       case 'memberTapped':
         final args = Map<String, dynamic>.from(
@@ -215,6 +219,7 @@ class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
       'followUser': widget.followUser,
       'use3D': widget.use3D,
       'darkMode': widget.darkMode,
+      'satellite': widget.satellite,
       'nextManeuverDistanceMeters': widget.nextManeuverDistanceMeters,
       'nextManeuverSign': widget.nextManeuverSign,
       'viewportCommand': widget.viewportCommandPoints.isEmpty
@@ -333,43 +338,29 @@ class _AppleConvoyMapWidgetState extends State<AppleConvoyMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      onPointerDown: (_) {
-        if (widget.followUser && !_userPanning) {
-          _userPanning = true;
-          widget.onUserPanned?.call();
-          _userPanCooldownTimer?.cancel();
-          _userPanCooldownTimer = Timer(const Duration(milliseconds: 900), () {
-            if (mounted) {
-              _userPanning = false;
-            }
-          });
-        }
-      },
-      child: Stack(
-        children: [
-          UiKitView(
-            viewType: 'cruizx/mapkit-view',
-            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-              Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
-            },
-            onPlatformViewCreated: _onPlatformViewCreated,
-          ),
-          if (widget.followUser)
-            IgnorePointer(
-              child: Align(
-                alignment: widget.use3D
-                    ? const Alignment(0, _k3DArrowAlignmentY)
-                    : Alignment.center,
-                child: UserLocationMarker(
-                  headingNotifier: widget.headingNotifier,
-                  lockNorthUp: false,
-                  size: 30,
-                ),
+    return Stack(
+      children: [
+        UiKitView(
+          viewType: 'cruizx/mapkit-view',
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
+          },
+          onPlatformViewCreated: _onPlatformViewCreated,
+        ),
+        if (widget.followUser)
+          IgnorePointer(
+            child: Align(
+              alignment: widget.use3D
+                  ? const Alignment(0, _k3DArrowAlignmentY)
+                  : Alignment.center,
+              child: UserLocationMarker(
+                headingNotifier: widget.headingNotifier,
+                lockNorthUp: false,
+                size: 30,
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

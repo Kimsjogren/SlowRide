@@ -138,6 +138,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
   bool _shareLiveLocation = false;
   bool _use3DMap = true;
   bool _useDarkMap = true;
+  bool _useSatelliteMap = false;
+  Timer? _mapInteractionResumeTimer;
   // When true, the map style follows time of day; a manual toggle disables it.
   bool _autoMapTheme = true;
   String? _myUserId;
@@ -293,6 +295,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
       unawaited(_controller.clearMyLocation(convoyId: widget.convoy.id));
     }
     _use3DMap = UserPreferencesService.instance.use3DMap.value;
+    _useSatelliteMap = UserPreferencesService.instance.useSatelliteMap.value;
     ConvoyFavoritePlacesService.instance.initialize();
     // Auto-pick a dark map at night and a light map during the day.
     _useDarkMap = _isNightTime();
@@ -1047,6 +1050,7 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
     _locationPollTimer?.cancel();
     _alertsTimer?.cancel();
     _themeTimer?.cancel();
+    _mapInteractionResumeTimer?.cancel();
     _tileHttpClient.close();
     _arrowHdg.dispose();
     _speedNotifier.dispose();
@@ -2803,6 +2807,80 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
         child: Center(child: child),
       ),
     );
+  }
+
+  void _pauseConvoyMapFollowingForInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    if (!_isFollowingMyPosition) return;
+    setState(() => _isFollowingMyPosition = false);
+  }
+
+  void _resumeConvoyMapFollowingAfterInteraction() {
+    _mapInteractionResumeTimer?.cancel();
+    if (!_isNavigating) return;
+    _mapInteractionResumeTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || _isFollowingMyPosition || _myLocation == null) return;
+      setState(() => _isFollowingMyPosition = true);
+    });
+  }
+
+  Future<void> _showConvoyMapLayerPicker(AppLocalizations l10n) async {
+    final useSatellite = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1F63),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.mapLayerStyleTitle,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.map_outlined, color: Colors.white70),
+                title: Text(
+                  l10n.mapLayerStandard,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: !_useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, false),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.satellite_alt_outlined,
+                  color: Colors.white70,
+                ),
+                title: Text(
+                  l10n.mapLayerSatellite,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: _useSatelliteMap
+                    ? const Icon(Icons.check, color: Color(0xFF55C8FF))
+                    : null,
+                onTap: () => Navigator.pop(sheetContext, true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (useSatellite == null || useSatellite == _useSatelliteMap || !mounted) {
+      return;
+    }
+    setState(() => _useSatelliteMap = useSatellite);
+    UserPreferencesService.instance.useSatelliteMap.value = useSatellite;
   }
 
   Future<void> _openAiFromConvoyButton() async {
@@ -4675,6 +4753,8 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                 _use3DMap,
                                                             darkMode:
                                                                 _useDarkMap,
+                                                            satellite:
+                                                                _useSatelliteMap,
                                                             nextManeuverDistanceMeters:
                                                                 _isNavigating
                                                                 ? _distToNextManeuver
@@ -4693,15 +4773,10 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                                   l10n,
                                                                 ),
                                                             onUserPanned: () {
-                                                              if (!_isFollowingMyPosition) {
-                                                                return;
-                                                              }
-                                                              setState(() {
-                                                                _isFollowingMyPosition =
-                                                                    false;
-                                                                _mapViewEpoch++;
-                                                              });
+                                                              _pauseConvoyMapFollowingForInteraction();
                                                             },
+                                                            onUserInteractionEnded:
+                                                                _resumeConvoyMapFollowingAfterInteraction,
                                                             onMeetupTap: () {
                                                               if (meetupPosition ==
                                                                   null) {
@@ -4762,32 +4837,38 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                             _,
                                                             hasGesture,
                                                           ) {
-                                                            if (!hasGesture ||
-                                                                !_isFollowingMyPosition) {
+                                                            if (!hasGesture) {
                                                               return;
                                                             }
-                                                            setState(() {
-                                                              _isFollowingMyPosition =
-                                                                  false;
-                                                            });
+                                                            _pauseConvoyMapFollowingForInteraction();
+                                                            _resumeConvoyMapFollowingAfterInteraction();
                                                           },
                                                     ),
                                                     mapController:
                                                         _mapController,
                                                     children: [
                                                       TileLayer(
-                                                        urlTemplate: _useDarkMap
+                                                        urlTemplate:
+                                                            _useSatelliteMap
+                                                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                                                            : _useDarkMap
                                                             ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                             : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                                        fallbackUrl: _useDarkMap
+                                                        fallbackUrl:
+                                                            _useSatelliteMap
+                                                            ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                                                            : _useDarkMap
                                                             ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
                                                             : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                                                        subdomains: const [
-                                                          'a',
-                                                          'b',
-                                                          'c',
-                                                          'd',
-                                                        ],
+                                                        subdomains:
+                                                            _useSatelliteMap
+                                                            ? const []
+                                                            : const [
+                                                                'a',
+                                                                'b',
+                                                                'c',
+                                                                'd',
+                                                              ],
                                                         userAgentPackageName:
                                                             'com.cruizx.mobile',
                                                         tileProvider:
@@ -4809,7 +4890,19 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                                         tileDisplay:
                                                             const TileDisplay.instantaneous(),
                                                       ),
-                                                      if (_useDarkMap)
+                                                      if (_useSatelliteMap)
+                                                        TileLayer(
+                                                          urlTemplate:
+                                                              'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                                                          userAgentPackageName:
+                                                              'com.cruizx.mobile',
+                                                          tileProvider:
+                                                              _tileProvider,
+                                                          maxNativeZoom: 20,
+                                                          tileDisplay:
+                                                              const TileDisplay.instantaneous(),
+                                                        )
+                                                      else if (_useDarkMap)
                                                         TileLayer(
                                                           urlTemplate:
                                                               'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
@@ -6555,6 +6648,21 @@ class _ConvoyRoomScreenState extends State<ConvoyRoomScreen>
                                     Icons.people_alt_outlined,
                                     color: Colors.white70,
                                     size: 19,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _convoyCircleButton(
+                                  semanticLabel: l10n.a11yChooseMapLayer,
+                                  color: _useSatelliteMap
+                                      ? const Color(0xFF1E6BFF)
+                                      : null,
+                                  onTap: () => _showConvoyMapLayerPicker(l10n),
+                                  child: Icon(
+                                    Icons.layers_outlined,
+                                    color: _useSatelliteMap
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    size: 20,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
